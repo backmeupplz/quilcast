@@ -1,4 +1,4 @@
-FROM node:24-slim AS build
+FROM node:24.22.1-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -6,7 +6,7 @@ COPY . .
 # the server tests start the real server, which serves dist/, so build first
 RUN npm run build && npm test && npm prune --omit=dev
 
-FROM node:24-slim
+FROM node:24.22.1-slim
 WORKDIR /app
 COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/dist dist
