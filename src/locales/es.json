@@ -524,5 +524,6 @@
   "{n}d": "{n} d",
   "{n}h": "{n} h",
   "{n}m": "{n} min",
-  "{n}s left": "quedan {n} s"
+  "{n}s left": "quedan {n} s",
+  "Show full thread": "Ver el hilo completo"
 }

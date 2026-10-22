@@ -731,3 +731,20 @@ small.warn { color: var(--warn); }
 .design-page { padding: 16px; }
 .lk-design { display: flex; gap: 8px; margin: 12px 0 8px; }
 .lk-design input { flex: 1; min-width: 0; }
+
+/* Home's reply threads (app.tsx Unit): the connector runs on, dotted, past skipped posts */
+.unit { border-bottom: 1px solid var(--line); }
+.unit > .cast:last-child { border-bottom: 0; }
+.thread-gap { position: relative; display: block; padding: 2px 16px 10px 68px; font-size: 14px; color: var(--accent); }
+.thread-gap::before { content: ''; position: absolute; left: 35px; top: -8px; bottom: 0; border-left: 2px dotted var(--line); }
+
+/* a select that looks like the segmented controls beside it; the chevron is two gradients, so it takes the theme's color */
+.pick {
+  appearance: none; -webkit-appearance: none; border: 0; border-radius: 99px; padding: 7px 34px 7px 15px; font-size: 14px; font-weight: 600; cursor: pointer;
+  background-color: var(--soft); color: var(--ink);
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: right 18px top 52%, right 13px top 52%; background-size: 5px 5px; background-repeat: no-repeat;
+}
+.pick:hover { background-color: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
+.pick option { background: var(--card); color: var(--ink); }
+.unit > .thread-gap:first-child::before { top: 8px; }

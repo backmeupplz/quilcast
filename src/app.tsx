@@ -1,6 +1,6 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, accounts, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, users, USER_DATA, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, users, USER_DATA, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, sized, type Look } from './shared.ts'
@@ -128,13 +128,70 @@ function Pager<T>({ load, k, empty, id, row, initial }: { load: (cursor?: string
   )
 }
 
+// Home's replies come with their conversation, like the thread page draws it: the root, "Show full thread" when
+// posts were skipped, the parent and the reply, never more than 3 posts. A reply shows when the cast it answers is
+// the viewer's or by someone they follow; a cast already shown in a thread above isn't shown again.
+const ask = (() => {
+  // ponytail: one queue for every feed's lookups, 6 at a time, because haatz stalls under ~100 parallel requests
+  let active = 0
+  const waiting: (() => void)[] = []
+  return async <T,>(f: () => Promise<T>) => {
+    while (active >= 6) await new Promise<void>((r) => waiting.push(r))
+    active++
+    try {
+      return await f()
+    } finally {
+      active--
+      waiting.shift()?.()
+    }
+  }
+})()
+async function threads(casts: Cast[]) {
+  const units = await Promise.all(casts.map(async (c): Promise<Cast | null> => {
+    if (!c.parent_hash) return c
+    const to = c.parent_author?.fid
+    if (!to || (to !== account?.fid && !(await ask(() => amFollowing(to))))) return null
+    const up: Cast[] = []
+    for (let h: string | null | undefined = c.parent_hash; h && up.length < 3; ) {
+      const p: Cast | null = await ask(() => fetchCast(h!))
+      if (!p) break
+      up.unshift(p)
+      h = p.parent_hash
+    }
+    if (!up.length) return null
+    const root = !up[0].parent_hash
+    return { ...c, up: root && up.length > 2 ? [up[0], up[2]] : root ? up : [up[up.length - 1]], gap: !root || up.length > 2 }
+  }))
+  const shown = new Set<string>()
+  const out: Cast[] = []
+  for (const c of units) {
+    if (!c || shown.has(c.hash)) continue
+    out.push(c)
+    for (const p of [c, ...(c.up || [])]) shown.add(p.hash)
+  }
+  return out
+}
+
+function Unit({ c }: { c: Cast }) {
+  if (!c.up?.length) return <CastCard c={c} />
+  const parent = c.up[c.up.length - 1]
+  return (
+    <div class="unit">
+      {c.up.slice(0, -1).map((p) => <CastCard key={p.hash} c={p} line inThread />)}
+      {c.gap && <a class="thread-gap" href={`/c/${c.hash}`}>{t('Show full thread')}</a>}
+      <CastCard c={parent} line inThread />
+      <CastCard c={c} inThread />
+    </div>
+  )
+}
+
 // `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately
-const Feed = ({ load, k, empty, keep, cacheKey }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string }) => (
-  <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.map((c) => <CastCard key={c.hash} c={c} />)}
+const Feed = ({ load, k, empty, keep, cacheKey, thread }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean }) => (
+  <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.map((c) => <Unit key={c.hash} c={c} />)}
     initial={() => (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
     load={async (cursor) => {
       const r = await load(cursor)
-      const casts = keep ? r.casts.filter(keep) : r.casts
+      const casts = thread ? await threads(r.casts) : keep ? r.casts.filter(keep) : r.casts
       await hydrateParents(casts)
       if (!cursor && cacheKey) {
         try {
@@ -172,8 +229,8 @@ function Home() {
           <a class="btn small" href="/join">{t('Join')}</a>
         </div>
       )}
-      {/* about half of a page is replies, which home leaves out, so pages are 50 */}
-      <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={(c) => !c.parent_hash}
+      {/* replies show in Following with their conversation (threads()); Trending keeps top-level casts */}
+      <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={(c) => !c.parent_hash} thread={tab === 'following'}
         load={(cursor) => (tab === 'following' ? get('/v2/farcaster/feed/following', { fid: account!.fid, limit: 50, cursor }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
     </>
   )
@@ -836,7 +893,7 @@ function Settings() {
           <div class="setting">
             <h2>{t('Language')}</h2>
             {/* every string is picked when the page loads, so a switch reloads it */}
-            <select value={lang} onChange={(e) => ((settings.lang = e.currentTarget.value), saveSettings(), location.reload())}>
+            <select class="pick" value={lang} onChange={(e) => ((settings.lang = e.currentTarget.value), saveSettings(), location.reload())}>
               {Object.entries(LANGS).map(([k, name]) => <option value={k}>{name}</option>)}
             </select>
           </div>

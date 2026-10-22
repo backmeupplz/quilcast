@@ -103,6 +103,9 @@ export async function loadMine() {
 
 export const isFollowing = async (target: number) =>
   !!account?.fid && (await get('/v1/linkById', { fid: account.fid, target_fid: target, link_type: 'follow' }).then(() => true, () => false))
+// asked once per person per visit (Home asks about the author of every reply's parent)
+const follows = new Map<number, Promise<boolean>>()
+export const amFollowing = (fid: number) => follows.get(fid) || (follows.set(fid, isFollowing(fid)), follows.get(fid)!)
 
 /** People matching `q`, best first: that exact handle, then handles starting with it, then the most followed. */
 export async function findUsers(q: string) {
@@ -118,6 +121,8 @@ export type Cast = {
   embeds: { url?: string; cast_id?: { fid: number; hash: string } }[]
   reactions: { likes_count: number; recasts_count: number }; replies: { count: number }; direct_replies?: Cast[]
   mentioned_profiles?: User[]; mentioned_profiles_ranges?: { start: number; end: number }[]
+  // a reply in Home carries the casts shown above it (root first), and `gap` when some were skipped
+  up?: Cast[]; gap?: boolean
 }
 
 // authors we've seen, so replies can say who they reply to
