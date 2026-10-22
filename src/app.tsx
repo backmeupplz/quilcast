@@ -271,10 +271,10 @@ function Notifications() {
   const extra = useMemo(() => (account?.done ? recastNotes().catch(() => []) : Promise.resolve([])), [round])
   const held = useRef<Note[]>([])
   useEffect(() => {
-    // opening the page marks everything up to now as seen
+    // opening or refreshing the page marks everything up to now as seen
     localStorage.setItem(seenKey(), String(Date.now()))
     dispatchEvent(new Event('seen'))
-  }, [])
+  }, [round])
   if (!account?.done) return <><Header title="Notifications" /><div class="note">Sign in to see who replied, liked and followed.</div></>
   return (
     <>
