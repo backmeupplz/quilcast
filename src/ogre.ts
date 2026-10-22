@@ -10,8 +10,8 @@ try {
 
 let taps = 0
 let timer = 0
-// a Shrek GIF from Tenor, a new one each deploy (server/shrek.mjs)
-const ROAR = '/shrek/roar'
+// a random Shrek GIF from Tenor (server/shrek.mjs); the query makes each turn-on fetch a new one
+let roar = ''
 
 /** Count a tap on the pfp. Taps more than half a second apart start over. */
 export function ogreTap(el: Element) {
@@ -19,14 +19,14 @@ export function ogreTap(el: Element) {
   const left = 5 - ++taps
   hit(el, left ? String(left) : on() ? 'ogre mode off' : 'OGRE MODE!')
   // fetch the roar early so it's ready on the last tap
-  if (left === 2 && !on()) new Image().src = ROAR
+  if (left === 2 && !on()) new Image().src = roar = `/shrek/roar?${Date.now()}`
   if (!left) {
     taps = 0
     set(!on())
     if (on()) {
       const img = document.createElement('img')
       img.className = 'roar'
-      img.src = ROAR
+      img.src = roar
       img.alt = ''
       // on a timer, not animationend: with reduced motion the animation never runs (style.css), so it would never end
       setTimeout(() => img.remove(), 2200)

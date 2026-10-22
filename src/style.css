@@ -561,7 +561,7 @@ small.warn { color: var(--warn); }
   --like: light-dark(#5b8c00, #a4d13a);
   --recast: light-dark(#8b5a2b, #c99358);
 }
-/* Shrek GIFs from Tenor (hotlinked; /shrek/* redirect to ones server/shrek.mjs picks at random each deploy): the face
+/* Shrek GIFs from Tenor (hotlinked; /shrek/* redirect to a random one from server/shrek.mjs each time): the face
    as the logo, like button and background, one GIF in the corner and one in the right column */
 .ogre-only { display: none; }
 :root[data-ogre] .ogre-only { display: block; }

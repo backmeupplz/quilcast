@@ -15,7 +15,7 @@ import { cached, unfurl } from './unfurl.mjs'
 import { chunk, done, EXT, MEDIA, start, status } from './upload.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
-import { credits, picks, shuffle } from './shrek.mjs'
+import { credits, pick, refresh } from './shrek.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -222,7 +222,8 @@ const byName = (name) => fetchJson(`${NODE}/v2/farcaster/user/by-username?userna
 const getUser = (name) => cache.get(`u:${name}`) || keep(cache, 1000, `u:${name}`, (/^\d+$/.test(name) ? fetchJson(`${NODE}/v2/farcaster/user?fid=${name}`).then((r) => r?.user) : byName(name)).then((u) => u || (cache.delete(`u:${name}`), null)))
 
 const index = await readFile(join(DIST, 'index.html'), 'utf8')
-shuffle()
+refresh()
+setInterval(refresh, 6 * 3600e3).unref()
 // swap the default title/description/url/image in index.html for page-specific ones; replacements
 // are functions so `$` sequences in user text are never treated as replacement patterns
 function page({ title, desc, path, image, alt }) {
@@ -273,9 +274,8 @@ createServer(async (req, res) => {
   try {
     if (path === '/health') return res.end('ok')
 
-    // ogre mode's GIFs, new ones each start (server/shrek.mjs)
-    const gif = path.match(/^\/shrek\/(dance|card|roar)$/)
-    if (gif) return res.writeHead(302, { location: picks[gif[1]].url, 'cache-control': 'no-cache' }).end()
+    // ogre mode's GIFs: a random one each time (server/shrek.mjs)
+    if (/^\/shrek\/(dance|card|roar)$/.test(path)) return res.writeHead(302, { location: pick(), 'cache-control': 'no-store' }).end()
     if (path === '/shrek/credits.html') return html(credits())
 
     const up = path.match(/^\/api\/upload(?:\/([0-9a-f-]{36})(\/done)?)?$/)
