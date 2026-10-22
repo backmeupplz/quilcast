@@ -124,7 +124,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .cast.line { border-bottom: 0; padding-bottom: 4px; }
 .cast.line .rail::after { content: ''; position: absolute; left: 35px; top: 56px; bottom: -8px; width: 2px; background: var(--line); border-radius: 2px; }
 .rail { flex: none; }
-.avatar { flex: none; border-radius: 99px; overflow: hidden; background: var(--soft); display: grid; place-items: center; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+.avatar { flex: none; border-radius: 99px; overflow: hidden; background: var(--soft); display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; color: var(--muted); font-weight: 700; text-transform: uppercase; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .body { min-width: 0; flex: 1; }
 .cast header, .quote .meta { display: flex; align-items: baseline; gap: 4px; min-width: 0; white-space: nowrap; line-height: 1.3; }
@@ -720,13 +720,14 @@ small.warn { color: var(--warn); }
   body:has(.lk-edit:not(.min)) .col { padding-bottom: 64vh; }
 }
 
-/* a shared profile design (ui.tsx DesignCard), drawn in its own colors */
-.design { margin-top: 10px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background-color: var(--soft); background-position: center; }
-.design.cover { background-size: cover; }
-.design.center { background-repeat: no-repeat; }
-.design-box { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); }
-.design-box span { font-size: 13px; color: var(--muted); }
-.design-box .btn { margin-top: 8px; }
+/* a shared profile design (ui.tsx DesignCard): a small profile wearing it, with the real look styles */
+.design { position: relative; isolation: isolate; overflow: hidden; margin-top: 10px; padding: 2px 0; border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; justify-content: center; }
+.design .lk-bg { position: absolute; z-index: -1; }
+.design-who { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.design-who > span { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.design-who b { font-size: 1.15em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.design-who small { color: var(--muted); font-size: 0.85em; }
+.design .lk-sec p { margin: 0 0 10px; color: var(--muted); font-size: 0.9em; }
 .design-page { padding: 16px; }
 .lk-design { display: flex; gap: 8px; margin: 12px 0 8px; }
 .lk-design input { flex: 1; min-width: 0; }

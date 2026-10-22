@@ -115,6 +115,25 @@ export function cleanLook(x: unknown): Look {
   return l
 }
 
+const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(' ')
+
+/** The look's colors and font as CSS variables on the profile's wrapper; the app's styles take them from there. */
+export function lookVars(l: Look) {
+  const v: Record<string, string> = {}
+  if (l.text) (v['--ink'] = l.text), (v['--soft'] = `rgb(${rgb(l.text)} / 0.08)`), (v['--hover'] = `rgb(${rgb(l.text)} / 0.04)`)
+  if (l.muted) v['--muted'] = l.muted
+  if (l.link) (v['--accent'] = l.link), (v['--accent-soft'] = `rgb(${rgb(l.link)} / 0.16)`)
+  if (l.box) (v['--lk-box'] = `rgb(${rgb(l.box)} / ${(l.boxAlpha ?? 90) / 100})`), (v['--bg'] = l.box), (v['--card'] = l.box)
+  if (l.border) v['--line'] = l.border
+  if (l.borderStyle) v['--lk-bs'] = l.borderStyle
+  if (l.borderWidth !== undefined) v['--lk-bw'] = `${l.borderWidth}px`
+  if (l.radius !== undefined) v['--lk-r'] = `${l.radius}px`
+  if (l.nameColor) v['--lk-name'] = l.nameColor
+  if (l.font) v.fontFamily = FONTS[l.font]
+  if (l.size && l.size !== 'normal') v.fontSize = l.size === 'small' ? '13px' : '17px'
+  return v
+}
+
 /** A look's design: its style, without the words, friends, GIF wall and song. Shared as quilcast.com/design/<id>. */
 export const DESIGN_KEYS = ['bg', 'bgImg', 'bgMode', 'bgDim', 'text', 'muted', 'link', 'box', 'boxAlpha', 'border', 'borderStyle', 'borderWidth', 'radius', 'font', 'size', 'nameFx', 'nameColor', 'banner'] as const
 export const cleanDesign = (x: unknown): Look => {

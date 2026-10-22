@@ -8,7 +8,7 @@ import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, isImg, isVid, LOGO, n, sized, X_LOGO } from '../src/shared.ts'
+import { castText, cleanDesign, isImg, isVid, LOGO, n, sized, X_LOGO } from '../src/shared.ts'
 import { fetchJson, gate, imageInfo, keep, safeGet } from './net.mjs'
 import { dm } from './dm.mjs'
 import { cached, unfurl } from './unfurl.mjs'
@@ -126,18 +126,19 @@ function wrap(text, px, max, lines) {
   return out
 }
 
-/** An image from a user-supplied URL as a data URI, or null; anything resvg would struggle to decode is skipped. */
-async function dataUri(url) {
+/** An image from a user-supplied URL as a data URI with its size, or null; anything resvg would struggle to decode is skipped. */
+async function imageData(url, max = 4e6) {
   try {
-    const r = await safeGet(url, { max: 4e6, timeout: 5000 })
+    const r = await safeGet(url, { max, timeout: 5000 })
     if (r.status !== 200 || r.truncated) return null
     const info = imageInfo(r.body)
     if (!info || info.w * info.h > 16e6 || info.w > 8192 || info.h > 8192) return null
-    return `data:${info.type};base64,${r.body.toString('base64')}`
+    return { uri: `data:${info.type};base64,${r.body.toString('base64')}`, w: info.w, h: info.h }
   } catch {
     return null
   }
 }
+const dataUri = (url) => imageData(url).then((i) => i?.uri ?? null)
 
 // Farcaster's videos live on Cloudflare Stream; the signed playlist path also serves a thumbnail
 const posters = new Map()
@@ -157,6 +158,10 @@ async function visualOf(c) {
   const urls = (Array.isArray(c.embeds) ? c.embeds : []).map((e) => e?.url).filter((u) => typeof u === 'string' && /^https?:\/\//i.test(u))
   const img = urls.find(isImg)
   if (img) return { src: img }
+  // a shared design shows its own card
+  const design = urls.map((u) => u.match(/^https:\/\/quilcast\.com\/design\/([\w-]{10})$/)?.[1]).find(Boolean)
+  const d = design && (await getDesign(design))
+  if (d) return { design: design, d, label: 'Profile design', wide: true }
   for (const u of urls.filter((u) => !isVid(u)).slice(0, 2)) {
     const d = await unfurl(u).catch(() => null)
     if (d?.tweet) return d.tweet.photos[0] || d.tweet.video ? { src: d.tweet.photos[0] || d.tweet.video, label: `@${d.tweet.author.handle} on X`, video: !d.tweet.photos[0] } : { tweet: d.tweet }
@@ -175,7 +180,10 @@ async function card(c) {
   const text = castText(c).slice(0, 600)
   const v = await visualOf(c)
   // the CDN's resized copies are a fraction of the originals and decode faster
-  const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=176')) : null, v?.src ? dataUri(sized(v.src, 'w=840')) : null])
+  const [pfp, pic] = await Promise.all([
+    a.pfp_url ? dataUri(sized(a.pfp_url, 'w=176')) : null,
+    v?.design ? designPng(v.design, v.d).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null) : v?.src ? dataUri(sized(v.src, 'w=840')) : null,
+  ])
   const tile = !!(pic || v?.video || v?.tweet)
   // link previews are ~1.91:1, so they get a landscape tile; everything else a square
   const [ty, th] = v?.wide ? [172, 220] : [72, 420]
@@ -210,6 +218,73 @@ async function card(c) {
   <text x="1116" y="592" xml:space="preserve" font-family="Inter" font-size="24" fill="#9893a5" text-anchor="end">${n(replies)} ${replies === 1 ? 'reply' : 'replies'}  ·  ${n(recasts)} ${recasts === 1 ? 'recast' : 'recasts'}  ·  <tspan fill="#ff5c8a">♥ ${n(likes)}</tspan></text>
 </svg>`
 }
+/** The share card of a shared design: a profile wearing it, drawn at about twice its size on screen. */
+async function designCard(d) {
+  const ink = d.text || '#edebf3'
+  const muted = d.muted || '#9893a5'
+  const link = d.link || '#6447f5'
+  const box = d.box || '#16151c'
+  const line = d.border || '#2a2735'
+  const fx = d.nameFx || 'none'
+  const fxColor = d.nameColor || link
+  const bw = d.borderStyle === 'none' ? 0 : (d.borderWidth ?? 1) * 2
+  const r = (d.radius ?? 14) * 2
+  // resvg can't decode animated WebP, Tenor's usual format; its small GIF of the same picture ("AAAAe") works
+  const img = d.bgImg && (await imageData(d.bgImg.replace(/^(https:\/\/media\.tenor\.com\/[\w-]+AAAA)\w(\/[\w-]+)\.\w+$/, '$1e$2.gif'), 6e6))
+  // the background as the profile shows it: tiled at its own size, filling the card, or once in the middle
+  const bg = !img ? '' : d.bgMode === 'cover'
+    ? `<image href="${img.uri}" width="1200" height="630" preserveAspectRatio="xMidYMid slice"/>`
+    : d.bgMode === 'center'
+      ? `<image href="${img.uri}" x="${(1200 - Math.min(img.w, 1200)) / 2}" y="${(630 - Math.min(img.h, 630)) / 2}" width="${Math.min(img.w, 1200)}" height="${Math.min(img.h, 630)}" preserveAspectRatio="xMidYMid meet"/>`
+      : `<rect width="1200" height="630" fill="url(#tile)"/>`
+  // SVG strokes for the CSS border styles; double is two thin lines, groove and ridge stay solid
+  const frame = (x, y, w, h) => {
+    if (!bw) return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${box}" fill-opacity="${(d.boxAlpha ?? 90) / 100}"/>`
+    const base = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${box}" fill-opacity="${(d.boxAlpha ?? 90) / 100}"`
+    if (d.borderStyle === 'double' && bw >= 6) {
+      const t = bw / 3
+      return `${base} stroke="${line}" stroke-width="${t}"/><rect x="${x + 2 * t}" y="${y + 2 * t}" width="${w - 4 * t}" height="${h - 4 * t}" rx="${Math.max(0, r - 2 * t)}" fill="none" stroke="${line}" stroke-width="${t}"/>`
+    }
+    const dash = d.borderStyle === 'dashed' ? ` stroke-dasharray="${bw * 3} ${bw * 2}"` : d.borderStyle === 'dotted' ? ` stroke-dasharray="0 ${bw * 2}" stroke-linecap="round"` : ''
+    return `${base} stroke="${line}" stroke-width="${bw}"${dash}/>`
+  }
+  const name = (x, y) => {
+    const t = (attrs) => `<text x="${x}" y="${y}" font-family="Inter" font-weight="800" font-size="64" ${attrs}>Profile design</text>`
+    if (fx === 'rainbow') return t('fill="url(#rainbow)"')
+    if (fx === 'glitter') return t('fill="url(#glitter)"')
+    if (fx === 'glow') return t(`fill="${fxColor}" filter="url(#glow)"`) + t(`fill="${ink}"`)
+    if (fx === 'shadow') return `<g transform="translate(5 5)">${t(`fill="${ink}"`)}</g>` + t(`fill="${fxColor}"`)
+    if (fx === 'outline') return t(`fill="none" stroke="${fxColor}" stroke-width="2.4"`)
+    return t(`fill="${d.nameColor || ink}"`)
+  }
+  const tw = img && d.bgMode !== 'cover' && d.bgMode !== 'center' ? Math.max(40, img.w) : 0
+  const th = tw ? Math.round((img.h * tw) / img.w) : 0
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    ${tw ? `<pattern id="tile" width="${tw}" height="${th}" patternUnits="userSpaceOnUse"><image href="${img.uri}" width="${tw}" height="${th}"/></pattern>` : ''}
+    <linearGradient id="rainbow"><stop offset="0" stop-color="#ff004c"/><stop offset="0.2" stop-color="#ff8a00"/><stop offset="0.4" stop-color="#ffe600"/><stop offset="0.6" stop-color="#2bd44a"/><stop offset="0.8" stop-color="#00a2ff"/><stop offset="1" stop-color="#8a2be2"/></linearGradient>
+    <linearGradient id="glitter" x2="1" y2="0.3"><stop offset="0.3" stop-color="${fxColor}"/><stop offset="0.5" stop-color="#fff"/><stop offset="0.7" stop-color="${fxColor}"/></linearGradient>
+    <filter id="glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <rect width="1200" height="630" fill="${d.bg || '#0d0c11'}"/>${bg}
+  ${d.bgDim ? `<rect width="1200" height="630" fill="#000" fill-opacity="${d.bgDim / 100}"/>` : ''}
+  ${frame(80, 64, 1040, 196)}
+  <g transform="translate(124 114) scale(3)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
+  ${name(250, 166)}
+  <text x="252" y="214" font-family="Inter" font-size="30" fill="${muted}">A Quilcast profile design</text>
+  ${frame(80, 292, 1040, 274)}
+  <clipPath id="sec"><rect x="${80 + bw / 2}" y="${292 + bw / 2}" width="${1040 - bw}" height="${274 - bw}" rx="${Math.max(0, r - bw / 2)}"/></clipPath>
+  <rect x="80" y="292" width="1040" height="${64 + bw}" fill="${link}" fill-opacity="0.16" clip-path="url(#sec)"/>
+  <text x="122" y="${336 + bw / 2}" font-family="Inter" font-weight="800" font-size="30" fill="${link}">Profile design</text>
+  <text x="122" y="${426 + bw / 2}" font-family="Inter" font-size="32" fill="${ink}">Colors, background and fonts for your profile.</text>
+  <rect x="122" y="${462 + bw / 2}" width="330" height="64" rx="32" fill="${link}"/>
+  <text x="287" y="${505 + bw / 2}" font-family="Inter" font-weight="700" font-size="28" fill="${d.box || '#fff'}" text-anchor="middle">Use this design</text>
+</svg>`
+}
+
+// a design never changes, so neither does its card; called inside a render slot already (renders() isn't reentrant)
+const designPng = (id, d) => pngs.get(`design:${id}`) || keep(pngs, 100, `design:${id}`, designCard(cleanDesign(d)).then(render))
+
 // rendering runs on libuv's pool, so it never blocks the event loop
 const render = (svg) => renderAsync(svg, { font: { fontFiles: FONTS, loadSystemFonts: false, defaultFontFamily: 'Inter' } }).then((img) => img.asPng())
 
@@ -412,8 +487,21 @@ createServer(async (req, res) => {
       return html(page({ title: `${u.display_name || u.username} (@${u.username}) on Quilcast`, desc: u.profile?.bio?.text || `${u.display_name || u.username} on Farcaster`, path }))
     }
 
-    if (/^\/design\/[\w-]{10}$/.test(path))
-      return html(page({ title: 'A profile design on Quilcast', desc: 'Colors, a background and fonts for a Quilcast profile. Open it to use this design on yours.', path }))
+    const designPage = path.match(/^\/design\/([\w-]{10})$/)
+    if (designPage) {
+      const desc = 'Colors, a background and fonts for a Quilcast profile. Open it to use this design on yours.'
+      const found = await getDesign(designPage[1])
+      return html(page({ title: 'A profile design on Quilcast', desc, path, ...(found && { image: `${SITE}/og/design/${designPage[1]}.png`, alt: 'A preview of the profile design' }) }))
+    }
+    const ogDesign = path.match(/^\/og\/design\/([\w-]{10})\.png$/)
+    if (ogDesign) {
+      const k = `design:${ogDesign[1]}`
+      if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
+      const d = await getDesign(ogDesign[1])
+      if (!d) return res.writeHead(404).end()
+      const png = await (pngs.get(k) || renders(() => designPng(ogDesign[1], d)))
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
+    }
 
     const file = normalize(join(DIST, path))
     if (file.startsWith(DIST) && extname(file)) {

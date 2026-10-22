@@ -4,7 +4,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { findUsers, loadUsers, users, type User } from './api.ts'
-import { cleanDesign, cleanLook, DESIGN_KEYS, designId, FONTS, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look } from './shared.ts'
+import { cleanDesign, cleanLook, DESIGN_KEYS, lookVars, designId, FONTS, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look } from './shared.ts'
 import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 
 export const clean = cleanLook
@@ -14,24 +14,8 @@ export const withDesign = (l: Look, d: Look): Look => ({ ...l, ...Object.fromEnt
 
 // --- showing a look ---
 
-const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(' ')
-
 /** The look's colors and font as CSS variables on the profile's wrapper; the app's styles take them from there. */
-export function vars(l: Look) {
-  const v: Record<string, string> = {}
-  if (l.text) (v['--ink'] = l.text), (v['--soft'] = `rgb(${rgb(l.text)} / 0.08)`), (v['--hover'] = `rgb(${rgb(l.text)} / 0.04)`)
-  if (l.muted) v['--muted'] = l.muted
-  if (l.link) (v['--accent'] = l.link), (v['--accent-soft'] = `rgb(${rgb(l.link)} / 0.16)`)
-  if (l.box) (v['--lk-box'] = `rgb(${rgb(l.box)} / ${(l.boxAlpha ?? 90) / 100})`), (v['--bg'] = l.box), (v['--card'] = l.box)
-  if (l.border) v['--line'] = l.border
-  if (l.borderStyle) v['--lk-bs'] = l.borderStyle
-  if (l.borderWidth !== undefined) v['--lk-bw'] = `${l.borderWidth}px`
-  if (l.radius !== undefined) v['--lk-r'] = `${l.radius}px`
-  if (l.nameColor) v['--lk-name'] = l.nameColor
-  if (l.font) v.fontFamily = FONTS[l.font]
-  if (l.size && l.size !== 'normal') v.fontSize = l.size === 'small' ? '13px' : '17px'
-  return v
-}
+export const vars = lookVars
 
 /** The page background, a layer behind everything while the profile is open. */
 export const Bg = ({ l }: { l: Look }) =>
@@ -176,20 +160,23 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
     setLink('')
     toast('Design loaded. Save to keep it.')
   }
-  // the link goes into a new cast (and the clipboard), where it shows a "Use this design" button
-  const share = async () => {
+  // sharing stores the design and gives its link: in a new cast, where it shows a "Use this design" button, or copied
+  const designLink = async () => {
     const des = cleanDesign(d)
-    if (!Object.keys(des).length) return toast('Pick some colors or a background first.')
-    try {
-      const r = await fetch('/api/design', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(des) })
-      const j = await r.json().catch(() => null)
-      if (!r.ok || !j?.id) throw new Error(j?.error || 'Sharing failed.')
-      const url = `${location.origin}/design/${j.id}`
-      navigator.clipboard?.writeText(url).catch(() => {})
-      shell.compose({ embeds: [url] })
-    } catch (e: any) {
-      toast(e.message)
-    }
+    if (!Object.keys(des).length) throw new Error('Pick some colors or a background first.')
+    const r = await fetch('/api/design', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(des) })
+    const j = await r.json().catch(() => null)
+    if (!r.ok || !j?.id) throw new Error(j?.error || 'Sharing failed.')
+    return `${location.origin}/design/${j.id}`
+  }
+  const castIt = () => designLink().then((url) => shell.compose({ embeds: [url] }), (e) => toast(e.message))
+  // Safari only lets a click write the clipboard if the write starts right away, so the link goes in as a promise
+  const copy = () => {
+    const url = designLink()
+    const done = typeof ClipboardItem !== 'undefined'
+      ? navigator.clipboard.write([new ClipboardItem({ 'text/plain': url.then((u) => new Blob([u], { type: 'text/plain' })) })])
+      : url.then((u) => navigator.clipboard.writeText(u))
+    done.then(() => toast('Link copied'), () => url.then(() => toast("Couldn't copy the link."), (e) => toast(e.message)))
   }
 
   // controls are plain functions, not components, so typing or dragging doesn't remount them
@@ -234,7 +221,10 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
             <input value={link} placeholder="Paste a design link" aria-label="Design link" onInput={(e) => setLink(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && designId(link) && load()} />
             <button class="btn ghost small" disabled={!designId(link)} onClick={load}>Load</button>
           </div>
-          <button class="btn ghost small" onClick={share}>Share this design</button>
+          <div class="btns">
+            <button class="btn ghost small" onClick={castIt}>Cast this design</button>
+            <button class="btn ghost small" onClick={copy}>Copy link</button>
+          </div>
           <p class="hint">Sharing makes a link to your colors, background, fonts and banner, without your words, friends, GIFs or song. Paste one here, or tap "Use this design" on a cast, to try it on.</p>
         </>, true)}
         {group('Background', <>

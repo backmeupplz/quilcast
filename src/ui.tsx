@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, get, go, LINK_RE, mine, mineVersion, myUser, posting, safeUrl, toUrl, users, type Cast, type User } from './api.ts'
-import { castText, cleanDesign, designId, FONTS, isImg, isVid, LOGO, n, sized, X_LOGO, type Look } from './shared.ts'
+import { castText, cleanDesign, designId, isImg, isVid, LOGO, lookVars, n, sized, X_LOGO, type Look } from './shared.ts'
 import type { AppMeta } from './miniapp.tsx'
 
 // keys and crypto load only when someone signs in or writes
@@ -282,12 +282,14 @@ export const unfurl = (u: string) => {
 // In a cast (`c`), a mini app's card opens the app.
 export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const u = safeUrl(given)
-  const host = u && new URL(u).host
-  const design = (host === 'quilcast.com' || host === location.host) && /\/design\//.test(u!) ? designId(u!) : undefined
+  const path = ownPath(u)
+  const design = /^\/design\//.test(path) ? designId(path) : undefined
+  const cast = castOf(path)
   const [d, setD] = useState<Unfurl>()
-  useEffect(() => void (u && !design && unfurl(u).then(setD)), [u])
+  useEffect(() => void (u && !design && !cast && unfurl(u).then(setD)), [u])
   if (!u) return null
-  if (design) return <DesignCard id={design} />
+  if (design) return <DesignCard id={design} by={c?.author} />
+  if (cast) return <QuoteCard hash={cast} />
   if (d?.tweet) return <TweetCard u={u} t={d.tweet} />
   const image = safeUrl(d?.image)
   // a link straight to an image renders as the image
@@ -308,16 +310,22 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   )
 }
 
+// our own links (quilcast.com, or wherever this copy runs) show natively: casts as quotes, designs as cards
+const ownPath = (u?: string) => {
+  const x = u && new URL(u)
+  return x && (x.host === 'quilcast.com' || x.host === location.host) ? x.pathname : ''
+}
+const castOf = (path: string) => path.match(/^\/c\/(?:0x)?([0-9a-f]{40})$/i)?.[1].toLowerCase()
+
 const designs = new Map<string, Promise<Look | null>>()
 export const designOf = (id: string) => {
   if (!designs.has(id)) designs.set(id, fetch(`/api/design/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => j && cleanDesign(j), () => null))
   return designs.get(id)!
 }
 
-const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(' ')
-/** A shared profile design (quilcast.com/design/<id>) drawn in its own colors, with a button that opens it in
- *  the viewer's profile editor. */
-export function DesignCard({ id }: { id: string }) {
+/** A shared profile design (quilcast.com/design/<id>), drawn the way a profile wearing it looks: its background,
+ *  boxes, colors, font and name effect, on whoever shared it (`by`), with a button that opens it in the viewer's editor. */
+export function DesignCard({ id, by }: { id: string; by?: User }) {
   const [d, setD] = useState<Look | null>()
   useEffect(() => void designOf(id).then(setD), [id])
   if (d === null) return <div class="quote muted">This design is unavailable.</div>
@@ -327,18 +335,22 @@ export function DesignCard({ id }: { id: string }) {
     const me = myUser()
     requireAccount() && go(`${me ? userPath(me) : `/u/${account!.fid}`}?design=${id}`)
   }
-  // Preact doesn't add px to numbers
   return (
-    <div class={`design ${d.bgMode || 'tile'}`} onClick={stop}
-      style={{ backgroundColor: d.bg, backgroundImage: d.bgImg ? `url("${d.bgImg}")` : undefined, fontFamily: d.font && FONTS[d.font] }}>
-      <div class="design-box" style={{
-        background: d.box && `rgb(${rgb(d.box)} / ${(d.boxAlpha ?? 90) / 100})`, color: d.text, borderColor: d.border, borderStyle: d.borderStyle,
-        borderWidth: d.borderWidth !== undefined ? `${d.borderWidth}px` : undefined, borderRadius: d.radius !== undefined ? `${d.radius}px` : undefined,
-      }}>
-        <b style={{ color: d.nameColor }}>Profile design</b>
-        <span style={{ color: d.muted }}>Colors, background and fonts for your Quilcast profile</span>
-        <button class="btn small" style={{ background: d.link, color: d.box }} onClick={use}>Use this design</button>
+    <div class="design look on" style={lookVars(d)} onClick={stop}>
+      <div class={`lk-bg ${d.bgMode || 'tile'}`} aria-hidden="true"
+        style={{ backgroundColor: d.bg, backgroundImage: d.bgImg ? `url("${d.bgImg}")` : undefined, '--lk-dim': d.bgDim ? String(d.bgDim / 100) : undefined }} />
+      <div class="lk-box design-who">
+        {by ? <Avatar u={by} size={40} link={false} /> : <Logo size={40} />}
+        <span>
+          <b class={d.nameFx && d.nameFx !== 'none' ? `lk-name ${d.nameFx}` : undefined}>{by ? nameOf(by) : 'Quilcast'}</b>
+          <small>{by ? `@${handle(by)} shared a design` : 'A shared profile design'}</small>
+        </span>
       </div>
+      <section class="lk-box lk-sec">
+        <h3>Profile design</h3>
+        <p>Colors, background and fonts for your profile. Your words, friends and GIFs stay yours.</p>
+        <button class="btn small" style={{ color: d.box }} onClick={use}>Use this design</button>
+      </section>
     </div>
   )
 }
@@ -371,8 +383,10 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
 
 function Embeds({ c }: { c: Cast }) {
   const urls = urlsOf(c)
-  const links = urls.filter((u) => !isImg(u) && !isVid(u))
-  const quotes = c.embeds.flatMap((e) => (/^(0x)?[0-9a-f]{40}$/i.test(e.cast_id?.hash || '') ? [e.cast_id!.hash] : []))
+  // a link to a cast on Quilcast is shown as a quote, like a quoted cast
+  const linked = (u: string) => castOf(ownPath(safeUrl(u)))
+  const links = urls.filter((u) => !isImg(u) && !isVid(u) && !linked(u))
+  const quotes = [...new Set([...c.embeds.flatMap((e) => (/^(0x)?[0-9a-f]{40}$/i.test(e.cast_id?.hash || '') ? [e.cast_id!.hash.replace(/^0x/, '').toLowerCase()] : [])), ...urls.flatMap((u) => linked(u) || [])])]
   const all = (
     <>
       <Media urls={urls} />
