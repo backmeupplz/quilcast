@@ -161,7 +161,7 @@ async function visualOf(c) {
   // a shared design shows its own card
   const design = urls.map((u) => u.match(/^https:\/\/quilcast\.com\/design\/([\w-]{10})$/)?.[1]).find(Boolean)
   const d = design && (await getDesign(design))
-  if (d) return { design: design, d, label: 'Profile design', wide: true }
+  if (d) return { design, d, wide: true }
   for (const u of urls.filter((u) => !isVid(u)).slice(0, 2)) {
     const d = await unfurl(u).catch(() => null)
     if (d?.tweet) return d.tweet.photos[0] || d.tweet.video ? { src: d.tweet.photos[0] || d.tweet.video, label: `@${d.tweet.author.handle} on X`, video: !d.tweet.photos[0] } : { tweet: d.tweet }
