@@ -135,10 +135,18 @@ export const keep = (map, max, k, v) => (map.size >= max && map.delete(map.keys(
 /** An error that carries the HTTP status to answer with. */
 export const fail = (status, message) => Object.assign(new Error(message), { status })
 
-/** A request's JSON body, up to `max` characters. */
-export async function readJson(req, max = 16e3) {
+/** A request's body as text, up to `max` characters. */
+export async function readText(req, max = 16e3) {
   let s = ''
   for await (const c of req) if ((s += c).length > max) throw fail(413, 'too long')
+  return s
+}
+
+/** A request's JSON body, up to `max` characters. */
+export async function readJson(req, max = 16e3) {
+  return parseJson(await readText(req, max))
+}
+export function parseJson(s) {
   try {
     return JSON.parse(s)
   } catch {

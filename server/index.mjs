@@ -15,7 +15,8 @@ import { cached, unfurl } from './unfurl.mjs'
 import { chunk, done, EXT, MEDIA, start, status } from './upload.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
-import { credits, pick, refresh } from './shrek.mjs'
+import { credits, gifs, pick, refresh } from './shrek.mjs'
+import { getLook, loadLooks, putLook } from './looks.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -23,6 +24,7 @@ const DIST = new URL('../dist/', import.meta.url).pathname
 // notification tokens and the push key live in the data volume with the uploads (/m/ only serves media names)
 const DATA = process.env.DATA_DIR || MEDIA
 load(DATA)
+loadLooks(DATA)
 const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) => new URL(`fonts/${f}`, import.meta.url).pathname)
 
 // a stray rejection somewhere must not take the whole server down
@@ -92,6 +94,7 @@ async function apps() {
 
 const renders = gate(2)
 const previews = gate(16)
+const gifCache = new Map()
 
 // --- share cards ---
 
@@ -294,6 +297,26 @@ createServer(async (req, res) => {
       const err = r instanceof Error
       if (err && !r.status) console.error('upload', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Upload failed' } : r)
+    }
+
+    // profile looks (server/looks.mjs) and their GIF search
+    const look = path.match(/^\/api\/look\/([1-9]\d{0,9})$/)
+    if (look) {
+      const fid = Number(look[1])
+      if (req.method === 'GET') return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await getLook(fid))
+      if (req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
+      if (limited(`lookput:${ip}`, 30, 600e3) || limited(`lookput:${fid}`, 30, 600e3)) return json(429, { error: 'Too many saves, try again in a few minutes.' })
+      const r = await putLook(req, fid, NODE).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('look', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    if (path === '/api/gifs') {
+      const q = (url.searchParams.get('q') || '').trim().slice(0, 60)
+      if (!q) return json(200, [])
+      if (!gifCache.has(q.toLowerCase()) && limited(`gifs:${ip}`, 30)) return json(429, [])
+      const r = await (gifCache.get(q.toLowerCase()) || keep(gifCache, 500, q.toLowerCase(), previews(() => gifs(q)))).catch(() => [])
+      return json(200, r, 'public, max-age=3600')
     }
 
     if (path === '/api/apps') {

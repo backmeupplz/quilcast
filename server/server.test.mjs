@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { after, before, test } from 'node:test'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
+import { ed25519 } from '@noble/curves/ed25519.js'
 import { address, ecSign } from '../src/fc.ts'
 
 const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(srv.address().port)))
@@ -18,6 +19,9 @@ const internal = createServer((q, r) => (internalHits++, r.end('secret')))
 const internalPort = await listen(internal)
 const evil = '$& $\' $` "><script>alert(1)</script>'
 const key = secp256k1.utils.randomSecretKey()
+// fid 7's one Farcaster key, for profile looks
+const signer = ed25519.utils.randomSecretKey()
+const signerHex = '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex')
 const node = createServer(async (q, r) => {
   const u = new URL(q.url, 'http://x')
   r.setHeader('content-type', 'application/json')
@@ -29,6 +33,7 @@ const node = createServer(async (q, r) => {
     for await (const c of q) body += c
     return r.end(JSON.stringify({ path: u.pathname, method: q.method, auth: q.headers.authorization, query: u.search, idempotency: q.headers['idempotency-key'], body: body && JSON.parse(body) }))
   }
+  if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : [] }))
   if (u.pathname === '/v2/farcaster/cast')
     return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: evil, timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: `http://127.0.0.1:${internalPort}/a.png` }], author: { fid: 1, username: 'x', display_name: evil, pfp_url: `http://127.0.0.1:${internalPort}/pfp.png` }, reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } }))
   if (u.pathname.startsWith('/v2/farcaster/user')) return r.end(JSON.stringify({ user: { fid: 1, username: 'x', display_name: 'X', custody_address: address(key), profile: { bio: { text: evil } } } }))
@@ -194,4 +199,24 @@ test('mini app notifications: tokens per inbox, the spec answer, rate limits, sa
   // signing out drops the inbox and its tokens
   await post('/api/notify/drop', { inbox })
   assert.deepEqual((await (await send('n5')).json()).result.invalidTokens, [t.token, 'nope'])
+})
+
+test('profile looks: saved only with a key the node lists for that FID, cleaned, and removable', async () => {
+  const put = (fid, look, { key = signer, ts = Date.now(), as = fid } = {}) => {
+    const body = JSON.stringify(look)
+    const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-look:${as}:${ts}:${body}`), key)).toString('hex')
+    return fetch(`${base}/api/look/${fid}`, { method: 'PUT', body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
+  }
+  const look = { bg: '#FF00FF', text: 'red;background:url(//evil)', about: 'hi', top: [1, 1, 2], bgImg: 'https://evil.example/x.gif' }
+  assert.equal((await put(8, look)).status, 403)
+  assert.equal((await put(7, look, { key: ed25519.utils.randomSecretKey() })).status, 403)
+  assert.equal((await put(7, look, { as: 8 })).status, 401)
+  assert.equal((await put(7, look, { ts: Date.now() - 600e3 })).status, 401)
+  const r = await put(7, look)
+  assert.equal(r.status, 200)
+  const saved = { bg: '#ff00ff', about: 'hi', top: [1, 2] }
+  assert.deepEqual(await r.json(), saved)
+  assert.deepEqual(await (await fetch(`${base}/api/look/7`)).json(), saved)
+  assert.equal((await put(7, null)).status, 200)
+  assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
 })

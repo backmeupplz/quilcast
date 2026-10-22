@@ -10,7 +10,7 @@ export const read = <T,>(k: string, d: T): T => {
 }
 export const save = (k: string, v: unknown) => localStorage.setItem(k, JSON.stringify(v))
 
-export const settings = { node: 'https://haatz.quilibrium.com', rpc: 'https://mainnet.optimism.io', theme: 'system', ...read('quilcast:settings', {}) }
+export const settings: { node: string; rpc: string; theme: string; looks?: boolean } = { node: 'https://haatz.quilibrium.com', rpc: 'https://mainnet.optimism.io', theme: 'system', ...read('quilcast:settings', {}) }
 export const saveSettings = () => save('quilcast:settings', settings)
 
 // a phrase account keeps its recovery phrase; a wallet account has phrase '' and signs with `wallet` (its custody address)

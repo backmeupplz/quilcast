@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, users, USER_DATA, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, n, sized } from './shared.ts'
+import { castText, n, sized, type Look } from './shared.ts'
 import { ago, AppIcon, Avatar, CastCard, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import './style.css'
@@ -428,19 +428,49 @@ function Thread({ hash }: { hash: string }) {
   )
 }
 
+type Looks = typeof import('./looks.tsx')
+const looksMod = () => import('./looks.tsx')
+
 function Profile({ id }: { id: string }) {
   const [u, setU] = useState<User | null>(null)
   const [err, setErr] = useState('')
   const [tab, setTab] = useState<'casts' | 'replies'>('casts')
   const [following, setFollowing] = useState<boolean | null>(null)
+  // the profile's look (src/looks.tsx), and the owner's unsaved version while they edit it
+  const [L, setL] = useState<Looks | null>(null)
+  const [look, setLook] = useState<Look | null>(null)
+  const [draft, setDraft] = useState<Look | null>(null)
   const was = useRef(false)
   useEffect(() => {
     setU(null)
     setErr('')
     setTab('casts')
+    setLook(null)
+    setDraft(null)
     getUser(id).then((u) => (setU(u), isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))), () => setErr('No one goes by that name.'))
   }, [id])
   const self = account?.fid === u?.fid
+  const edit = () => looksMod().then((m) => (setL(m), setDraft((d) => d || look || {})))
+  useEffect(() => {
+    if (!u) return
+    let live = true
+    if (settings.looks !== false || self)
+      fetch(`/api/look/${u.fid}`).then((r) => (r.ok ? r.json() : null)).then(async (j) => {
+        if (!j || !live) return
+        const m = await looksMod()
+        if (live) setL(m), setLook(m.clean(j))
+      }).catch(() => {})
+    // Settings links here to open the editor
+    if (self && new URLSearchParams(location.search).has('customize')) edit()
+    return () => void (live = false)
+  }, [u?.fid])
+  // someone who turned looks off still sees their own while editing it
+  const shown = L && (draft || (settings.looks !== false ? look : null))
+  useEffect(() => {
+    if (!shown) return
+    document.documentElement.dataset.look = ''
+    return () => void delete document.documentElement.dataset.look
+  }, [!!shown])
   const toggle = () => {
     if (!account?.done) return go('/join')
     const on = !following
@@ -449,31 +479,47 @@ function Profile({ id }: { id: string }) {
   }
   return (
     <>
-      <Header title={u ? nameOf(u) : 'Profile'} />
-      {err && <div class="note">{err}</div>}
-      {!u && !err && <div class="spinner" />}
-      {u && (
-        <>
-          <section class="profile">
-            <div class="row-top">
-              <Avatar u={u} size={72} link={false} onClick={u.fid === OGRE_FID ? (e) => ogreTap(e.currentTarget as Element) : undefined} />
-              {self ? <a class="btn ghost small" href="/settings">Edit profile</a> : (
-                <span class="btns">
-                  {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
-                  {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>Message</a>}
-                  <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? 'Following' : 'Follow'}</button>
-                </span>
-              )}
+      <div class={`look${shown ? ' on' : ''}`} style={shown ? L.vars(shown) : undefined}>
+        {shown && <L.Bg l={shown} />}
+        <Header title={u ? nameOf(u) : 'Profile'} />
+        {err && <div class="note">{err}</div>}
+        {!u && !err && <div class="spinner" />}
+        {u && (
+          <>
+            <section class="profile lk-box">
+              {shown && <L.Banner l={shown} />}
+              <div class="row-top">
+                <Avatar u={u} size={72} link={false} onClick={u.fid === OGRE_FID ? (e) => ogreTap(e.currentTarget as Element) : undefined} />
+                {self ? (
+                  <span class="btns">
+                    <button class="btn ghost small" onClick={edit} disabled={!!draft}>Customize</button>
+                    <a class="btn ghost small" href="/settings">Edit profile</a>
+                  </span>
+                ) : (
+                  <span class="btns">
+                    {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
+                    {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>Message</a>}
+                    <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? 'Following' : 'Follow'}</button>
+                  </span>
+                )}
+              </div>
+              <h2><span class={shown ? L.nameClass(shown) : undefined}>{nameOf(u)}</span></h2>
+              <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span></div>
+              {shown && <L.Mood l={shown} />}
+              {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
+              <div class="counts"><span><b>{n(u.following_count)}</b> following</span><span><b>{n((u.follower_count || 0) + +!!following - +was.current)}</b> followers</span></div>
+            </section>
+            {shown && <L.Sections l={shown} u={u} />}
+            <div class="lk-box lk-feed">
+              <Tabs tabs={[['casts', 'Casts'], ['replies', 'Replies']]} value={tab} set={setTab} />
+              <Feed k={`${u.fid}${tab}`} empty={tab === 'casts' ? 'No casts yet.' : 'No replies yet.'} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
+                load={(cursor) => get(tab === 'casts' ? '/v2/farcaster/feed/user/casts' : '/v2/farcaster/feed/user/replies_and_recasts', { fid: u.fid, limit: 25, cursor })} />
             </div>
-            <h2>{nameOf(u)}</h2>
-            <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span></div>
-            {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
-            <div class="counts"><span><b>{n(u.following_count)}</b> following</span><span><b>{n((u.follower_count || 0) + +!!following - +was.current)}</b> followers</span></div>
-          </section>
-          <Tabs tabs={[['casts', 'Casts'], ['replies', 'Replies']]} value={tab} set={setTab} />
-          <Feed k={`${u.fid}${tab}`} empty={tab === 'casts' ? 'No casts yet.' : 'No replies yet.'} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
-            load={(cursor) => get(tab === 'casts' ? '/v2/farcaster/feed/user/casts' : '/v2/farcaster/feed/user/replies_and_recasts', { fid: u.fid, limit: 25, cursor })} />
-        </>
+          </>
+        )}
+      </div>
+      {L && draft && self && (
+        <L.Editor draft={draft} set={(f) => setDraft((d) => f(d || {}))} close={() => setDraft(null)} saved={(l) => (setLook(l), setDraft(null))} />
       )}
     </>
   )
@@ -760,6 +806,15 @@ function Settings() {
               {['system', 'light', 'dark'].map((t) => <button class={settings.theme === t ? 'on' : ''} onClick={() => ((settings.theme = t), saveSettings(), applyTheme(), force((x) => x + 1))}>{t[0].toUpperCase() + t.slice(1)}</button>)}
             </div>
           </div>
+        </section>
+        <section>
+          <div class="setting">
+            <h2>Profile looks</h2>
+            <div class="seg">
+              {[[true, 'Show'], [false, 'Hide']].map(([v, label]) => <button class={(settings.looks !== false) === v ? 'on' : ''} onClick={() => ((settings.looks = v as boolean), saveSettings(), force((x) => x + 1))}>{label}</button>)}
+            </div>
+          </div>
+          <p class="hint">Backgrounds, colors, songs and GIFs people add to their profile pages.{account?.done && myUser() && <> <a href={`${userPath(myUser()!)}?customize`}>Customize yours</a></>}</p>
         </section>
         {account && (
           <section>

@@ -290,3 +290,19 @@ export const react = (type: 1 | 2, on: boolean, c: { author: { fid: number }; ha
 export const follow = (fid: number, on: boolean) => send(on ? MT.LINK_ADD : MT.LINK_REMOVE, followBody(fid))
 export const setUserData = (type: number, value: string) => send(MT.USER_DATA_ADD, userDataBody(type, value))
 
+
+/** Save the account's profile look on our server (null goes back to plain), signed with its Farcaster key. */
+export async function saveLook(look: object | null, tries = 3): Promise<unknown> {
+  await ensureSigner()
+  const a = account!
+  const priv = unhex(a.signer!)
+  const body = JSON.stringify(look)
+  const ts = Date.now()
+  const sig = ed25519.sign(new TextEncoder().encode(`quilcast-look:${a.fid}:${ts}:${body}`), priv)
+  const r = await fetch(`/api/look/${a.fid}`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-key': '0x' + hex(ed25519.getPublicKey(priv)), 'x-ts': String(ts), 'x-sig': hex(sig) }, body })
+  const j = await r.json().catch(() => null)
+  // a key ensureSigner just added takes the node a few seconds to list
+  if (r.status === 403 && tries > 1) return new Promise((ok) => setTimeout(ok, 3000)).then(() => saveLook(look, tries - 1))
+  if (!r.ok) throw new Error(j?.error || `Saving failed (${r.status})`)
+  return j
+}

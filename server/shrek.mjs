@@ -12,19 +12,38 @@ let pool = [
 ]
 export const pick = () => pool[Math.floor(Math.random() * pool.length)].url
 
-/** The animated Shrek GIFs in one Tenor search page, which carries its results as JSON in a store-cache script. */
-export function parse(html) {
+/** The GIFs in one Tenor search page, which carries its results as JSON in a store-cache script. */
+const results = (html) => {
   const json = html.match(/<script id="store-cache"[^>]*>([\s\S]*?)<\/script>/)?.[1]
   if (!json) return []
-  const searches = Object.values(JSON.parse(json).universal?.search || {})
-  return searches.flatMap((s) => s.results || []).flatMap((g) => {
+  return Object.values(JSON.parse(json).universal?.search || {}).flatMap((s) => s.results || [])
+}
+const TENOR = /^https:\/\/media\d?\.tenor\.com\//
+
+/** The animated Shrek GIFs in one Tenor search page. */
+export function parse(html) {
+  return results(html).flatMap((g) => {
     const desc = String(g.content_description || '').toLowerCase()
     const f = g.media_formats || {}
     // a still image is a few KB of webp; skip other characters and anything heavy for a corner of the page
-    const webp = [f.webp, f.tinywebp].find((x) => x?.size > 40e3 && x.size < 1.2e6 && /^https:\/\/media\d?\.tenor\.com\//.test(x.url))
+    const webp = [f.webp, f.tinywebp].find((x) => x?.size > 40e3 && x.size < 1.2e6 && TENOR.test(x.url))
     // and caption memes ("… says …"): random text on the page could say anything
     if (!webp || !desc.includes('shrek') || /donkey|fiona|baby|woman|man |girl|boy|says|saying|words|written|text/.test(desc)) return []
     return [{ url: webp.url, page: g.itemurl, title: g.content_description }]
+  })
+}
+
+/** Profile looks' GIF picker (src/looks.tsx): one Tenor search page, as { url, preview, w, h }; the GIF itself
+ *  stays under 4 MB, the size profile looks take (server/looks.mjs). */
+export async function gifs(q) {
+  const r = await safeGet(`https://tenor.com/search/${encodeURIComponent(q.replace(/\s+/g, '-'))}-gifs`, { max: 4e6, timeout: 10e3, headers: { 'user-agent': UA } })
+  // a failure throws, so the search isn't cached and gets tried again
+  if (r.status !== 200) throw new Error(`tenor ${r.status}`)
+  return results(r.body.toString()).flatMap((g) => {
+    const f = g.media_formats || {}
+    const big = [f.webp, f.gif].find((x) => x?.size < 4e6 && TENOR.test(x.url))
+    const small = [f.tinywebp, f.tinygif].find((x) => x?.url && TENOR.test(x.url))
+    return big && small ? [{ url: big.url, preview: small.url, w: big.dims?.[0] || 1, h: big.dims?.[1] || 1, title: String(g.content_description || '').slice(0, 100) }] : []
   })
 }
 
