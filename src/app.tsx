@@ -294,7 +294,17 @@ function Notifications() {
           const items = [...notes, ...qs.filter((q) => q.timestamp >= edge)]
             .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
             .filter((n) => n.user && (tab === 'all' || (n.cast && !ACT(n.type))))
-          await hydrateParents(items.flatMap((n) => (n.cast ? [n.cast] : [])))
+          // the node sends notification casts with zero counts (unliking one showed -1), so casts shown with their
+          // counts get them from one bulk lookup
+          const shown = items.flatMap((n) => (n.cast && !ACT(n.type) ? [n.cast] : []))
+          await Promise.all([
+            hydrateParents(items.flatMap((n) => (n.cast ? [n.cast] : []))),
+            shown.length &&
+              get('/v2/farcaster/casts', { casts: shown.map((c) => c.hash).join(',') }).then((r) => {
+                const fresh = new Map((r.casts as Cast[]).map((c) => [c.hash, c]))
+                for (const c of shown) if (fresh.has(c.hash)) Object.assign(c, { reactions: fresh.get(c.hash)!.reactions, replies: fresh.get(c.hash)!.replies })
+              }, () => {}),
+          ])
           return { items, cursor: next }
         }} />}
     </>
