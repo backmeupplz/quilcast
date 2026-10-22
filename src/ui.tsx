@@ -195,9 +195,10 @@ export function Video({ src }: { src: string }) {
 }
 
 /** Images (up to four in a grid, opening the viewer) and videos from a list of URLs. */
-export function Media({ urls: given }: { urls: string[] }) {
+// `images`: every url is an image, whatever it looks like (an unfurl found the type)
+export function Media({ urls: given, images }: { urls: string[]; images?: boolean }) {
   const urls = given.flatMap((u) => safeUrl(u) ?? [])
-  const imgs = urls.filter(isImg)
+  const imgs = images ? urls : urls.filter(isImg)
   const shown = imgs.slice(0, 4)
   return (
     <>
@@ -287,7 +288,7 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   if (d?.tweet) return <TweetCard u={u} t={d.tweet} />
   const image = safeUrl(d?.image)
   // a link straight to an image renders as the image
-  if (image && d?.image === d?.url) return <Media urls={[image]} />
+  if (image && d?.image === d?.url) return <Media urls={[image]} images />
   const icon = safeUrl(d?.icon)
   const app = c && d?.app
   return (
