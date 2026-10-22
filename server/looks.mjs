@@ -22,9 +22,13 @@ const signers = new Map()
 const keysOf = (node, fid, fresh = 60e3) => {
   const hit = signers.get(fid)
   if (hit && hit.at > Date.now() - fresh) return hit.keys
-  const keys = fetchJson(`${node}/v1/signersByFid?fid=${fid}`).then((r) =>
-    (r?.signers || []).filter((s) => !s.expiresAt || s.expiresAt * 1000 > Date.now()).map((s) => String(s.key).toLowerCase()))
+  const keys = fetchJson(`${node}/v1/signersByFid?fid=${fid}`).then((r) => {
+    if (!r?.signers) throw fail(502, "Couldn't reach the Farcaster node. Try again.")
+    return r.signers.filter((s) => !s.expiresAt || s.expiresAt * 1000 > Date.now()).map((s) => String(s.key).toLowerCase())
+  })
+  // a failed lookup isn't kept, so the next save asks the node again
   keep(signers, 2000, fid, { at: Date.now(), keys })
+  keys.catch(() => signers.get(fid)?.keys === keys && signers.delete(fid))
   return keys
 }
 

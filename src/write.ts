@@ -41,14 +41,28 @@ async function submit(m: { msg: Uint8Array; hash: string }) {
 
 const TTL = 90 * 86400
 /** Make sure this browser holds a live Hypersnap signer for the account, adding or renewing one when
- *  needed. Older signers are re-issued once with the narrower permissions (same key). */
-export async function ensureSigner(a = account!) {
+ *  needed. Older signers are re-issued once with the narrower permissions (same key); `fresh` swaps in a new key. */
+export async function ensureSigner(a = account!, fresh = false) {
   const now = Math.floor(Date.now() / 1000)
-  if (a.signer && a.signerAt! + TTL - 7 * 86400 > now && a.scopes === SCOPES_VERSION) return
-  const priv = a.signer ? unhex(a.signer) : ed25519.utils.randomSecretKey()
+  if (!fresh && a.signer && a.signerAt! + TTL - 7 * 86400 > now && a.scopes === SCOPES_VERSION) return
+  const priv = a.signer && !fresh ? unhex(a.signer) : ed25519.utils.randomSecretKey()
   const nonce = Math.max((a.nonce || 0) + 1, now)
   await submit(await keyAdd(a.fid!, await custodyOf(a), priv, nonce))
   setAccount({ ...a, signer: hex(priv), signerAt: now, nonce, scopes: SCOPES_VERSION })
+}
+
+const signerListed = () =>
+  get('/v1/signer', { fid: account!.fid, signer: '0x' + hex(ed25519.getPublicKey(unhex(account!.signer!))) }).then(() => true, () => false)
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** The node can stop knowing this browser's key (revoked, dropped, or its KEY_ADD never landed), while the
+ *  account still holds it: add a new key and wait until the node lists it. */
+async function replaceSigner() {
+  await ensureSigner(account!, true)
+  for (let i = 0; !(await signerListed()); i++) {
+    if (i >= 10) throw new Error("Your new key hasn't reached the network yet. Try again in a minute.")
+    await sleep(3000)
+  }
 }
 
 /** A transaction on Optimism from the account's custody: its wallet, or the phrase key (which needs a little ETH there). */
@@ -108,7 +122,12 @@ export async function revokeSigner(a: Account) {
 
 const send = async (type: number, body: Uint8Array) => {
   await ensureSigner()
-  return submit(envelope(type, account!.fid!, body, unhex(account!.signer!)))
+  const go = () => submit(envelope(type, account!.fid!, body, unhex(account!.signer!)))
+  return go().catch(async (e) => {
+    if (!/invalid signer/.test(e.message)) throw e
+    await replaceSigner()
+    return go()
+  })
 }
 
 const fidByName = (name: string) => byName(name).then((u) => u.fid, () => undefined)
@@ -301,8 +320,8 @@ export async function saveLook(look: object | null, tries = 3): Promise<unknown>
   const sig = ed25519.sign(new TextEncoder().encode(`quilcast-look:${a.fid}:${ts}:${body}`), priv)
   const r = await fetch(`/api/look/${a.fid}`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-key': '0x' + hex(ed25519.getPublicKey(priv)), 'x-ts': String(ts), 'x-sig': hex(sig) }, body })
   const j = await r.json().catch(() => null)
-  // a key ensureSigner just added takes the node a few seconds to list
-  if (r.status === 403 && tries > 1) return new Promise((ok) => setTimeout(ok, 3000)).then(() => saveLook(look, tries - 1))
+  // a key ensureSigner just added takes the node a few seconds to list; one the node doesn't list at all is replaced
+  if (r.status === 403 && tries > 1) return ((await signerListed()) ? sleep(3000) : replaceSigner()).then(() => saveLook(look, tries - 1))
   if (!r.ok) throw new Error(j?.error || `Saving failed (${r.status})`)
   return j
 }
