@@ -10,8 +10,8 @@ try {
 
 let taps = 0
 let timer = 0
-// Shrek roaring, from Tenor (credits in public/shrek/credits.html)
-const ROAR = 'https://media.tenor.com/FYo0d-3JCz8AAAAx/roar-breathe.webp'
+// a Shrek GIF from Tenor, a new one each deploy (server/shrek.mjs)
+const ROAR = '/shrek/roar'
 
 /** Count a tap on the pfp. Taps more than half a second apart start over. */
 export function ogreTap(el: Element) {

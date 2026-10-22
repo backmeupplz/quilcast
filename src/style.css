@@ -561,14 +561,14 @@ small.warn { color: var(--warn); }
   --like: light-dark(#5b8c00, #a4d13a);
   --recast: light-dark(#8b5a2b, #c99358);
 }
-/* Shrek GIFs from Tenor (hotlinked, listed in public/shrek/credits.html): the face as the logo, like button and
-   background, a dancing Shrek in the corner, fairy Shrek in the right column */
+/* Shrek GIFs from Tenor (hotlinked; /shrek/* redirect to ones server/shrek.mjs picks at random each deploy): the face
+   as the logo, like button and background, one GIF in the corner and one in the right column */
 .ogre-only { display: none; }
 :root[data-ogre] .ogre-only { display: block; }
 :root[data-ogre] {
   --shrek-face: url(https://media.tenor.com/KsR09gs0FDoAAAAx/shrekerutuf-transparentshrek.webp);
-  --shrek-dance: url(https://media.tenor.com/qcv-b7FwOSkAAAA1/shrek-dancing.webp);
-  --shrek-fairy: url(https://media.tenor.com/z_BAugpQD-8AAAA1/shrek-shrek-meme.webp);
+  --shrek-dance: url(/shrek/dance);
+  --shrek-card: url(/shrek/card);
 }
 /* the face sits on white, so every use crops it to a circle (the pattern through a tiled mask) */
 :root[data-ogre] body::before {
@@ -593,7 +593,7 @@ small.warn { color: var(--warn); }
 :root[data-ogre] .act.lk.on::before { filter: none; animation: pop 0.25s ease; }
 :root[data-ogre] .note-icon.lk::before { width: 24px; height: 24px; }
 :root[data-ogre] .spinner.small { width: 22px; height: 22px; margin: 0; }
-:root[data-ogre] .extra::after { content: ''; flex: none; height: 330px; border-radius: 16px; border: 1px solid var(--line); background: var(--shrek-fairy) center / cover; }
+:root[data-ogre] .extra::after { content: ''; flex: none; height: 330px; border-radius: 16px; border: 1px solid var(--line); background: var(--shrek-card) center / cover; }
 /* the roar that plays when ogre mode turns on (src/ogre.ts) */
 .roar {
   position: fixed; z-index: 100; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(80vw, 472px); border-radius: 20px; pointer-events: none;
