@@ -22,6 +22,8 @@ const CHAINS = Object.fromEntries([base, optimism, mainnet, arbitrum, polygon, c
 
 type Provider = { request: (a: { method: string; params?: unknown }) => Promise<any>; on?: (e: string, f: (x: any) => void) => void }
 type Wallet = { name: string; icon: string; key: string; provider: Provider; address?: string }
+// declared before the wallet listeners below: extensions announce synchronously, while this module still loads
+let update = () => {}
 const wallets: Wallet[] = []
 const add = (name: string, icon: string, key: string, provider: Provider) => {
   if (wallets.some((w) => w.provider === provider)) return
@@ -98,7 +100,6 @@ type App = {
 const apps: App[] = []
 let shown: number | null = null
 let ids = 0
-let update = () => {}
 let root: HTMLElement | undefined
 
 const show = (app: App | null) => ((shown = app?.id ?? null), update())

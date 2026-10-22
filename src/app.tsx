@@ -859,6 +859,15 @@ addEventListener('click', (e) => {
   a.pathname + a.search !== location.pathname + location.search ? go(a.pathname + a.search) : dispatchEvent(new Event('refresh'))
 })
 
+// a deploy replaces the lazy chunks (mini apps, messages, looks…), so a tab opened before it can't load them:
+// reload into the new build, at most once every 30 s so a chunk that's really missing can't loop
+addEventListener('vite:preloadError', () => {
+  const k = 'quilcast:reloaded'
+  if (Date.now() - Number(sessionStorage.getItem(k) || 0) < 30e3) return
+  sessionStorage.setItem(k, String(Date.now()))
+  location.reload()
+})
+
 const useRoute = () => {
   const [p, setP] = useState(location.pathname)
   useEffect(() => {
