@@ -5,13 +5,19 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline --no-audit --no-fund
 COPY . .
 # the server tests start the real server, which serves dist/, so build first
-# browser-only packages (viem, hls.js, preact…) are devDependencies, so the runtime keeps just what server/ imports;
-# prune stays offline: its audit call took 4 minutes from the Easypanel host
-RUN npm run build && npm test && npm prune --omit=dev --offline --no-audit --no-fund
+RUN npm run build && npm test
+
+# the runtime's own install, built alongside: browser-only packages (viem, hls.js, preact…) are devDependencies, so
+# this keeps just what server/ imports. Pruning the full install instead took ~4 minutes on the Easypanel host
+# (npm moves every removed file, and each move copies it in the build's overlay filesystem).
+FROM node:24.22.1-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --prefer-offline --no-audit --no-fund
 
 FROM node:24.22.1-slim
 WORKDIR /app
-COPY --from=build /app/node_modules node_modules
+COPY --from=deps /app/node_modules node_modules
 COPY --from=build /app/dist dist
 COPY server server
 # the server imports the helpers it shares with the app as TypeScript (Node strips the types)
