@@ -525,5 +525,9 @@
   "{n}h": "{n}時間",
   "{n}m": "{n}分",
   "{n}s left": "残り {n} 秒",
-  "Show full thread": "スレッドをすべて表示"
+  "Show full thread": "スレッドをすべて表示",
+  "Japanese mode": "日本モード",
+  "On": "オン",
+  "Off": "オフ",
+  "Dense pages, glossy buttons, a news ticker and rankings, the way Japanese websites look.": "情報ぎっしりのページ、つやつやボタン、ニュースティッカーにランキング。日本のウェブサイトらしい見た目になります。"
 }

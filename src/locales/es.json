@@ -525,5 +525,9 @@
   "{n}h": "{n} h",
   "{n}m": "{n} min",
   "{n}s left": "quedan {n} s",
-  "Show full thread": "Ver el hilo completo"
+  "Show full thread": "Ver el hilo completo",
+  "Japanese mode": "Modo japonés",
+  "On": "Sí",
+  "Off": "No",
+  "Dense pages, glossy buttons, a news ticker and rankings, the way Japanese websites look.": "Páginas densas, botones brillantes, un teletipo de noticias y rankings, como se ven las webs japonesas."
 }

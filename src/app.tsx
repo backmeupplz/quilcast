@@ -891,6 +891,15 @@ function Settings() {
         </section>
         <section>
           <div class="setting">
+            <h2>{t('Japanese mode')}</h2>
+            <div class="seg">
+              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.jp === v ? 'on' : ''} onClick={() => ((settings.jp = v as boolean), saveSettings(), applyTheme(), force((x) => x + 1))}>{label}</button>)}
+            </div>
+          </div>
+          <p class="hint">{t('Dense pages, glossy buttons, a news ticker and rankings, the way Japanese websites look.')}</p>
+        </section>
+        <section>
+          <div class="setting">
             <h2>{t('Language')}</h2>
             {/* every string is picked when the page loads, so a switch reloads it */}
             <select class="pick" value={lang} onChange={(e) => ((settings.lang = e.currentTarget.value), saveSettings(), location.reload())}>
@@ -939,7 +948,10 @@ function Settings() {
 // --- shell ---
 
 function applyTheme() {
-  settings.theme === 'system' ? delete document.documentElement.dataset.theme : (document.documentElement.dataset.theme = settings.theme)
+  const d = document.documentElement.dataset
+  settings.theme === 'system' ? delete d.theme : (d.theme = settings.theme)
+  // Japanese mode is all CSS under :root[data-jp]
+  settings.jp ? (d.jp = '') : delete d.jp
 }
 
 // same-origin links navigate in place instead of reloading the page

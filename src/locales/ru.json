@@ -525,5 +525,9 @@
   "{n}h": "{n} ч",
   "{n}m": "{n} мин",
   "{n}s left": "осталось {n} с",
-  "Show full thread": "Показать всю ветку"
+  "Show full thread": "Показать всю ветку",
+  "Japanese mode": "Японский режим",
+  "On": "Вкл",
+  "Off": "Выкл",
+  "Dense pages, glossy buttons, a news ticker and rankings, the way Japanese websites look.": "Плотные страницы, глянцевые кнопки, бегущая строка и рейтинги — как на японских сайтах."
 }

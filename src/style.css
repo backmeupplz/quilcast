@@ -748,3 +748,69 @@ small.warn { color: var(--warn); }
 .pick:hover { background-color: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
 .pick option { background: var(--card); color: var(--ink); }
 .unit > .thread-gap:first-child::before { top: 8px; }
+
+/* ---------- Japanese mode (Settings): how Japanese websites look. CSS only, under :root[data-jp]: a white, dense
+   page on a striped background, small Meiryo/Hiragino type, red-edged title bars, glossy orange buttons, folder
+   tabs, square framed avatars, ▶ bullets, dotted rules, yellow marker under names, a news ticker, "NEW!" on the
+   freshest casts and ranking ribbons in tabbed feeds ---------- */
+:root[data-jp] {
+  color-scheme: light;
+  --bg: #fff; --card: #fff; --ink: #333; --muted: #777; --line: #ccc; --soft: #f2f2f2; --hover: #fff8e5;
+  --accent: #0066cc; --accent-soft: #e8f1fb; --like: #e60012; --recast: #2e9e3e;
+  --jp-red: #e60012;
+}
+:root[data-jp] body {
+  font: 13px/1.6 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, 'MS PGothic', 'Noto Sans JP', sans-serif;
+  background: repeating-linear-gradient(45deg, #f6f6f6 0 6px, #fdfdfd 6px 12px);
+  -webkit-font-smoothing: auto;
+}
+:root[data-jp] a:hover { text-decoration: underline; }
+:root[data-jp] .col { background: #fff; border-inline: 1px solid #bbb; box-shadow: 0 0 0 4px #f0f0f0; }
+/* the ticker: a pseudo element can't hold a moving child, so its own text slides by text-indent */
+:root[data-jp] .col::before {
+  content: '【お知らせ】Quilcast へようこそ！　★ 新機能：プロフィールデザインをキャストで共有できるようになりました ★　毎日更新中♪　ご意見・ご感想お待ちしております！';
+  display: block; overflow: hidden; white-space: nowrap; padding: 3px 0; font-size: 12px; font-weight: 700; color: #fff;
+  background: linear-gradient(#ff3b3b, var(--jp-red)); border-bottom: 1px solid #b0000e;
+  animation: jp-ticker 22s linear infinite;
+}
+@keyframes jp-ticker { from { text-indent: 100%; } to { text-indent: -1100px; } }
+:root[data-jp] .phead { background: linear-gradient(#fff, #ececec); border-bottom: 2px solid var(--jp-red); }
+:root[data-jp] .phead-row h1 { font-size: 15px; border-left: 6px solid var(--jp-red); padding-left: 8px; line-height: 1.3; }
+:root[data-jp] .tabs { gap: 3px; padding: 6px 8px 0; border-bottom: 2px solid var(--jp-red); }
+:root[data-jp] .tabs button { padding: 6px 0; font-size: 13px; color: #555; background: linear-gradient(#fdfdfd, #e2e2e2); border: 1px solid #bbb; border-bottom: 0; border-radius: 6px 6px 0 0; }
+:root[data-jp] .tabs button.on { color: #fff; background: linear-gradient(#ff4d4d, var(--jp-red)); border-color: #b0000e; }
+:root[data-jp] .tabs button.on::after { display: none; }
+:root[data-jp] .btn {
+  border-radius: 4px; border: 1px solid #d95f00; color: #fff; text-shadow: 0 -1px 0 rgb(0 0 0 / 0.25);
+  background: linear-gradient(#ffb15c, #ff7a00 55%, #f06a00); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 1px 2px rgb(0 0 0 / 0.2);
+}
+:root[data-jp] .btn.ghost { color: #333; text-shadow: 0 1px 0 #fff; border-color: #aaa; background: linear-gradient(#fff, #e6e6e6); }
+:root[data-jp] .seg, :root[data-jp] .pick { border-radius: 4px; background-color: #eee; box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.12); }
+:root[data-jp] .seg button { border-radius: 3px; }
+:root[data-jp] .seg button.on { color: #fff; background: linear-gradient(#ff4d4d, var(--jp-red)); }
+:root[data-jp] .cast { border-bottom: 1px dotted #bbb; }
+:root[data-jp] .cast:hover { background: #fffbea; }
+:root[data-jp] .name { background: linear-gradient(transparent 60%, #fff35c 60%); }
+:root[data-jp] .avatar { border-radius: 3px; box-shadow: 0 0 0 1px #bbb, 0 0 0 3px #fff, 0 0 0 4px #ddd; }
+:root[data-jp] .navlink { border-radius: 0; font-size: 14px; padding: 7px 10px; gap: 10px; border-bottom: 1px dotted #ccc; }
+:root[data-jp] .navlink::before { content: '▶'; color: var(--jp-red); font-size: 9px; }
+:root[data-jp] .navlink.on { background: #fff0f0; }
+:root[data-jp] .about { border-radius: 0; border: 1px solid #bbb; padding: 0 10px 10px; background: #fff; }
+:root[data-jp] .about > b:first-child { display: block; margin: 0 -10px 8px; padding: 4px 10px; font-size: 12px; color: #fff; background: linear-gradient(#777, #444); }
+:root[data-jp] .about > b:first-child::before { content: '■ '; color: #ffd400; }
+/* the freshest three casts in a tabbed feed blink "NEW!", and every cast there wears its rank */
+:root[data-jp] .col:has(> .phead .tabs) { counter-reset: jp-rank; }
+:root[data-jp] .col:has(> .phead .tabs) > :is(.cast, .unit) { counter-increment: jp-rank; }
+:root[data-jp] .col:has(> .phead .tabs) > .cast:nth-child(-n+4 of .cast, .unit) header::after,
+:root[data-jp] .col:has(> .phead .tabs) > .unit:nth-child(-n+4 of .cast, .unit) > .cast:last-child header::after {
+  content: 'NEW!'; margin-left: 6px; font: italic 800 11px/1 Arial, sans-serif; color: var(--jp-red); animation: jp-blink 1s steps(2, start) infinite;
+}
+:root[data-jp] .col:has(> .phead .tabs) > .cast::before, :root[data-jp] .col:has(> .phead .tabs) > .unit > .cast:first-child::before {
+  content: counter(jp-rank) '位'; position: absolute; z-index: 1; left: 8px; top: 6px; padding: 0 5px; border-radius: 3px;
+  font: 800 10px/1.6 sans-serif; color: #fff; background: #888; box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+:root[data-jp] .col:has(> .phead .tabs) > .cast:nth-child(1 of .cast, .unit)::before, :root[data-jp] .col:has(> .phead .tabs) > .unit:nth-child(1 of .cast, .unit) > .cast:first-child::before { background: linear-gradient(#ffe066, #d4a017); }
+:root[data-jp] .col:has(> .phead .tabs) > .cast:nth-child(2 of .cast, .unit)::before, :root[data-jp] .col:has(> .phead .tabs) > .unit:nth-child(2 of .cast, .unit) > .cast:first-child::before { background: linear-gradient(#f2f2f2, #9e9e9e); }
+:root[data-jp] .col:has(> .phead .tabs) > .cast:nth-child(3 of .cast, .unit)::before, :root[data-jp] .col:has(> .phead .tabs) > .unit:nth-child(3 of .cast, .unit) > .cast:first-child::before { background: linear-gradient(#f0b27a, #a0612e); }
+@keyframes jp-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { :root[data-jp] .col::before { animation: none; text-indent: 0; } }
