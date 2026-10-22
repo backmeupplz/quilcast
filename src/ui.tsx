@@ -358,7 +358,7 @@ export function DesignCard({ id, by }: { id: string; by?: User }) {
 const castCache = new Map<string, Promise<Cast | null>>()
 export const fetchCast = (hash: string) => {
   hash = hash.replace(/^0x/, '')
-  if (!castCache.has(hash)) castCache.set(hash, get('/v2/farcaster/cast', { identifier: hash, type: 'hash' }).then((r) => r.cast, () => null))
+  if (!castCache.has(hash)) castCache.set(hash, get('/v2/farcaster/cast', { identifier: hash, type: 'hash', viewer_fid: account?.fid }).then((r) => r.cast, () => null))
   return castCache.get(hash)!
 }
 

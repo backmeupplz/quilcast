@@ -735,8 +735,16 @@ small.warn { color: var(--warn); }
 /* Home's reply threads (app.tsx Unit): the connector runs on, dotted, past skipped posts */
 .unit { border-bottom: 1px solid var(--line); }
 .unit > .cast:last-child { border-bottom: 0; }
-.thread-gap { position: relative; display: block; padding: 2px 16px 10px 68px; font-size: 14px; color: var(--accent); }
+.thread-gap { position: relative; display: block; padding: 8px 16px 12px 68px; font-size: 14px; color: var(--accent); }
 .thread-gap::before { content: ''; position: absolute; left: 35px; top: -8px; bottom: 0; border-left: 2px dotted var(--line); }
+/* a thread whose root is out of reach starts with the gap: a ⋯ bubble in the avatar column heads it, so it reads
+   as the top of this thread, not the end of the post above */
+.unit > .thread-gap:first-child { padding: 18px 16px 10px 68px; }
+.unit > .thread-gap:first-child::before { top: 44px; }
+.unit > .thread-gap:first-child::after {
+  content: '⋯'; position: absolute; left: 22px; top: 14px; width: 28px; height: 28px; border-radius: 99px;
+  display: grid; place-items: center; background: var(--soft); color: var(--muted); font-weight: 800; line-height: 1;
+}
 
 /* a select that looks like the segmented controls beside it; the chevron is two gradients, so it takes the theme's color */
 .pick {
@@ -747,7 +755,6 @@ small.warn { color: var(--warn); }
 }
 .pick:hover { background-color: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
 .pick option { background: var(--card); color: var(--ink); }
-.unit > .thread-gap:first-child::before { top: 8px; }
 
 /* ---------- Japanese mode (Settings): how Japanese websites look. CSS only, under :root[data-jp]: a white, dense
    page on a striped background, small Meiryo/Hiragino type, red-edged title bars, glossy orange buttons, folder

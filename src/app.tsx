@@ -130,7 +130,7 @@ function Pager<T>({ load, k, empty, id, row, initial }: { load: (cursor?: string
 
 // Home's replies come with their conversation, like the thread page draws it: the root, "Show full thread" when
 // posts were skipped, the parent and the reply, never more than 3 posts. A reply shows when the cast it answers is
-// the viewer's or by someone they follow; a cast already shown in a thread above isn't shown again.
+// the viewer's or by someone they follow; a conversation already shown above isn't shown again.
 const ask = (() => {
   // ponytail: one queue for every feed's lookups, 6 at a time, because haatz stalls under ~100 parallel requests
   let active = 0
@@ -149,23 +149,33 @@ const ask = (() => {
 async function threads(casts: Cast[]) {
   const units = await Promise.all(casts.map(async (c): Promise<Cast | null> => {
     if (!c.parent_hash) return c
-    const to = c.parent_author?.fid
-    if (!to || (to !== account?.fid && !(await ask(() => amFollowing(to))))) return null
-    const up: Cast[] = []
-    for (let h: string | null | undefined = c.parent_hash; h && up.length < 3; ) {
-      const p: Cast | null = await ask(() => fetchCast(h!))
-      if (!p) break
-      up.unshift(p)
-      h = p.parent_hash
+    const parent = await ask(() => fetchCast(c.parent_hash!))
+    if (!parent) return null
+    const to = parent.author.fid
+    // nodes with Hypersnap PR #43 say whether the viewer follows the author; others are asked
+    if (to !== account?.fid && !(parent.author.viewer_context?.following ?? (await ask(() => amFollowing(to))))) return null
+    if (!parent.parent_hash) return { ...c, up: [parent], gap: false }
+    // the root: straight from thread_hash (PR #43), else at most two more steps up
+    let root: Cast | null = null
+    let skipped = false
+    if (parent.thread_hash) {
+      root = await ask(() => fetchCast(parent.thread_hash!))
+      skipped = !!root && parent.parent_hash !== root.hash
+    } else {
+      const g1 = await ask(() => fetchCast(parent.parent_hash!))
+      if (g1 && !g1.parent_hash) root = g1
+      else if (g1?.parent_hash) {
+        const g2 = await ask(() => fetchCast(g1.parent_hash!))
+        if (g2 && !g2.parent_hash) (root = g2), (skipped = true)
+      }
     }
-    if (!up.length) return null
-    const root = !up[0].parent_hash
-    return { ...c, up: root && up.length > 2 ? [up[0], up[2]] : root ? up : [up[up.length - 1]], gap: !root || up.length > 2 }
+    return root ? { ...c, up: [root, parent], gap: skipped } : { ...c, up: [parent], gap: true }
   }))
   const shown = new Set<string>()
   const out: Cast[] = []
   for (const c of units) {
-    if (!c || shown.has(c.hash)) continue
+    // a cast already shown, or another reply to a parent already shown, would repeat that conversation
+    if (!c || shown.has(c.hash) || (c.up && shown.has(c.up[c.up.length - 1].hash))) continue
     out.push(c)
     for (const p of [c, ...(c.up || [])]) shown.add(p.hash)
   }

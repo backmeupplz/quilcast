@@ -115,7 +115,8 @@ export async function findUsers(q: string) {
   return ((r.users || r.result?.users || []) as User[]).sort((a, b) => rank(b) - rank(a))
 }
 
-export type User = { fid: number; username?: string; display_name?: string; pfp_url?: string; profile?: { bio?: { text?: string } }; follower_count?: number; following_count?: number; custody_address?: string }
+// viewer_context comes from nodes with Hypersnap PR #43 when asked with viewer_fid
+export type User = { fid: number; viewer_context?: { following?: boolean }; username?: string; display_name?: string; pfp_url?: string; profile?: { bio?: { text?: string } }; follower_count?: number; following_count?: number; custody_address?: string }
 export type Cast = {
   hash: string; text: string; timestamp: string; author: User; parent_hash?: string | null; parent_url?: string | null; parent_author?: { fid: number | null }
   embeds: { url?: string; cast_id?: { fid: number; hash: string } }[]
@@ -123,6 +124,7 @@ export type Cast = {
   mentioned_profiles?: User[]; mentioned_profiles_ranges?: { start: number; end: number }[]
   // a reply in Home carries the casts shown above it (root first), and `gap` when some were skipped
   up?: Cast[]; gap?: boolean
+  thread_hash?: string | null
 }
 
 // authors we've seen, so replies can say who they reply to
