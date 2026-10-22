@@ -5,33 +5,53 @@ const root = document.documentElement
 const on = () => 'ogre' in root.dataset
 const set = (v: boolean) => (corner(v), v ? (root.dataset.ogre = '') : delete root.dataset.ogre)
 
-// the dancing Shrek in the corner plays All Star: a tap swaps the GIF for the official video, embedded from YouTube
-// (its player has to stay visible, so the song never plays from a hidden one); turning ogre mode off removes it all
-const SONG = 'https://www.youtube-nocookie.com/embed/L_jWHffIx5E?autoplay=1&playsinline=1&loop=1&playlist=L_jWHffIx5E'
+// All Star plays in ogre mode, from the 0:37 mark where the music starts (the video opens with a skit). It comes from
+// YouTube's embed in a hidden frame, so the GIF stays; browsers allow sound only after a tap or key on the page, so
+// it waits for the first one. The button by the corner GIF stops and starts it, and stopping is remembered.
+const SONG = 'https://www.youtube-nocookie.com/embed/L_jWHffIx5E?autoplay=1&start=37&playsinline=1&loop=1&playlist=L_jWHffIx5E'
+const MUTE = 'quilcast:allstar-off'
 let dj: HTMLElement | null = null
 function corner(v: boolean) {
-  if (!v) return dj?.remove(), (dj = null)
+  if (!v) return disarm(), dj?.remove(), (dj = null)
   if (dj) return
   const box = (dj = document.createElement('div'))
   box.className = 'dj'
   const b = document.createElement('button')
-  const label = () => (b.textContent = box.classList.contains('on') ? '■ Stop' : '▶\uFE0E All Star')
-  b.onclick = () => {
-    if (box.classList.toggle('on')) {
-      const f = document.createElement('iframe')
-      f.src = SONG
-      f.title = 'Smash Mouth - All Star'
-      f.allow = 'autoplay; encrypted-media; picture-in-picture'
-      // the page sends no referrer, and YouTube's player refuses to play without one
-      f.referrerPolicy = 'strict-origin-when-cross-origin'
-      box.prepend(f)
-    } else box.querySelector('iframe')?.remove()
-    label()
-  }
-  label()
   box.append(b)
   document.body.append(box)
+  b.onclick = () => {
+    const on = !box.querySelector('iframe')
+    play(on)
+    try {
+      on ? localStorage.removeItem(MUTE) : localStorage.setItem(MUTE, '1')
+    } catch {}
+  }
+  let off = false
+  try {
+    off = localStorage.getItem(MUTE) === '1'
+  } catch {}
+  // turning ogre mode on is a tap already
+  play(false)
+  if (!off) navigator.userActivation?.isActive ? play(true) : (addEventListener('pointerdown', first, true), addEventListener('keydown', first, true))
 }
+function play(v: boolean) {
+  if (!dj) return
+  disarm()
+  dj.querySelector('iframe')?.remove()
+  if (v) {
+    const f = document.createElement('iframe')
+    f.src = SONG
+    f.title = 'Smash Mouth - All Star'
+    f.allow = 'autoplay; encrypted-media'
+    // the page sends no referrer, and YouTube's player refuses to play without one
+    f.referrerPolicy = 'strict-origin-when-cross-origin'
+    dj.prepend(f)
+  }
+  dj.querySelector('button')!.textContent = v ? '■\uFE0E Stop' : '▶\uFE0E All Star'
+}
+// the first tap or key anywhere starts it, unless it's on the button, which decides for itself
+const first = (e: Event) => dj && !dj.contains(e.target as Node) && play(true)
+const disarm = () => (removeEventListener('pointerdown', first, true), removeEventListener('keydown', first, true))
 try {
   set(localStorage.getItem(KEY) === '1')
 } catch {}
