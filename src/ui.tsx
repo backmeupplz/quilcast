@@ -338,11 +338,16 @@ function Embeds({ c }: { c: Cast }) {
     <>
       <Media urls={urls} />
       {links.map((u) => <LinkCard u={u} c={c} />)}
+    </>
+  )
+  // several embeds (the images count as one) sit side by side and scroll, instead of stacking into a tall cast;
+  // quoted casts are text, so they stay full width below (squeezed into a tile they stretched into an empty box)
+  return (
+    <>
+      {+urls.some(isImg) + urls.filter(isVid).length + links.length > 1 ? <div class="strip">{all}</div> : all}
       {quotes.map((h) => <QuoteCard hash={h} />)}
     </>
   )
-  // several embeds (the images count as one) sit side by side and scroll, instead of stacking into a tall cast
-  return +urls.some(isImg) + urls.filter(isVid).length + links.length + quotes.length > 1 ? <div class="strip">{all}</div> : all
 }
 
 /** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row. */
