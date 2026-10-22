@@ -382,7 +382,7 @@ small.warn { color: var(--warn); }
 .steps li.done::before { background: var(--recast); border-color: var(--recast); }
 
 /* ---------- composer ---------- */
-.modal { position: fixed; inset: 0; z-index: 10; background: rgb(10 8 20 / 0.45); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px 16px; animation: fade 0.15s; }
+.modal { position: fixed; inset: 0; z-index: 31; background: rgb(10 8 20 / 0.45); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px 16px; animation: fade 0.15s; }
 .sheet { width: 100%; max-width: 580px; background: var(--card); border-radius: 18px; padding: 10px 16px 8px; box-shadow: 0 24px 60px rgb(0 0 0 / 0.3); }
 .sheet-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; }
 .ctx { display: flex; gap: 10px; margin: 6px 0 2px; font-size: 14px; position: relative; }
@@ -488,7 +488,7 @@ small.warn { color: var(--warn); }
   .dock.behind { display: none; }
 }
 
-.toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 20; background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 14px; font-weight: 550; max-width: calc(100vw - 32px); box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); animation: fade 0.2s; }
+.toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 40; background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 14px; font-weight: 550; max-width: calc(100vw - 32px); box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); animation: fade 0.2s; }
 .skel { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
 .skel i { width: 40px; height: 40px; border-radius: 99px; background: var(--soft); flex: none; }
 .skel span { flex: 1; display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
@@ -719,3 +719,14 @@ small.warn { color: var(--warn); }
   /* the page scrolls past the sheet, so every part of the profile can be seen while editing */
   body:has(.lk-edit:not(.min)) .col { padding-bottom: 64vh; }
 }
+
+/* a shared profile design (ui.tsx DesignCard), drawn in its own colors */
+.design { margin-top: 10px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background-color: var(--soft); background-position: center; }
+.design.cover { background-size: cover; }
+.design.center { background-repeat: no-repeat; }
+.design-box { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); }
+.design-box span { font-size: 13px; color: var(--muted); }
+.design-box .btn { margin-top: 8px; }
+.design-page { padding: 16px; }
+.lk-design { display: flex; gap: 8px; margin: 12px 0 8px; }
+.lk-design input { flex: 1; min-width: 0; }

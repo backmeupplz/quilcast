@@ -220,3 +220,16 @@ test('profile looks: saved only with a key the node lists for that FID, cleaned,
   assert.equal((await put(7, null)).status, 200)
   assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
 })
+
+test('shared designs: only the style is kept, under a stable id', async () => {
+  const share = (look) => fetch(`${base}/api/design`, { method: 'POST', body: JSON.stringify(look) })
+  const r = await share({ bg: '#FF00FF', font: 'impact', about: 'mine', top: [1], text: 'red;x' })
+  assert.equal(r.status, 200)
+  const { id } = await r.json()
+  assert.match(id, /^[\w-]{10}$/)
+  assert.deepEqual(await (await share({ font: 'impact', bg: '#ff00ff' })).json(), { id })
+  assert.deepEqual(await (await fetch(`${base}/api/design/${id}`)).json(), { bg: '#ff00ff', font: 'impact' })
+  assert.equal(await (await fetch(`${base}/api/design/aaaaaaaaaa`)).json(), null)
+  assert.equal((await share({ about: 'only words' })).status, 400)
+  assert.match(await (await fetch(`${base}/design/${id}`)).text(), /A profile design on Quilcast/)
+})

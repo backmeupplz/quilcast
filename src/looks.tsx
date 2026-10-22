@@ -4,10 +4,13 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { findUsers, loadUsers, users, type User } from './api.ts'
-import { cleanLook, FONTS, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look } from './shared.ts'
-import { Avatar, Icon, Img, nameOf, RichText, toast, userPath, w } from './ui.tsx'
+import { cleanDesign, cleanLook, DESIGN_KEYS, designId, FONTS, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look } from './shared.ts'
+import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 
 export const clean = cleanLook
+
+/** `l` wearing a shared design: its style is replaced, its words, friends, GIF wall and song stay. */
+export const withDesign = (l: Look, d: Look): Look => ({ ...l, ...Object.fromEntries(DESIGN_KEYS.map((k) => [k, undefined])), ...d })
 
 // --- showing a look ---
 
@@ -127,6 +130,7 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
   const [gif, setGif] = useState<Pick | null>(null)
   const [song, setSong] = useState(d.song ? `https://youtu.be/${d.song.id}${d.song.start ? `?t=${d.song.start}` : ''}` : '')
   const [q, setQ] = useState('')
+  const [link, setLink] = useState('')
   const [found, setFound] = useState<User[]>([])
   const file = useRef<HTMLInputElement>(null)
   const onFile = useRef<(u: string) => void>(() => {})
@@ -165,6 +169,29 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
     setBusy(false)
   }
 
+  const load = async () => {
+    const des = await designOf(designId(link)!)
+    if (!des) return toast("That design link doesn't work.")
+    set((x) => withDesign(x, des))
+    setLink('')
+    toast('Design loaded. Save to keep it.')
+  }
+  // the link goes into a new cast (and the clipboard), where it shows a "Use this design" button
+  const share = async () => {
+    const des = cleanDesign(d)
+    if (!Object.keys(des).length) return toast('Pick some colors or a background first.')
+    try {
+      const r = await fetch('/api/design', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(des) })
+      const j = await r.json().catch(() => null)
+      if (!r.ok || !j?.id) throw new Error(j?.error || 'Sharing failed.')
+      const url = `${location.origin}/design/${j.id}`
+      navigator.clipboard?.writeText(url).catch(() => {})
+      shell.compose({ embeds: [url] })
+    } catch (e: any) {
+      toast(e.message)
+    }
+  }
+
   // controls are plain functions, not components, so typing or dragging doesn't remount them
   const row = (label: string, ctl: ComponentChildren) => <label class="lk-row"><span>{label}</span><span class="lk-ctl">{ctl}</span></label>
   const clear = (k: keyof Look, label: string) => d[k] !== undefined && <button type="button" class="lk-x" aria-label={`Reset ${label}`} onClick={(e) => (e.preventDefault(), up({ [k]: undefined }))}>×</button>
@@ -201,7 +228,15 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
       {/* the editor stays mounted under the picker, so its open groups and scroll survive a pick */}
       {gif && <GifPicker pick={(u) => (gif.pick(u), setGif(null))} close={() => setGif(null)} />}
       <div class="lk-edit-body" hidden={!!gif}>
-        {group('Layouts', <div class="lk-presets">{PRESETS.map(([name, p]) => <button class="btn ghost small" onClick={() => up({ ...STYLE, ...p })}>{name}</button>)}</div>, true)}
+        {group('Layouts', <>
+          <div class="lk-presets">{PRESETS.map(([name, p]) => <button class="btn ghost small" onClick={() => up({ ...STYLE, ...p })}>{name}</button>)}</div>
+          <div class="lk-design">
+            <input value={link} placeholder="Paste a design link" aria-label="Design link" onInput={(e) => setLink(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && designId(link) && load()} />
+            <button class="btn ghost small" disabled={!designId(link)} onClick={load}>Load</button>
+          </div>
+          <button class="btn ghost small" onClick={share}>Share this design</button>
+          <p class="hint">Sharing makes a link to your colors, background, fonts and banner, without your words, friends, GIFs or song. Paste one here, or tap "Use this design" on a cast, to try it on.</p>
+        </>, true)}
         {group('Background', <>
           {color('bg', 'Color', '#ffffff')}
           {image('bgImg', 'Image')}

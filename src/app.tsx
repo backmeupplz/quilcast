@@ -4,7 +4,7 @@ import { account, accounts, findUsers, get, getUser, go, hydrateParents, idOf, i
 import { Composer } from './compose.tsx'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, sized, type Look } from './shared.ts'
-import { ago, AppIcon, Avatar, CastCard, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, CastCard, DesignCard, designOf, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import './style.css'
 
@@ -441,6 +441,8 @@ function Profile({ id }: { id: string }) {
   const [look, setLook] = useState<Look | null>(null)
   const [draft, setDraft] = useState<Look | null>(null)
   const was = useRef(false)
+  // the saved look once it has loaded, so the editor never opens on a blank one
+  const loaded = useRef<Promise<Look | null>>(Promise.resolve(null))
   useEffect(() => {
     setU(null)
     setErr('')
@@ -450,19 +452,29 @@ function Profile({ id }: { id: string }) {
     getUser(id).then((u) => (setU(u), isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))), () => setErr('No one goes by that name.'))
   }, [id])
   const self = account?.fid === u?.fid
-  const edit = () => looksMod().then((m) => (setL(m), setDraft((d) => d || look || {})))
+  // a shared design (`design`, an id) is put on top of the look being edited
+  const edit = (design?: string) =>
+    Promise.all([looksMod(), loaded.current, design ? designOf(design) : null]).then(([m, l, des]) => {
+      setL(m)
+      setDraft((d) => (des ? m.withDesign(d || l || {}, des) : d || l || {}))
+      if (design) toast(des ? 'Design loaded. Save to keep it.' : "That design link doesn't work.")
+    })
   useEffect(() => {
     if (!u) return
     let live = true
-    if (settings.looks !== false || self)
-      fetch(`/api/look/${u.fid}`).then((r) => (r.ok ? r.json() : null)).then(async (j) => {
-        if (!j || !live) return
-        const m = await looksMod()
-        if (live) setL(m), setLook(m.clean(j))
-      }).catch(() => {})
-    // Settings links here to open the editor
-    if (self && new URLSearchParams(location.search).has('customize')) edit()
-    return () => void (live = false)
+    loaded.current = settings.looks !== false || self
+      ? fetch(`/api/look/${u.fid}`).then((r) => (r.ok ? r.json() : null)).then(async (j) => j && (await looksMod()).clean(j)).catch(() => null)
+      : Promise.resolve(null)
+    loaded.current.then((l) => l && looksMod().then((m) => live && (setL(m), setLook(l))))
+    if (!self) return () => void (live = false)
+    // Settings links here with ?customize, and "Use this design" on a shared design with ?design=<id>
+    const fromUrl = () => {
+      const q = new URLSearchParams(location.search)
+      if (q.has('customize') || q.has('design')) edit(q.get('design') || undefined), history.replaceState(null, '', location.pathname)
+    }
+    fromUrl()
+    addEventListener('popstate', fromUrl)
+    return () => ((live = false), removeEventListener('popstate', fromUrl))
   }, [u?.fid])
   // someone who turned looks off still sees their own while editing it
   const shown = L && (draft || (settings.looks !== false ? look : null))
@@ -492,7 +504,7 @@ function Profile({ id }: { id: string }) {
                 <Avatar u={u} size={72} link={false} onClick={u.fid === OGRE_FID ? (e) => ogreTap(e.currentTarget as Element) : undefined} />
                 {self ? (
                   <span class="btns">
-                    <button class="btn ghost small" onClick={edit} disabled={!!draft}>Customize</button>
+                    <button class="btn ghost small" onClick={() => edit()} disabled={!!draft}>Customize</button>
                     <a class="btn ghost small" href="/settings">Edit profile</a>
                   </span>
                 ) : (
@@ -918,6 +930,7 @@ function App() {
           : r0 === 'messages' ? <Messages id={r1 && decode(r1)} />
           : r0 === 'settings' ? <Settings />
           : r0 === 'apps' ? <Apps />
+          : r0 === 'design' ? <><Header title="Profile design" /><div class="design-page"><DesignCard id={r1} /></div></>
             : r0 === 'join' ? <><Header /><Join step={r1} /></>
               : <Home />
   const nav: [string, string, string][] = [['', 'Home', P.home], ['search', 'Search', P.search], ...(me ? [['notifications', 'Notifications', P.bell], ['messages', 'Messages', P.mail], ['apps', 'Mini apps', P.apps]] as [string, string, string][] : []), me ? ['u', 'Profile', P.user] : ['join', 'Join', P.user], ['settings', 'Settings', P.gear]]

@@ -2,15 +2,34 @@
 //   GET /api/look/<fid>   the look, or null
 //   PUT /api/look/<fid>   save one (a JSON look, or null to go back to plain), signed by one of the account's
 //                         Farcaster keys: x-key, x-ts and x-sig (ed25519 over "quilcast-look:<fid>:<ts>:<body>")
+//   POST /api/design      share a look's design (its style only): stored once in <data>/designs under a hash of
+//                         itself, so a link always shows the same design; answers { id } for quilcast.com/design/<id>
+//   GET /api/design/<id>  a shared design, or null
 // The look is cut down to what src/shared.ts allows, and every image in it has to be a real image under its size cap.
 import { ed25519 } from '@noble/curves/ed25519.js'
+import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { cleanLook, lookImages } from '../src/shared.ts'
+import { cleanDesign, cleanLook, lookImages } from '../src/shared.ts'
 import { fail, fetchJson, gate, imageInfo, keep, parseJson, readText, safeGet } from './net.mjs'
 
 let dir = ''
-export const loadLooks = (dataDir) => mkdir((dir = join(dataDir, 'looks')), { recursive: true })
+let designs = ''
+export const loadLooks = (dataDir) =>
+  Promise.all([mkdir((dir = join(dataDir, 'looks')), { recursive: true }), mkdir((designs = join(dataDir, 'designs')), { recursive: true })])
+
+// images in a design are checked when someone saves it as their look, like any other look
+export async function putDesign(req) {
+  const design = cleanDesign(parseJson(await readText(req, 4e3)))
+  if (!Object.keys(design).length) throw fail(400, 'That design is empty.')
+  const body = JSON.stringify(design)
+  const id = createHash('sha256').update(body).digest('base64url').slice(0, 10)
+  await writeFile(join(designs, `${id}.json`), body, { flag: 'wx' }).catch((e) => {
+    if (e.code !== 'EEXIST') throw e
+  })
+  return { id }
+}
+export const getDesign = (id) => readFile(join(designs, `${id}.json`), 'utf8').then(JSON.parse, () => null)
 
 const looks = new Map()
 const file = (fid) => join(dir, `${fid}.json`)

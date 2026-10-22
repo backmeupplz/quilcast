@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, back, get, go, LINK_RE, mine, mineVersion, posting, safeUrl, toUrl, users, type Cast, type User } from './api.ts'
-import { castText, isImg, isVid, LOGO, n, sized, X_LOGO } from './shared.ts'
+import { account, back, get, go, LINK_RE, mine, mineVersion, myUser, posting, safeUrl, toUrl, users, type Cast, type User } from './api.ts'
+import { castText, cleanDesign, designId, FONTS, isImg, isVid, LOGO, n, sized, X_LOGO, type Look } from './shared.ts'
 import type { AppMeta } from './miniapp.tsx'
 
 // keys and crypto load only when someone signs in or writes
@@ -282,9 +282,12 @@ export const unfurl = (u: string) => {
 // In a cast (`c`), a mini app's card opens the app.
 export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const u = safeUrl(given)
+  const host = u && new URL(u).host
+  const design = (host === 'quilcast.com' || host === location.host) && /\/design\//.test(u!) ? designId(u!) : undefined
   const [d, setD] = useState<Unfurl>()
-  useEffect(() => void (u && unfurl(u).then(setD)), [u])
+  useEffect(() => void (u && !design && unfurl(u).then(setD)), [u])
   if (!u) return null
+  if (design) return <DesignCard id={design} />
   if (d?.tweet) return <TweetCard u={u} t={d.tweet} />
   const image = safeUrl(d?.image)
   // a link straight to an image renders as the image
@@ -302,6 +305,41 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
       </span>
       {d?.button && <span class="lc-btn">{d.button}</span>}
     </a>
+  )
+}
+
+const designs = new Map<string, Promise<Look | null>>()
+export const designOf = (id: string) => {
+  if (!designs.has(id)) designs.set(id, fetch(`/api/design/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => j && cleanDesign(j), () => null))
+  return designs.get(id)!
+}
+
+const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(' ')
+/** A shared profile design (quilcast.com/design/<id>) drawn in its own colors, with a button that opens it in
+ *  the viewer's profile editor. */
+export function DesignCard({ id }: { id: string }) {
+  const [d, setD] = useState<Look | null>()
+  useEffect(() => void designOf(id).then(setD), [id])
+  if (d === null) return <div class="quote muted">This design is unavailable.</div>
+  if (!d) return <div class="quote skeleton" />
+  const use = (e: Event) => {
+    stop(e)
+    const me = myUser()
+    requireAccount() && go(`${me ? userPath(me) : `/u/${account!.fid}`}?design=${id}`)
+  }
+  // Preact doesn't add px to numbers
+  return (
+    <div class={`design ${d.bgMode || 'tile'}`} onClick={stop}
+      style={{ backgroundColor: d.bg, backgroundImage: d.bgImg ? `url("${d.bgImg}")` : undefined, fontFamily: d.font && FONTS[d.font] }}>
+      <div class="design-box" style={{
+        background: d.box && `rgb(${rgb(d.box)} / ${(d.boxAlpha ?? 90) / 100})`, color: d.text, borderColor: d.border, borderStyle: d.borderStyle,
+        borderWidth: d.borderWidth !== undefined ? `${d.borderWidth}px` : undefined, borderRadius: d.radius !== undefined ? `${d.radius}px` : undefined,
+      }}>
+        <b style={{ color: d.nameColor }}>Profile design</b>
+        <span style={{ color: d.muted }}>Colors, background and fonts for your Quilcast profile</span>
+        <button class="btn small" style={{ background: d.link, color: d.box }} onClick={use}>Use this design</button>
+      </div>
+    </div>
   )
 }
 

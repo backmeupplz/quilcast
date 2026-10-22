@@ -115,6 +115,15 @@ export function cleanLook(x: unknown): Look {
   return l
 }
 
+/** A look's design: its style, without the words, friends, GIF wall and song. Shared as quilcast.com/design/<id>. */
+export const DESIGN_KEYS = ['bg', 'bgImg', 'bgMode', 'bgDim', 'text', 'muted', 'link', 'box', 'boxAlpha', 'border', 'borderStyle', 'borderWidth', 'radius', 'font', 'size', 'nameFx', 'nameColor', 'banner'] as const
+export const cleanDesign = (x: unknown): Look => {
+  const l = cleanLook(x)
+  return Object.fromEntries(DESIGN_KEYS.filter((k) => l[k] !== undefined).map((k) => [k, l[k]]))
+}
+/** A shared design's id, from its link or the bare id. */
+export const designId = (s: string) => s.trim().match(/^(?:https?:\/\/[^/]+)?(?:\/design\/)?([\w-]{10})\/?$/)?.[1]
+
 /** The images a look shows, for the server's size checks: [url, the most bytes it may have]. */
 export const lookImages = (l: Look): [string, number][] => [
   ...(l.bgImg ? [[l.bgImg, 6e6] as [string, number]] : []),

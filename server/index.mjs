@@ -16,7 +16,7 @@ import { chunk, done, EXT, MEDIA, start, status } from './upload.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
-import { getLook, loadLooks, putLook } from './looks.mjs'
+import { getDesign, getLook, loadLooks, putDesign, putLook } from './looks.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -311,6 +311,15 @@ createServer(async (req, res) => {
       if (err && !r.status) console.error('look', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
     }
+    const design = path.match(/^\/api\/design(?:\/([\w-]{10}))?$/)
+    if (design) {
+      if (req.method === 'GET' && design[1]) return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await getDesign(design[1]))
+      if (req.method !== 'POST' || design[1]) return json(405, { error: 'POST /api/design or GET /api/design/<id>' })
+      if (limited(`design:${ip}`, 30, 600e3)) return json(429, { error: 'Too many designs, try again in a few minutes.' })
+      const r = await putDesign(req).catch((e) => e)
+      if (r instanceof Error && !r.status) console.error('design', r)
+      return r instanceof Error ? json(r.status || 500, { error: r.status ? r.message : 'Sharing failed.' }) : json(200, r)
+    }
     if (path === '/api/gifs') {
       const q = (url.searchParams.get('q') || '').trim().slice(0, 60)
       if (!q) return json(200, [])
@@ -402,6 +411,9 @@ createServer(async (req, res) => {
       if (!u) return app()
       return html(page({ title: `${u.display_name || u.username} (@${u.username}) on Quilcast`, desc: u.profile?.bio?.text || `${u.display_name || u.username} on Farcaster`, path }))
     }
+
+    if (/^\/design\/[\w-]{10}$/.test(path))
+      return html(page({ title: 'A profile design on Quilcast', desc: 'Colors, a background and fonts for a Quilcast profile. Open it to use this design on yours.', path }))
 
     const file = normalize(join(DIST, path))
     if (file.startsWith(DIST) && extname(file)) {
