@@ -204,15 +204,14 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .quote { display: block; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); font-size: 14px; }
 .quote .meta { align-items: center; gap: 6px; }
 .quote .meta span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
-.qbody { display: flex; gap: 10px; }
+/* a quoted cast's picture sits under its text, at size, like in the cast itself */
+.qbody { display: flex; flex-direction: column; gap: 8px; }
 .qbody .text { flex: 1; min-width: 0; }
 .clamp { -webkit-line-clamp: 4; }
 .fold { -webkit-line-clamp: 10; }
 .show-more { border: 0; background: none; padding: 2px 0; color: var(--accent); font-size: 15px; }
 .show-more:hover { text-decoration: underline; }
-.qimg { width: 76px; height: 76px; object-fit: cover; border-radius: 10px; margin-top: 4px; flex: none; }
-.qbody.bare { display: block; }
-.bare .qimg { display: block; width: auto; height: auto; max-width: 100%; max-height: 300px; margin-top: 8px; }
+.qimg { display: block; width: auto; height: auto; max-width: 100%; max-height: 300px; border-radius: 10px; margin-top: 4px; align-self: flex-start; }
 .skeleton { height: 64px; background: var(--soft); border-color: transparent; }
 .strip { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .strip > * { flex: none; width: 260px; max-width: 80%; margin-top: 0; scroll-snap-align: start; }
@@ -720,14 +719,15 @@ small.warn { color: var(--warn); }
   body:has(.lk-edit:not(.min)) .col { padding-bottom: 64vh; }
 }
 
-/* a shared profile design (ui.tsx DesignCard): a small profile wearing it, with the real look styles */
-.design { position: relative; isolation: isolate; overflow: hidden; margin-top: 10px; padding: 2px 0; border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; justify-content: center; }
+/* a shared profile design (ui.tsx DesignCard): one box in the design, floating on its background, using the
+   same look styles as profile pages; the button wraps under the name in narrow tiles */
+.design { position: relative; isolation: isolate; overflow: hidden; margin-top: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; justify-content: center; }
 .design .lk-bg { position: absolute; z-index: -1; }
-.design-who { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.look.on.design .lk-box { margin: 0; padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.design-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .design-who > span { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
-.design-who b { font-size: 1.15em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.design-who b { font-size: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .design-who small { color: var(--muted); font-size: 0.85em; }
-.design .lk-sec p { margin: 0 0 10px; color: var(--muted); font-size: 0.9em; }
 .design-page { padding: 16px; }
 .lk-design { display: flex; gap: 8px; margin: 12px 0 8px; }
 .lk-design input { flex: 1; min-width: 0; }

@@ -3,12 +3,13 @@ import { Fragment } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, safeUrl, type User } from './api.ts'
 import { autoDelete, details, load, loadChat, lookup, mute, read, send, store, subscribe, unread, type Box, type Convo, type Msg, type Person } from './dms.ts'
+import { lang, t, tn } from './i18n.ts'
 import { isImg, sized } from './shared.ts'
 import { ago, Avatar, Header, Icon, Img, Menu, nameOf, P, RichText, shell, Tabs, toast, userPath, w } from './ui.tsx'
 
 const person = (p?: Person): User => ({ fid: p?.fid || 0, username: p?.username, display_name: p?.displayName, pfp_url: p?.pfp?.url })
-const who = (p?: Person) => (p?.fid && p.fid === account!.fid ? 'You' : p?.username ? `@${p.username}` : p?.displayName || 'Someone')
-const when = (t: number) => new Date(t).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+const who = (p?: Person) => (p?.fid && p.fid === account!.fid ? t('You') : p?.username ? `@${p.username}` : p?.displayName || t('Someone'))
+const when = (t: number) => new Date(t).toLocaleString(lang, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 const MUTED = `${P.bell}M3 3l18 18`
 const TTL: [number | 'Infinity', string][] = [['Infinity', 'Never'], [1, 'After a day'], [7, 'After a week'], [30, 'After 30 days'], [365, 'After a year']]
 // image links in a message show as images; the rest stays text
@@ -25,21 +26,29 @@ function describe(m: Msg) {
   const to = who(m.actionTargetUserContext)
   const self = m.actionTargetUserContext?.fid === m.senderContext?.fid
   switch (m.type) {
-    case 'group_membership_addition': return self ? `${to} joined` : `${by} added ${to}`
-    case 'group_membership_removal': return self ? `${to} left` : `${by} removed ${to}`
-    case 'group_name_change': return `${by} renamed the group to ${m.message}`
-    case 'pin_message': return `${by} pinned a message`
-    case 'message_ttl_change': return m.message === 'Infinity' ? `${by} turned off auto-delete` : `${by} set messages to auto-delete ${TTL.find(([d]) => String(d) === m.message)?.[1].toLowerCase() || `after ${m.message} days`}`
+    case 'group_membership_addition': return self ? t('{name} joined', { name: to }) : t('{by} added {name}', { by, name: to })
+    case 'group_membership_removal': return self ? t('{name} left', { name: to }) : t('{by} removed {name}', { by, name: to })
+    case 'group_name_change': return t('{by} renamed the group to {title}', { by, title: m.message })
+    case 'pin_message': return t('{by} pinned a message', { by })
+    case 'message_ttl_change': {
+      if (m.message === 'Infinity') return t('{by} turned off auto-delete', { by })
+      const label = TTL.find(([d]) => String(d) === m.message)?.[1]
+      return t('{by} set messages to auto-delete {when}', { by, when: label ? t(label).toLowerCase() : tn(Number(m.message), 'after {n} day', 'after {n} days') })
+    }
     default: return m.message || m.type.replace(/_/g, ' ')
   }
 }
-const preview = (m: Msg, group: boolean) =>
-  m.type !== 'text' ? describe(m) : m.isDeleted ? 'Message deleted' : (m.senderFid === account!.fid ? 'You: ' : group ? `${who(m.senderContext)}: ` : '') + (partsOf(m).text || 'Image')
+const preview = (m: Msg, group: boolean) => {
+  if (m.type !== 'text') return describe(m)
+  if (m.isDeleted) return t('Message deleted')
+  const text = partsOf(m).text || t('Image')
+  return m.senderFid === account!.fid ? t('You: {text}', { text }) : group ? t('{name}: {text}', { name: who(m.senderContext), text }) : text
+}
 
 // the other person in a 1:1, else the group
 const face = (c: Convo) => {
   const other = c.isGroup ? undefined : c.viewerContext.counterParty || c.participants?.find((p) => p.fid !== account!.fid)
-  return other ? { name: nameOf(person(other)), user: person(other), one: true } : { name: c.name || 'Group', user: { fid: 0, display_name: c.name || 'Group', pfp_url: c.photoUrl }, one: false }
+  return other ? { name: nameOf(person(other)), user: person(other), one: true } : { name: c.name || t('Group'), user: { fid: 0, display_name: c.name || t('Group'), pfp_url: c.photoUrl }, one: false }
 }
 function useStore() {
   const [, force] = useState(0)
@@ -48,7 +57,7 @@ function useStore() {
 
 /** The inbox, or one conversation when `id` is given. */
 export function Messages({ id }: { id?: string }) {
-  if (!account?.done) return <><Header title="Messages" /><div class="note">Sign in to read your messages.</div></>
+  if (!account?.done) return <><Header title={t('Messages')} /><div class="note">{t('Sign in to read your messages.')}</div></>
   if (!account.dm) return <Connect />
   return id ? <Chat key={id} id={id} /> : <Inbox />
 }
@@ -66,11 +75,11 @@ function Connect() {
   }
   return (
     <>
-      <Header title="Messages" />
+      <Header title={t('Messages')} />
       <div class="join">
-        <p class="lede">Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. Quilcast opens them with a key from farcaster.xyz that reads and sends your messages and does nothing else.</p>
-        <p class="muted">{account!.wallet ? 'Your wallet signs for that key once.' : 'Your recovery phrase signs for it here, with no prompt.'} farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.</p>
-        <button class="btn wide" disabled={busy} onClick={open}>{busy ? (account!.wallet ? 'Check your wallet…' : 'Opening…') : 'Open messages'}</button>
+        <p class="lede">{t("Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. Quilcast opens them with a key from farcaster.xyz that reads and sends your messages and does nothing else.")}</p>
+        <p class="muted">{account!.wallet ? t('Your wallet signs for that key once.') : t('Your recovery phrase signs for it here, with no prompt.')} {t("farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.")}</p>
+        <button class="btn wide" disabled={busy} onClick={open}>{busy ? (account!.wallet ? t('Check your wallet…') : t('Opening…')) : t('Open messages')}</button>
       </div>
     </>
   )
@@ -114,15 +123,15 @@ function Inbox() {
   })
   return (
     <>
-      <Header title="Messages">
-        <Tabs tabs={[['inbox', 'Inbox'], ['unread', unreadN ? `Unread · ${unreadN}` : 'Unread'], ['requests', store.requestsCount ? `Requests · ${store.requestsCount}` : 'Requests'], ['muted', 'Muted']]} value={tab} set={setTab} />
+      <Header title={t('Messages')}>
+        <Tabs tabs={[['inbox', t('Inbox')], ['unread', unreadN ? t('Unread · {n}', { n: unreadN }) : t('Unread')], ['requests', store.requestsCount ? t('Requests · {n}', { n: store.requestsCount }) : t('Requests')], ['muted', t('Muted')]]} value={tab} set={setTab} />
       </Header>
-      {err && <div class="note">Couldn't load messages: {err} <button class="link-btn" onClick={() => (setErr(''), list.items || load(box).catch((e) => setErr(e.message)))}>Retry</button></div>}
+      {err && <div class="note">{t("Couldn't load messages: {error}", { error: t(err) })} <button class="link-btn" onClick={() => (setErr(''), list.items || load(box).catch((e) => setErr(e.message)))}>{t('Retry')}</button></div>}
       {!shown && !err && <div class="spinner" />}
-      {shown?.length === 0 && !list.more && <div class="note">{EMPTY[tab]}</div>}
+      {shown?.length === 0 && !list.more && <div class="note">{t(EMPTY[tab])}</div>}
       {shown?.map((c) => <Row key={c.conversationId} c={c} />)}
       {/* Muted can only be found by looking through the whole inbox, which can take a while */}
-      {busy && (tab === 'muted' ? <div class="note">Looking through your conversations for muted ones… {list.items?.length} checked</div> : <div class="spinner" />)}
+      {busy && (tab === 'muted' ? <div class="note">{t('Looking through your conversations for muted ones… {n} checked', { n: list.items?.length || 0 })}</div> : <div class="spinner" />)}
       <div ref={end} />
     </>
   )
@@ -154,8 +163,8 @@ function Bubble({ m, mine, group, name, face }: { m: Msg; mine: boolean; group: 
       <div class="msg-col">
         {name && <span class="msg-who">{nameOf(person(name))}</span>}
         {pics.map((u, i) => <button class={`dm-img ${m.state || ''}`} onClick={() => shell.view(pics, i)}><Img src={sized(u, 'w=600')} /></button>)}
-        {(text || !pics.length) && <div class={`bubble ${m.state || ''}`}>{m.isDeleted ? <i>Message deleted</i> : <RichText text={text} />}</div>}
-        {m.state && <small class={m.state === 'failed' ? 'warn' : 'msg-state'}>{m.state === 'failed' ? 'Not sent' : 'Sending…'}</small>}
+        {(text || !pics.length) && <div class={`bubble ${m.state || ''}`}>{m.isDeleted ? <i>{t('Message deleted')}</i> : <RichText text={text} />}</div>}
+        {m.state && <small class={m.state === 'failed' ? 'warn' : 'msg-state'}>{m.state === 'failed' ? t('Not sent') : t('Sending…')}</small>}
       </div>
     </div>
   )
@@ -174,7 +183,7 @@ function Chat({ id }: { id: string }) {
   useEffect(() => {
     // on screen, so what arrives here is read as it comes
     store.open = id
-    lookup(id).then((c) => read(c.conversationId), () => setErr("This conversation isn't yours, or doesn't exist."))
+    lookup(id).then((c) => read(c.conversationId), () => setErr(t("This conversation isn't yours, or doesn't exist.")))
     loadChat(id).catch(() => {})
     const scroll = () => (atBottom.current = innerHeight + scrollY >= document.documentElement.scrollHeight - 120)
     const back = () => document.visibilityState === 'visible' && read(id)
@@ -201,7 +210,7 @@ function Chat({ id }: { id: string }) {
     if (!message || !c) return
     setText('')
     atBottom.current = true
-    send(c, message).catch((e) => toast(`Couldn't send: ${e.message}`))
+    send(c, message).catch((e) => toast(t("Couldn't send: {error}", { error: t(e.message) })))
   }
   const f = c && face(c)
   const muted = !!c?.viewerContext.muted
@@ -215,14 +224,14 @@ function Chat({ id }: { id: string }) {
   // settings for a conversation that exists (one with messages); auto-delete is read when the menu opens
   const action = c && msgs.length > 0 && (
     <span class="wrap-menu">
-      <button class="icon-btn" aria-label="Conversation settings" aria-haspopup="menu" onClick={() => (setMenu(!menu), !menu && c.messageTTLDays === undefined && details(c).catch(() => {}))}><Icon d={P.more} /></button>
+      <button class="icon-btn" aria-label={t('Conversation settings')} aria-haspopup="menu" onClick={() => (setMenu(!menu), !menu && c.messageTTLDays === undefined && details(c).catch(() => {}))}><Icon d={P.more} /></button>
       {menu && (
         <Menu class="right" close={() => setMenu(false)}>
-          <button role="menuitem" onClick={() => (setMenu(false), mute(c, !muted).catch((e) => toast(e.message)))}><Icon d={muted ? P.bell : MUTED} />{muted ? 'Unmute' : 'Mute'}</button>
-          <small class="menu-label">Auto-delete messages</small>
+          <button role="menuitem" onClick={() => (setMenu(false), mute(c, !muted).catch((e) => toast(e.message)))}><Icon d={muted ? P.bell : MUTED} />{muted ? t('Unmute') : t('Mute')}</button>
+          <small class="menu-label">{t('Auto-delete messages')}</small>
           {TTL.map(([d, label]) => (
             <button role="menuitemradio" aria-checked={c.messageTTLDays === d} onClick={() => (setMenu(false), autoDelete(c, d).catch((e) => toast(e.message)))}>
-              {label}{c.messageTTLDays === d && <Icon d={P.check} />}
+              {t(label)}{c.messageTTLDays === d && <Icon d={P.check} />}
             </button>
           ))}
         </Menu>
@@ -231,12 +240,12 @@ function Chat({ id }: { id: string }) {
   )
   return (
     <>
-      <Header title={title || 'Messages'} action={action} />
+      <Header title={title || t('Messages')} action={action} />
       <div class="dm">
         {err && <div class="note">{err}</div>}
-        {c?.viewerContext.category === 'request' && <div class="banner"><div><b>Message request</b><p>Replying moves this conversation to your inbox.</p></div></div>}
+        {c?.viewerContext.category === 'request' && <div class="banner"><div><b>{t('Message request')}</b><p>{t('Replying moves this conversation to your inbox.')}</p></div></div>}
         <div class="chat">
-          {chat?.older && <button class="link-btn earlier" onClick={earlier}>Earlier messages</button>}
+          {chat?.older && <button class="link-btn earlier" onClick={earlier}>{t('Earlier messages')}</button>}
           {msgs.map((m, i) => {
             const prev = msgs[i - 1]
             const next = msgs[i + 1]
@@ -255,13 +264,13 @@ function Chat({ id }: { id: string }) {
             )
           })}
           {!chat && !err && <div class="spinner" />}
-          {chat && !msgs.length && f && <div class="note">{f.one ? `This is the start of your conversation with ${f.name}.` : 'No messages yet.'}</div>}
+          {chat && !msgs.length && f && <div class="note">{f.one ? t('This is the start of your conversation with {name}.', { name: f.name }) : t('No messages yet.')}</div>}
         </div>
         {!err && (
           <div class="dm-compose">
-            <textarea rows={1} value={text} placeholder="Message" maxLength={1024} aria-label="Message"
+            <textarea rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
               onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit())} />
-            <button class="btn small" disabled={!text.trim() || !c} onClick={submit}>Send</button>
+            <button class="btn small" disabled={!text.trim() || !c} onClick={submit}>{t('Send')}</button>
           </div>
         )}
       </div>

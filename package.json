@@ -4,6 +4,7 @@
     "dev": "vite",
     "build": "vite build",
     "test": "node --test src/*.test.ts server/*.test.mjs",
+    "i18n": "node scripts/i18n-keys.mjs --check",
     "start": "node server/index.mjs"
   },
   "type": "module",
@@ -22,5 +23,5 @@
     "viem": "2.57.3",
     "vite": "8.3.4"
   },
-  "version": "0.12.2"
+  "version": "0.13.0"
 }

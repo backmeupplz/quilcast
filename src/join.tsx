@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, get, getUser, go, setAccount, settings, USER_DATA, type Account } from './api.ts'
 import { balance, fidOf, register, registerPrice } from './eth.ts'
 import { address, fnameProof } from './fc.ts'
+import { t } from './i18n.ts'
 import { custodyKey, custodyOf, ensureSigner, setUserData } from './write.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -29,19 +30,19 @@ export function Join({ step }: { step?: string }) {
   if (step === 'wallet') return <WalletIn />
   return (
     <div class="join">
-      <h1>{account ? 'Add an account' : 'Join Farcaster on Hypersnap'}</h1>
-      <p class="lede">Quilcast is a small, open client that reads from and posts to the Hypersnap network that Quilibrium runs. There is no server in between, and your keys stay in this browser.</p>
+      <h1>{account ? t('Add an account') : t('Join Farcaster on Hypersnap')}</h1>
+      <p class="lede">{t('Quilcast is a small, open client that reads from and posts to the Hypersnap network that Quilibrium runs. There is no server in between, and your keys stay in this browser.')}</p>
       <button class="choice" onClick={() => go('/join/create')}>
-        <b>Create a new account</b>
-        <span>Pick a username and register it on Optimism for about twenty cents of ETH.</span>
+        <b>{t('Create a new account')}</b>
+        <span>{t('Pick a username and register it on Optimism for about twenty cents of ETH.')}</span>
       </button>
       <button class="choice" onClick={() => go('/join/signin')}>
-        <b>I already have an account</b>
-        <span>Sign in with the recovery phrase from Warpcast, Quorum or any other Farcaster app.</span>
+        <b>{t('I already have an account')}</b>
+        <span>{t('Sign in with the recovery phrase from Warpcast, Quorum or any other Farcaster app.')}</span>
       </button>
       <button class="choice" onClick={() => go('/join/wallet')}>
-        <b>Use a wallet</b>
-        <span>Connect MetaMask, Rabby or another wallet that owns a Farcaster account, or create one paid from it. The wallet keeps its keys and you approve each signature.</span>
+        <b>{t('Use a wallet')}</b>
+        <span>{t('Connect MetaMask, Rabby or another wallet that owns a Farcaster account, or create one paid from it. The wallet keeps its keys and you approve each signature.')}</span>
       </button>
     </div>
   )
@@ -61,16 +62,16 @@ function Create({ wallet }: { wallet?: string }) {
   const go = () => setAccount({ phrase: wallet ? '' : generateMnemonic(wordlist), wallet, username: name, display: display.trim() || name })
   return (
     <div class="join">
-      <h1>Pick your name</h1>
-      {wallet && <p class="lede">No Farcaster account belongs to {short(wallet)} yet. Pick a name and the wallet pays the registration on Optimism.</p>}
-      <label>Username
-        <div class="prefix"><span>@</span><input value={name} onInput={(e) => setName(e.currentTarget.value.toLowerCase().trim())} placeholder="yourname" maxLength={16} autoFocus autocapitalize="none" spellcheck={false} /></div>
+      <h1>{t('Pick your name')}</h1>
+      {wallet && <p class="lede">{t('No Farcaster account belongs to {address} yet. Pick a name and the wallet pays the registration on Optimism.', { address: short(wallet) })}</p>}
+      <label>{t('Username')}
+        <div class="prefix"><span>@</span><input value={name} onInput={(e) => setName(e.currentTarget.value.toLowerCase().trim())} placeholder={t('yourname')} maxLength={16} autoFocus autocapitalize="none" spellcheck={false} /></div>
         <small class={state === 'free' ? 'ok' : state === 'taken' || state === 'bad' ? 'warn' : ''}>
-          {{ '': 'Lowercase letters, numbers and dashes, up to 16 characters.', checking: 'Checking…', free: `@${name} is available.`, taken: `@${name} is already taken.`, bad: 'Use lowercase letters, numbers and dashes, starting with a letter or number.' }[state]}
+          {{ '': t('Lowercase letters, numbers and dashes, up to 16 characters.'), checking: t('Checking…'), free: t('@{name} is available.', { name }), taken: t('@{name} is already taken.', { name }), bad: t('Use lowercase letters, numbers and dashes, starting with a letter or number.') }[state]}
         </small>
       </label>
-      <label>Display name<input value={display} onInput={(e) => setDisplay(e.currentTarget.value)} placeholder="Your Name" maxLength={32} /></label>
-      <button class="btn wide" disabled={state !== 'free'} onClick={go}>Continue</button>
+      <label>{t('Display name')}<input value={display} onInput={(e) => setDisplay(e.currentTarget.value)} placeholder={t('Your Name')} maxLength={32} /></label>
+      <button class="btn wide" disabled={state !== 'free'} onClick={go}>{t('Continue')}</button>
     </div>
   )
 }
@@ -109,12 +110,12 @@ function useFlow() {
 }
 const Progress = ({ err, at, steps }: { err: string; at: number; steps: string[] }) => (
   <>
-    {err && <p class="warn">{err}</p>}
+    {err && <p class="warn">{t(err)}</p>}
     {at >= 0 && <section class="card"><Steps steps={steps} at={at} /></section>}
   </>
 )
 
-const WALLET_IN = ['Connecting your wallet', 'Finding your Farcaster account', 'Two signatures in your wallet add a signing key for this browser', 'Loading your profile']
+const WALLET_IN = () => [t('Connecting your wallet'), t('Finding your Farcaster account'), t('Two signatures in your wallet add a signing key for this browser'), t('Loading your profile')]
 function WalletIn() {
   const f = useFlow()
   const [none, setNone] = useState('')
@@ -129,15 +130,15 @@ function WalletIn() {
   })
   return (
     <div class="join">
-      <h1>Use a wallet</h1>
-      <p class="lede">Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and later asks again only to renew that key, claim a username or sign uploads.</p>
-      <Progress {...f} steps={WALLET_IN} />
-      <button class="btn wide" disabled={f.busy} onClick={connect}>{f.busy ? 'Check your wallet…' : 'Connect wallet'}</button>
+      <h1>{t('Use a wallet')}</h1>
+      <p class="lede">{t('Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and later asks again only to renew that key, claim a username or sign uploads.')}</p>
+      <Progress {...f} steps={WALLET_IN()} />
+      <button class="btn wide" disabled={f.busy} onClick={connect}>{f.busy ? t('Check your wallet…') : t('Connect wallet')}</button>
     </div>
   )
 }
 
-const SIGN_IN = ['Reading your recovery phrase', 'Finding your Farcaster account', 'Adding a signing key for this browser', 'Loading your profile']
+const SIGN_IN = () => [t('Reading your recovery phrase'), t('Finding your Farcaster account'), t('Adding a signing key for this browser'), t('Loading your profile')]
 function SignIn() {
   const f = useFlow()
   const [phrase, setPhrase] = useState('')
@@ -153,11 +154,11 @@ function SignIn() {
   })
   return (
     <div class="join">
-      <h1>Sign in</h1>
-      <p class="lede">Enter the 12 or 24 word recovery phrase of your Farcaster account. Quilcast keeps it in this browser and uses it to add a signing key for this device.</p>
-      <textarea rows={4} value={phrase} disabled={f.busy} onInput={(e) => setPhrase(e.currentTarget.value)} placeholder="apple banana cherry …" autocapitalize="none" spellcheck={false} />
-      <Progress {...f} steps={SIGN_IN} />
-      <button class="btn wide" disabled={f.busy || !phrase.trim()} onClick={signIn}>{f.busy ? 'Signing in…' : 'Sign in'}</button>
+      <h1>{t('Sign in')}</h1>
+      <p class="lede">{t('Enter the 12 or 24 word recovery phrase of your Farcaster account. Quilcast keeps it in this browser and uses it to add a signing key for this device.')}</p>
+      <textarea rows={4} value={phrase} disabled={f.busy} onInput={(e) => setPhrase(e.currentTarget.value)} placeholder={t('apple banana cherry …')} autocapitalize="none" spellcheck={false} />
+      <Progress {...f} steps={SIGN_IN()} />
+      <button class="btn wide" disabled={f.busy || !phrase.trim()} onClick={signIn}>{f.busy ? t('Signing in…') : t('Sign in')}</button>
     </div>
   )
 }
@@ -226,7 +227,7 @@ function Setup() {
             if (!proof.transfer || proof.transfer.to !== acc.fid) {
               const timestamp = Math.floor(Date.now() / 1000)
               const r = await fetch('https://fnames.farcaster.xyz/transfers', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: acc.username, from: 0, to: acc.fid, fid: acc.fid, timestamp, ...(await fnameProof(acc.username, timestamp, custody)) }) })
-              if (!r.ok) throw new Error(`Couldn't claim @${acc.username}: ${(await r.json().catch(() => ({}))).code || r.status}`)
+              if (!r.ok) throw new Error(t("Couldn't claim @{name}: {reason}", { name: acc.username, reason: (await r.json().catch(() => ({}))).code || r.status }))
             }
             await setUserData(USER_DATA.USERNAME, acc.username)
             if (acc.display) await setUserData(USER_DATA.DISPLAY, acc.display)
@@ -264,34 +265,34 @@ function Setup() {
   }
   return (
     <div class="join">
-      <h1>{step !== 'fund' ? 'Setting up your account' : a.wallet ? `Register @${a.username}` : `Fund @${a.username}`}</h1>
+      <h1>{step !== 'fund' ? t('Setting up your account') : a.wallet ? t('Register @{name}', { name: a.username! }) : t('Fund @{name}', { name: a.username! })}</h1>
       {step === 'fund' && a.wallet && (
         <section class="card">
-          <p class="muted">Registering a Farcaster ID costs a small fee on Optimism, which includes a year of storage. Your wallet {short(a.wallet)} pays it, and then signs a key for this browser and your username.</p>
-          <div class="kv"><span>Fee</span><b>{need === null ? '…' : `${eth(price)} ETH`}</b></div>
-          <div class="kv"><span>Network</span><b>Optimism (OP Mainnet)</b></div>
-          {bal !== null && need !== null && bal < need && <p class="warn">The wallet has {eth(bal)} ETH on Optimism. It needs about {eth(need)} ETH including gas.</p>}
-          <button class="btn wide" disabled={need === null || paying} onClick={pay}>{paying ? 'Confirm in your wallet…' : 'Register'}</button>
+          <p class="muted">{t('Registering a Farcaster ID costs a small fee on Optimism, which includes a year of storage. Your wallet {address} pays it, and then signs a key for this browser and your username.', { address: short(a.wallet) })}</p>
+          <div class="kv"><span>{t('Fee')}</span><b>{need === null ? '…' : `${eth(price)} ETH`}</b></div>
+          <div class="kv"><span>{t('Network')}</span><b>Optimism (OP Mainnet)</b></div>
+          {bal !== null && need !== null && bal < need && <p class="warn">{t('The wallet has {balance} ETH on Optimism. It needs about {need} ETH including gas.', { balance: eth(bal), need: eth(need) })}</p>}
+          <button class="btn wide" disabled={need === null || paying} onClick={pay}>{paying ? t('Confirm in your wallet…') : t('Register')}</button>
         </section>
       )}
       {step === 'fund' && !a.wallet && (
         <>
           <section class="card">
-            <h2>1. Save your recovery phrase</h2>
-            <p class="muted">These words are your account. Quilcast keeps them in this browser only, so write them down somewhere safe. They also work in Quorum and Warpcast.</p>
+            <h2>{t('1. Save your recovery phrase')}</h2>
+            <p class="muted">{t('These words are your account. Quilcast keeps them in this browser only, so write them down somewhere safe. They also work in Quorum and Warpcast.')}</p>
             <code class="phrase">{a.phrase}</code>
-            <label class="check"><input type="checkbox" checked={saved} onChange={(e) => setSaved(e.currentTarget.checked)} /> I saved my recovery phrase</label>
+            <label class="check"><input type="checkbox" checked={saved} onChange={(e) => setSaved(e.currentTarget.checked)} /> {t('I saved my recovery phrase')}</label>
           </section>
           <section class={`card${saved ? '' : ' dim'}`}>
-            <h2>2. Send ETH on Optimism</h2>
-            <p class="muted">Registering a Farcaster ID costs a small fee paid on the Optimism network, which includes a year of storage. Send at least the amount below to your new address from any wallet or exchange that supports Optimism.</p>
+            <h2>{t('2. Send ETH on Optimism')}</h2>
+            <p class="muted">{t('Registering a Farcaster ID costs a small fee paid on the Optimism network, which includes a year of storage. Send at least the amount below to your new address from any wallet or exchange that supports Optimism.')}</p>
             {saved && (
               <>
-                <div class="kv"><span>Amount</span><b>{need === null ? '…' : `${eth(need)} ETH`}</b>{need !== null && <button class="link-btn" onClick={() => copy(eth(need))}>Copy</button>}</div>
-                <div class="kv"><span>Address</span><code>{addr || '…'}</code>{addr && <button class="link-btn" onClick={() => copy(addr)}>Copy</button>}</div>
-                <div class="kv"><span>Network</span><b>Optimism (OP Mainnet)</b></div>
-                {need !== null && addr && <a class="btn ghost wide" href={`ethereum:${addr}@10?value=${need}`}>Open in a wallet app</a>}
-                <p class="waiting"><span class="pulse" /> {bal === null ? 'Checking balance…' : `Balance ${eth(bal)} ETH. Waiting for funds…`}</p>
+                <div class="kv"><span>{t('Amount')}</span><b>{need === null ? '…' : `${eth(need)} ETH`}</b>{need !== null && <button class="link-btn" onClick={() => copy(eth(need))}>{t('Copy')}</button>}</div>
+                <div class="kv"><span>{t('Address')}</span><code>{addr || '…'}</code>{addr && <button class="link-btn" onClick={() => copy(addr)}>{t('Copy')}</button>}</div>
+                <div class="kv"><span>{t('Network')}</span><b>Optimism (OP Mainnet)</b></div>
+                {need !== null && addr && <a class="btn ghost wide" href={`ethereum:${addr}@10?value=${need}`}>{t('Open in a wallet app')}</a>}
+                <p class="waiting"><span class="pulse" /> {bal === null ? t('Checking balance…') : t('Balance {balance} ETH. Waiting for funds…', { balance: eth(bal) })}</p>
               </>
             )}
           </section>
@@ -300,21 +301,21 @@ function Setup() {
       {step !== 'fund' && (
         <section class="card">
           <ol class="steps">
-            <li class={step === 'register' ? 'now' : 'done'}>Registering your Farcaster ID on Optimism</li>
-            <li class={step === 'setup' ? 'now' : ''}>Adding a signing key for this browser and claiming @{a.username}</li>
+            <li class={step === 'register' ? 'now' : 'done'}>{t('Registering your Farcaster ID on Optimism')}</li>
+            <li class={step === 'setup' ? 'now' : ''}>{t('Adding a signing key for this browser and claiming @{name}', { name: a.username! })}</li>
           </ol>
           <p class="muted">
-            {a.wallet ? 'Your wallet will ask for three signatures: two add the signing key and one claims the username. ' : ''}
-            This usually takes under a minute. You can keep this tab open or come back later, and Quilcast will pick up where it left off.
+            {a.wallet ? t('Your wallet will ask for three signatures: two add the signing key and one claims the username.') + ' ' : ''}
+            {t('This usually takes under a minute. You can keep this tab open or come back later, and Quilcast will pick up where it left off.')}
           </p>
         </section>
       )}
-      {err && <p class="warn">{err}</p>}
-      {err && a.wallet && step === 'setup' && <button class="btn wide" onClick={() => retry.current?.()}>Try again</button>}
-      {step === 'fund' && a.wallet && <button class="link-btn" onClick={() => setAccount(null)}>Start over</button>}
+      {err && <p class="warn">{t(err)}</p>}
+      {err && a.wallet && step === 'setup' && <button class="btn wide" onClick={() => retry.current?.()}>{t('Try again')}</button>}
+      {step === 'fund' && a.wallet && <button class="link-btn" onClick={() => setAccount(null)}>{t('Start over')}</button>}
       {step === 'fund' && !a.wallet && bal === 0n && (
         <button class="link-btn danger" onClick={() => (!quit ? setQuit(Date.now()) : Date.now() - quit > 1000 && setAccount(null))}>
-          {quit ? 'Delete this recovery phrase? Only if you sent nothing to it' : 'Start over'}
+          {quit ? t('Delete this recovery phrase? Only if you sent nothing to it') : t('Start over')}
         </button>
       )}
     </div>

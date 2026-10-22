@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, findUsers, get, go, LINK_RE, myUser, toUrl, type Cast, type User } from './api.ts'
+import { t } from './i18n.ts'
 import { castText, isImg, isVid } from './shared.ts'
 import { Avatar, channelUrl, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, toast, w } from './ui.tsx'
 
@@ -17,11 +18,11 @@ function ChannelPicker({ value, set }: { value?: string; set: (v?: string) => vo
   }, [q])
   return (
     <span class="wrap-menu">
-      <button class={`chip${value ? ' on' : ''}`} onClick={() => setOpen(!open)} aria-haspopup="menu"><Icon d={P.hash} size={14} />{value ? `/${value}` : 'Channel'}</button>
+      <button class={`chip${value ? ' on' : ''}`} onClick={() => setOpen(!open)} aria-haspopup="menu"><Icon d={P.hash} size={14} />{value ? `/${value}` : t('Channel')}</button>
       {open && (
         <Menu class="picker" close={() => setOpen(false)}>
-          <input autoFocus value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder="Search channels" aria-label="Search channels" />
-          {value && <button onClick={() => (set(undefined), setOpen(false))}>No channel</button>}
+          <input autoFocus value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search channels')} aria-label={t('Search channels')} />
+          {value && <button onClick={() => (set(undefined), setOpen(false))}>{t('No channel')}</button>}
           {list.map((c) => <button onClick={() => (set(c.id), setOpen(false), setQ(''))}>/{c.id}<small>{c.member_count ?? ''}</small></button>)}
         </Menu>
       )}
@@ -33,7 +34,7 @@ type Part = { id: number; text: string; files: Attachment[] }
 const LIMIT = 1024 // casts over 320 bytes go out as long casts, which allow up to 1024
 const newPart = (): Part => ({ id: Math.random(), text: '', files: [] })
 const linksIn = (text: string) => [...new Set((text.match(LINK_RE) || []).map(toUrl))]
-const fmtLeft = (s?: number) => (s === undefined || !isFinite(s) ? '' : s < 60 ? ` · ${Math.max(1, Math.round(s))}s left` : ` · ${Math.round(s / 60)} min left`)
+const fmtLeft = (s?: number) => (s === undefined || !isFinite(s) ? '' : ' · ' + (s < 60 ? t('{n}s left', { n: Math.max(1, Math.round(s)) }) : t('{n} min left', { n: Math.round(s / 60) })))
 
 /** One post of a thread: text with @mention autocomplete, its attachments and the links it will embed. */
 function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus, attach, placeholder, remove }: {
@@ -91,7 +92,7 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
           onInput={(e) => (set({ text: e.currentTarget.value }), findToken(e.currentTarget))}
           onKeyDown={keys} onClick={(e) => findToken(e.currentTarget)} onFocus={onFocus}
           onPaste={(e) => e.clipboardData?.files.length && (e.preventDefault(), attach(e.clipboardData.files))} />
-        {remove && <button class="icon-btn part-x" aria-label="Remove this post" onClick={(e) => (e.stopPropagation(), remove())}><Icon d={P.x} size={16} /></button>}
+        {remove && <button class="icon-btn part-x" aria-label={t('Remove this post')} onClick={(e) => (e.stopPropagation(), remove())}><Icon d={P.x} size={16} /></button>}
       </div>
       {tok && sug.length > 0 && (
         <div class="mentions" role="listbox">
@@ -111,12 +112,12 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
               {!f.url && !f.err && (
                 <span class="att-busy">
                   <span class="spinner small" />
-                  <span class="att-stage">{f.stage === 'processing' ? (f.video ? 'Processing video…' : 'Finishing…') : `Uploading ${f.pct ?? 0}%${fmtLeft(f.left)}`}</span>
+                  <span class="att-stage">{f.stage === 'processing' ? (f.video ? t('Processing video…') : t('Finishing…')) : t('Uploading {pct}%', { pct: f.pct ?? 0 }) + fmtLeft(f.left)}</span>
                   {f.stage !== 'processing' && <span class="att-bar"><i style={{ width: `${f.pct ?? 0}%` }} /></span>}
                 </span>
               )}
-              {f.err && <span class="att-err">{f.err}</span>}
-              <button class="att-x" aria-label="Remove" onClick={() => set({ files: part.files.filter((x) => x.id !== f.id) })}><Icon d={P.x} size={14} /></button>
+              {f.err && <span class="att-err">{t(f.err)}</span>}
+              <button class="att-x" aria-label={t('Remove')} onClick={() => set({ files: part.files.filter((x) => x.id !== f.id) })}><Icon d={P.x} size={14} /></button>
             </div>
           ))}
         </div>
@@ -190,11 +191,11 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
   }
   return (
     <div class="modal" onClick={() => onClose()}>
-      <div class="sheet" role="dialog" aria-label={parent ? 'Reply' : quote ? 'Quote cast' : 'New cast'} onClick={(e) => e.stopPropagation()}
+      <div class="sheet" role="dialog" aria-label={parent ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => (e.key === 'Escape' && onClose(null), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
         <div class="sheet-top">
-          <button class="link-btn" onClick={() => onClose()}>Cancel</button>
-          <button class="btn" disabled={busy || !ready} onClick={send}>{busy ? 'Sending…' : parts.length > 1 ? 'Post all' : parent ? 'Reply' : 'Cast'}</button>
+          <button class="link-btn" onClick={() => onClose()}>{t('Cancel')}</button>
+          <button class="btn" disabled={busy || !ready} onClick={send}>{busy ? t('Sending…') : parts.length > 1 ? t('Post all') : parent ? t('Reply') : t('Cast')}</button>
         </div>
         {parent && (
           <div class="ctx">
@@ -207,17 +208,17 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
             <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === active}
               onFocus={() => setActive(i)} attach={attach}
               remove={i > 0 ? () => (setParts((ps) => ps.filter((x) => x.id !== p.id)), setActive(i - 1)) : undefined}
-              placeholder={i > 0 ? 'Add another post' : parent ? `Reply to @${handle(parent.author)}` : quote ? 'Add a comment' : "What's happening?"} />
+              placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : quote ? t('Add a comment') : t("What's happening?")} />
           ))}
         </div>
         <div class="toolbar">
           <input ref={pick} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
-          <button class="icon-btn" aria-label="Add photo or video" disabled={cur.files.length >= 2 - fixed(active)} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
+          <button class="icon-btn" aria-label={t('Add photo or video')} disabled={cur.files.length >= 2 - fixed(active)} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
           {!parent && <ChannelPicker value={channel} set={setChannel} />}
-          <span class={`count${left < 50 ? ' warn' : ''}`} title={bytes(cur.text) > 320 ? 'Long cast: up to 1024 characters' : 'Up to 320 characters, or 1024 as a long cast'}>
+          <span class={`count${left < 50 ? ' warn' : ''}`} title={bytes(cur.text) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
             {bytes(cur.text) > 280 ? left : ''}
           </span>
-          <button class="icon-btn add-part" aria-label="Add another post to the thread" disabled={!filled(cur, active)} onClick={add}><Icon d={P.plus} /></button>
+          <button class="icon-btn add-part" aria-label={t('Add another post to the thread')} disabled={!filled(cur, active)} onClick={add}><Icon d={P.plus} /></button>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { render, type ComponentChildren } from 'preact'
 import { useState } from 'preact/hooks'
 import { formatUnits, parseUnits } from 'viem'
 import { arbitrum, base, baseSepolia, celo, degen, mainnet, monad, optimism, polygon, unichain, zora } from 'viem/chains'
+import { lang, t } from './i18n.ts'
 import { account, getUser, go, myUser, read, safeUrl, save, setAccount, type Cast, type User } from './api.ts'
 import { base58, hex } from './fc.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, WALLET_READS } from './guard.ts'
@@ -45,7 +46,7 @@ dispatchEvent(new Event('eip6963:requestProvider'))
 // wallets older than EIP-6963 only set window.ethereum
 const anyWallet = () => {
   const p = (window as any).ethereum
-  if (!wallets.length && typeof p?.request === 'function') add(p.isRabby ? 'Rabby' : p.isMetaMask ? 'MetaMask' : 'Browser wallet', '', 'injected', p)
+  if (!wallets.length && typeof p?.request === 'function') add(p.isRabby ? 'Rabby' : p.isMetaMask ? 'MetaMask' : t('Browser wallet'), '', 'injected', p)
   return wallets.length > 0
 }
 
@@ -173,7 +174,7 @@ const declined = () => rpcError(4001, 'You declined.')
 // --- the Ethereum wallet the app sees ---
 
 async function useWallet(app: App, w: Wallet) {
-  const [a] = await waitFor(app, `Check ${w.name}`, () => serial(() => w.provider.request({ method: 'eth_requestAccounts' })))
+  const [a] = await waitFor(app, t('Check {wallet}', { wallet: w.name }), () => serial(() => w.provider.request({ method: 'eth_requestAccounts' })))
   if (typeof a !== 'string') throw rpcError(4001, 'The wallet shared no address.')
   w.address = a.toLowerCase()
   app.wallet = w
@@ -229,8 +230,8 @@ async function connect(app: App) {
   if (known) return useWallet(app, known)
   app.wallet ||= wallets[0]
   const ok = await ask(app, {
-    title: `Connect a wallet to ${app.name}?`, yes: 'Connect',
-    body: `${app.host} will see your wallet address and can ask your wallet to sign or send. Your wallet asks you each time.`,
+    title: t('Connect a wallet to {name}?', { name: app.name }), yes: t('Connect'),
+    body: t('{host} will see your wallet address and can ask your wallet to sign or send. Your wallet asks you each time.', { host: app.host }),
     extra: () => <Choose list={wallets} value={app.wallet} set={(w) => (app.wallet = w)} />,
   })
   if (!ok || !app.wallet) throw declined()
@@ -273,7 +274,7 @@ async function setChain(app: App, id: number, method: string, params: unknown[])
   if (!CHAINS[id]) {
     foreground(app)
     const w = live(app)
-    await waitFor(app, `Check ${w.name}`, () => serial(() => w.provider.request({ method, params })))
+    await waitFor(app, t('Check {wallet}', { wallet: w.name }), () => serial(() => w.provider.request({ method, params })))
   }
   if (app.chain !== id) (app.chain = id), emitEth(app, 'chainChanged', [toHex(id)])
   return null
@@ -281,7 +282,7 @@ async function setChain(app: App, id: number, method: string, params: unknown[])
 
 /** A Sign-In message for another site than the app's own: the person decides. */
 const confirmSite = (app: App, site: string) =>
-  ask(app, { title: `Sign in to ${site}?`, yes: 'Continue', body: `${app.host} wants your wallet to sign you in to ${site}, which is a different site. Continue only if you trust ${app.name} with your account there.` })
+  ask(app, { title: t('Sign in to {site}?', { site }), yes: t('Continue'), body: t('{host} wants your wallet to sign you in to {site}, which is a different site. Continue only if you trust {name} with your account there.', { host: app.host, site, name: app.name }) })
 
 async function eth(app: App, r: any): Promise<unknown> {
   const method = r?.method
@@ -300,7 +301,7 @@ async function eth(app: App, r: any): Promise<unknown> {
   foreground(app)
   const site = SIGNS.has(method) ? checkWallet(app.host, w.address!, method, params) : undefined
   if (site && !(await confirmSite(app, site))) throw declined()
-  return waitFor(app, `Check ${w.name}: ${app.host} asked for this`, () => serial(async () => (await align(w, app.chain), w.provider.request({ method, params }))))
+  return waitFor(app, t('Check {wallet}: {host} asked for this', { wallet: w.name, host: app.host }), () => serial(async () => (await align(w, app.chain), w.provider.request({ method, params }))))
 }
 
 // --- Solana ---
@@ -309,7 +310,7 @@ const b64 = (b: Uint8Array) => btoa(String.fromCharCode(...b))
 const unb64 = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
 
 async function useSol(app: App, w: SolWallet) {
-  const r: any = await waitFor(app, `Check ${w.name}`, () => w.features['standard:connect'].connect())
+  const r: any = await waitFor(app, t('Check {wallet}', { wallet: w.name }), () => w.features['standard:connect'].connect())
   const acct = r?.accounts?.[0] || w.accounts?.[0]
   if (typeof acct?.address !== 'string') throw rpcError(4001, 'The wallet shared no address.')
   app.sol = { wallet: w, account: acct }
@@ -328,7 +329,7 @@ async function sol(app: App, r: any) {
     const known = Object.hasOwn(k, app.origin) && solWallets.find((w) => w.name === k[app.origin])
     if (known) return useSol(app, known)
     let w = solWallets[0]
-    const ok = await ask(app, { title: `Connect a Solana wallet to ${app.name}?`, yes: 'Connect', body: `${app.host} will see your Solana address and can ask your wallet to sign. Your wallet asks you each time.`, extra: () => <Choose list={solWallets} value={w} set={(x) => (w = x)} /> })
+    const ok = await ask(app, { title: t('Connect a Solana wallet to {name}?', { name: app.name }), yes: t('Connect'), body: t('{host} will see your Solana address and can ask your wallet to sign. Your wallet asks you each time.', { host: app.host }), extra: () => <Choose list={solWallets} value={w} set={(x) => (w = x)} /> })
     if (!ok) throw declined()
     return useSol(app, w)
   }
@@ -336,7 +337,7 @@ async function sol(app: App, r: any) {
   const s = app.sol
   if (!s) throw rpcError(4100, 'Connect a Solana wallet first.')
   const feature = (name: string) => s.wallet.features[name] || Promise.reject(rpcError(4200, `${s.wallet.name} can't do that.`))
-  const label = `Check ${s.wallet.name}: ${app.host} asked for this`
+  const label = t('Check {wallet}: {host} asked for this', { wallet: s.wallet.name, host: app.host })
   if (method === 'signMessage') {
     const text = String(r.params?.message ?? '').slice(0, 10000)
     const site = signInCheck(app.host, text)
@@ -366,7 +367,7 @@ const info = (t: TokenId) => {
   if (!c) throw new Error('Quilcast has no RPC for that chain.')
   return tokenInfo((m, p) => publicRpc(t.chain, m, p), t, c.nativeCurrency)
 }
-const fmt = (n: bigint, t: Token) => `${Number(formatUnits(n, t.decimals)).toLocaleString(undefined, { maximumFractionDigits: 6 })} ${t.symbol}`
+const fmt = (n: bigint, t: Token) => `${Number(formatUnits(n, t.decimals)).toLocaleString(lang, { maximumFractionDigits: 6 })} ${t.symbol}`
 const Field = ({ label, value, set, ph }: { label: string; value: string; set: (v: string) => void; ph?: string }) => (
   <label class="field"><span>{label}</span><input value={value} placeholder={ph} onInput={(e) => set(e.currentTarget.value.trim())} /></label>
 )
@@ -384,7 +385,7 @@ async function mined(chain: number, hash: string) {
 const sendOn = (app: App, w: Wallet, chain: number, tx: { to: string; data: string; value: string; gas?: string }) => {
   // the same rules as any request from the app (no Farcaster contracts)
   checkWallet(app.host, w.address!, 'eth_sendTransaction', [{ from: w.address, ...tx }])
-  return waitFor(app, `Check ${w.name}`, () => serial(async () => (await align(w, chain), w.provider.request({ method: 'eth_sendTransaction', params: [{ from: w.address, ...tx }] })))) as Promise<string>
+  return waitFor(app, t('Check {wallet}', { wallet: w.name }), () => serial(async () => (await align(w, chain), w.provider.request({ method: 'eth_sendTransaction', params: [{ from: w.address, ...tx }] })))) as Promise<string>
 }
 const failed = (e: any, kind: 'send_failed' | 'swap_failed') =>
   e?.code === 4001 ? { success: false, reason: 'rejected_by_user' } : { success: false, reason: kind, error: { error: kind, message: String(e?.message || e).slice(0, 300) } }
@@ -392,26 +393,29 @@ const failed = (e: any, kind: 'send_failed' | 'swap_failed') =>
 async function sendToken(app: App, o: any = {}) {
   foreground(app)
   try {
-    const t = await info(parseToken(o.token ?? 'eip155:8453/slip44:60'))
+    const tk = await info(parseToken(o.token ?? 'eip155:8453/slip44:60'))
     let to = typeof o.recipientAddress === 'string' && /^0x[0-9a-f]{40}$/i.test(o.recipientAddress) ? o.recipientAddress.toLowerCase() : ''
     let who = to
     if (!to && Number.isSafeInteger(o.recipientFid) && o.recipientFid > 0) {
       const u = (await getUser(o.recipientFid)) as User & { verified_addresses?: { primary?: { eth_address?: string }; eth_addresses?: string[] } }
       to = u.verified_addresses?.primary?.eth_address || u.verified_addresses?.eth_addresses?.[0] || ''
-      if (!to) throw new Error(`@${handle(u)} has no verified Ethereum address.`)
+      if (!to) throw new Error(t('@{name} has no verified Ethereum address.', { name: handle(u) }))
       who = `@${handle(u)} (${to.slice(0, 6)}…${to.slice(-4)})`
     }
-    const form = { amount: amountOk(o.amount) ? formatUnits(BigInt(o.amount), t.decimals) : '', to }
+    const form = { amount: amountOk(o.amount) ? formatUnits(BigInt(o.amount), tk.decimals) : '', to }
     const ok = await ask(app, {
-      title: `Send ${t.symbol}?`, yes: 'Send', body: `${app.host} asked to send ${t.symbol} on ${CHAINS[t.chain].name}${who ? ` to ${who}` : ''}. Your wallet asks you to confirm.`,
-      extra: () => <>{!who && <Field label="To (address)" value={form.to} set={(v) => (form.to = v)} ph="0x…" />}<Field label={`Amount (${t.symbol})`} value={form.amount} set={(v) => (form.amount = v)} ph="0.0" /></>,
+      title: t('Send {symbol}?', { symbol: tk.symbol }), yes: t('Send'),
+      body: who
+        ? t('{host} asked to send {symbol} on {chain} to {who}. Your wallet asks you to confirm.', { host: app.host, symbol: tk.symbol, chain: CHAINS[tk.chain].name, who })
+        : t('{host} asked to send {symbol} on {chain}. Your wallet asks you to confirm.', { host: app.host, symbol: tk.symbol, chain: CHAINS[tk.chain].name }),
+      extra: () => <>{!who && <Field label={t('To (address)')} value={form.to} set={(v) => (form.to = v)} ph="0x…" />}<Field label={t('Amount ({symbol})', { symbol: tk.symbol })} value={form.amount} set={(v) => (form.amount = v)} ph="0.0" /></>,
     })
     if (!ok) return { success: false, reason: 'rejected_by_user' }
     if (!/^0x[0-9a-f]{40}$/i.test(form.to)) throw new Error('That address is not valid.')
-    const amount = parseUnits(form.amount || '0', t.decimals)
+    const amount = parseUnits(form.amount || '0', tk.decimals)
     if (amount <= 0n) throw new Error('Enter an amount.')
     await connect(app)
-    return { success: true, send: { transaction: await sendOn(app, live(app), t.chain, transferTx(t, form.to, amount)) } }
+    return { success: true, send: { transaction: await sendOn(app, live(app), tk.chain, transferTx(tk, form.to, amount)) } }
   } catch (e: any) {
     e?.code !== 4001 && toast(e.message)
     return failed(e, 'send_failed')
@@ -430,15 +434,15 @@ async function swapToken(app: App, o: any = {}) {
     let amount = amountOk(o.sellAmount) ? BigInt(o.sellAmount) : 0n
     if (!amount) {
       const form = { amount: '' }
-      if (!(await ask(app, { title: `Swap ${sell.symbol} for ${buy.symbol}`, yes: 'Get a quote', body: `How much ${sell.symbol} do you want to sell?`, extra: () => <Field label={`Amount (${sell.symbol})`} value={form.amount} set={(v) => (form.amount = v)} ph="0.0" /> })))
+      if (!(await ask(app, { title: t('Swap {sell} for {buy}', { sell: sell.symbol, buy: buy.symbol }), yes: t('Get a quote'), body: t('How much {symbol} do you want to sell?', { symbol: sell.symbol }), extra: () => <Field label={t('Amount ({symbol})', { symbol: sell.symbol })} value={form.amount} set={(v) => (form.amount = v)} ph="0.0" /> })))
         return { success: false, reason: 'rejected_by_user' }
       amount = parseUnits(form.amount || '0', sell.decimals)
       if (amount <= 0n) throw new Error('Enter an amount.')
     }
-    const q = await waitFor(app, 'Finding a swap route…', () => quote(sell, buy, amount, from))
+    const q = await waitFor(app, t('Finding a swap route…'), () => quote(sell, buy, amount, from))
     const ok = await ask(app, {
-      title: `Swap ${sell.symbol} for ${buy.symbol}?`, yes: 'Swap',
-      body: `Sell ${fmt(amount, sell)} and get about ${fmt(q.toAmount, buy)} (at least ${fmt(q.toAmountMin, buy)}), routed by LI.FI. ${app.host} asked for this swap; your wallet asks you to confirm.`,
+      title: t('Swap {sell} for {buy}?', { sell: sell.symbol, buy: buy.symbol }), yes: t('Swap'),
+      body: t('Sell {sell} and get about {buy} (at least {min}), routed by LI.FI. {host} asked for this swap; your wallet asks you to confirm.', { sell: fmt(amount, sell), buy: fmt(q.toAmount, buy), min: fmt(q.toAmountMin, buy), host: app.host }),
     })
     if (!ok) return { success: false, reason: 'rejected_by_user' }
     const w = live(app)
@@ -446,7 +450,7 @@ async function swapToken(app: App, o: any = {}) {
     // a token needs an approval for exactly this amount first, to LI.FI's contract only
     if (sell.address && (await allowance((m, p) => publicRpc(sell.chain, m, p), sell, from)) < amount) {
       transactions.push(await sendOn(app, w, sell.chain, approveTx(sell, amount)))
-      await waitFor(app, 'Waiting for the approval…', () => mined(sell.chain, transactions[0]))
+      await waitFor(app, t('Waiting for the approval…'), () => mined(sell.chain, transactions[0]))
     }
     transactions.push(await sendOn(app, w, sell.chain, q.tx))
     return { success: true, swap: { transactions } }
@@ -511,7 +515,7 @@ export async function setNotify(m: AppMeta, on: boolean, event?: 'miniapp_added'
   const r = await api('/api/notify/event', { origin, event: signed })
   if (!on) await api('/api/notify/forget', { inbox: inboxSecret(), origin })
   setAccount({ ...account!, notify: on ? [...new Set([...(account!.notify || []), origin])] : (account!.notify || []).filter((o) => o !== origin) })
-  if (on && r.status && (r.status < 200 || r.status >= 300)) toast(`${m.name || origin} answered ${r.status} when turning notifications on.`)
+  if (on && r.status && (r.status < 200 || r.status >= 300)) toast(t('{name} answered {status} when turning notifications on.', { name: m.name || origin, status: r.status }))
   return d
 }
 
@@ -559,10 +563,10 @@ async function signIn(app: App, o: any = {}) {
   // checked before asking, so a bad request never shows a prompt
   const draft = () => siwf({ origin: app.origin, address: custody.address, fid: a.fid!, nonce: o.nonce, notBefore: o.notBefore, expirationTime: o.expirationTime })
   draft()
-  if (!(await ask(app, { title: `Sign in to ${app.name}?`, yes: 'Sign in', body: `${app.host} will know you as @${handle(me)} (fid ${me.fid}). This signs a sign-in message with your account.` })))
+  if (!(await ask(app, { title: t('Sign in to {site}?', { site: app.name }), yes: t('Sign in'), body: t('{host} will know you as @{name} (fid {fid}). This signs a sign-in message with your account.', { host: app.host, name: handle(me), fid: me.fid }) })))
     return { error: { type: 'rejected_by_user' } }
   const message = draft()
-  const sig = await waitFor(app, a.wallet ? 'Check your wallet' : 'Signing…', () => custody.message(new TextEncoder().encode(message)))
+  const sig = await waitFor(app, a.wallet ? t('Check your wallet') : t('Signing…'), () => custody.message(new TextEncoder().encode(message)))
   return { result: { message, signature: '0x' + hex(sig), authMethod: 'custody' } }
 }
 
@@ -578,8 +582,8 @@ async function addApp(app: App) {
   else {
     const form = { notify: !!m.webhook }
     const ok = await ask(app, {
-      title: `Add ${app.name} to your apps?`, yes: 'Add', body: 'It shows up under Mini apps, so you can open it again from there.',
-      extra: m.webhook ? () => <label class="check"><input type="checkbox" checked={form.notify} onChange={(e) => (form.notify = e.currentTarget.checked)} />Notifications from {app.name}</label> : undefined,
+      title: t('Add {name} to your apps?', { name: app.name }), yes: t('Add'), body: t('It shows up under Mini apps, so you can open it again from there.'),
+      extra: m.webhook ? () => <label class="check"><input type="checkbox" checked={form.notify} onChange={(e) => (form.notify = e.currentTarget.checked)} />{t('Notifications from {name}', { name: app.name })}</label> : undefined,
     })
     if (!ok) return emit(app, { event: 'miniapp_add_rejected', reason: 'rejected_by_user' }), { error: { type: 'rejected_by_user' } }
     // still inside the click, so the browser lets us ask
@@ -587,7 +591,7 @@ async function addApp(app: App) {
     saved || save('quilcast:apps', [meta, ...savedApps()])
     if (form.notify) {
       try {
-        d = await waitFor(app, 'Turning on notifications…', () => setNotify(meta, true, 'miniapp_added', (s) => ((app.waiting = s), update())))
+        d = await waitFor(app, t('Turning on notifications…'), () => setNotify(meta, true, 'miniapp_added', (s) => ((app.waiting = s), update())))
         if ((await permission) === 'granted') enablePush().catch(() => {})
       } catch (e: any) {
         toast(e.message)
@@ -601,7 +605,7 @@ async function addApp(app: App) {
 async function media(app: App) {
   foreground(app)
   if (app.media) return
-  const ok = await ask(app, { title: `Let ${app.name} use your camera and microphone?`, yes: 'Allow', body: `${app.host} reloads once to get access, and your browser asks you too. You can take it back from the app's menu.` })
+  const ok = await ask(app, { title: t('Let {name} use your camera and microphone?', { name: app.name }), yes: t('Allow'), body: t("{host} reloads once to get access, and your browser asks you too. You can take it back from the app's menu.", { host: app.host }) })
   if (!ok) throw new Error('Camera and microphone access was declined.')
   allow('media', app.origin, '1')
   app.media = true
@@ -726,14 +730,14 @@ function WalletMenu({ app }: { app: App }) {
   const on = app.connected && app.wallet?.address
   return (
     <span class="wrap-menu">
-      <button class="wallet-btn" aria-haspopup="menu" aria-label={on ? `Wallet ${app.wallet!.name}, ${on}` : 'Wallet'} onClick={() => setOpen(!open)}>
+      <button class="wallet-btn" aria-haspopup="menu" aria-label={on ? t('Wallet {name}, {address}', { name: app.wallet!.name, address: on }) : t('Wallet')} onClick={() => setOpen(!open)}>
         <WalletIcon w={app.wallet} />{on && <span>{short(on)}</span>}
       </button>
       {open && (
         <Menu class="right" close={() => setOpen(false)}>
-          {wallets.length > 0 && <div class="menu-label muted">{on ? `${app.host} sees this wallet` : 'Wallet for this app'}</div>}
+          {wallets.length > 0 && <div class="menu-label muted">{on ? t('{host} sees this wallet', { host: app.host }) : t('Wallet for this app')}</div>}
           {wallets.map((w) => <button role="menuitemradio" aria-checked={w === app.wallet} onClick={() => (setOpen(false), pick(app, w))}><WalletIcon w={w} /><span class="wname">{w.name}</span>{w === app.wallet && <Icon d={P.check} />}</button>)}
-          {app.connected && <button role="menuitem" onClick={() => (setOpen(false), disconnect(app))}><Icon d={P.x} />Disconnect</button>}
+          {app.connected && <button role="menuitem" onClick={() => (setOpen(false), disconnect(app))}><Icon d={P.x} />{t('Disconnect')}</button>}
           {app.sol && solWallets.length > 0 && <div class="menu-label muted">Solana</div>}
           {app.sol && solWallets.map((w) => <button role="menuitemradio" aria-checked={w === app.sol?.wallet} onClick={() => (setOpen(false), pickSol(app, w))}><WalletIcon w={w} /><span class="wname">{w.name}</span>{w === app.sol?.wallet && <Icon d={P.check} />}</button>)}
         </Menu>
@@ -747,13 +751,13 @@ function AppMenu({ app }: { app: App }) {
   const item = (label: string, f: () => void) => <button role="menuitem" onClick={() => (setOpen(false), f())}>{label}</button>
   return (
     <span class="wrap-menu">
-      <button class="icon-btn" aria-label="More" aria-haspopup="menu" onClick={() => setOpen(!open)}><Icon d={P.more} /></button>
+      <button class="icon-btn" aria-label={t('More')} aria-haspopup="menu" onClick={() => setOpen(!open)}><Icon d={P.more} /></button>
       {open && (
         <Menu class="right" close={() => setOpen(false)}>
-          {item('Reload', () => reload(app))}
-          {item('Copy link', () => navigator.clipboard.writeText(app.url).then(() => toast('Link copied')))}
-          {app.media && item('Take back camera and mic', () => (allow('media', app.origin, null), (app.media = false), update(), reload(app)))}
-          {app.sol && item('Disconnect Solana wallet', () => (allow('solana', app.origin, null), (app.sol = undefined), update()))}
+          {item(t('Reload'), () => reload(app))}
+          {item(t('Copy link'), () => navigator.clipboard.writeText(app.url).then(() => toast('Link copied')))}
+          {app.media && item(t('Take back camera and mic'), () => (allow('media', app.origin, null), (app.media = false), update(), reload(app)))}
+          {app.sol && item(t('Disconnect Solana wallet'), () => (allow('solana', app.origin, null), (app.sol = undefined), update()))}
         </Menu>
       )}
     </span>
@@ -770,7 +774,7 @@ function AskCard({ app }: { app: App }) {
         <p>{a.body}</p>
         {a.extra?.()}
         <div class="btns">
-          <button class="btn ghost small" onClick={() => a.done(false)}>Cancel</button>
+          <button class="btn ghost small" onClick={() => a.done(false)}>{t('Cancel')}</button>
           <button class="btn small" onClick={() => a.done(true)}>{a.yes}</button>
         </div>
       </div>
@@ -784,12 +788,12 @@ function Window({ app }: { app: App }) {
   return (
     <section class={`mini${on ? '' : ' away'}`} aria-label={app.name} aria-hidden={!on}>
       <header class="mini-top">
-        {app.back ? <button class="icon-btn" aria-label="Back" onClick={() => emit(app, { event: 'back_navigation_triggered' })}><Icon d={P.back} /></button> : <AppIcon app={app} />}
+        {app.back ? <button class="icon-btn" aria-label={t('Back')} onClick={() => emit(app, { event: 'back_navigation_triggered' })}><Icon d={P.back} /></button> : <AppIcon app={app} />}
         <span class="mini-name"><b>{app.name}</b><small>{app.host}</small></span>
         <WalletMenu app={app} />
         <AppMenu app={app} />
-        <button class="icon-btn" aria-label="Minimize" onClick={() => show(null)}><Icon d={P.min} /></button>
-        <button class="icon-btn" aria-label="Close" onClick={() => close(app)}><Icon d={P.x} /></button>
+        <button class="icon-btn" aria-label={t('Minimize')} onClick={() => show(null)}><Icon d={P.min} /></button>
+        <button class="icon-btn" aria-label={t('Close')} onClick={() => close(app)}><Icon d={P.x} /></button>
       </header>
       <div class="mini-body">
         {/* its own origin (never ours, see launch), no top navigation or location; camera and mic only once allowed */}
@@ -814,7 +818,7 @@ function Host() {
     <>
       {apps.map((app) => <Window key={app.id} app={app} />)}
       {apps.length > 0 && (
-        <nav class={`dock${shown ? ' behind' : ''}`} aria-label="Open mini apps">
+        <nav class={`dock${shown ? ' behind' : ''}`} aria-label={t('Open mini apps')}>
           {/* the one on screen scrolls into view when there are more than fit */}
           {apps.map((app) => <button class={shown === app.id ? 'on' : ''} ref={(el) => void (el && shown === app.id && el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))} aria-label={app.name} title={app.name} onClick={() => show(shown === app.id ? null : app)}><AppIcon app={app} /></button>)}
         </nav>

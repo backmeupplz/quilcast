@@ -1,4 +1,6 @@
 // ogre mode: five taps in a row on the big pfp on /u/borodutch turn the app into a swamp (the looks live in style.css under [data-ogre])
+import { t } from './i18n.ts'
+
 export const OGRE_FID = 1356
 const KEY = 'quilcast:ogre'
 const root = document.documentElement
@@ -47,7 +49,7 @@ function play(v: boolean) {
     f.referrerPolicy = 'strict-origin-when-cross-origin'
     dj.prepend(f)
   }
-  dj.querySelector('button')!.textContent = v ? '■\uFE0E Stop' : '▶\uFE0E All Star'
+  dj.querySelector('button')!.textContent = v ? '■\uFE0E ' + t('Stop') : '▶\uFE0E All Star'
 }
 // the first tap or key anywhere starts it, unless it's on the button, which decides for itself
 const first = (e: Event) => dj && !dj.contains(e.target as Node) && play(true)
@@ -65,7 +67,7 @@ let roar = ''
 export function ogreTap(el: Element) {
   clearTimeout(timer)
   const left = 5 - ++taps
-  hit(el, left ? String(left) : on() ? 'ogre mode off' : 'OGRE MODE!')
+  hit(el, left ? String(left) : on() ? t('ogre mode off') : t('OGRE MODE!'))
   // fetch the roar early so it's ready on the last tap
   if (left === 2 && !on()) new Image().src = roar = `/shrek/roar?${Date.now()}`
   if (!left) {

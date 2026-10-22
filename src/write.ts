@@ -4,6 +4,7 @@ import { keccak_256 } from '@noble/hashes/sha3.js'
 import { HDKey } from '@scure/bip32'
 import { account, byName, get, LINK_RE, myUser, posting, setAccount, settings, toUrl, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
+import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
 import { castBody, castRemoveBody, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, reactionBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 
@@ -70,7 +71,7 @@ async function custodyTx(a: Account, to: string, data: string) {
   if (a.wallet) return (await import('./wallet.ts')).sendTx(a.wallet, to, data)
   const key = await custodyKey(a.phrase)
   const { address } = keyCustody(key)
-  if ((await balance(settings.rpc, address)) === 0n) throw new Error(`Your account address ${address} needs a little ETH on Optimism (a cent's worth) to pay for this.`)
+  if ((await balance(settings.rpc, address)) === 0n) throw new Error(t("Your account address {address} needs a little ETH on Optimism (a cent's worth) to pay for this.", { address }))
   return sendTx(settings.rpc, key, to, data)
 }
 
@@ -84,13 +85,13 @@ export async function ensureAppKey(onWait?: (what: string) => void) {
   let a = account!
   if (!a.appKey) {
     const priv = ed25519.utils.randomSecretKey()
-    onWait?.(a.wallet ? 'Confirm the key in your wallet (Optimism)' : 'Adding a notification key on Optimism…')
+    onWait?.(a.wallet ? t('Confirm the key in your wallet (Optimism)') : t('Adding a notification key on Optimism…'))
     await custodyTx(a, KEY_GATEWAY, await keyGatewayAdd(a.fid!, await custodyOf(a), ed25519.getPublicKey(priv), Math.floor(Date.now() / 1000) + 3600))
     // kept as soon as the transaction is out, so a reload doesn't add a second key
     setAccount((a = { ...account!, appKey: hex(priv) }))
   }
   const priv = unhex(a.appKey!)
-  onWait?.('Waiting for the network to see the key…')
+  onWait?.(t('Waiting for the network to see the key…'))
   for (let i = 0; !(await onChain(a.fid!, ed25519.getPublicKey(priv))); i++) {
     if (i >= 40) throw new Error('The notification key is still being confirmed. Try again in a minute.')
     await new Promise((r) => setTimeout(r, 3000))
@@ -153,7 +154,7 @@ export async function post(text: string, o: { parent?: CastRef; channel?: string
 
 const json = async (r: Response) => {
   const j = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(j.error || `Upload failed (${r.status})`)
+  if (!r.ok) throw new Error(j.error || t('Upload failed ({status})', { status: r.status }))
   return j
 }
 // XHR rather than fetch, for upload progress events
@@ -162,7 +163,7 @@ const put = (url: string, body: Blob, onSent: (n: number) => void) =>
     const x = new XMLHttpRequest()
     x.open('PUT', url)
     x.upload.onprogress = (e) => onSent(e.loaded)
-    x.onload = () => (x.status < 300 ? resolve(JSON.parse(x.responseText)) : reject(new Error(JSON.parse(x.responseText || '{}').error || `Upload failed (${x.status})`)))
+    x.onload = () => (x.status < 300 ? resolve(JSON.parse(x.responseText)) : reject(new Error(JSON.parse(x.responseText || '{}').error || t('Upload failed ({status})', { status: x.status }))))
     x.onerror = () => reject(new Error('Network error'))
     x.send(body)
   })
@@ -322,6 +323,6 @@ export async function saveLook(look: object | null, tries = 3): Promise<unknown>
   const j = await r.json().catch(() => null)
   // a key ensureSigner just added takes the node a few seconds to list; one the node doesn't list at all is replaced
   if (r.status === 403 && tries > 1) return ((await signerListed()) ? sleep(3000) : replaceSigner()).then(() => saveLook(look, tries - 1))
-  if (!r.ok) throw new Error(j?.error || `Saving failed (${r.status})`)
+  if (!r.ok) throw new Error(j?.error || t('Saving failed ({status})', { status: r.status }))
   return j
 }

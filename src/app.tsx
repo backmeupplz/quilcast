@@ -6,6 +6,7 @@ import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, sized, type Look } from './shared.ts'
 import { ago, AppIcon, Avatar, CastCard, DesignCard, designOf, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
+import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import './style.css'
 
 // views most visits never open load when first needed
@@ -26,7 +27,13 @@ function Toast() {
   return m ? <div class="toast" role="status">{m}</div> : null
 }
 
-const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">Source</a></>
+const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a></>
+
+/** A translated sentence with one {key} placeholder filled by an element, so translators can move it. */
+const With = ({ s, k, children }: { s: string; k: string; children: ComponentChildren }) => {
+  const [a, b] = s.split(`{${k}}`)
+  return <>{a}{children}{b}</>
+}
 
 // every saved account with a way to switch, plus "Add account"
 function AccountList({ onDone }: { onDone?: () => void }) {
@@ -40,12 +47,12 @@ function AccountList({ onDone }: { onDone?: () => void }) {
         return (
           <button class={`acct${on ? ' on' : ''}`} onClick={() => (on ? onDone?.() : switchAccount(a))}>
             <Avatar u={u} size={32} link={false} />
-            <span><b>{u.display_name || a.display || (a.username ? `@${a.username}` : 'New account')}</b><small>{a.done ? `@${handle(u)}` : 'Setting up'}</small></span>
+            <span><b>{u.display_name || a.display || (a.username ? `@${a.username}` : t('New account'))}</b><small>{a.done ? `@${handle(u)}` : t('Setting up')}</small></span>
             {on && <Icon d={P.check} />}
           </button>
         )
       })}
-      <button class="acct add" onClick={() => (onDone?.(), go('/join'))}><span class="plus"><Icon d={P.plus} /></span><span><b>Add account</b></span></button>
+      <button class="acct add" onClick={() => (onDone?.(), go('/join'))}><span class="plus"><Icon d={P.plus} /></span><span><b>{t('Add account')}</b></span></button>
     </div>
   )
 }
@@ -113,9 +120,9 @@ function Pager<T>({ load, k, empty, id, row, initial }: { load: (cursor?: string
   return (
     <>
       {row(items)}
-      {err && <div class="note">Couldn't load: {err} <button class="link-btn" onClick={() => more()}>Retry</button></div>}
-      {busy && (items.length ? <div class="spinner" aria-label="Loading" /> : <div aria-label="Loading">{[0, 1, 2, 3].map(() => <div class="skel"><i /><span><b /><b /><b /></span></div>)}</div>)}
-      {cursor === null && !items.length && !err && !busy && <div class="note">{empty || 'Nothing here yet.'}</div>}
+      {err && <div class="note">{t('Couldn\'t load: {error}', { error: err })} <button class="link-btn" onClick={() => more()}>{t('Retry')}</button></div>}
+      {busy && (items.length ? <div class="spinner" aria-label={t('Loading')} /> : <div aria-label={t('Loading')}>{[0, 1, 2, 3].map(() => <div class="skel"><i /><span><b /><b /><b /></span></div>)}</div>)}
+      {cursor === null && !items.length && !err && !busy && <div class="note">{empty || t('Nothing here yet.')}</div>}
       <div ref={sentinel} />
     </>
   )
@@ -156,17 +163,17 @@ function Home() {
   const [round, reload] = useReload()
   return (
     <>
-      <Header title="Home" back={false}>
-        {account?.done && <Tabs tabs={[['following', 'Following'], ['trending', 'Trending']]} value={tab} set={(t) => (t === tab ? reload() : setTab(t))} />}
+      <Header title={t('Home')} back={false}>
+        {account?.done && <Tabs tabs={[['following', t('Following')], ['trending', t('Trending')]]} value={tab} set={(t) => (t === tab ? reload() : setTab(t))} />}
       </Header>
       {!account?.done && (
         <div class="banner">
-          <div><b>Farcaster without the middlemen</b><p>Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.</p></div>
-          <a class="btn small" href="/join">Join</a>
+          <div><b>{t('Farcaster without the middlemen')}</b><p>{t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p></div>
+          <a class="btn small" href="/join">{t('Join')}</a>
         </div>
       )}
       {/* about half of a page is replies, which home leaves out, so pages are 50 */}
-      <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty="Follow a few people and their casts will show up here." keep={(c) => !c.parent_hash}
+      <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={(c) => !c.parent_hash}
         load={(cursor) => (tab === 'following' ? get('/v2/farcaster/feed/following', { fid: account!.fid, limit: 50, cursor }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
     </>
   )
@@ -187,12 +194,17 @@ function NoteRow({ g }: { g: Group }) {
   if (g.cast && !ACT(g.type)) return <CastCard c={g.cast} />
   const [verb, icon, cls] = ACT(g.type) || [String(g.type), P.user, 'fo']
   const first = g.users[0]
+  const others = g.users.length - 1
+  const line = g.type === 'likes' ? (others ? tn(others, '{name} and {n} other liked your cast', '{name} and {n} others liked your cast') : t('{name} liked your cast'))
+    : g.type === 'recasts' ? (others ? tn(others, '{name} and {n} other recast your cast', '{name} and {n} others recast your cast') : t('{name} recast your cast'))
+    : g.type === 'follows' ? (others ? tn(others, '{name} and {n} other followed you', '{name} and {n} others followed you') : t('{name} followed you'))
+    : `{name} ${verb}`
   return (
     <a class="note-row" href={g.cast ? `/c/${g.cast.hash}` : userPath(first)}>
       <span class={`note-icon ${cls}`}><Icon d={icon} fill={g.type === 'likes'} size={20} /></span>
       <span class="note-body">
         <span class="note-avatars">{g.users.slice(0, 7).map((u) => <Avatar u={u} size={30} link={false} />)}</span>
-        <span><b>{nameOf(first)}</b>{g.users.length > 1 && ` and ${g.users.length - 1} ${g.users.length === 2 ? 'other' : 'others'}`} {verb} <span class="muted">· {ago(g.timestamp)}</span></span>
+        <span><With s={line} k="name"><b>{nameOf(first)}</b></With> <span class="muted">· {ago(g.timestamp)}</span></span>
         {g.cast && <NotePeek c={g.cast} />}
       </span>
     </a>
@@ -203,7 +215,7 @@ function NoteRow({ g }: { g: Group }) {
 function NotePeek({ c }: { c: Cast }) {
   const text = castText(c).trim()
   const img = !text && thumbOf(c)
-  return img ? <Img class="qimg" src={sized(img, 'w=240')} /> : <span class="note-cast">{text || urlsOf(c)[0] || 'Your cast'}</span>
+  return img ? <Img class="qimg" src={sized(img, 'w=240')} /> : <span class="note-cast">{text || urlsOf(c)[0] || t('Your cast')}</span>
 }
 
 // group likes/recasts per cast and follows per day; replies and mentions stay one per cast
@@ -247,7 +259,7 @@ function AppNotes() {
   const [list, setList] = useState<AppNote[] | null>(null)
   useEffect(() => void appNotes().then(setList), [])
   if (!list) return <div class="spinner" />
-  if (!list.length) return <div class="note">Mini apps you turned notifications on for will show up here.</div>
+  if (!list.length) return <div class="note">{t('Mini apps you turned notifications on for will show up here.')}</div>
   return (
     <>
       {list.map((n) => (
@@ -275,13 +287,13 @@ function Notifications() {
     localStorage.setItem(seenKey(), String(Date.now()))
     dispatchEvent(new Event('seen'))
   }, [round])
-  if (!account?.done) return <><Header title="Notifications" /><div class="note">Sign in to see who replied, liked and followed.</div></>
+  if (!account?.done) return <><Header title={t('Notifications')} /><div class="note">{t('Sign in to see who replied, liked and followed.')}</div></>
   return (
     <>
-      <Header title="Notifications">
-        <Tabs tabs={[['all', 'All'], ['replies', 'Replies & mentions'], ...(account.inbox ? [['apps', 'Mini apps'] as ['apps', string]] : [])]} value={tab} set={(t) => (t === tab ? reload() : setTab(t))} />
+      <Header title={t('Notifications')}>
+        <Tabs tabs={[['all', t('All')], ['replies', t('Replies & mentions')], ...(account.inbox ? [['apps', t('Mini apps')] as ['apps', string]] : [])]} value={tab} set={(t) => (t === tab ? reload() : setTab(t))} />
       </Header>
-      {tab === 'apps' ? <AppNotes key={round} /> : <Pager<Note> k={`${tab}:${round}`} empty="Nothing yet. When people reply, like or follow you, it shows up here."
+      {tab === 'apps' ? <AppNotes key={round} /> : <Pager<Note> k={`${tab}:${round}`} empty={t('Nothing yet. When people reply, like or follow you, it shows up here.')}
         id={(n) => `${n.type}:${n.cast?.hash}:${n.user.fid}:${n.timestamp}`}
         row={(ns) => group(ns).map((g) => <NoteRow key={g.key} g={g} />)}
         load={async (cursor) => {
@@ -336,14 +348,14 @@ function useUnread() {
   return unread
 }
 
-const WHO = { likes: 'Liked by', recasts: 'Recast by', quotes: 'Quotes' }
+const WHO = { likes: () => t('Liked by'), recasts: () => t('Recast by'), quotes: () => t('Quotes') }
 
 /** Who liked or recast a cast, or the casts quoting it. */
 function Who({ hash, kind }: { hash: string; kind: keyof typeof WHO }) {
   return (
     <>
-      <Header title={WHO[kind]} />
-      <Pager<Cast | User> k={`${hash}:${kind}`} empty={kind === 'quotes' ? 'No quotes yet.' : 'Nobody yet.'}
+      <Header title={WHO[kind]()} />
+      <Pager<Cast | User> k={`${hash}:${kind}`} empty={kind === 'quotes' ? t('No quotes yet.') : t('Nobody yet.')}
         id={(x) => ('hash' in x ? x.hash : String(x.fid))}
         row={(xs) => xs.map((x) => ('hash' in x ? <CastCard key={x.hash} c={x} /> : <UserRow key={x.fid} u={x} />))}
         load={async () => ({
@@ -400,8 +412,8 @@ function Thread({ hash }: { hash: string }) {
   }, [hash])
   return (
     <>
-      <Header title="Cast" />
-      {err && <div class="note">This cast couldn't be found. It may have been deleted.</div>}
+      <Header title={t('Cast')} />
+      {err && <div class="note">{t('This cast couldn\'t be found. It may have been deleted.')}</div>}
       {!c && !err && <div class="spinner" />}
       {c && (
         <>
@@ -409,7 +421,7 @@ function Thread({ hash }: { hash: string }) {
           <CastCard c={c} focus quotes={quotes} />
           <button class="reply-prompt" onClick={() => (account?.done ? shell.compose({ parent: c }) : go('/join'))}>
             {account?.done && <Avatar u={myUser()!} size={32} link={false} />}
-            <span>Post your reply</span>
+            <span>{t('Post your reply')}</span>
           </button>
           {(c.direct_replies || []).map((r) => {
             const kids = r.direct_replies || []
@@ -417,11 +429,11 @@ function Thread({ hash }: { hash: string }) {
               <div class="reply-group" key={r.hash}>
                 <CastCard c={r} line={kids.length > 0} inThread />
                 {kids[0] && <CastCard c={kids[0]} inThread />}
-                {kids.length > 1 && <a class="more-replies" href={`/c/${r.hash}`}>Show {kids.length - 1} more {kids.length === 2 ? 'reply' : 'replies'}</a>}
+                {kids.length > 1 && <a class="more-replies" href={`/c/${r.hash}`}>{tn(kids.length - 1, 'Show {n} more reply', 'Show {n} more replies')}</a>}
               </div>
             )
           })}
-          {!c.direct_replies?.length && <div class="note">No replies yet.</div>}
+          {!c.direct_replies?.length && <div class="note">{t('No replies yet.')}</div>}
         </>
       )}
     </>
@@ -449,7 +461,7 @@ function Profile({ id }: { id: string }) {
     setTab('casts')
     setLook(null)
     setDraft(null)
-    getUser(id).then((u) => (setU(u), isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))), () => setErr('No one goes by that name.'))
+    getUser(id).then((u) => (setU(u), isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))), () => setErr(t('No one goes by that name.')))
   }, [id])
   const self = account?.fid === u?.fid
   // a shared design (`design`, an id) is put on top of the look being edited
@@ -457,7 +469,7 @@ function Profile({ id }: { id: string }) {
     Promise.all([looksMod(), loaded.current, design ? designOf(design) : null]).then(([m, l, des]) => {
       setL(m)
       setDraft((d) => (des ? m.withDesign(d || l || {}, des) : d || l || {}))
-      if (design) toast(des ? 'Design loaded. Save to keep it.' : "That design link doesn't work.")
+      if (design) toast(des ? t('Design loaded. Save to keep it.') : t('That design link doesn\'t work.'))
     })
   useEffect(() => {
     if (!u) return
@@ -483,6 +495,7 @@ function Profile({ id }: { id: string }) {
     document.documentElement.dataset.look = ''
     return () => void delete document.documentElement.dataset.look
   }, [!!shown])
+  const followers = (u?.follower_count || 0) + +!!following - +was.current
   const toggle = () => {
     if (!account?.done) return go('/join')
     const on = !following
@@ -493,7 +506,7 @@ function Profile({ id }: { id: string }) {
     <>
       <div class={`look${shown ? ' on' : ''}`} style={shown ? L.vars(shown) : undefined}>
         {shown && <L.Bg l={shown} />}
-        <Header title={u ? nameOf(u) : 'Profile'} />
+        <Header title={u ? nameOf(u) : t('Profile')} />
         {err && <div class="note">{err}</div>}
         {!u && !err && <div class="spinner" />}
         {u && (
@@ -504,14 +517,14 @@ function Profile({ id }: { id: string }) {
                 <Avatar u={u} size={72} link={false} onClick={u.fid === OGRE_FID ? (e) => ogreTap(e.currentTarget as Element) : undefined} />
                 {self ? (
                   <span class="btns">
-                    <button class="btn ghost small" onClick={() => edit()} disabled={!!draft}>Customize</button>
-                    <a class="btn ghost small" href="/settings">Edit profile</a>
+                    <button class="btn ghost small" onClick={() => edit()} disabled={!!draft}>{t('Customize')}</button>
+                    <a class="btn ghost small" href="/settings">{t('Edit profile')}</a>
                   </span>
                 ) : (
                   <span class="btns">
                     {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
-                    {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>Message</a>}
-                    <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? 'Following' : 'Follow'}</button>
+                    {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
+                    <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? t('Following') : t('Follow')}</button>
                   </span>
                 )}
               </div>
@@ -519,12 +532,12 @@ function Profile({ id }: { id: string }) {
               <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span></div>
               {shown && <L.Mood l={shown} />}
               {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
-              <div class="counts"><span><b>{n(u.following_count)}</b> following</span><span><b>{n((u.follower_count || 0) + +!!following - +was.current)}</b> followers</span></div>
+              <div class="counts"><span><b>{n(u.following_count)}</b> {t('following')}</span><span><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</span></div>
             </section>
             {shown && <L.Sections l={shown} u={u} />}
             <div class="lk-box lk-feed">
-              <Tabs tabs={[['casts', 'Casts'], ['replies', 'Replies']]} value={tab} set={setTab} />
-              <Feed k={`${u.fid}${tab}`} empty={tab === 'casts' ? 'No casts yet.' : 'No replies yet.'} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
+              <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')]]} value={tab} set={setTab} />
+              <Feed k={`${u.fid}${tab}`} empty={tab === 'casts' ? t('No casts yet.') : t('No replies yet.')} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
                 load={(cursor) => get(tab === 'casts' ? '/v2/farcaster/feed/user/casts' : '/v2/farcaster/feed/user/replies_and_recasts', { fid: u.fid, limit: 25, cursor })} />
             </div>
           </>
@@ -556,16 +569,16 @@ function Search() {
   }, [term, tab])
   return (
     <>
-      <Header title="Search">
+      <Header title={t('Search')}>
         <div class="searchbox">
           <Icon d={P.search} size={16} />
-          <input ref={input} type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder="Search people and casts" aria-label="Search" />
+          <input ref={input} type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search people and casts')} aria-label={t('Search')} />
         </div>
-        <Tabs tabs={[['people', 'People'], ['casts', 'Casts']]} value={tab} set={setTab} />
+        <Tabs tabs={[['people', t('People')], ['casts', t('Casts')]]} value={tab} set={setTab} />
       </Header>
-      {!term && <div class="note">Find people by name or username, or search the text of casts.</div>}
-      {term && tab === 'people' && (people === null ? <div class="spinner" /> : people.length ? people.map((u) => <UserRow u={u} />) : <div class="note">No one matches “{term}”.</div>)}
-      {term && tab === 'casts' && <Feed k={`s${term}`} empty={`No casts match “${term}”.`} load={(cursor) => get('/v2/farcaster/cast/search', { q: term, limit: 25, cursor }).then((r) => r.result || r)} />}
+      {!term && <div class="note">{t('Find people by name or username, or search the text of casts.')}</div>}
+      {term && tab === 'people' && (people === null ? <div class="spinner" /> : people.length ? people.map((u) => <UserRow u={u} />) : <div class="note">{t('No one matches “{term}”.', { term })}</div>)}
+      {term && tab === 'casts' && <Feed k={`s${term}`} empty={t('No casts match “{term}”.', { term })} load={(cursor) => get('/v2/farcaster/cast/search', { q: term, limit: 25, cursor }).then((r) => r.result || r)} />}
     </>
   )
 }
@@ -583,7 +596,7 @@ function Discover() {
   const [q, setQ] = useState('')
   useEffect(() => void loadListed().then(setList), [])
   if (!list) return <div class="spinner" />
-  if (!list.length) return <p class="hint">The directory couldn't be loaded. Try again in a bit.</p>
+  if (!list.length) return <p class="hint">{t('The directory couldn\'t be loaded. Try again in a bit.')}</p>
   const cats = [...new Set(list.flatMap((a) => a.category ?? []))]
   const term = q.trim().toLowerCase()
   const shown = list.filter((a) => (!cat || a.category === cat) && (!term || `${a.name} ${a.tagline || ''}`.toLowerCase().includes(term)))
@@ -591,10 +604,10 @@ function Discover() {
     <>
       <div class="searchbox">
         <Icon d={P.search} size={16} />
-        <input type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder="Search mini apps" aria-label="Search mini apps" />
+        <input type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search mini apps')} aria-label={t('Search mini apps')} />
       </div>
       <div class="chips">
-        {['', ...cats].map((c) => <button class={`chip${cat === c ? ' on' : ''}`} aria-pressed={cat === c} onClick={() => setCat(c)}>{c ? CATEGORY(c) : 'All'}</button>)}
+        {['', ...cats].map((c) => <button class={`chip${cat === c ? ' on' : ''}`} aria-pressed={cat === c} onClick={() => setCat(c)}>{c ? CATEGORY(c) : t('All')}</button>)}
       </div>
       {shown.map((a) => (
         <button class="app-row app-main listed" onClick={() => launchApp(a)}>
@@ -602,8 +615,8 @@ function Discover() {
           <span><b>{a.name}</b><small>{a.tagline || new URL(a.url).host}</small></span>
         </button>
       ))}
-      {!shown.length && <p class="hint">Nothing matches.</p>}
-      <p class="hint">The top mini apps on Farcaster, as farcaster.xyz ranks them. Quilcast doesn't review them, so treat them like any website.</p>
+      {!shown.length && <p class="hint">{t('Nothing matches.')}</p>}
+      <p class="hint">{t('The top mini apps on Farcaster, as farcaster.xyz ranks them. Quilcast doesn\'t review them, so treat them like any website.')}</p>
     </>
   )
 }
@@ -664,7 +677,7 @@ function Apps() {
       const x = await m()
       if (push) await x.disablePush(), setPush(false)
       else if ((await asked) === 'granted') await x.enablePush(), setPush(true)
-      else throw new Error('Notifications are blocked for Quilcast in this browser. Allow them in the site settings (the icon left of the address).')
+      else throw new Error(t('Notifications are blocked for Quilcast in this browser. Allow them in the site settings (the icon left of the address).'))
     } catch (e: any) {
       setPushErr(e.message)
     }
@@ -673,31 +686,31 @@ function Apps() {
   const openTyped = () => url.trim() && launchUrl(/^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`)
   return (
     <>
-      <Header title="Mini apps" />
+      <Header title={t('Mini apps')} />
       <div class="settings">
         <div class="app-open">
-          <input value={url} onInput={(e) => setUrl(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && openTyped()} placeholder="Paste a mini app link" aria-label="Mini app link" inputMode="url" />
-          <button class="btn small" onClick={openTyped} disabled={!url.trim()}>Open</button>
+          <input value={url} onInput={(e) => setUrl(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && openTyped()} placeholder={t('Paste a mini app link')} aria-label={t('Mini app link')} inputMode="url" />
+          <button class="btn small" onClick={openTyped} disabled={!url.trim()}>{t('Open')}</button>
         </div>
-        {list.length > 0 && <h2 class="apps-h">Your apps</h2>}
+        {list.length > 0 && <h2 class="apps-h">{t('Your apps')}</h2>}
         {list.map((a) => (
           <div class="app-row">
             <button class="app-main" onClick={() => launchApp(a)}>
               <AppIcon src={a.icon} name={a.name} />
-              <span><b>{a.name}</b><small>{busy === a.url ? 'Working…' : new URL(a.url).host}</small></span>
+              <span><b>{a.name}</b><small>{busy === a.url ? t('Working…') : new URL(a.url).host}</small></span>
             </button>
-            {account?.done && <button class={`icon-btn${on(a) ? ' on' : ''}`} disabled={!!busy} aria-pressed={on(a)} aria-label={`Notifications from ${a.name}`} title={on(a) ? 'Notifications on' : 'Notifications off'} onClick={() => bell(a)}><Icon d={P.bell} fill={on(a)} /></button>}
-            <button class="icon-btn" disabled={!!busy} aria-label={`Remove ${a.name}`} onClick={() => remove(a)}><Icon d={P.trash} /></button>
+            {account?.done && <button class={`icon-btn${on(a) ? ' on' : ''}`} disabled={!!busy} aria-pressed={on(a)} aria-label={t('Notifications from {app}', { app: String(a.name) })} title={on(a) ? t('Notifications on') : t('Notifications off')} onClick={() => bell(a)}><Icon d={P.bell} fill={on(a)} /></button>}
+            <button class="icon-btn" disabled={!!busy} aria-label={t('Remove {app}', { app: String(a.name) })} onClick={() => remove(a)}><Icon d={P.trash} /></button>
           </div>
         ))}
         {busy && busy !== 'push' && !list.some((x) => x.url === busy) && <p class="hint">{busy}</p>}
-        <h2 class="apps-h">Discover</h2>
+        <h2 class="apps-h">{t('Discover')}</h2>
         <Discover />
         {account?.done && (
           <section>
-            <div class="setting"><span>Push notifications on this device</span><button class="btn ghost small" disabled={busy === 'push'} onClick={togglePush}>{busy === 'push' ? 'Working…' : push ? 'Turn off' : 'Turn on'}</button></div>
+            <div class="setting"><span>{t('Push notifications on this device')}</span><button class="btn ghost small" disabled={busy === 'push'} onClick={togglePush}>{busy === 'push' ? t('Working…') : push ? t('Turn off') : t('Turn on')}</button></div>
             {pushErr && <p class="hint warn">{pushErr}</p>}
-            <p class="hint">Turning notifications on for an app the first time adds a notification key to your account on Optimism, which costs a cent or less in gas. Apps check that key, and signing out removes it.</p>
+            <p class="hint">{t('Turning notifications on for an app the first time adds a notification key to your account on Optimism, which costs a cent or less in gas. Apps check that key, and signing out removes it.')}</p>
           </section>
         )}
       </div>
@@ -761,7 +774,7 @@ function Settings() {
         await m.removeAppKey(account!)
         await m.revokeSigner(account!)
       } catch (e: any) {
-        toast(`The signing keys couldn't be revoked: ${e.message}`)
+        toast(t('The signing keys couldn\'t be revoked: {error}', { error: e.message }))
         asked.current = Date.now()
         return setOut('stuck')
       }
@@ -789,67 +802,76 @@ function Settings() {
   )
   return (
     <>
-      <Header title="Settings" />
+      <Header title={t('Settings')} />
       <div class="settings">
         {accounts.length > 0 && (
           <section>
-            <h2>Accounts</h2>
+            <h2>{t('Accounts')}</h2>
             <AccountList />
           </section>
         )}
         {account?.done && (
           <section>
-            <h2>Profile</h2>
+            <h2>{t('Profile')}</h2>
             <div class="photo-row">
               <Avatar u={{ fid: account.fid!, pfp_url: prof[USER_DATA.PFP], username: account.username }} size={48} link={false} />
-              <button class="btn ghost small" onClick={() => photo.current?.click()}>Change photo</button>
+              <button class="btn ghost small" onClick={() => photo.current?.click()}>{t('Change photo')}</button>
               <input ref={photo} type="file" accept="image/*" hidden onChange={(e) => newPhoto(e.currentTarget.files?.[0])} />
             </div>
-            {field(USER_DATA.DISPLAY, 'Name', 'Your name')}
-            {field(USER_DATA.BIO, 'Bio', 'A line or two about you', true)}
-            {field(USER_DATA.URL, 'Website', 'https://…')}
-            {changed.length > 0 && <div class="actions"><button class="btn small" onClick={saveProfile} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>}
+            {field(USER_DATA.DISPLAY, t('Name'), t('Your name'))}
+            {field(USER_DATA.BIO, t('Bio'), t('A line or two about you'), true)}
+            {field(USER_DATA.URL, t('Website'), 'https://…')}
+            {changed.length > 0 && <div class="actions"><button class="btn small" onClick={saveProfile} disabled={saving}>{saving ? t('Saving…') : t('Save changes')}</button></div>}
           </section>
         )}
         <section>
           <div class="setting">
-            <h2>Theme</h2>
+            <h2>{t('Theme')}</h2>
             <div class="seg">
-              {['system', 'light', 'dark'].map((t) => <button class={settings.theme === t ? 'on' : ''} onClick={() => ((settings.theme = t), saveSettings(), applyTheme(), force((x) => x + 1))}>{t[0].toUpperCase() + t.slice(1)}</button>)}
+              {[['system', t('System')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, label]) => <button class={settings.theme === k ? 'on' : ''} onClick={() => ((settings.theme = k), saveSettings(), applyTheme(), force((x) => x + 1))}>{label}</button>)}
             </div>
           </div>
         </section>
         <section>
           <div class="setting">
-            <h2>Profile looks</h2>
+            <h2>{t('Language')}</h2>
+            {/* every string is picked when the page loads, so a switch reloads it */}
+            <select value={lang} onChange={(e) => ((settings.lang = e.currentTarget.value), saveSettings(), location.reload())}>
+              {Object.entries(LANGS).map(([k, name]) => <option value={k}>{name}</option>)}
+            </select>
+          </div>
+        </section>
+        <section>
+          <div class="setting">
+            <h2>{t('Profile looks')}</h2>
             <div class="seg">
-              {[[true, 'Show'], [false, 'Hide']].map(([v, label]) => <button class={(settings.looks !== false) === v ? 'on' : ''} onClick={() => ((settings.looks = v as boolean), saveSettings(), force((x) => x + 1))}>{label}</button>)}
+              {[[true, t('Show')], [false, t('Hide')]].map(([v, label]) => <button class={(settings.looks !== false) === v ? 'on' : ''} onClick={() => ((settings.looks = v as boolean), saveSettings(), force((x) => x + 1))}>{label}</button>)}
             </div>
           </div>
-          <p class="hint">Backgrounds, colors, songs and GIFs people add to their profile pages.{account?.done && myUser() && <> <a href={`${userPath(myUser()!)}?customize`}>Customize yours</a></>}</p>
+          <p class="hint">{t('Backgrounds, colors, songs and GIFs people add to their profile pages.')}{account?.done && myUser() && <> <a href={`${userPath(myUser()!)}?customize`}>{t('Customize yours')}</a></>}</p>
         </section>
         {account && (
           <section>
-            <h2>Keys</h2>
+            <h2>{t('Keys')}</h2>
             {account.wallet ? (
-              <p class="hint">This account belongs to the wallet <code>{account.wallet}</code>, which keeps its own keys. Quilcast only holds a signing key for this browser.</p>
+              <p class="hint"><With s={t('This account belongs to the wallet {wallet}, which keeps its own keys. Quilcast only holds a signing key for this browser.')} k="wallet"><code>{account.wallet}</code></With></p>
             ) : (
               <>
-                <p class="hint">Your recovery phrase controls your account and also works in Quorum and Warpcast. It lives only in this browser, so keep a copy somewhere safe.</p>
-                <div class="setting"><span>Recovery phrase</span><span class="btns"><button class="btn ghost small" onClick={() => setPhrase(!phrase)}>{phrase ? 'Hide' : 'Show'}</button><button class="btn ghost small" onClick={() => navigator.clipboard.writeText(account!.phrase).then(() => toast('Copied'))}>Copy</button></span></div>
+                <p class="hint">{t('Your recovery phrase controls your account and also works in Quorum and Warpcast. It lives only in this browser, so keep a copy somewhere safe.')}</p>
+                <div class="setting"><span>{t('Recovery phrase')}</span><span class="btns"><button class="btn ghost small" onClick={() => setPhrase(!phrase)}>{phrase ? t('Hide') : t('Show')}</button><button class="btn ghost small" onClick={() => navigator.clipboard.writeText(account!.phrase).then(() => toast('Copied'))}>{t('Copy')}</button></span></div>
                 {phrase && <code class="phrase">{account.phrase}</code>}
               </>
             )}
-            <div class="setting"><span>{account.wallet ? 'Signing key as a file' : 'All keys as a file'}</span><button class="btn ghost small" onClick={exportKeys}>Export</button></div>
-            {account.dm && <div class="setting"><span>Key to your messages on farcaster.xyz</span><button class="btn ghost small" onClick={() => (setAccount({ ...account!, dm: undefined }), import('./dms.ts').then((m) => m.stop()))}>Forget</button></div>}
-            <div class="setting"><span>Sign out{account.username ? ` of @${account.username}` : ''}</span><button class="btn danger small" disabled={out === 'busy'} onClick={signOut}>{out === 'busy' ? 'Signing out…' : out === 'stuck' ? 'Sign out anyway' : out ? 'Erase keys?' : 'Sign out'}</button></div>
-            {out && <p class="hint">{account.wallet ? 'This removes the account and its signing key from this browser. Your wallet is not affected.' : "This erases the recovery phrase from this browser. Export your keys first if it's your only copy."}</p>}
+            <div class="setting"><span>{account.wallet ? t('Signing key as a file') : t('All keys as a file')}</span><button class="btn ghost small" onClick={exportKeys}>{t('Export')}</button></div>
+            {account.dm && <div class="setting"><span>{t('Key to your messages on farcaster.xyz')}</span><button class="btn ghost small" onClick={() => (setAccount({ ...account!, dm: undefined }), import('./dms.ts').then((m) => m.stop()))}>{t('Forget')}</button></div>}
+            <div class="setting"><span>{account.username ? t('Sign out of @{username}', { username: account.username }) : t('Sign out')}</span><button class="btn danger small" disabled={out === 'busy'} onClick={signOut}>{out === 'busy' ? t('Signing out…') : out === 'stuck' ? t('Sign out anyway') : out ? t('Erase keys?') : t('Sign out')}</button></div>
+            {out && <p class="hint">{account.wallet ? t('This removes the account and its signing key from this browser. Your wallet is not affected.') : t('This erases the recovery phrase from this browser. Export your keys first if it\'s your only copy.')}</p>}
           </section>
         )}
         <section>
-          <h2>Network</h2>
-          {url('node', 'Hypersnap node')}
-          {url('rpc', 'Optimism RPC')}
+          <h2>{t('Network')}</h2>
+          {url('node', t('Hypersnap node'))}
+          {url('rpc', t('Optimism RPC'))}
         </section>
         <p class="foot">Quilcast <Version /></p>
       </div>
@@ -930,35 +952,35 @@ function App() {
           : r0 === 'messages' ? <Messages id={r1 && decode(r1)} />
           : r0 === 'settings' ? <Settings />
           : r0 === 'apps' ? <Apps />
-          : r0 === 'design' ? <><Header title="Profile design" /><div class="design-page"><DesignCard id={r1} /></div></>
+          : r0 === 'design' ? <><Header title={t('Profile design')} /><div class="design-page"><DesignCard id={r1} /></div></>
             : r0 === 'join' ? <><Header /><Join step={r1} /></>
               : <Home />
-  const nav: [string, string, string][] = [['', 'Home', P.home], ['search', 'Search', P.search], ...(me ? [['notifications', 'Notifications', P.bell], ['messages', 'Messages', P.mail], ['apps', 'Mini apps', P.apps]] as [string, string, string][] : []), me ? ['u', 'Profile', P.user] : ['join', 'Join', P.user], ['settings', 'Settings', P.gear]]
+  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear]]
   const href = (k: string) => (k === 'u' ? userPath(me!) : `/${k}`)
   const active = (k: string) => (k === 'u' ? r0 === 'u' && !!me && userPath(me) === `/u/${r1}` : r0 === k)
   const ico = (k: string, d: string) => <span class="ico"><Icon d={d} size={22} />{unread[k as keyof typeof unread] && <i class="badge" />}</span>
   return (
     <div class="app">
-      <nav class="side" aria-label="Main">
+      <nav class="side" aria-label={t('Main')}>
         <a class="brand" href="/"><Logo size={30} /><span>Quilcast</span></a>
         {nav.filter(([k]) => k !== 'join').map(([k, label, d]) => <a class={`navlink${active(k) ? ' on' : ''}`} href={href(k)}>{ico(k, d)}<span>{label}</span></a>)}
-        {me ? <button class="btn cast-btn" onClick={() => setCompose({})}><Icon d={P.pen} /><span>Cast</span></button> : <a class="btn cast-btn" href="/join" aria-label="Join"><Icon d={P.user} /><span>Join</span></a>}
+        {me ? <button class="btn cast-btn" onClick={() => setCompose({})}><Icon d={P.pen} /><span>{t('Cast')}</span></button> : <a class="btn cast-btn" href="/join" aria-label={t('Join')}><Icon d={P.user} /><span>{t('Join')}</span></a>}
         {me && <AccountMenu me={me} />}
       </nav>
       <main class="col">{view}</main>
       <aside class="extra">
-        {r0 !== 'search' && <a class="searchbox" href="/search"><Icon d={P.search} size={16} /><span>Search people and casts</span></a>}
+        {r0 !== 'search' && <a class="searchbox" href="/search"><Icon d={P.search} size={16} /><span>{t('Search people and casts')}</span></a>}
         <div class="about">
-          <b>About Quilcast</b>
-          <p>A small, open Farcaster client that reads from and posts to Quilibrium's Hypersnap network, with your keys kept in your browser.</p>
+          <b>{t('About Quilcast')}</b>
+          <p>{t('A small, open Farcaster client that reads from and posts to Quilibrium\'s Hypersnap network, with your keys kept in your browser.')}</p>
           <p class="foot"><Version /></p>
-          <p class="foot ogre-only"><a href="/shrek/credits.html" target="_blank">Shrek credits</a></p>
+          <p class="foot ogre-only"><a href="/shrek/credits.html" target="_blank">{t('Shrek credits')}</a></p>
         </div>
       </aside>
-      <nav class="tabbar" aria-label="Main">
+      <nav class="tabbar" aria-label={t('Main')}>
         {nav.map(([k, label, d]) => <a class={active(k) ? 'on' : ''} href={href(k)} aria-label={label}>{ico(k, d)}</a>)}
       </nav>
-      {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label="New cast" onClick={() => setCompose({})}><Icon d={P.pen} size={22} /></button>}
+      {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={P.pen} size={22} /></button>}
       {compose && <Composer {...compose} onClose={() => setCompose(null)} />}
       {viewer && <Lightbox {...viewer} close={() => setViewer(null)} />}
       <Toast />
@@ -967,4 +989,4 @@ function App() {
 }
 
 applyTheme()
-render(<App />, document.getElementById('app')!)
+loadLang().then(() => render(<App />, document.getElementById('app')!))

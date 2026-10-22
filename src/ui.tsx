@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { account, back, get, go, LINK_RE, mine, mineVersion, myUser, posting, safeUrl, toUrl, users, type Cast, type User } from './api.ts'
 import { castText, cleanDesign, designId, isImg, isVid, LOGO, lookVars, n, sized, X_LOGO, type Look } from './shared.ts'
 import type { AppMeta } from './miniapp.tsx'
+import { lang, t, t as tr, tn } from './i18n.ts'
 
 // keys and crypto load only when someone signs in or writes
 export const w = () => import('./write.ts')
@@ -14,7 +15,8 @@ export const shell = {
   compose: (_: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void } = {}) => {},
   view: (_urls: string[], _index: number) => {},
 }
-export const toast = (m: string) => shell.toast(m)
+// errors thrown with English text (ours and the server's) are translated here too
+export const toast = (m: string) => shell.toast(t(m))
 export const requireAccount = () => (account?.done ? true : (go('/join'), false))
 /** Ask the browser to show notifications. It has to run straight from a click: Firefox drops the prompt
  *  if anything (a lazy import) is awaited first. */
@@ -65,11 +67,11 @@ export const Logo = ({ size = 28 }: { size?: number }) => (
 
 export const ago = (t: string | number) => {
   const s = (Date.now() - new Date(t).getTime()) / 1000
-  if (s < 60) return 'now'
-  if (s < 3600) return `${Math.floor(s / 60)}m`
-  if (s < 86400) return `${Math.floor(s / 3600)}h`
-  if (s < 7 * 86400) return `${Math.floor(s / 86400)}d`
-  return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: s > 300 * 86400 ? 'numeric' : undefined })
+  if (s < 60) return tr('now')
+  if (s < 3600) return tr('{n}m', { n: Math.floor(s / 60) })
+  if (s < 86400) return tr('{n}h', { n: Math.floor(s / 3600) })
+  if (s < 7 * 86400) return tr('{n}d', { n: Math.floor(s / 86400) })
+  return new Date(t).toLocaleDateString(lang, { month: 'short', day: 'numeric', year: s > 300 * 86400 ? 'numeric' : undefined })
 }
 // accounts without a username show as !fid
 const uname = (u: User) => (u.username && !u.username.startsWith('fid:') ? u.username : undefined)
@@ -83,7 +85,7 @@ export const stop = (e: Event) => e.stopPropagation()
 export const Header = ({ title, back: showBack = true, action, children }: { title?: ComponentChildren; back?: boolean; action?: ComponentChildren; children?: ComponentChildren }) => (
   <div class="phead">
     <div class="phead-row">
-      {showBack ? <button class="icon-btn" aria-label="Back" onClick={back}><Icon d={P.back} /></button> : <a class="brand only-mobile" href="/" aria-label="Quilcast home"><Logo size={26} /></a>}
+      {showBack ? <button class="icon-btn" aria-label={t('Back')} onClick={back}><Icon d={P.back} /></button> : <a class="brand only-mobile" href="/" aria-label={t('Quilcast home')}><Logo size={26} /></a>}
       <h1>{title}</h1>
       {action}
     </div>
@@ -157,7 +159,7 @@ function Folded({ text }: { text: string }) {
   return (
     <div ref={ref}>
       <RichText text={text} class={open ? 'text' : 'text fold'} />
-      {over && !open && <button class="show-more" onClick={(e) => (stop(e), setOpen(true))}>Show more</button>}
+      {over && !open && <button class="show-more" onClick={(e) => (stop(e), setOpen(true))}>{t('Show more')}</button>}
     </div>
   )
 }
@@ -189,7 +191,7 @@ export function Video({ src }: { src: string }) {
   return (
     <div class="vid" onClick={stop}>
       <video ref={ref} src={hls ? undefined : src} poster={poster(src)} controls={ready} preload="metadata" playsInline />
-      {!ready && <button class="play" aria-label="Play video" onClick={start}><Icon d={P.play} fill size={26} /></button>}
+      {!ready && <button class="play" aria-label={t('Play video')} onClick={start}><Icon d={P.play} fill size={26} /></button>}
     </div>
   )
 }
@@ -205,7 +207,7 @@ export function Media({ urls: given, images }: { urls: string[]; images?: boolea
       {imgs.length > 0 && (
         <div class={`imgs n${shown.length}`} onClick={stop}>
           {shown.map((u, i) => (
-            <button class="img" aria-label={`Open image ${i + 1} of ${imgs.length}`} onClick={() => shell.view(imgs, i)}>
+            <button class="img" aria-label={t('Open image {n} of {total}', { n: i + 1, total: imgs.length })} onClick={() => shell.view(imgs, i)}>
               <Img src={sized(u, 'w=1200')} />
               {i === 3 && imgs.length > 4 && <span class="more-imgs">+{imgs.length - 4}</span>}
             </button>
@@ -231,22 +233,22 @@ export function Lightbox({ urls, index, close }: { urls: string[]; index: number
   }, [])
   const src = safeUrl(urls[i])
   return (
-    <div class="lightbox" role="dialog" aria-label="Image viewer" onClick={close}
+    <div class="lightbox" role="dialog" aria-label={t('Image viewer')} onClick={close}
       onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
       onTouchEnd={(e) => {
         const dx = e.changedTouches[0].clientX - touch.current
         Math.abs(dx) > 50 && step(dx < 0 ? 1 : -1)
       }}>
       <img src={src} alt="" referrerpolicy="no-referrer" onClick={stop} />
-      <button class="lb-btn lb-close" aria-label="Close" onClick={close}><Icon d={P.x} size={22} /></button>
+      <button class="lb-btn lb-close" aria-label={t('Close')} onClick={close}><Icon d={P.x} size={22} /></button>
       {many && (
         <>
-          <button class="lb-btn lb-prev" aria-label="Previous image" onClick={(e) => (stop(e), step(-1))}><Icon d={P.back} size={22} /></button>
-          <button class="lb-btn lb-next" aria-label="Next image" onClick={(e) => (stop(e), step(1))}><Icon d={P.back} size={22} /></button>
+          <button class="lb-btn lb-prev" aria-label={t('Previous image')} onClick={(e) => (stop(e), step(-1))}><Icon d={P.back} size={22} /></button>
+          <button class="lb-btn lb-next" aria-label={t('Next image')} onClick={(e) => (stop(e), step(1))}><Icon d={P.back} size={22} /></button>
           <span class="lb-count">{i + 1} / {urls.length}</span>
         </>
       )}
-      {src && <a class="lb-open" href={src} target="_blank" rel="noopener noreferrer" onClick={stop}>Open original</a>}
+      {src && <a class="lb-open" href={src} target="_blank" rel="noopener noreferrer" onClick={stop}>{t('Open original')}</a>}
     </div>
   )
 }
@@ -268,7 +270,7 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
       {t.photos.length > 0 && <Media urls={t.photos} />}
       {!t.photos.length && video && <div class="tw-video"><Img src={video} /><span class="play"><Icon d={P.play} fill size={24} /></span></div>}
       {t.quote && <div class="tw-quote"><b>{t.quote.name}</b> <span class="handle">@{t.quote.handle}</span><p>{t.quote.text}</p></div>}
-      <div class="tw-stats"><span>{n(t.replies)} replies</span><span>{n(t.reposts)} reposts</span><span>{n(t.likes)} likes</span></div>
+      <div class="tw-stats"><span>{tn(t.replies || 0, '{n} reply', '{n} replies', { n: n(t.replies) })}</span><span>{tn(t.reposts || 0, '{n} repost', '{n} reposts', { n: n(t.reposts) })}</span><span>{tn(t.likes || 0, '{n} like', '{n} likes', { n: n(t.likes) })}</span></div>
     </div>
   )
 }
@@ -323,12 +325,12 @@ export const designOf = (id: string) => {
   return designs.get(id)!
 }
 
-/** A shared profile design (quilcast.com/design/<id>), drawn the way a profile wearing it looks: its background,
- *  boxes, colors, font and name effect, on whoever shared it (`by`), with a button that opens it in the viewer's editor. */
+/** A shared profile design (quilcast.com/design/<id>): one box in its colors, border, font and name effect, on its
+ *  background, naming whoever shared it (`by`), with a button that opens it in the viewer's editor. */
 export function DesignCard({ id, by }: { id: string; by?: User }) {
   const [d, setD] = useState<Look | null>()
   useEffect(() => void designOf(id).then(setD), [id])
-  if (d === null) return <div class="quote muted">This design is unavailable.</div>
+  if (d === null) return <div class="quote muted">{t('This design is unavailable.')}</div>
   if (!d) return <div class="quote skeleton" />
   const use = (e: Event) => {
     stop(e)
@@ -339,18 +341,16 @@ export function DesignCard({ id, by }: { id: string; by?: User }) {
     <div class="design look on" style={lookVars(d)} onClick={stop}>
       <div class={`lk-bg ${d.bgMode || 'tile'}`} aria-hidden="true"
         style={{ backgroundColor: d.bg, backgroundImage: d.bgImg ? `url("${d.bgImg}")` : undefined, '--lk-dim': d.bgDim ? String(d.bgDim / 100) : undefined }} />
-      <div class="lk-box design-who">
-        {by ? <Avatar u={by} size={40} link={false} /> : <Logo size={40} />}
-        <span>
-          <b class={d.nameFx && d.nameFx !== 'none' ? `lk-name ${d.nameFx}` : undefined}>{by ? nameOf(by) : 'Quilcast'}</b>
-          <small>{by ? `@${handle(by)} shared a design` : 'A shared profile design'}</small>
+      <div class="lk-box">
+        <span class="design-who">
+          {by ? <Avatar u={by} size={36} link={false} /> : <Logo size={36} />}
+          <span>
+            <b class={d.nameFx && d.nameFx !== 'none' ? `lk-name ${d.nameFx}` : undefined}>{by ? nameOf(by) : 'Quilcast'}</b>
+            <small>{t('Profile design')}</small>
+          </span>
         </span>
+        <button class="btn small" style={{ color: d.box }} onClick={use}>{t('Use this design')}</button>
       </div>
-      <section class="lk-box lk-sec">
-        <h3>Profile design</h3>
-        <p>Colors, background and fonts for your profile. Your words, friends and GIFs stay yours.</p>
-        <button class="btn small" style={{ color: d.box }} onClick={use}>Use this design</button>
-      </section>
     </div>
   )
 }
@@ -365,7 +365,7 @@ export const fetchCast = (hash: string) => {
 export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   const [c, setC] = useState<Cast | null | undefined>(given)
   useEffect(() => void (hash && !given && fetchCast(hash).then(setC)), [hash])
-  if (c === null) return <div class="quote muted">This cast is unavailable.</div>
+  if (c === null) return <div class="quote muted">{t('This cast is unavailable.')}</div>
   if (!c) return <div class="quote skeleton" />
   const img = thumbOf(c)
   const text = castText(c).trim()
@@ -375,7 +375,7 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
       {/* text gets a thumbnail beside it; a cast that is only media shows it at size */}
       <div class={`qbody${text ? '' : ' bare'}`}>
         {text && <RichText text={text} class="text clamp" />}
-        {img && <Img class="qimg" src={sized(img, text ? 'w=240' : 'w=1200')} />}
+        {img && <Img class="qimg" src={sized(img, 'w=1200')} />}
       </div>
     </a>
   )
@@ -431,19 +431,19 @@ export function CastCard({ c, focus, line, inThread, quotes = 0 }: { c: Cast; fo
   const recasts = c.reactions.recasts_count + +recast - +was[1]
   const actions = (
     <footer onClick={stop}>
-      <button class="act" aria-label="Reply" onClick={() => requireAccount() && shell.compose({ parent: c })}><Icon d={P.reply} /><span>{c.replies.count ? n(c.replies.count) : ''}</span></button>
+      <button class="act" aria-label={t('Reply')} onClick={() => requireAccount() && shell.compose({ parent: c })}><Icon d={P.reply} /><span>{c.replies.count ? n(c.replies.count) : ''}</span></button>
       <span class="wrap-menu">
-        <button class={`act rc${recast ? ' on' : ''}`} aria-label="Recast or quote" aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.recast} /><span>{recasts ? n(recasts) : ''}</span></button>
+        <button class={`act rc${recast ? ' on' : ''}`} aria-label={t('Recast or quote')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.recast} /><span>{recasts ? n(recasts) : ''}</span></button>
         {menu && (
           <Menu close={() => setMenu(false)}>
-            <button role="menuitem" onClick={() => (setMenu(false), toggle(2, !recast, setRecast, mine.recasts))}><Icon d={P.recast} />{recast ? 'Undo recast' : 'Recast'}</button>
-            <button role="menuitem" onClick={() => (setMenu(false), requireAccount() && shell.compose({ quote: c }))}><Icon d={P.quote} />Quote</button>
+            <button role="menuitem" onClick={() => (setMenu(false), toggle(2, !recast, setRecast, mine.recasts))}><Icon d={P.recast} />{recast ? t('Undo recast') : t('Recast')}</button>
+            <button role="menuitem" onClick={() => (setMenu(false), requireAccount() && shell.compose({ quote: c }))}><Icon d={P.quote} />{t('Quote')}</button>
           </Menu>
         )}
       </span>
-      <button class={`act lk${liked ? ' on' : ''}`} aria-label="Like" onClick={() => toggle(1, !liked, setLiked, mine.likes)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
-      <button class="act" aria-label="Share" onClick={share}><Icon d={P.share} /></button>
-      {focus && account?.fid === c.author.fid && <button class="act" aria-label="Delete" onClick={() => w().then((m) => m.deleteCast(c.hash)).then(() => (setGone(true), toast('Deleted')), (e) => toast(e.message))}><Icon d={P.trash} /></button>}
+      <button class={`act lk${liked ? ' on' : ''}`} aria-label={t('Like')} onClick={() => toggle(1, !liked, setLiked, mine.likes)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
+      <button class="act" aria-label={t('Share')} onClick={share}><Icon d={P.share} /></button>
+      {focus && account?.fid === c.author.fid && <button class="act" aria-label={t('Delete')} onClick={() => w().then((m) => m.deleteCast(c.hash)).then(() => (setGone(true), toast('Deleted')), (e) => toast(e.message))}><Icon d={P.trash} /></button>}
     </footer>
   )
   const name = (
@@ -453,14 +453,14 @@ export function CastCard({ c, focus, line, inThread, quotes = 0 }: { c: Cast; fo
     </>
   )
   if (focus) {
-    const stats = ([['recasts', recasts, 'recast'], ['quotes', quotes, 'quote'], ['likes', likes, 'like']] as const).filter(([, x]) => x > 0)
+    const stats = ([['recasts', recasts, tn(recasts, 'recast', 'recasts')], ['quotes', quotes, tn(quotes, 'quote', 'quotes')], ['likes', likes, tn(likes, 'like', 'likes')]] as const).filter(([, x]) => x > 0)
     return (
       <article class="cast focus">
         <header><Avatar u={c.author} size={44} /><div class="who">{name}</div>{ch && <span class="chan">/{ch}</span>}</header>
         <RichText text={castText(c)} />
         <Embeds c={c} />
-        <div class="when">{sending ? <span class="posting"><span class="pulse" /> Posting…</span> : new Date(c.timestamp).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' })}</div>
-        {stats.length > 0 && <div class="stats">{stats.map(([k, x, one]) => <a href={`/c/${c.hash}/${k}`}><b>{n(x)}</b> {x === 1 ? one : k}</a>)}</div>}
+        <div class="when">{sending ? <span class="posting"><span class="pulse" /> {t('Posting…')}</span> : new Date(c.timestamp).toLocaleString(lang, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' })}</div>
+        {stats.length > 0 && <div class="stats">{stats.map(([k, x, word]) => <a href={`/c/${c.hash}/${k}`}><b>{n(x)}</b> {word}</a>)}</div>}
         {actions}
       </article>
     )
@@ -472,10 +472,10 @@ export function CastCard({ c, focus, line, inThread, quotes = 0 }: { c: Cast; fo
         <header>
           {name}
           <span class="dot">·</span>
-          {sending ? <span class="posting">Posting…</span> : <time dateTime={c.timestamp} title={new Date(c.timestamp).toLocaleString()}>{ago(c.timestamp)}</time>}
+          {sending ? <span class="posting">{t('Posting…')}</span> : <time dateTime={c.timestamp} title={new Date(c.timestamp).toLocaleString(lang)}>{ago(c.timestamp)}</time>}
           {ch && <span class="chan">/{ch}</span>}
         </header>
-        {c.parent_hash && !inThread && <div class="replying">Replying to {parentUser ? <a href={userPath(parentUser)} onClick={stop}>@{handle(parentUser)}</a> : 'a cast'}</div>}
+        {c.parent_hash && !inThread && <div class="replying">{parentUser ? <>{t('Replying to')} <a href={userPath(parentUser)} onClick={stop}>@{handle(parentUser)}</a></> : t('Replying to a cast')}</div>}
         <Folded text={castText(c)} />
         <Embeds c={c} />
         {actions}
@@ -491,6 +491,6 @@ export const UserRow = ({ u }: { u: User }) => (
       <span class="row-top"><b>{nameOf(u)}</b><span class="handle">@{handle(u)}</span></span>
       {u.profile?.bio?.text && <span class="row-sub">{u.profile.bio.text}</span>}
     </span>
-    <span class="row-meta">{n(u.follower_count)}<small>followers</small></span>
+    <span class="row-meta">{n(u.follower_count)}<small>{tn(u.follower_count || 0, 'follower', 'followers')}</small></span>
   </a>
 )

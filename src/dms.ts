@@ -2,6 +2,7 @@
 // answers its own site; live updates come straight from farcaster.xyz's websocket, so nothing polls.
 // The Messages pages and the nav dot share the state kept here. Loaded only for accounts that opened messages.
 import { account, getUser, setAccount } from './api.ts'
+import { t } from './i18n.ts'
 
 export type Person = { fid: number; username?: string; displayName?: string; pfp?: { url?: string } }
 export type Msg = {
@@ -21,7 +22,7 @@ export async function dm<T = any>(op: string, o: { query?: Record<string, string
   const r = await fetch(`/api/dm/${op}?${qs}`, { method: o.method || 'GET', headers, body: o.body ? JSON.stringify(o.body) : undefined })
   const j = await r.json().catch(() => ({}))
   if (r.status === 401 && account?.dm) setAccount({ ...account, dm: undefined })
-  if (!r.ok) throw new Error(j.errors?.[0]?.message || j.error || `farcaster.xyz said ${r.status}`)
+  if (!r.ok) throw new Error(j.errors?.[0]?.message || j.error || t('farcaster.xyz said {status}', { status: r.status }))
   return j
 }
 

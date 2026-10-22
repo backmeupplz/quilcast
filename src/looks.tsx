@@ -4,6 +4,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { findUsers, loadUsers, users, type User } from './api.ts'
+import { t } from './i18n.ts'
 import { cleanDesign, cleanLook, DESIGN_KEYS, lookVars, designId, FONTS, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look } from './shared.ts'
 import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 
@@ -27,7 +28,7 @@ export const Bg = ({ l }: { l: Look }) =>
 export const nameClass = (l?: Look | null) => (l?.nameFx && l.nameFx !== 'none' ? `lk-name ${l.nameFx}` : undefined)
 
 export const Banner = ({ l }: { l: Look }) => (l.banner ? <Img class="lk-banner" src={l.banner} /> : null)
-export const Mood = ({ l }: { l: Look }) => (l.mood || l.moodEmoji ? <div class="lk-mood"><b>Mood:</b> {l.moodEmoji} {l.mood}</div> : null)
+export const Mood = ({ l }: { l: Look }) => (l.mood || l.moodEmoji ? <div class="lk-mood"><b>{t('Mood:')}</b> {l.moodEmoji} {l.mood}</div> : null)
 
 const Box = ({ title, children, class: cls = '' }: { title: string; children: ComponentChildren; class?: string }) => (
   <section class={`lk-box lk-sec ${cls}`}><h3>{title}</h3>{children}</section>
@@ -40,15 +41,15 @@ export function Sections({ l, u }: { l: Look; u: User }) {
   return (
     <>
       {l.song && <Song s={l.song} />}
-      {l.about && <Box title="About me"><RichText text={l.about} /></Box>}
-      {l.meet && <Box title="Who I'd like to meet"><RichText text={l.meet} /></Box>}
+      {l.about && <Box title={t('About me')}><RichText text={l.about} /></Box>}
+      {l.meet && <Box title={t("Who I'd like to meet")}><RichText text={l.meet} /></Box>}
       {ints.length > 0 && (
-        <Box title={`${who}'s Interests`}>
-          <dl class="lk-int">{ints.map(([k, t]) => <><dt>{INTERESTS[k]}</dt><dd><RichText text={t} /></dd></>)}</dl>
+        <Box title={t("{name}'s Interests", { name: who })}>
+          <dl class="lk-int">{ints.map(([k, v]) => <><dt>{t(INTERESTS[k])}</dt><dd><RichText text={v} /></dd></>)}</dl>
         </Box>
       )}
-      {l.top && <Top fids={l.top} title={l.topTitle || `${who}'s Top ${l.top.length}`} />}
-      {l.wall && <Box title={l.wallTitle || 'GIFs'}><div class="lk-wall">{l.wall.map((src) => <Img src={src} />)}</div></Box>}
+      {l.top && <Top fids={l.top} title={l.topTitle || t("{name}'s Top {n}", { name: who, n: l.top.length })} />}
+      {l.wall && <Box title={l.wallTitle || t('GIFs')}><div class="lk-wall">{l.wall.map((src) => <Img src={src} />)}</div></Box>}
     </>
   )
 }
@@ -72,12 +73,12 @@ function Song({ s }: { s: NonNullable<Look['song']> }) {
   const [on, setOn] = useState(false)
   useEffect(() => setOn(false), [s.id, s.start])
   return (
-    <Box title="Profile song" class="lk-song">
+    <Box title={t('Profile song')} class="lk-song">
       {on ? (
-        <iframe src={`https://www.youtube-nocookie.com/embed/${s.id}?autoplay=1&playsinline=1${s.start ? `&start=${s.start}` : ''}`} title={s.title || 'Profile song'}
+        <iframe src={`https://www.youtube-nocookie.com/embed/${s.id}?autoplay=1&playsinline=1${s.start ? `&start=${s.start}` : ''}`} title={s.title || t('Profile song')}
           allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowFullScreen />
       ) : (
-        <button class="lk-play" onClick={() => setOn(true)}><span aria-hidden="true">▶︎</span><b>{s.title || 'Play the song'}</b></button>
+        <button class="lk-play" onClick={() => setOn(true)}><span aria-hidden="true">▶︎</span><b>{s.title || t('Play the song')}</b></button>
       )}
     </Box>
   )
@@ -181,13 +182,13 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
 
   // controls are plain functions, not components, so typing or dragging doesn't remount them
   const row = (label: string, ctl: ComponentChildren) => <label class="lk-row"><span>{label}</span><span class="lk-ctl">{ctl}</span></label>
-  const clear = (k: keyof Look, label: string) => d[k] !== undefined && <button type="button" class="lk-x" aria-label={`Reset ${label}`} onClick={(e) => (e.preventDefault(), up({ [k]: undefined }))}>×</button>
+  const clear = (k: keyof Look, label: string) => d[k] !== undefined && <button type="button" class="lk-x" aria-label={t('Reset {name}', { name: label })} onClick={(e) => (e.preventDefault(), up({ [k]: undefined }))}>×</button>
   const color = (k: 'bg' | 'text' | 'muted' | 'link' | 'box' | 'border' | 'nameColor', label: string, fallback: string) =>
     row(label, <><input type="color" value={d[k] || fallback} onInput={(e) => up({ [k]: e.currentTarget.value })} />{clear(k, label)}</>)
   const range = (k: 'bgDim' | 'boxAlpha' | 'borderWidth' | 'radius', label: string, min: number, max: number, fallback: number, unit = '') =>
     row(label, <><input type="range" min={min} max={max} value={d[k] ?? fallback} onInput={(e) => up({ [k]: Number(e.currentTarget.value) })} /><output>{d[k] ?? fallback}{unit}</output></>)
   const select = (k: 'bgMode' | 'borderStyle' | 'font' | 'size' | 'nameFx', label: string, options: readonly string[], names: Record<string, string> = {}) =>
-    row(label, <select value={d[k] || ''} onChange={(e) => up({ [k]: e.currentTarget.value || undefined })}><option value="">Default</option>{options.map((o) => <option value={o}>{names[o] || cap(o)}</option>)}</select>)
+    row(label, <select value={d[k] || ''} onChange={(e) => up({ [k]: e.currentTarget.value || undefined })}><option value="">{t('Default')}</option>{options.map((o) => <option value={o}>{t(names[o] || cap(o))}</option>)}</select>)
   const text = (k: 'mood' | 'moodEmoji' | 'about' | 'meet' | 'topTitle' | 'wallTitle', label: string, max: number, ph = '', area = false) => {
     const p = { value: d[k] || '', maxLength: max, placeholder: ph, onInput: (e: { currentTarget: { value: string } }) => up({ [k]: e.currentTarget.value || undefined }) }
     return <label class="field"><span>{label}</span>{area ? <textarea rows={4} {...p} /> : <input {...p} />}</label>
@@ -195,8 +196,8 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
   const image = (k: 'bgImg' | 'banner', label: string) => (
     <div class="lk-row"><span>{label}</span><span class="lk-ctl">
       {d[k] && <Img class="lk-thumb" src={d[k]} />}
-      <button type="button" class="btn ghost small" onClick={() => setGif({ pick: (u) => up({ [k]: u }) })}>GIF</button>
-      <button type="button" class="btn ghost small" onClick={() => upload((u) => up({ [k]: u }))}>Upload</button>
+      <button type="button" class="btn ghost small" onClick={() => setGif({ pick: (u) => up({ [k]: u }) })}>{t('GIF')}</button>
+      <button type="button" class="btn ghost small" onClick={() => upload((u) => up({ [k]: u }))}>{t('Upload')}</button>
       {clear(k, label)}
     </span></div>
   )
@@ -204,59 +205,59 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
   const group = (title: string, body: ComponentChildren, open = false) => <details class="lk-group" open={open}><summary>{title}</summary>{body}</details>
 
   return (
-    <div class={`lk-edit${min ? ' min' : ''}`} role="dialog" aria-label="Customize your profile">
+    <div class={`lk-edit${min ? ' min' : ''}`} role="dialog" aria-label={t('Customize your profile')}>
       <div class="lk-edit-head">
-        <button class="icon-btn" onClick={() => setMin(!min)} aria-label={min ? 'Show the editor' : 'Hide the editor'} aria-expanded={!min}><Icon d={min ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} size={20} /></button>
-        <b>Customize</b>
-        <button class="btn ghost small" onClick={close}>Cancel</button>
-        <button class="btn small" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button>
+        <button class="icon-btn" onClick={() => setMin(!min)} aria-label={min ? t('Show the editor') : t('Hide the editor')} aria-expanded={!min}><Icon d={min ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} size={20} /></button>
+        <b>{t('Customize')}</b>
+        <button class="btn ghost small" onClick={close}>{t('Cancel')}</button>
+        <button class="btn small" disabled={busy} onClick={save}>{busy ? t('Saving…') : t('Save')}</button>
       </div>
       <input ref={file} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => (gotFile(e.currentTarget.files?.[0]), (e.currentTarget.value = ''))} />
       {/* the editor stays mounted under the picker, so its open groups and scroll survive a pick */}
       {gif && <GifPicker pick={(u) => (gif.pick(u), setGif(null))} close={() => setGif(null)} />}
       <div class="lk-edit-body" hidden={!!gif}>
-        {group('Layouts', <>
-          <div class="lk-presets">{PRESETS.map(([name, p]) => <button class="btn ghost small" onClick={() => up({ ...STYLE, ...p })}>{name}</button>)}</div>
+        {group(t('Layouts'), <>
+          <div class="lk-presets">{PRESETS.map(([name, p]) => <button class="btn ghost small" onClick={() => up({ ...STYLE, ...p })}>{t(name)}</button>)}</div>
           <div class="lk-design">
-            <input value={link} placeholder="Paste a design link" aria-label="Design link" onInput={(e) => setLink(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && designId(link) && load()} />
-            <button class="btn ghost small" disabled={!designId(link)} onClick={load}>Load</button>
+            <input value={link} placeholder={t('Paste a design link')} aria-label={t('Design link')} onInput={(e) => setLink(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && designId(link) && load()} />
+            <button class="btn ghost small" disabled={!designId(link)} onClick={load}>{t('Load')}</button>
           </div>
           <div class="btns">
-            <button class="btn ghost small" onClick={castIt}>Cast this design</button>
-            <button class="btn ghost small" onClick={copy}>Copy link</button>
+            <button class="btn ghost small" onClick={castIt}>{t('Cast this design')}</button>
+            <button class="btn ghost small" onClick={copy}>{t('Copy link')}</button>
           </div>
-          <p class="hint">Sharing makes a link to your colors, background, fonts and banner, without your words, friends, GIFs or song. Paste one here, or tap "Use this design" on a cast, to try it on.</p>
+          <p class="hint">{t('Sharing makes a link to your colors, background, fonts and banner, without your words, friends, GIFs or song. Paste one here, or tap "Use this design" on a cast, to try it on.')}</p>
         </>, true)}
-        {group('Background', <>
-          {color('bg', 'Color', '#ffffff')}
-          {image('bgImg', 'Image')}
-          {select('bgMode', 'Image fit', BG_MODES, { tile: 'Tiled', cover: 'Fill the screen', center: 'Centered once' })}
-          {range('bgDim', 'Darken', 0, 80, 0, '%')}
+        {group(t('Background'), <>
+          {color('bg', t('Color'), '#ffffff')}
+          {image('bgImg', t('Image'))}
+          {select('bgMode', t('Image fit'), BG_MODES, { tile: 'Tiled', cover: 'Fill the screen', center: 'Centered once' })}
+          {range('bgDim', t('Darken'), 0, 80, 0, '%')}
         </>)}
-        {group('Colors and text', <>
-          {color('text', 'Text', '#000000')}
-          {color('muted', 'Quiet text', '#666666')}
-          {color('link', 'Links and buttons', '#6447f5')}
-          {select('font', 'Font', Object.keys(FONTS), FONT_NAMES)}
-          {select('size', 'Text size', SIZES)}
+        {group(t('Colors and text'), <>
+          {color('text', t('Text'), '#000000')}
+          {color('muted', t('Quiet text'), '#666666')}
+          {color('link', t('Links and buttons'), '#6447f5')}
+          {select('font', t('Font'), Object.keys(FONTS), FONT_NAMES)}
+          {select('size', t('Text size'), SIZES)}
         </>)}
-        {group('Boxes', <>
-          {color('box', 'Box color', '#ffffff')}
-          {range('boxAlpha', 'Box opacity', 0, 100, 90, '%')}
-          {color('border', 'Border color', '#e8e8ec')}
-          {select('borderStyle', 'Border style', BORDERS)}
-          {range('borderWidth', 'Border width', 0, 8, 1, 'px')}
-          {range('radius', 'Corners', 0, 32, 14, 'px')}
+        {group(t('Boxes'), <>
+          {color('box', t('Box color'), '#ffffff')}
+          {range('boxAlpha', t('Box opacity'), 0, 100, 90, '%')}
+          {color('border', t('Border color'), '#e8e8ec')}
+          {select('borderStyle', t('Border style'), BORDERS)}
+          {range('borderWidth', t('Border width'), 0, 8, 1, 'px')}
+          {range('radius', t('Corners'), 0, 32, 14, 'px')}
         </>)}
-        {group('Name and mood', <>
-          {select('nameFx', 'Name effect', NAME_FX)}
-          {color('nameColor', 'Effect color', '#ff3fa4')}
-          {image('banner', 'Banner')}
-          {text('moodEmoji', 'Mood emoji', 8, '😎')}
-          {text('mood', 'Mood', LIMITS.mood, 'chillin')}
+        {group(t('Name and mood'), <>
+          {select('nameFx', t('Name effect'), NAME_FX)}
+          {color('nameColor', t('Effect color'), '#ff3fa4')}
+          {image('banner', t('Banner'))}
+          {text('moodEmoji', t('Mood emoji'), 8, '😎')}
+          {text('mood', t('Mood'), LIMITS.mood, t('chillin'))}
         </>)}
-        {group('Profile song', <>
-          <label class="field"><span>YouTube link</span>
+        {group(t('Profile song'), <>
+          <label class="field"><span>{t('YouTube link')}</span>
             <input value={song} placeholder="https://youtu.be/…" onInput={(e) => {
               const v = e.currentTarget.value
               setSong(v)
@@ -264,37 +265,37 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
               if (id || !v.trim()) up({ song: id ? { id, start: ytStart(v) } : undefined })
             }} />
           </label>
-          <p class="hint">{d.song ? d.song.title ? `Now: ${d.song.title}` : 'The song is checked when you save.' : 'Visitors press play to hear it. Add ?t=37 to start partway in.'}</p>
+          <p class="hint">{d.song ? d.song.title ? t('Now: {title}', { title: d.song.title }) : t('The song is checked when you save.') : t('Visitors press play to hear it. Add ?t=37 to start partway in.')}</p>
         </>)}
-        {group('About me', <>
-          {text('about', 'About me', LIMITS.about, '', true)}
-          {text('meet', "Who I'd like to meet", LIMITS.meet, '', true)}
+        {group(t('About me'), <>
+          {text('about', t('About me'), LIMITS.about, '', true)}
+          {text('meet', t("Who I'd like to meet"), LIMITS.meet, '', true)}
         </>)}
-        {group('Interests', (Object.keys(INTERESTS) as (keyof typeof INTERESTS)[]).map((k) => (
-          <label class="field"><span>{INTERESTS[k]}</span>
+        {group(t('Interests'), (Object.keys(INTERESTS) as (keyof typeof INTERESTS)[]).map((k) => (
+          <label class="field"><span>{t(INTERESTS[k])}</span>
             <input value={d.interests?.[k] || ''} maxLength={LIMITS.interest} onInput={(e) => {
               const v = e.currentTarget.value
               set((x) => ({ ...x, interests: { ...x.interests, [k]: v || undefined } }))
             }} />
           </label>
         )))}
-        {group(`Top friends (${d.top?.length || 0}/${LIMITS.top})`, <>
-          {text('topTitle', 'Title', LIMITS.title, 'Top 8')}
+        {group(t('Top friends ({n}/{max})', { n: d.top?.length || 0, max: LIMITS.top }), <>
+          {text('topTitle', t('Title'), LIMITS.title, t('Top {n}', { n: 8 }))}
           <div class="lk-chips">
             {(d.top || []).map((f, i) => {
               const u = users.get(f)
               return (
                 <span class="lk-chip">
                   {u && <Avatar u={u} size={22} link={false} />}{u ? nameOf(u) : `fid ${f}`}
-                  {i > 0 && <button aria-label="Move left" onClick={() => set((x) => ({ ...x, top: x.top!.map((y, j) => (j === i - 1 ? x.top![i] : j === i ? x.top![i - 1] : y)) }))}>‹</button>}
-                  <button aria-label="Remove" onClick={() => set((x) => ({ ...x, top: x.top!.filter((y) => y !== f) }))}>×</button>
+                  {i > 0 && <button aria-label={t('Move left')} onClick={() => set((x) => ({ ...x, top: x.top!.map((y, j) => (j === i - 1 ? x.top![i] : j === i ? x.top![i - 1] : y)) }))}>‹</button>}
+                  <button aria-label={t('Remove')} onClick={() => set((x) => ({ ...x, top: x.top!.filter((y) => y !== f) }))}>×</button>
                 </span>
               )
             })}
           </div>
           {(d.top?.length || 0) < LIMITS.top && (
             <>
-              <label class="field"><span>Add someone</span><input value={q} placeholder="Search people" onInput={(e) => setQ(e.currentTarget.value)} /></label>
+              <label class="field"><span>{t('Add someone')}</span><input value={q} placeholder={t('Search people')} onInput={(e) => setQ(e.currentTarget.value)} /></label>
               {found.map((u) => (
                 <button class="lk-found" onClick={() => (users.set(u.fid, u), set((x) => ({ ...x, top: [...new Set([...(x.top || []), u.fid])].slice(0, LIMITS.top) })), setQ(''))}>
                   <Avatar u={u} size={28} link={false} /><b>{nameOf(u)}</b><span class="muted">@{u.username}</span>
@@ -303,20 +304,20 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
             </>
           )}
         </>)}
-        {group(`GIF wall (${d.wall?.length || 0}/${LIMITS.wall})`, <>
-          {text('wallTitle', 'Title', LIMITS.title, 'GIFs')}
+        {group(t('GIF wall ({n}/{max})', { n: d.wall?.length || 0, max: LIMITS.wall }), <>
+          {text('wallTitle', t('Title'), LIMITS.title, t('GIFs'))}
           <div class="lk-wall edit">
-            {(d.wall || []).map((u) => <span><Img src={u} /><button class="lk-x" aria-label="Remove" onClick={() => set((x) => ({ ...x, wall: x.wall!.filter((y) => y !== u) }))}>×</button></span>)}
+            {(d.wall || []).map((u) => <span><Img src={u} /><button class="lk-x" aria-label={t('Remove')} onClick={() => set((x) => ({ ...x, wall: x.wall!.filter((y) => y !== u) }))}>×</button></span>)}
           </div>
           {(d.wall?.length || 0) < LIMITS.wall && (
             <div class="btns">
-              <button class="btn ghost small" onClick={() => setGif({ pick: addWall })}>Add a GIF</button>
-              <button class="btn ghost small" onClick={() => upload(addWall)}>Upload</button>
+              <button class="btn ghost small" onClick={() => setGif({ pick: addWall })}>{t('Add a GIF')}</button>
+              <button class="btn ghost small" onClick={() => upload(addWall)}>{t('Upload')}</button>
             </div>
           )}
         </>)}
-        <button class="btn danger small lk-reset" onClick={() => set(() => ({}))}>Start over (plain profile)</button>
-        <p class="hint">Images can be up to 6 MB for the background and 4 MB for everything else. People can turn profile looks off in their Settings.</p>
+        <button class="btn danger small lk-reset" onClick={() => set(() => ({}))}>{t('Start over (plain profile)')}</button>
+        <p class="hint">{t('Images can be up to 6 MB for the background and 4 MB for everything else. People can turn profile looks off in their Settings.')}</p>
       </div>
     </div>
   )
@@ -339,13 +340,13 @@ function GifPicker({ pick, close }: { pick: (url: string) => void; close: () => 
   return (
     <div class="lk-edit-body lk-gifs">
       <div class="lk-gifs-head">
-        <input ref={input} value={q} placeholder="Search GIFs" onInput={(e) => setQ(e.currentTarget.value)} />
-        <button class="btn ghost small" onClick={close}>Back</button>
+        <input ref={input} value={q} placeholder={t('Search GIFs')} onInput={(e) => setQ(e.currentTarget.value)} />
+        <button class="btn ghost small" onClick={close}>{t('Back')}</button>
       </div>
-      {!list ? <div class="spinner" /> : !list.length ? <p class="hint">No GIFs found.</p> : (
-        <div class="lk-gif-grid">{list.filter((g) => isLookImg(g.url)).map((g) => <button onClick={() => pick(g.url)} aria-label={g.title || 'GIF'}><Img src={g.preview} /></button>)}</div>
+      {!list ? <div class="spinner" /> : !list.length ? <p class="hint">{t('No GIFs found.')}</p> : (
+        <div class="lk-gif-grid">{list.filter((g) => isLookImg(g.url)).map((g) => <button onClick={() => pick(g.url)} aria-label={g.title || t('GIF')}><Img src={g.preview} /></button>)}</div>
       )}
-      <p class="hint">GIFs from Tenor.</p>
+      <p class="hint">{t('GIFs from Tenor.')}</p>
     </div>
   )
 }
