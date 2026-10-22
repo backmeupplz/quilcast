@@ -575,12 +575,24 @@ small.warn { color: var(--warn); }
   content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0.08;
   background: var(--shrek-face) 0 0 / 96px 96px; mask: radial-gradient(circle, #000 36px, transparent 37px) 0 0 / 96px 96px;
 }
-:root[data-ogre] body::after {
-  content: ''; position: fixed; z-index: 5; right: 12px; bottom: 12px; width: 150px; height: 140px; pointer-events: none;
+.dj {
+  position: fixed; z-index: 5; right: 12px; bottom: 12px; width: 150px; height: 140px;
   background: var(--shrek-dance) center / cover; border-radius: 16px; box-shadow: 0 6px 24px rgb(0 0 0 / 0.35); transform: rotate(-4deg);
 }
+/* playing, the GIF gives way to the video */
+.dj.on { width: 256px; height: 144px; background: #000; transform: none; }
+.dj iframe { width: 100%; height: 100%; border: 0; border-radius: inherit; }
+.dj button {
+  position: absolute; left: 50%; bottom: -12px; transform: translateX(-50%); white-space: nowrap; padding: 4px 12px; border-radius: 99px;
+  border: 2px solid var(--bg); background: var(--accent); color: #fff; font: inherit; font-size: 13px; font-weight: 700; line-height: 1.2; cursor: pointer;
+}
+.dj.on button { bottom: auto; top: -14px; }
 /* phones: the cast button owns the bottom-right corner and the tab bar the bottom edge */
-@media (max-width: 699px) { :root[data-ogre] body::after { right: auto; left: 10px; bottom: calc(64px + env(safe-area-inset-bottom)); width: 96px; height: 90px; } }
+@media (max-width: 699px) {
+  .dj { right: auto; left: 10px; bottom: calc(76px + env(safe-area-inset-bottom)); width: 96px; height: 90px; }
+  .dj.on { width: 192px; height: 108px; }
+  .dj button { font-size: 12px; padding: 3px 9px; }
+}
 :root[data-ogre] .brand svg, :root[data-ogre] .act.lk svg, :root[data-ogre] .note-icon.lk svg { display: none; }
 :root[data-ogre] .brand::before, :root[data-ogre] .act.lk::before, :root[data-ogre] .note-icon.lk::before, :root[data-ogre] .spinner {
   content: ''; flex: none; width: 30px; height: 30px; border: 0; border-radius: 99px; background: #fff var(--shrek-face) center / 125%;

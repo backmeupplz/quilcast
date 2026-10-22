@@ -3,7 +3,35 @@ export const OGRE_FID = 1356
 const KEY = 'quilcast:ogre'
 const root = document.documentElement
 const on = () => 'ogre' in root.dataset
-const set = (v: boolean) => (v ? (root.dataset.ogre = '') : delete root.dataset.ogre)
+const set = (v: boolean) => (corner(v), v ? (root.dataset.ogre = '') : delete root.dataset.ogre)
+
+// the dancing Shrek in the corner plays All Star: a tap swaps the GIF for the official video, embedded from YouTube
+// (its player has to stay visible, so the song never plays from a hidden one); turning ogre mode off removes it all
+const SONG = 'https://www.youtube-nocookie.com/embed/L_jWHffIx5E?autoplay=1&playsinline=1&loop=1&playlist=L_jWHffIx5E'
+let dj: HTMLElement | null = null
+function corner(v: boolean) {
+  if (!v) return dj?.remove(), (dj = null)
+  if (dj) return
+  const box = (dj = document.createElement('div'))
+  box.className = 'dj'
+  const b = document.createElement('button')
+  const label = () => (b.textContent = box.classList.contains('on') ? '■ Stop' : '▶\uFE0E All Star')
+  b.onclick = () => {
+    if (box.classList.toggle('on')) {
+      const f = document.createElement('iframe')
+      f.src = SONG
+      f.title = 'Smash Mouth - All Star'
+      f.allow = 'autoplay; encrypted-media; picture-in-picture'
+      // the page sends no referrer, and YouTube's player refuses to play without one
+      f.referrerPolicy = 'strict-origin-when-cross-origin'
+      box.prepend(f)
+    } else box.querySelector('iframe')?.remove()
+    label()
+  }
+  label()
+  box.append(b)
+  document.body.append(box)
+}
 try {
   set(localStorage.getItem(KEY) === '1')
 } catch {}

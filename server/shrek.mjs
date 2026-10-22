@@ -47,6 +47,7 @@ export const credits = () => `<!doctype html>
 <ul>
   <li><a href="https://tenor.com/view/shrekerutuf-transparentshrek-greenshrektransparent-skibdiohioshreksigma-gif-3081716645127001146">Shrek's face</a> (logo, like button, background)</li>
 ${pool.map((g) => `  <li><a href="${esc(g.page)}">${esc(g.title)}</a></li>`).join('\n')}
+  <li><a href="https://www.youtube.com/watch?v=L_jWHffIx5E">Smash Mouth - All Star</a>, the official video, played in YouTube's embedded player</li>
   <li><a href="https://commons.wikimedia.org/wiki/File:Shrek_logo.svg">Shrek logo</a>, public domain, via Wikimedia Commons</li>
 </ul>
 <p><a href="/">Back to Quilcast</a></p>
