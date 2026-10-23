@@ -9,14 +9,13 @@ import { t } from './i18n.ts'
 import { Icon, P, toast } from './ui.tsx'
 import { allowance, approveTx, quote, tokensOn, transferStatus, transferTx, type ListedToken, type Quote } from './tokens.ts'
 import { signerOf, type WalletEntry } from './vault.ts'
-import { CHAINS, type Holding } from './walletui.tsx'
+import { CHAINS, Coin, type Holding } from './walletui.tsx'
 
 const VIEM: Record<number, Chain> = { 8453: base, 1: mainnet, 10: optimism, 42161: arbitrum, 137: polygon }
 // our RPC per chain (viem's default for Polygon now wants a key)
 const rpcOf = (chain: number) => CHAINS.find((c) => c.id === chain)!.rpc
 const pub = (chain: number) => createPublicClient({ chain: VIEM[chain], transport: http(rpcOf(chain)) })
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
-const label = (h: Holding) => `${h.symbol} · ${h.chain} (${num(h.amount)})`
 const num = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: n >= 1 ? 4 : 6 })
 const usd = (n?: number) => (n === undefined ? '' : n > 0 && n < 0.01 ? '< $0.01' : n.toLocaleString(undefined, { style: 'currency', currency: 'USD' }))
 // a holding as the token helpers know it
@@ -57,11 +56,15 @@ async function recipient(s: string): Promise<{ address: `0x${string}`; who: stri
 
 type Done = { chain: number; hash: string; bridge?: { to: number } }
 
-function Sheet({ title, close, children }: { title: string; close: () => void; children: any }) {
+function Sheet({ title, close, back, children }: { title: string; close: () => void; back?: () => void; children: any }) {
   return (
     <div class="modal" onClick={(e) => e.target === e.currentTarget && close()}>
-      <div class="sheet wallet-form">
-        <div class="move-top"><h2>{title}</h2><button type="button" class="icon-btn" aria-label={t('Close')} onClick={close}><Icon d={P.x} /></button></div>
+      <div class="sheet wallet-form mv">
+        <div class="move-top">
+          {back && <button type="button" class="icon-btn" aria-label={t('Back')} onClick={back}><Icon d={P.back} /></button>}
+          <h2>{title}</h2>
+          <button type="button" class="icon-btn" aria-label={t('Close')} onClick={close}><Icon d={P.x} /></button>
+        </div>
         {children}
       </div>
     </div>
@@ -93,21 +96,88 @@ function Sent({ d, close }: { d: Done; close: () => void }) {
     <div class="move-done">
       <p>{state}</p>
       <a class="btn ghost small" href={explorer(d.chain, d.hash)} target="_blank" rel="noopener noreferrer">{t('View on explorer')}</a>
-      <button class="btn" onClick={close}>{t('Close')}</button>
+      <button class="btn mv-go" onClick={close}>{t('Close')}</button>
     </div>
   )
 }
 
-/** Amount field with a Max button that leaves room for the fee. */
-function Amount({ h, value, set, gas }: { h?: Holding; value: string; set: (v: string) => void; gas: bigint }) {
-  const max = async () => h && set(formatUnits(await spendable(h, gas), h.decimals))
+const priceOf = (h: Holding) => (h.amount ? h.usd / h.amount : 0)
+const coinOf = (h: Holding) => ({ chain: h.chainId, address: h.address, symbol: h.symbol, src: h.icon })
+const amountNum = (v: string) => Number(v) || 0
+const overOf = (v: string, h: Holding) => {
+  try {
+    return parseUnits(v.trim() || '0', h.decimals) > h.raw
+  } catch {
+    return false
+  }
+}
+
+/** The token button inside a box: its logo and symbol, or a call to pick one. */
+const TokenBtn = ({ c, open }: { c?: { chain: number; address?: string; symbol: string; src?: string }; open: () => void }) => (
+  <button type="button" class={`mv-token${c ? '' : ' none'}`} onClick={open}>
+    {c && <Coin {...c} />}<b>{c ? c.symbol : t('Select token')}</b><Icon d="M6 9l6 6 6-6" size={16} />
+  </button>
+)
+
+/** What's paid or sent: a big amount, the token, its dollar value and the balance with a Max that leaves room for the fee. */
+function PayBox({ label, h, value, set, gas, pick }: { label: string; h: Holding; value: string; set: (v: string) => void; gas: bigint; pick: () => void }) {
+  const max = async () => set(formatUnits(await spendable(h, gas), h.decimals))
+  const over = overOf(value, h)
   return (
-    <div class="move-amount">
-      <input value={value} onInput={(e) => set(e.currentTarget.value.replace(',', '.'))} inputMode="decimal" placeholder="0.0" aria-label={t('Amount')} />
-      <button type="button" class="btn ghost small" onClick={max} disabled={!h}>{t('Max')}</button>
+    <div class={`mv-box${over ? ' over' : ''}`}>
+      <span class="mv-label">{label}</span>
+      <div class="mv-main">
+        <input class="mv-amt" value={value} onInput={(e) => set(e.currentTarget.value.replace(',', '.'))} inputMode="decimal" placeholder="0" aria-label={t('Amount')} autoFocus />
+        <TokenBtn c={coinOf(h)} open={pick} />
+      </div>
+      <div class="mv-sub">
+        <span>{usd(amountNum(value) * priceOf(h)) || '$0.00'}</span>
+        <span>{t('Balance: {n}', { n: num(h.amount) })}<button type="button" class="mv-max" onClick={max}>{t('Max')}</button></span>
+      </div>
     </div>
   )
 }
+
+/** A list to pick from, inside the same sheet: a search box, optional chain chips, rows of tokens. */
+function Pick<T>({ items, row, search, chains }: {
+  items: T[] | null; row: (x: T) => { coin: Parameters<typeof Coin>[0]; name: string; right?: any; on?: boolean; pick: () => void }
+  search: (x: T, term: string) => number; chains?: { value: number; set: (c: number) => void }
+}) {
+  const [q, setQ] = useState('')
+  const term = q.trim().toLowerCase()
+  // -1 hides a row; lower ranks come first
+  const shown = (items || []).map((x, i) => ({ x, r: term ? search(x, term) : 0, i })).filter((a) => a.r >= 0).sort((a, b) => a.r - b.r || a.i - b.i).slice(0, 60)
+  return (
+    <div class="mv-pick">
+      <input value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search or paste an address')} aria-label={t('Search tokens')} autoFocus />
+      {chains && (
+        <div class="mv-chains">
+          {CHAINS.map((c) => <button type="button" class={`chip${chains.value === c.id ? ' on' : ''}`} onClick={() => chains.set(c.id)}><img src={c.logo} alt="" referrerpolicy="no-referrer" />{c.name}</button>)}
+        </div>
+      )}
+      <div class="mv-rows">
+        {!items ? <div class="spinner" /> : !shown.length ? <p class="hint">{t('No tokens match.')}</p> : shown.map(({ x }) => {
+          const r = row(x)
+          return (
+            <button type="button" class={`mv-row${r.on ? ' on' : ''}`} onClick={r.pick}>
+              <Coin {...r.coin} />
+              <span class="mv-row-main"><b>{r.coin.symbol}</b><small>{r.name}</small></span>
+              {r.right && <span class="mv-row-right">{r.right}</span>}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Holdings to send or sell, the biggest first (as the wallet lists them). */
+const HoldingPick = ({ holdings, at, set }: { holdings: Holding[]; at: Holding; set: (i: number) => void }) => (
+  <Pick items={holdings} row={(x) => ({
+    coin: coinOf(x), name: `${x.name || x.symbol} · ${x.chain}`, on: x === at, pick: () => set(holdings.indexOf(x)),
+    right: <>{usd(x.usd)}<small>{num(x.amount)}</small></>,
+  })} search={(x, q) => (x.symbol.toLowerCase() === q || x.address === q ? 0 : x.symbol.toLowerCase().startsWith(q) ? 1 : x.symbol.toLowerCase().includes(q) || x.name.toLowerCase().includes(q) || x.chain.toLowerCase().includes(q) ? 2 : -1)} />
+)
 
 const amountOf = (v: string, h: Holding) => {
   let a: bigint
@@ -127,6 +197,7 @@ export function SendSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
   const [i, setI] = useState(0)
   const [to, setTo] = useState('')
   const [amt, setAmt] = useState('')
+  const [picking, setPicking] = useState(false)
   const [review, setReview] = useState<{ address: `0x${string}`; who: string; amount: bigint } | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<Done | null>(null)
@@ -153,28 +224,35 @@ export function SendSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
     setBusy(false)
   }
   if (!holdings.length) return <Sheet title={t('Send')} close={close}><p class="hint">{t('This wallet has nothing to send yet.')}</p></Sheet>
+  if (picking) return <Sheet title={t('Select token')} close={close} back={() => setPicking(false)}><HoldingPick holdings={holdings} at={h} set={(n) => (n !== i && (setI(n), setAmt('')), setPicking(false))} /></Sheet>
+  const over = overOf(amt, h)
   return (
-    <Sheet title={t('Send')} close={close}>
+    <Sheet title={review && !done ? t('Review') : t('Send')} close={close} back={review && !done && !busy ? () => setReview(null) : undefined}>
       {done ? <Sent d={done} close={close} /> : review ? (
         <>
-          <div class="sign-preview">
-            <div class="sign-row"><span>{t('Amount')}</span><b>{formatUnits(review.amount, h.decimals)} {h.symbol}</b></div>
-            <div class="sign-row"><span>{t('Network')}</span><b>{h.chain}</b></div>
+          <div class="mv-hero">
+            <Coin {...coinOf(h)} />
+            <b>{num(Number(formatUnits(review.amount, h.decimals)))} {h.symbol}</b>
+            <span>{usd(Number(formatUnits(review.amount, h.decimals)) * priceOf(h))}</span>
+          </div>
+          <div class="mv-details">
             <div class="sign-row"><span>{t('To')}</span><b>{review.who}</b></div>
+            <div class="sign-row"><span>{t('Network')}</span><b>{h.chain}</b></div>
             <div class="sign-row"><span>{t('From')}</span><b>{w.name} · {short(w.address)}</b></div>
           </div>
           <p class="hint">{t('Transactions can’t be undone. Check the address.')}</p>
-          <div class="sheet-btns">
-            <button class="btn ghost" onClick={() => setReview(null)} disabled={busy}>{t('Back')}</button>
-            <button class="btn" onClick={go} disabled={busy}>{busy ? t('Sending…') : t('Send')}</button>
-          </div>
+          <button class="btn mv-go" onClick={go} disabled={busy}>{busy ? t('Sending…') : t('Send')}</button>
         </>
       ) : (
         <form class="move-form" onSubmit={check}>
-          <label>{t('Token')}<select value={i} onChange={(e) => (setI(Number(e.currentTarget.value)), setAmt(''))}>{holdings.map((x, n) => <option value={n}>{label(x)}</option>)}</select></label>
-          <label>{t('To')}<input value={to} onInput={(e) => setTo(e.currentTarget.value)} placeholder={t('0x…, name.eth or @username')} autocapitalize="off" autocorrect="off" spellcheck={false} /></label>
-          <label>{t('Amount ({symbol})', { symbol: h.symbol })}<Amount h={h} value={amt} set={setAmt} gas={21000n} /></label>
-          <div class="sheet-btns"><button class="btn" disabled={busy || !to.trim() || !amt}>{busy ? t('Checking…') : t('Review')}</button></div>
+          <PayBox label={t('You send')} h={h} value={amt} set={setAmt} gas={21000n} pick={() => setPicking(true)} />
+          <label class="mv-box mv-to">
+            <span class="mv-label">{t('To')}</span>
+            <input value={to} onInput={(e) => setTo(e.currentTarget.value)} placeholder={t('0x…, name.eth or @username')} autocapitalize="off" autocorrect="off" spellcheck={false} />
+          </label>
+          <button class="btn mv-go" disabled={busy || !to.trim() || !amountNum(amt) || over}>
+            {busy ? t('Checking…') : !amountNum(amt) ? t('Enter an amount') : over ? t('Not enough {symbol}', { symbol: h.symbol }) : !to.trim() ? t('Enter a recipient') : t('Review')}
+          </button>
         </form>
       )}
     </Sheet>
@@ -183,56 +261,30 @@ export function SendSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
 
 // --- swap and bridge ---
 
-function TokenPick({ chain, value, set }: { chain: number; value?: ListedToken; set: (t: ListedToken) => void }) {
-  const [list, setList] = useState<ListedToken[] | null>(null)
-  const [q, setQ] = useState('')
-  const [open, setOpen] = useState(false)
-  useEffect(() => void tokensOn(chain).then(setList, () => setList([])), [chain])
-  const term = q.trim().toLowerCase()
-  // the exact symbol first, then symbols starting with it, then the rest
-  const rank = (x: ListedToken) => (x.symbol.toLowerCase() === term || x.address === term ? 0 : x.symbol.toLowerCase().startsWith(term) ? 1 : 2)
-  const shown = (list || []).filter((x) => !term || x.symbol.toLowerCase().includes(term) || x.name.toLowerCase().includes(term) || x.address === term).sort((a, b) => rank(a) - rank(b)).slice(0, 40)
-  return (
-    <div class="token-pick">
-      <button type="button" class="token-choice" onClick={() => setOpen(!open)} aria-expanded={open}>
-        {value?.logo ? <img class="token-icon" src={value.logo} alt="" referrerpolicy="no-referrer" /> : <span class="token-icon">{value?.symbol[0] || '?'}</span>}
-        <b>{value?.symbol || t('Pick a token')}</b><Icon d="M6 9l6 6 6-6" size={16} />
-      </button>
-      {open && (
-        <div class="token-list">
-          <input value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search or paste an address')} aria-label={t('Search tokens')} autoFocus />
-          {!list ? <div class="spinner" /> : shown.map((x) => (
-            <button type="button" class="token-opt" onClick={() => (set(x), setOpen(false), setQ(''))}>
-              {x.logo ? <img class="token-icon" src={x.logo} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <span class="token-icon">{x.symbol[0]}</span>}
-              <span><b>{x.symbol}</b><small>{x.name}</small></span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export function SwapSheet({ w, holdings, close, sent }: { w: WalletEntry; holdings: Holding[]; close: () => void; sent: () => void }) {
   const [i, setI] = useState(0)
   const [amt, setAmt] = useState('')
   const h = holdings[i]
-  const [toChain, setToChain] = useState(h?.chainId || 8453)
   const [buy, setBuy] = useState<ListedToken | undefined>()
+  // which list is open: what's paid, or what's bought (on the chain in its chips)
+  const [picking, setPicking] = useState<'pay' | 'get' | null>(null)
+  const [chain, setChain] = useState(h?.chainId || 8453)
+  const [list, setList] = useState<ListedToken[] | null>(null)
   const [q, setQ] = useState<Quote | null>(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState('')
   const [done, setDone] = useState<Done | null>(null)
-  // something sensible to buy: USDC, or the chain's coin when selling USDC
+  // something sensible to buy at first: USDC, or the chain's coin when selling USDC
   useEffect(() => {
-    setBuy(undefined)
-    tokensOn(toChain).then((l) => setBuy((b) => b || l.find((x) => x.symbol === (h?.symbol === 'USDC' && toChain === h.chainId ? (toChain === 137 ? 'POL' : 'ETH') : 'USDC')) || l[0]), () => {})
-  }, [toChain])
+    if (!h) return
+    tokensOn(h.chainId).then((l) => setBuy((b) => b || l.find((x) => x.symbol === (h.symbol === 'USDC' ? (h.chainId === 137 ? 'POL' : 'ETH') : 'USDC')) || l[0]), () => {})
+  }, [])
+  useEffect(() => void (picking === 'get' && (setList(null), tokensOn(chain).then(setList, () => setList([])))), [picking, chain])
   // a fresh quote a moment after the inputs settle
   useEffect(() => {
     setQ(null)
     setErr('')
-    if (!h || !buy || !amt) return
+    if (!h || !buy || !amountNum(amt)) return
     let amount: bigint
     try {
       amount = amountOf(amt, h)
@@ -245,6 +297,14 @@ export function SwapSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
     return () => ((live = false), clearTimeout(timer))
   }, [i, amt, buy?.chain, buy?.address])
   const bridge = !!h && !!buy && buy.chain !== h.chainId
+  // turning the pair around works when the wallet holds what it was buying
+  const back = buy ? holdings.findIndex((x) => x.chainId === buy.chain && x.address === buy.address) : -1
+  const flip = () => {
+    if (back < 0) return
+    setBuy({ chain: h.chainId, address: h.address, symbol: h.symbol, decimals: h.decimals, name: h.name, logo: h.icon, usd: priceOf(h) })
+    setI(back)
+    setAmt('')
+  }
   const go = async () => {
     try {
       const amount = amountOf(amt, h)
@@ -266,31 +326,54 @@ export function SwapSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
   }
   const title = bridge ? t('Bridge') : t('Swap')
   if (!holdings.length) return <Sheet title={t('Swap')} close={close}><p class="hint">{t('This wallet has nothing to swap yet.')}</p></Sheet>
+  if (picking === 'pay') return <Sheet title={t('You pay')} close={close} back={() => setPicking(null)}><HoldingPick holdings={holdings} at={h} set={(n) => (n !== i && (setI(n), setAmt('')), setPicking(null))} /></Sheet>
+  if (picking === 'get') {
+    const held = (x: ListedToken) => holdings.find((y) => y.chainId === x.chain && y.address === x.address)
+    return (
+      <Sheet title={t('You receive')} close={close} back={() => setPicking(null)}>
+        <Pick items={list} chains={{ value: chain, set: setChain }} row={(x) => {
+          const y = held(x)
+          return { coin: { chain: x.chain, address: x.address, symbol: x.symbol, src: x.logo }, name: x.name, on: buy?.chain === x.chain && buy.address === x.address, pick: () => (setBuy(x), setPicking(null)), right: y && <>{usd(y.usd)}<small>{num(y.amount)}</small></> }
+        }} search={(x, s) => (x.symbol.toLowerCase() === s || x.address === s ? 0 : x.symbol.toLowerCase().startsWith(s) ? 1 : x.symbol.toLowerCase().includes(s) || x.name.toLowerCase().includes(s) ? 2 : -1)} />
+      </Sheet>
+    )
+  }
   const got = q && buy ? Number(formatUnits(q.toAmount, buy.decimals)) : 0
   const min = q && buy ? Number(formatUnits(q.toAmountMin, buy.decimals)) : 0
   const mins = q?.seconds ? Math.ceil(q.seconds / 60) : 0
+  const finding = !!buy && !!amountNum(amt) && !q && !err
   return (
     <Sheet title={title} close={close}>
       {done ? <Sent d={done} close={close} /> : (
         <div class="move-form">
-          <label>{t('You pay')}<select value={i} onChange={(e) => (setI(Number(e.currentTarget.value)), setAmt(''), setToChain(holdings[Number(e.currentTarget.value)].chainId))}>{holdings.map((x, n) => <option value={n}>{label(x)}</option>)}</select></label>
-          <Amount h={h} value={amt} set={setAmt} gas={700000n} />
-          <label>{t('You get, on')}<select value={toChain} onChange={(e) => setToChain(Number(e.currentTarget.value))}>{CHAINS.map((c) => <option value={c.id}>{c.name}</option>)}</select></label>
-          <TokenPick chain={toChain} value={buy} set={setBuy} />
-          {err ? <p class="hint warn">{err}</p> : amt && buy && !q ? <p class="hint">{t('Finding the best route…')}</p> : q && buy && (
-            <div class="sign-preview">
-              <div class="sign-row"><span>{t('You get about')}</span><b>{num(got)} {buy.symbol} {q.toUsd ? `(${usd(q.toUsd)})` : ''}</b></div>
+          <div class="mv-pair">
+            <PayBox label={t('You pay')} h={h} value={amt} set={setAmt} gas={700000n} pick={() => setPicking('pay')} />
+            <button type="button" class="mv-flip" onClick={flip} disabled={back < 0} aria-label={t('Swap the tokens around')}><Icon d="M12 5v14M5 12l7 7 7-7" size={18} /></button>
+            <div class="mv-box">
+              <span class="mv-label">{t('You receive')}</span>
+              <div class="mv-main">
+                <span class={`mv-amt${q ? '' : ' wait'}`}>{q ? num(got) : finding ? '…' : '0'}</span>
+                <TokenBtn c={buy && { chain: buy.chain, address: buy.address, symbol: buy.symbol, src: buy.logo }} open={() => (setChain(buy?.chain || h.chainId), setPicking('get'))} />
+              </div>
+              <div class="mv-sub"><span>{q?.toUsd ? usd(q.toUsd) : ''}</span>{buy && <span>{CHAINS.find((c) => c.id === buy.chain)?.name}</span>}</div>
+            </div>
+          </div>
+          {err && <p class="hint warn">{err}</p>}
+          {q && buy && (
+            <div class="mv-details">
+              <div class="sign-row"><span>{t('Rate')}</span><b>1 {h.symbol} = {num(got / amountNum(amt))} {buy.symbol}</b></div>
               <div class="sign-row"><span>{t('At least')}</span><b>{num(min)} {buy.symbol}</b></div>
-              {q.tool && <div class="sign-row"><span>{t('Route')}</span><b>{q.tool}</b></div>}
               {q.feesUsd !== undefined && <div class="sign-row"><span>{t('Network and route fees')}</span><b>{usd(q.feesUsd)}</b></div>}
+              {q.tool && <div class="sign-row"><span>{t('Route')}</span><b>{q.tool}</b></div>}
               {bridge && <div class="sign-row"><span>{t('Arrives in about')}</span><b>{mins <= 1 ? t('a minute') : t('{n} minutes', { n: mins })}</b></div>}
             </div>
           )}
-          <p class="hint">{t('Routes come from LI.FI, which compares DEXes like Uniswap and KyberSwap and bridges like Across and Stargate.')}</p>
-          <div class="sheet-btns"><button class="btn" onClick={go} disabled={!q || !!busy}>{busy || title}</button></div>
+          <button class="btn mv-go" onClick={go} disabled={!q || !!busy}>
+            {busy || (!buy ? t('Select token') : !amountNum(amt) ? t('Enter an amount') : overOf(amt, h) ? t('Not enough {symbol}', { symbol: h.symbol }) : err ? title : finding ? t('Finding the best route…') : title)}
+          </button>
+          <p class="hint mv-foot">{t('Routes come from LI.FI, which compares DEXes like Uniswap and KyberSwap and bridges like Across and Stargate.')}</p>
         </div>
       )}
     </Sheet>
   )
 }
-

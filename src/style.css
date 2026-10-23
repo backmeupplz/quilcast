@@ -940,25 +940,58 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .sign-preview pre { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 .wallet-actions { display: flex; justify-content: center; gap: 8px; padding: 0 16px 16px; }
 .wallet-actions .btn { flex: 1; max-width: 140px; justify-content: center; }
-.move-top { display: flex; align-items: center; justify-content: space-between; }
-.move-form { display: flex; flex-direction: column; gap: 12px; }
-.move-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
-.move-form select, .move-form input { font-size: 15px; color: var(--ink); }
-.move-amount { display: flex; gap: 8px; align-items: center; }
-.move-amount input { flex: 1; min-width: 0; font-size: 22px !important; font-weight: 650; }
+.move-top { display: flex; align-items: center; gap: 4px; }
+.move-top h2 { flex: 1; margin: 0; }
+.move-top .icon-btn:first-child { margin-left: -8px; }
+.move-form { display: flex; flex-direction: column; gap: 8px; }
 .move-done { display: flex; flex-direction: column; gap: 10px; align-items: stretch; text-align: center; }
 .move-done p { margin: 8px 0; font-weight: 600; }
-.token-pick { position: relative; }
-.token-choice { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); background: var(--card); color: var(--ink); }
-.token-choice b { flex: 1; text-align: left; }
-.token-choice .token-icon, .token-opt .token-icon { width: 28px; height: 28px; font-size: 12px; }
-.token-list { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; margin-top: 6px; padding: 6px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); background: var(--card); }
-.token-list input { margin-bottom: 4px; }
-.token-opt { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 0; border-radius: calc(9px * var(--rs, 1)); background: none; color: var(--ink); text-align: left; }
-.token-opt:hover { background: var(--soft); }
-.token-opt span { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.token-opt small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.move-form select { padding: 10px 12px; border-radius: calc(10px * var(--rs, 1)); border: var(--bw, 1px) var(--bs, solid) var(--line); background: var(--card); width: 100%; }
+/* send and swap (walletmove.tsx), laid out like the usual swap screens: big boxes with the amount on the left and
+   the token on the right, the dollar value and balance under them, one wide button at the bottom */
+.mv { padding-bottom: 16px; }
+.mv .move-top { margin-bottom: 8px; }
+.mv-box { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 14px 16px; border-radius: calc(16px * var(--rs, 1)); background: var(--soft); border: var(--bw, 1px) var(--bs, solid) transparent; font-weight: 400; }
+.mv-box:focus-within { border-color: var(--line); }
+.mv-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.mv-main { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.mv input.mv-amt, .mv .mv-amt { flex: 1; min-width: 0; padding: 0; border: 0; background: none; box-shadow: none; font-size: 32px; font-weight: 650; line-height: 1.2; letter-spacing: -0.02em; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mv input.mv-amt:focus { box-shadow: none; }
+.mv-amt::placeholder, .mv-amt.wait { color: var(--muted); opacity: 0.6; }
+.mv-box.over .mv-amt { color: var(--like); }
+.mv-sub { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 22px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mv-sub > span:last-child { display: inline-flex; align-items: center; gap: 6px; }
+.mv-max { padding: 1px 8px; border: 0; border-radius: calc(99px * var(--rs, 1)); background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+.mv-token { display: inline-flex; align-items: center; gap: 8px; flex: none; padding: 5px 10px 5px 5px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(99px * var(--rs, 1)); background: var(--card); color: var(--ink); font-size: 16px; box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
+.mv-token.none { padding-left: 14px; background: var(--accent); color: var(--on-accent, #fff); border-color: transparent; }
+.mv-token .token-icon { width: 30px; height: 30px; font-size: 13px; }
+.mv-pair { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.mv-flip { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 1; display: grid; place-items: center; width: 38px; height: 38px; border-radius: calc(12px * var(--rs, 1)); border: 4px solid var(--card); background: var(--soft); color: var(--ink); }
+.mv-flip:disabled { color: var(--muted); }
+.mv-to input { padding: 4px 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; font-size: 16px; }
+.mv-go { width: 100%; padding: 14px; margin-top: 4px; font-size: 16px; border-radius: calc(16px * var(--rs, 1)); }
+.mv-go:disabled { background: var(--soft); color: var(--muted); }
+.mv-details { display: flex; flex-direction: column; gap: 6px; padding: 4px 4px 0; font-size: 13px; }
+.mv-foot { margin: 4px 4px 0; font-size: 12px; text-align: center; }
+.mv-hero { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0 16px; text-align: center; }
+.mv-hero .token-icon { width: 52px; height: 52px; font-size: 20px; }
+.mv-hero .coin-chain { width: 20px; height: 20px; }
+.mv-hero b { margin-top: 6px; font-size: 26px; overflow-wrap: anywhere; }
+.mv-hero span { color: var(--muted); }
+.mv-pick { display: flex; flex-direction: column; gap: 10px; }
+.mv-chains { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.mv-chains .chip { flex: none; padding-left: 6px; }
+.mv-chains .chip img { width: 18px; height: 18px; border-radius: calc(99px * var(--rs, 1)); }
+.mv-rows { display: flex; flex-direction: column; max-height: min(60vh, 520px); overflow-y: auto; margin: 0 -8px; }
+.mv-row { display: flex; align-items: center; gap: 12px; padding: 9px 8px; border: 0; border-radius: calc(12px * var(--rs, 1)); background: none; color: var(--ink); text-align: left; }
+.mv-row:hover, .mv-row.on { background: var(--soft); }
+.mv-row-main { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.25; }
+.mv-row-main small, .mv-row-right small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-row-right { display: flex; flex-direction: column; align-items: flex-end; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* a token's logo with its chain's in the corner (walletui.tsx Coin) */
+.coin { position: relative; display: inline-grid; flex: none; }
+.coin-chain { position: absolute; right: -3px; bottom: -3px; width: 16px; height: 16px; border-radius: calc(5px * var(--rs, 1)); box-shadow: 0 0 0 2px var(--card); background: var(--card); }
+.mv-box .coin-chain { box-shadow: 0 0 0 2px var(--card); }
+.mv-token .coin-chain { width: 13px; height: 13px; right: -2px; bottom: -2px; }
 .wallet-tabs { display: flex; align-items: center; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
 .wallet-tabs .tabs { flex: 1; border-bottom: 0; }
 .wallet-tabs .icon-btn { margin-right: 8px; color: var(--muted); }

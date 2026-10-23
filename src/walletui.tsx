@@ -5,7 +5,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { read, save, safeUrl } from './api.ts'
 import { t } from './i18n.ts'
 import { Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
-import { tokensOn } from './tokens.ts'
+import { logoOf, tokensOn } from './tokens.ts'
 import { SendSheet, SwapSheet } from './walletmove.tsx'
 import { activeWallet, addWallet, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, walletList, type WalletEntry } from './vault.ts'
 
@@ -28,13 +28,30 @@ const pick = (w: WalletEntry) => (setActive(w.id), save('quilcast:wallet', `quil
 // --- balances and NFTs ---
 
 // each chain's coin balance comes from its public RPC; tokens and NFTs from its Blockscout explorer
+// (logos are LI.FI's)
+const LOGO = 'https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/'
 export const CHAINS = [
-  { id: 8453, name: 'Base', host: 'base.blockscout.com', symbol: 'ETH', rpc: 'https://mainnet.base.org' },
-  { id: 1, name: 'Ethereum', host: 'eth.blockscout.com', symbol: 'ETH', rpc: 'https://ethereum-rpc.publicnode.com' },
-  { id: 10, name: 'Optimism', host: 'explorer.optimism.io', symbol: 'ETH', rpc: 'https://mainnet.optimism.io' },
-  { id: 42161, name: 'Arbitrum', host: 'arbitrum.blockscout.com', symbol: 'ETH', rpc: 'https://arb1.arbitrum.io/rpc' },
-  { id: 137, name: 'Polygon', host: 'polygon.blockscout.com', symbol: 'POL', rpc: 'https://polygon-bor-rpc.publicnode.com' },
+  { id: 8453, name: 'Base', host: 'base.blockscout.com', symbol: 'ETH', rpc: 'https://mainnet.base.org', logo: LOGO + 'base.svg' },
+  { id: 1, name: 'Ethereum', host: 'eth.blockscout.com', symbol: 'ETH', rpc: 'https://ethereum-rpc.publicnode.com', logo: LOGO + 'ethereum.svg' },
+  { id: 10, name: 'Optimism', host: 'explorer.optimism.io', symbol: 'ETH', rpc: 'https://mainnet.optimism.io', logo: LOGO + 'optimism.svg' },
+  { id: 42161, name: 'Arbitrum', host: 'arbitrum.blockscout.com', symbol: 'ETH', rpc: 'https://arb1.arbitrum.io/rpc', logo: LOGO + 'arbitrum.svg' },
+  { id: 137, name: 'Polygon', host: 'polygon.blockscout.com', symbol: 'POL', rpc: 'https://polygon-bor-rpc.publicnode.com', logo: LOGO + 'polygon.svg' },
 ]
+
+/** A token's logo with its chain's in the corner. A token the explorer has no picture for (or a broken one), and
+ *  each chain's coin, gets LI.FI's; the first letter stands in until then. */
+export function Coin({ chain, address, symbol, src }: { chain: number; address?: string; symbol: string; src?: string }) {
+  const [url, setUrl] = useState(src)
+  const lifi = () => logoOf(chain, address).then((u) => setUrl(u && u !== src ? u : undefined))
+  useEffect(() => void (setUrl(src), src || lifi()), [chain, address, src])
+  const c = CHAINS.find((c) => c.id === chain)
+  return (
+    <span class="coin">
+      {url ? <img class="token-icon" src={url} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => (url === src ? lifi() : setUrl(undefined))} /> : <span class="token-icon">{symbol[0]}</span>}
+      {c && <img class="coin-chain" src={c.logo} alt="" title={c.name} referrerpolicy="no-referrer" />}
+    </span>
+  )
+}
 // `raw` is the exact balance in base units, for sending all of it
 export type Holding = { chain: string; chainId: number; address?: `0x${string}`; decimals: number; raw: bigint; symbol: string; name: string; icon?: string; amount: number; usd: number }
 type Nft = { chain: string; name: string; image?: string; big?: string; collection: string }
@@ -201,7 +218,7 @@ function Tokens({ address }: { address: string }) {
       {warn}
       {h.map((x) => (
         <div class="row token-row">
-          {x.icon ? <img class="token-icon" src={x.icon} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <span class="token-icon">{x.symbol[0]}</span>}
+          <Coin chain={x.chainId} address={x.address} symbol={x.symbol} src={x.icon} />
           <span class="row-main"><b>{x.symbol}</b><span class="row-sub">{x.chain}</span></span>
           <span class="row-meta">{usd(x.usd)}<small>{fmt(x.amount)} {x.symbol}</small></span>
         </div>

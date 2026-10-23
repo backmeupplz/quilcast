@@ -80,3 +80,12 @@ export async function transferStatus(hash: string, fromChain: number, toChain: n
   const j = await fetch(`https://li.quest/v1/status?${new URLSearchParams({ txHash: hash, fromChain: String(fromChain), toChain: String(toChain) })}`).then((r) => r.json())
   return { status: String(j.status || 'PENDING'), received: j.receiving?.txHash }
 }
+
+const logos = new Map<string, Promise<string | undefined>>()
+/** A token's logo from LI.FI (the chain's coin when `address` is left out), for tokens the explorer has no picture for. */
+export const logoOf = (chain: number, address?: string) => {
+  const k = `${chain}:${address || ''}`
+  if (!logos.has(k)) logos.set(k, fetch(`https://li.quest/v1/token?${new URLSearchParams({ chain: String(chain), token: address || '0x0000000000000000000000000000000000000000' })}`)
+    .then((r) => (r.ok ? r.json() : null)).then((j) => (/^https:\/\//.test(j?.logoURI) ? String(j.logoURI) : undefined), () => undefined))
+  return logos.get(k)!
+}
