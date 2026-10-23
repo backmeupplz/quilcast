@@ -4,7 +4,7 @@ import { account, accounts, amFollowing, findUsers, get, getUser, go, hydratePar
 import { Composer } from './compose.tsx'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, sized, type Look } from './shared.ts'
-import { ago, AppIcon, Avatar, CastCard, DesignCard, designOf, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import './style.css'
@@ -682,6 +682,7 @@ function Discover() {
   const [list, setList] = useState<Listed[] | null>(null)
   const [cat, setCat] = useState('')
   const [q, setQ] = useState('')
+  useDock()
   useEffect(() => void loadListed().then(setList), [])
   if (!list) return <div class="spinner" />
   if (!list.length) return <p class="hint">{t('The directory couldn\'t be loaded. Try again in a bit.')}</p>
@@ -698,15 +699,33 @@ function Discover() {
         {['', ...cats].map((c) => <button class={`chip${cat === c ? ' on' : ''}`} aria-pressed={cat === c} onClick={() => setCat(c)}>{c ? CATEGORY(c) : t('All')}</button>)}
       </div>
       {shown.map((a) => (
-        <button class="app-row app-main listed" onClick={() => launchApp(a)}>
-          <AppIcon src={a.icon} name={a.name} />
-          <span><b>{a.name}</b><small>{a.tagline || new URL(a.url).host}</small></span>
-        </button>
+        <div class="app-row listed">
+          <button class="app-main" onClick={() => launchApp(a)}>
+            <AppIcon src={a.icon} name={a.name} />
+            <span><b>{a.name}</b><small>{a.tagline || new URL(a.url).host}</small></span>
+          </button>
+          {account?.done && <PinButton m={a} />}
+        </div>
       ))}
       {!shown.length && <p class="hint">{t('Nothing matches.')}</p>}
       <p class="hint">{t('The top mini apps on Farcaster, as farcaster.xyz ranks them. Quilcast doesn\'t review them, so treat them like any website.')}</p>
     </>
   )
+}
+
+/** Re-render when pins change or mini apps open and close. */
+function useDock() {
+  const [, force] = useState(0)
+  useEffect(() => {
+    const f = () => force((x) => x + 1)
+    addEventListener('dock', f)
+    return () => removeEventListener('dock', f)
+  }, [])
+}
+
+function PinButton({ m }: { m: AppMeta }) {
+  const on = isPinned(m.url)
+  return <button class={`icon-btn${on ? ' on' : ''}`} aria-pressed={on} aria-label={on ? t('Unpin {app} from the dock', { app: String(m.name) }) : t('Pin {app} to the dock', { app: String(m.name) })} title={on ? t('Pinned to the dock') : t('Pin to the dock')} onClick={() => togglePin(m)}><Icon d={P.pin} fill={on} /></button>
 }
 
 /** Mini apps added from inside them (addMiniApp), their notifications, the directory, and a box to open any by its link. */
@@ -717,6 +736,7 @@ function Apps() {
   const [push, setPush] = useState(false)
   const [pushErr, setPushErr] = useState('')
   const [, force] = useState(0)
+  useDock()
   const m = () => import('./miniapp.tsx')
   useEffect(() => void pushOn().then(setPush, () => {}), [])
   useEffect(() => {
@@ -781,13 +801,14 @@ function Apps() {
           <button class="btn small" onClick={openTyped} disabled={!url.trim()}>{t('Open')}</button>
         </div>
         {list.length > 0 && <h2 class="apps-h">{t('Your apps')}</h2>}
-        {list.map((a) => (
+        {[...list].sort((a, b) => +isPinned(b.url) - +isPinned(a.url)).map((a) => (
           <div class="app-row">
             <button class="app-main" onClick={() => launchApp(a)}>
               <AppIcon src={a.icon} name={a.name} />
               <span><b>{a.name}</b><small>{busy === a.url ? t('Working…') : new URL(a.url).host}</small></span>
             </button>
             {account?.done && <button class={`icon-btn${on(a) ? ' on' : ''}`} disabled={!!busy} aria-pressed={on(a)} aria-label={t('Notifications from {app}', { app: String(a.name) })} title={on(a) ? t('Notifications on') : t('Notifications off')} onClick={() => bell(a)}><Icon d={P.bell} fill={on(a)} /></button>}
+            <PinButton m={a} />
             <button class="icon-btn" disabled={!!busy} aria-label={t('Remove {app}', { app: String(a.name) })} onClick={() => remove(a)}><Icon d={P.trash} /></button>
           </div>
         ))}
@@ -1020,6 +1041,23 @@ const decode = (s: string) => {
   }
 }
 
+/** Pinned mini apps and the open ones: a pinned app opens on a tap, an open one shows or hides. */
+function Dock() {
+  useDock()
+  const { apps, shown, show } = shell.dock
+  const items = [...pinned().map((m) => ({ m, open: apps.find((a) => sameApp(a.url, m.url)) })), ...apps.filter((a) => !isPinned(a.url)).map((a) => ({ m: a, open: a }))]
+  if (!items.length) return null
+  return (
+    <nav class={`dock${shown ? ' behind' : ''}`} aria-label={t('Mini apps dock')}>
+      {/* the one on screen scrolls into view when there are more than fit */}
+      {items.map(({ m, open }) => (
+        <button class={`${open ? 'open' : ''}${open && shown === open.id ? ' on' : ''}`} ref={(el) => void (el && open && shown === open.id && el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))}
+          aria-label={m.name || new URL(m.url).host} title={m.name} onClick={() => (open ? show(open.id) : launchApp(m))}><AppIcon src={m.icon} name={m.name} /></button>
+      ))}
+    </nav>
+  )
+}
+
 function App() {
   const [, force] = useState(0)
   const [compose, setCompose] = useState<Parameters<typeof shell.compose>[0] | null>(null)
@@ -1081,6 +1119,7 @@ function App() {
         {nav.map(([k, label, d]) => <a class={active(k) ? 'on' : ''} href={href(k)} aria-label={label}>{ico(k, d)}</a>)}
       </nav>
       {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={P.pen} size={22} /></button>}
+      {me && <Dock />}
       {compose && <Composer {...compose} onClose={() => setCompose(null)} />}
       {viewer && <Lightbox {...viewer} close={() => setViewer(null)} />}
       <Toast />

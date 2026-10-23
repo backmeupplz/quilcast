@@ -463,6 +463,10 @@ small.warn { color: var(--warn); }
 .dock { position: fixed; z-index: 9; right: 16px; bottom: 16px; max-width: calc(100vw - 32px); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; display: flex; gap: 6px; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.16); }
 .dock button { flex: none; padding: 2px; border: 2px solid transparent; border-radius: 12px; background: none; display: grid; }
 .dock button.on { border-color: var(--accent); }
+/* open apps get a dot under them; pinned ones that aren't open don't */
+.dock button { position: relative; }
+.dock button.open::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 99px; background: var(--muted); }
+.dock { padding-bottom: 8px; }
 .dock .app-icon { width: 34px; height: 34px; font-size: 14px; border-radius: 9px; }
 .app-open { display: flex; gap: 8px; }
 .app-row .icon-btn.on { color: var(--accent); }
@@ -470,7 +474,8 @@ small.warn { color: var(--warn); }
 .settings .searchbox { margin: 0; }
 .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
 .chips .chip { flex: none; }
-.app-row.listed { width: 100%; color: var(--ink); padding: 8px 10px; }
+.app-row.listed { padding: 4px 6px 4px 10px; }
+.app-row.listed .app-main { color: var(--ink); }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .ask-card .field { margin: 0; }

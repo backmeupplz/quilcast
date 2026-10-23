@@ -4,7 +4,7 @@
 // person's browser wallets (EIP-6963 for Ethereum, Wallet Standard for Solana), after the checks in
 // guard.ts. Several apps can be open at once: one shows, the rest wait in the dock with their iframes alive.
 import { render, type ComponentChildren } from 'preact'
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { formatUnits, parseUnits } from 'viem'
 import { arbitrum, base, baseSepolia, celo, degen, mainnet, monad, optimism, polygon, unichain, zora } from 'viem/chains'
 import { lang, t } from './i18n.ts'
@@ -13,7 +13,7 @@ import { base58, hex } from './fc.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, WALLET_READS } from './guard.ts'
 import { castText, LOGO } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
-import { askPush, channelOf, fetchCast, handle, Icon, Img, Menu, P, shell, toast, unfurl } from './ui.tsx'
+import { askPush, channelOf, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
 
 const QUILCAST_FID = 3356316
@@ -754,6 +754,7 @@ function AppMenu({ app }: { app: App }) {
       <button class="icon-btn" aria-label={t('More')} aria-haspopup="menu" onClick={() => setOpen(!open)}><Icon d={P.more} /></button>
       {open && (
         <Menu class="right" close={() => setOpen(false)}>
+          {item(isPinned(app.url) ? t('Unpin from the dock') : t('Pin to the dock'), () => togglePin(app))}
           {item(t('Reload'), () => reload(app))}
           {item(t('Copy link'), () => navigator.clipboard.writeText(app.url).then(() => toast('Link copied')))}
           {app.media && item(t('Take back camera and mic'), () => (allow('media', app.origin, null), (app.media = false), update(), reload(app)))}
@@ -813,16 +814,9 @@ function Window({ app }: { app: App }) {
 function Host() {
   const [, force] = useState(0)
   update = () => force((x) => x + 1)
+  // the dock lives in the app shell (it also shows pinned apps before any is open); tell it what's open
+  shell.dock = { apps: apps.map(({ id, url, name, icon }) => ({ id, url, name, icon })), shown, show: (id) => show(shown === id ? null : apps.find((a) => a.id === id) || null) }
+  useEffect(() => void dispatchEvent(new Event('dock')))
   // the windows keep their order, so iframes never move in the DOM (moving one reloads it)
-  return (
-    <>
-      {apps.map((app) => <Window key={app.id} app={app} />)}
-      {apps.length > 0 && (
-        <nav class={`dock${shown ? ' behind' : ''}`} aria-label={t('Open mini apps')}>
-          {/* the one on screen scrolls into view when there are more than fit */}
-          {apps.map((app) => <button class={shown === app.id ? 'on' : ''} ref={(el) => void (el && shown === app.id && el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))} aria-label={app.name} title={app.name} onClick={() => show(shown === app.id ? null : app)}><AppIcon app={app} /></button>)}
-        </nav>
-      )}
-    </>
-  )
+  return <>{apps.map((app) => <Window key={app.id} app={app} />)}</>
 }

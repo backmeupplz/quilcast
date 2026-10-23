@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, back, get, go, LINK_RE, mine, mineVersion, myUser, posting, safeUrl, toUrl, users, type Cast, type User } from './api.ts'
+import { account, back, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, toUrl, users, type Cast, type User } from './api.ts'
 import { castText, cleanDesign, designId, isImg, isVid, LOGO, lookVars, n, sized, X_LOGO, type Look } from './shared.ts'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -14,6 +14,8 @@ export const shell = {
   // text, embeds and onDone come from mini apps; onDone gets the new cast's hash, or null if nothing was posted
   compose: (_: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void } = {}) => {},
   view: (_urls: string[], _index: number) => {},
+  // the open mini apps (miniapp.tsx keeps these current and fires 'dock'); the dock shows them next to the pinned ones
+  dock: { apps: [] as { id: number; url: string; name: string; icon?: string }[], shown: null as number | null, show: (_id: number) => {} },
 }
 // errors thrown with English text (ours and the server's) are translated here too
 export const toast = (m: string) => shell.toast(t(m))
@@ -25,6 +27,17 @@ export const askPush = () => ('Notification' in window ? Notification.requestPer
 export const pushOn = async () => !!(await (await navigator.serviceWorker?.getRegistration('/sw.js'))?.pushManager.getSubscription())
 /** Open a mini app (src/miniapp.tsx, loaded on first use). */
 export const launchApp = (m: AppMeta, ctx?: { cast?: Cast; embed?: string }) => requireAccount() && import('./miniapp.tsx').then((x) => x.launch(m, ctx))
+/** Mini apps pinned to the dock, in the order they were pinned. */
+export const pinned = () => read<AppMeta[]>('quilcast:pinned', [])
+// the directory's links and the ones apps open at can differ by a trailing slash
+export const sameApp = (a: string, b: string) => !!safeUrl(a) && safeUrl(a) === safeUrl(b)
+export const isPinned = (url: string) => pinned().some((a) => sameApp(a.url, url))
+export function togglePin(m: AppMeta) {
+  const on = isPinned(m.url)
+  save('quilcast:pinned', on ? pinned().filter((a) => !sameApp(a.url, m.url)) : [...pinned(), { url: m.url, name: m.name, icon: m.icon }])
+  dispatchEvent(new Event('dock'))
+  shell.toast(on ? t('Unpinned from the dock') : t('Pinned to the dock'))
+}
 export const launchUrl = (url: string) => requireAccount() && import('./miniapp.tsx').then((x) => x.launchUrl(url))
 
 export const P = {
@@ -52,6 +65,7 @@ export const P = {
   min: 'M6 12h12',
   wallet: 'M19 7V5a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V6M16.5 13.5h.01',
   apps: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  pin: 'M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2v.8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z',
 }
 export const Icon = ({ d, fill, size = 18 }: { d: string; fill?: boolean; size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill={fill ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
