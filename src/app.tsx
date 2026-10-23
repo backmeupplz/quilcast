@@ -433,6 +433,23 @@ function Who({ hash, kind }: { hash: string; kind: keyof typeof WHO }) {
   )
 }
 
+const FOLLOWS = { followers: () => t('Followers'), following: () => t('Following') }
+
+/** Who follows someone, or whom they follow. */
+function Follows({ id, kind }: { id: string; kind: keyof typeof FOLLOWS }) {
+  const fid = useMemo(() => getUser(id).then((u) => u.fid), [id])
+  return (
+    <>
+      <Header title={FOLLOWS[kind]()} />
+      <Pager<User> k={`${id}:${kind}`} empty={t('Nobody yet.')} id={(u) => String(u.fid)} row={(us) => us.map((u) => <UserRow key={u.fid} u={u} />)}
+        load={async (cursor) => {
+          const r = await get(`/v2/farcaster/${kind}`, { fid: await fid, limit: 100, cursor })
+          return { items: r.users, cursor: r.next?.cursor || null }
+        }} />
+    </>
+  )
+}
+
 function Thread({ hash }: { hash: string }) {
   const [c, setC] = useState<Cast | null>(null)
   const [up, setUp] = useState<Cast[]>([])
@@ -603,7 +620,7 @@ function Profile({ id }: { id: string }) {
               <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span></div>
               {shown && <L.Mood l={shown} />}
               {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
-              <div class="counts"><span><b>{n(u.following_count)}</b> {t('following')}</span><span><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</span></div>
+              <div class="counts"><a href={`${userPath(u)}/following`}><b>{n(u.following_count)}</b> {t('following')}</a><a href={`${userPath(u)}/followers`}><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</a></div>
             </section>)}
             {shown && <L.Sections l={shown} u={u} edit={draft ? editLook : undefined} />}
             <div class="lk-box lk-feed">
@@ -1029,7 +1046,7 @@ function App() {
   const me = account?.done ? myUser() : null
   const view =
     r0 === 'c' ? (Object.hasOwn(WHO, r2) ? <Who hash={r1} kind={r2 as keyof typeof WHO} /> : <Thread hash={r1} />)
-      : r0 === 'u' ? <Profile id={decode(r1)} />
+      : r0 === 'u' ? (Object.hasOwn(FOLLOWS, r2) ? <Follows id={decode(r1)} kind={r2 as keyof typeof FOLLOWS} /> : <Profile id={decode(r1)} />)
         : r0 === 'search' ? <Search />
           : r0 === 'notifications' ? <Notifications />
           : r0 === 'messages' ? <Messages id={r1 && decode(r1)} />
