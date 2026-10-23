@@ -38,7 +38,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .warn { color: var(--warn); }
 
 /* ---------- layout ---------- */
-.app { display: flex; justify-content: center; min-height: 100vh; zoom: var(--zoom, 1); }
+.app { display: flex; justify-content: center; min-height: 100vh; }
 .col { width: 100%; max-width: 600px; min-width: 0; border-inline: var(--bw, 1px) var(--bs, solid) var(--line); min-height: 100vh; padding-bottom: 80px; }
 .side { position: sticky; z-index: 7; top: 0; height: 100vh; width: 250px; padding: 8px 12px 16px; display: flex; flex-direction: column; gap: 2px; flex: none; }
 .extra { position: sticky; top: 0; height: 100vh; width: 320px; padding: 10px 0 0 24px; flex: none; display: flex; flex-direction: column; gap: 14px; }
@@ -996,6 +996,9 @@ body:has(.space-bar) .dock { bottom: 84px; }
 :root[data-th-name='outline'] .name:not(.lk-name) { color: transparent; -webkit-text-stroke: 1px var(--lk-name, var(--accent)); }
 @media (prefers-reduced-motion: reduce) { :root[data-th-name] .name { animation: none !important; } }
 :root[data-look] .th-fx { display: none; }
+/* a theme's size zooms the page's three columns only: the fixed tab bar and buttons stay out of any zoomed box,
+   which some mobile browsers then misplace */
+:root[data-th-zoom] :is(.side, .col, .extra) { zoom: var(--zoom); }
 .btns.wrap { flex-wrap: wrap; margin: 8px 0; }
 
 /* Settings > Theme (themes.tsx) */

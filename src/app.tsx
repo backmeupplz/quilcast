@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, accounts, amFollowing, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, users, USER_DATA, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, n, sized, type Look, type Theme } from './shared.ts'
+import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
@@ -149,7 +149,8 @@ function Pager<T>({ load, k, empty, id, row, initial }: { load: (cursor?: string
 
 // Home's replies come with their conversation, like the thread page draws it: the root, "Show full thread" when
 // posts were skipped, the parent and the reply, never more than 3 posts. A reply shows when the cast it answers is
-// the viewer's or by someone they follow; a conversation already shown above isn't shown again.
+// the viewer's or by someone they follow. A post shows once per feed: `shown` lasts across its pages, a reply whose
+// parent is already up is left out, and one whose root is already up shows without it.
 const ask = (() => {
   // ponytail: one queue for every feed's lookups, 6 at a time, because haatz stalls under ~100 parallel requests
   let active = 0
@@ -165,7 +166,7 @@ const ask = (() => {
     }
   }
 })()
-async function threads(casts: Cast[]) {
+async function threads(casts: Cast[], shown: Set<string>) {
   const units = await Promise.all(casts.map(async (c): Promise<Cast | null> => {
     if (!c.parent_hash) return c
     const parent = await ask(() => fetchCast(c.parent_hash!))
@@ -190,15 +191,7 @@ async function threads(casts: Cast[]) {
     }
     return root ? { ...c, up: [root, parent], gap: skipped } : { ...c, up: [parent], gap: true }
   }))
-  const shown = new Set<string>()
-  const out: Cast[] = []
-  for (const c of units) {
-    // a cast already shown, or another reply to a parent already shown, would repeat that conversation
-    if (!c || shown.has(c.hash) || (c.up && shown.has(c.up[c.up.length - 1].hash))) continue
-    out.push(c)
-    for (const p of [c, ...(c.up || [])]) shown.add(p.hash)
-  }
-  return out
+  return oncePerFeed(units, shown)
 }
 
 function Unit({ c }: { c: Cast }) {
@@ -215,12 +208,15 @@ function Unit({ c }: { c: Cast }) {
 }
 
 // `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately
-const Feed = ({ load, k, empty, keep, cacheKey, thread }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean }) => (
-  <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.map((c) => <Unit key={c.hash} c={c} />)}
+function Feed({ load, k, empty, keep, cacheKey, thread }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean }) {
+  // the posts this feed shows so far, for threads(); a first page starts over
+  const shown = useRef(new Set<string>())
+  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.map((c) => <Unit key={c.hash} c={c} />)}
     initial={() => (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
     load={async (cursor) => {
       const r = await load(cursor)
-      const casts = thread ? await threads(r.casts) : keep ? r.casts.filter(keep) : r.casts
+      if (!cursor) shown.current = new Set()
+      const casts = thread ? await threads(r.casts, shown.current) : keep ? r.casts.filter(keep) : r.casts
       await hydrateParents(casts)
       if (!cursor && cacheKey) {
         try {
@@ -229,7 +225,7 @@ const Feed = ({ load, k, empty, keep, cacheKey, thread }: { load: (cursor?: stri
       }
       return { items: casts, cursor: r.casts.length ? r.next?.cursor || null : null }
     }} />
-)
+}
 
 /** Tapping the tab or nav item you're already on reloads the list from the top. */
 function useReload(): [number, () => void] {
@@ -243,6 +239,11 @@ function useReload(): [number, () => void] {
 }
 
 // --- views ---
+
+// Trending keeps top-level casts, minus farcaster.xyz Spaces: their replies are the room's chat, not interest, and
+// the post itself is often empty
+const isSpace = (c: Cast) => (c.embeds || []).some((e: any) => /^https:\/\/(farcaster\.xyz|warpcast\.com)\/~\/spaces\//.test(e?.url || ''))
+const trendy = (c: Cast) => !c.parent_hash && !isSpace(c)
 
 function Home() {
   const [tab, setTab] = useState<'following' | 'trending'>(account?.done ? 'following' : 'trending')
@@ -259,7 +260,7 @@ function Home() {
         </div>
       )}
       {/* replies show in Following with their conversation (threads()); Trending keeps top-level casts */}
-      <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={(c) => !c.parent_hash} thread={tab === 'following'}
+      <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={trendy} thread={tab === 'following'}
         load={(cursor) => (tab === 'following' ? get('/v2/farcaster/feed/following', { fid: account!.fid, limit: 50, cursor }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
     </>
   )

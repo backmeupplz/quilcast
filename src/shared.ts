@@ -24,6 +24,21 @@ export function castText(c: Mentioned) {
   return out + dec.decode(bytes.subarray(last))
 }
 
+type Unit = { hash: string; up?: { hash: string }[]; gap?: boolean }
+/** Home's threads (app.tsx threads()) with every post shown once per feed: `shown` holds what earlier pages showed. A
+ *  cast already up, or another reply to a parent already up, is left out; one whose root is already up shows
+ *  without it, behind "Show full thread". */
+export function oncePerFeed<T extends Unit>(units: (T | null)[], shown: Set<string>): T[] {
+  const out: T[] = []
+  for (let c of units) {
+    if (!c || shown.has(c.hash) || (c.up && shown.has(c.up[c.up.length - 1].hash))) continue
+    if (c.up && c.up.length > 1 && shown.has(c.up[0].hash)) c = { ...c, up: c.up.slice(1), gap: true }
+    out.push(c)
+    for (const p of [c, ...(c.up || [])]) shown.add(p.hash)
+  }
+  return out
+}
+
 export const LOGO = 'M23.5 6.5c-6 .5-10.5 4.8-12 11.5l-1.6 7.5 1.4.4 2-5.2c4.6-.4 8.4-3.4 9.6-8.2-1.3.6-2.7.9-4 .9 1.9-1.2 3.6-3.6 4.6-6.9z'
 export const X_LOGO = 'M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.19L2 3h6.33l4.37 5.77zm-1.08 16.17h1.7L7.4 4.74H5.58z'
 
