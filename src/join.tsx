@@ -162,7 +162,7 @@ function SignIn() {
     <div class="join">
       <h1>{t('Sign in')}</h1>
       <p class="lede">{t('Enter the 12 or 24 word recovery phrase of your Farcaster account. Quilcast keeps it in this browser and uses it to add a signing key for this device.')}</p>
-      <textarea rows={4} value={phrase} disabled={f.busy} onInput={(e) => setPhrase(e.currentTarget.value)} placeholder={t('apple banana cherry …')} autocapitalize="none" spellcheck={false} />
+      <textarea rows={4} value={phrase} disabled={f.busy} onInput={(e) => setPhrase(e.currentTarget.value)} placeholder={t('apple banana cherry …')} autocapitalize="none" autocomplete="off" spellcheck={false} data-gramm="false" data-lt-active="false" />
       <Progress {...f} steps={SIGN_IN()} />
       <button class="btn wide" disabled={f.busy || !phrase.trim()} onClick={signIn}>{f.busy ? t('Signing in…') : t('Sign in')}</button>
     </div>

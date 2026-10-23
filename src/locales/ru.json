@@ -821,11 +821,20 @@
   "Approves": "Разрешение для",
   "Contract": "Контракт",
   "Sends": "Отправляет",
-  "This account's recovery phrase isn't in this browser. Sign in with it again.": "Фразы восстановления этого аккаунта нет в этом браузере. Войдите с ней ещё раз.",
   "This lets someone else take your tokens without asking again.": "Это позволит кому-то другому забирать ваши токены, больше не спрашивая.",
   "This message can't be read. Only sign it if you know exactly what it is.": "Это сообщение нельзя прочитать. Подписывайте его, только если точно знаете, что это.",
   "This puts your NFTs up for sale. Check the price before you sign.": "Это выставит ваши NFT на продажу. Проверьте цену, прежде чем подписывать.",
   "Token": "Токен",
   "Unlimited": "Без ограничений",
-  "Up to": "Лимит"
+  "Up to": "Лимит",
+  "@{name}'s recovery phrase isn't kept in this browser. Enter it to sign this; Quilcast uses it once and doesn't keep it.": "Фраза восстановления @{name} не хранится в этом браузере. Введите её, чтобы подписать это; Quilcast использует её один раз и не сохраняет.",
+  "Enter your recovery phrase": "Введите фразу восстановления",
+  "Keep it here": "Хранить здесь",
+  "Keep it in this browser": "Хранить в этом браузере",
+  "Kept in this browser": "Хранится в этом браузере",
+  "Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.": "Тогда Quilcast будет спрашивать её, когда подписывать нужно самому аккаунту, например чтобы добавить ключ для этого браузера или войти в мини-приложение. Сначала запишите её.",
+  "Remove it?": "Удалить её?",
+  "That's not this account's recovery phrase.": "Это не фраза восстановления этого аккаунта.",
+  "This needs the account's recovery phrase.": "Для этого нужна фраза восстановления аккаунта.",
+  "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "Ваша фраза восстановления не хранится в этом браузере. Quilcast спрашивает её, когда подписывать нужно самому аккаунту, например чтобы добавить ключ для этого браузера или войти в мини-приложение."
 }

@@ -138,6 +138,10 @@ export const updateAccount = (a: Account) => {
   accounts = saved.map((x) => (idOf(x) === idOf(a) ? a : withSecrets(x)))
   return persist()
 }
+/** Asks the person for an account's recovery phrase, when this browser doesn't keep it; `keep` ticks "keep it here".
+ *  Resolves null if they don't give it. The app fills this in (app.tsx PhraseAsk). */
+export const askUser = { phrase: async (_a: Account, _keep?: boolean): Promise<string | null> => null }
+
 // a full reload drops the previous account's feeds and likes; it stays on this page (a conversation is the account's
 // own, so that one goes back to the inbox)
 export const switchAccount = (a: Account) => (localStorage.setItem('quilcast:current', idOf(a)), location.assign(location.pathname.startsWith('/messages/') ? '/messages' : location.pathname + location.search))

@@ -331,6 +331,8 @@ a.searchbox { margin: 0; }
 .settings section { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); padding: 12px 14px; }
 .settings h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
 .hint { color: var(--muted); font-size: 13px; margin: 0 0 4px; line-height: 1.45; }
+/* a warning set as a hint (a wrong phrase, "anyone who sees this…") keeps its color */
+.hint.warn { color: var(--warn); }
 .setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; }
 .setting h2 { margin: 0; }
 .setting + .setting { border-top: var(--bw, 1px) var(--bs, solid) var(--line); }

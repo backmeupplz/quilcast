@@ -821,11 +821,20 @@
   "Approves": "承認先",
   "Contract": "コントラクト",
   "Sends": "送金額",
-  "This account's recovery phrase isn't in this browser. Sign in with it again.": "このアカウントのリカバリーフレーズはこのブラウザにありません。フレーズでもう一度サインインしてください。",
   "This lets someone else take your tokens without asking again.": "これを承認すると、他の誰かが確認なしであなたのトークンを持ち出せるようになります。",
   "This message can't be read. Only sign it if you know exactly what it is.": "このメッセージは読める形ではありません。内容を正確に把握している場合だけ署名してください。",
   "This puts your NFTs up for sale. Check the price before you sign.": "これであなたのNFTが売りに出されます。署名する前に価格を確認してください。",
   "Token": "トークン",
   "Unlimited": "無制限",
-  "Up to": "上限"
+  "Up to": "上限",
+  "@{name}'s recovery phrase isn't kept in this browser. Enter it to sign this; Quilcast uses it once and doesn't keep it.": "@{name} のリカバリーフレーズはこのブラウザに保存されていません。署名するには入力してください。Quilcast は一度だけ使い、保存しません。",
+  "Enter your recovery phrase": "リカバリーフレーズを入力",
+  "Keep it here": "このブラウザに保存",
+  "Keep it in this browser": "このブラウザに保存する",
+  "Kept in this browser": "このブラウザに保存済み",
+  "Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.": "その後は、このブラウザ用のキーの追加やミニアプリへのサインインなど、アカウント自体が署名する必要があるときに Quilcast が入力を求めます。先に書き留めておいてください。",
+  "Remove it?": "削除しますか?",
+  "That's not this account's recovery phrase.": "これはこのアカウントのリカバリーフレーズではありません。",
+  "This needs the account's recovery phrase.": "これにはアカウントのリカバリーフレーズが必要です。",
+  "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "リカバリーフレーズはこのブラウザに保存されていません。このブラウザ用のキーの追加やミニアプリへのサインインなど、アカウント自体が署名する必要があるときに Quilcast が入力を求めます。"
 }

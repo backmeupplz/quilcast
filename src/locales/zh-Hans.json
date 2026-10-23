@@ -821,11 +821,20 @@
   "Approves": "授权给",
   "Contract": "合约",
   "Sends": "发送",
-  "This account's recovery phrase isn't in this browser. Sign in with it again.": "此浏览器中没有这个账号的助记词。请用它重新登录。",
   "This lets someone else take your tokens without asking again.": "这会让别人无需再次询问就能拿走你的代币。",
   "This message can't be read. Only sign it if you know exactly what it is.": "这条消息无法阅读。只有在你确切知道它是什么时才签名。",
   "This puts your NFTs up for sale. Check the price before you sign.": "这会把你的 NFT 挂出出售。签名前请检查价格。",
   "Token": "代币",
   "Unlimited": "无限额",
-  "Up to": "上限"
+  "Up to": "上限",
+  "@{name}'s recovery phrase isn't kept in this browser. Enter it to sign this; Quilcast uses it once and doesn't keep it.": "@{name} 的助记词没有保存在此浏览器中。输入它来签名；Quilcast 只用一次，不会保存。",
+  "Enter your recovery phrase": "输入你的助记词",
+  "Keep it here": "保存在这里",
+  "Keep it in this browser": "保存在此浏览器中",
+  "Kept in this browser": "已保存在此浏览器中",
+  "Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.": "之后当账号本身需要签名时（比如为此浏览器添加密钥或登录小程序），Quilcast 会向你索要它。请先把它抄下来。",
+  "Remove it?": "要移除吗?",
+  "That's not this account's recovery phrase.": "这不是这个账号的助记词。",
+  "This needs the account's recovery phrase.": "这需要账号的助记词。",
+  "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "你的助记词没有保存在此浏览器中。当账号本身需要签名时（比如为此浏览器添加密钥或登录小程序），Quilcast 会向你索要它。"
 }

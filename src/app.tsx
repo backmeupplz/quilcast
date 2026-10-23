@@ -1,6 +1,6 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, accounts, amFollowing, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, users, USER_DATA, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, askUser, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
@@ -31,6 +31,39 @@ function Toast() {
   const t = useRef(0)
   shell.toast = (x) => (setM(x), clearTimeout(t.current), (t.current = window.setTimeout(() => setM(''), 3500)))
   return m ? <div class="toast" role="status">{m}</div> : null
+}
+
+/** The recovery phrase of an account this browser doesn't keep it for, asked when the account itself has to sign
+ *  (write.ts custody). It's checked against the account's custody address, used for that one action and dropped,
+ *  unless "keep it here" is ticked. */
+function PhraseAsk() {
+  const [q, setQ] = useState<{ a: Account; done: (p: string | null) => void } | null>(null)
+  const [text, setText] = useState('')
+  const [keep, setKeep] = useState(false)
+  const [err, setErr] = useState('')
+  askUser.phrase = (a, k = false) => new Promise((done) => (setText(''), setErr(''), setKeep(k), setQ({ a, done })))
+  if (!q) return null
+  const close = (p: string | null) => (setQ(null), setText(''), q.done(p))
+  const check = async (e: Event) => {
+    e.preventDefault()
+    const { address, custodyKey } = await import('./fc.ts')
+    const p = text.trim().toLowerCase().split(/\s+/).join(' ')
+    if (address(await custodyKey(p, false)) !== q.a.custody) return setErr(t("That's not this account's recovery phrase."))
+    if (keep) await updateAccount({ ...(accounts.find((x) => idOf(x) === idOf(q.a)) || q.a), phrase: p })
+    close(p)
+  }
+  return (
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && close(null)}>
+      <form class="sheet wallet-form" onSubmit={check}>
+        <div class="move-top"><h2>{t('Enter your recovery phrase')}</h2></div>
+        <p class="hint">{t("@{name}'s recovery phrase isn't kept in this browser. Enter it to sign this; Quilcast uses it once and doesn't keep it.", { name: q.a.username || String(q.a.fid) })}</p>
+        <textarea rows={3} value={text} onInput={(e) => (setText(e.currentTarget.value), setErr(''))} placeholder={t('apple banana cherry …')} aria-label={t('Recovery phrase')} autocapitalize="none" autocomplete="off" spellcheck={false} data-gramm="false" data-lt-active="false" />
+        {err && <p class="hint warn">{err}</p>}
+        <label class="check"><input type="checkbox" checked={keep} onChange={(e) => setKeep(e.currentTarget.checked)} /> {t('Keep it in this browser')}</label>
+        <div class="sheet-btns"><button type="button" class="btn ghost" onClick={() => close(null)}>{t('Cancel')}</button><button class="btn" disabled={!text.trim()}>{t('Continue')}</button></div>
+      </form>
+    </div>
+  )
 }
 
 const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a></>
@@ -855,6 +888,7 @@ function Settings() {
   const [phrase, setPhrase] = useState(false)
   const [out, setOut] = useState<false | 'ask' | 'busy' | 'stuck'>(false)
   const asked = useRef(0)
+  const [forgetting, setForgetting] = useState(0)
   const [saving, setSaving] = useState(false)
   const photo = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -915,6 +949,14 @@ function Settings() {
   }
   // the signing key can't leave the browser (the vault won't give it out, and a new one is a sign-in away), so the
   // file holds what the account itself is: its recovery phrase and custody key
+  // like signing out: the confirm sits where Remove was, so it ignores clicks for a moment
+  const forget = async () => {
+    if (!forgetting) return setForgetting(Date.now())
+    if (Date.now() - forgetting < 1000) return
+    await setAccount({ ...account!, phrase: '' })
+    // a reload drops the copies still in memory, the derived custody key among them
+    location.reload()
+  }
   const exportKeys = async () => {
     const fc = await import('./fc.ts')
     const acc = account!
@@ -1006,11 +1048,18 @@ function Settings() {
             <h2>{t('Keys')}</h2>
             {account.wallet ? (
               <p class="hint"><With s={t('This account belongs to the wallet {wallet}, which keeps its own keys. Quilcast only holds a signing key for this browser.')} k="wallet"><code>{account.wallet}</code></With></p>
-            ) : account.phrase && (
+            ) : account.phrase ? (
               <>
                 <p class="hint">{t('Your recovery phrase controls your account and also works in Quorum and Warpcast. It lives only in this browser, so keep a copy somewhere safe.')}</p>
                 <div class="setting"><span>{t('Recovery phrase')}</span><span class="btns"><button class="btn ghost small" onClick={() => setPhrase(!phrase)}>{phrase ? t('Hide') : t('Show')}</button><button class="btn ghost small" onClick={() => navigator.clipboard.writeText(account!.phrase).then(() => toast('Copied'))}>{t('Copy')}</button></span></div>
                 {phrase && <code class="phrase">{account.phrase}</code>}
+                <div class="setting"><span>{t('Kept in this browser')}</span><button class="btn ghost small" onClick={forget}>{forgetting ? t('Remove it?') : t('Remove')}</button></div>
+                {forgetting > 0 && <p class="hint">{t('Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.')}</p>}
+              </>
+            ) : (
+              <>
+                <p class="hint">{t("Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.")}</p>
+                <div class="setting"><span>{t('Recovery phrase')}</span><button class="btn ghost small" onClick={() => askUser.phrase(account!, true).then(() => force((x) => x + 1))}>{t('Keep it here')}</button></div>
               </>
             )}
             {account.phrase && <div class="setting"><span>{t('All keys as a file')}</span><button class="btn ghost small" onClick={exportKeys}>{t('Export')}</button></div>}
@@ -1167,6 +1216,7 @@ function App() {
       {me && <Dock />}
       {compose && <Composer {...compose} onClose={() => setCompose(null)} />}
       {viewer && <Lightbox {...viewer} close={() => setViewer(null)} />}
+      <PhraseAsk />
       <Toast />
     </div>
     </>

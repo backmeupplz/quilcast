@@ -46,3 +46,20 @@ test('signing into an account this browser doesn\'t hold yet saves and selects i
   assert.equal(api.account!.fid, 9)
   assert.ok(api.accounts[0].signer)
 })
+
+test('an account whose phrase this browser doesn\'t keep asks for it once per action and keeps nothing', async () => {
+  const api = await import('./api.ts')
+  const { ensureSigner } = await import('./write.ts')
+  const { address, custodyKey } = await import('./fc.ts')
+  const phrase = 'legal winner thank year wave sausage worth useful legal winner thank yellow'
+  await api.setAccount({ phrase: '', custody: address(await custodyKey(phrase)), fid: 11, done: true })
+  let asked = 0
+  api.askUser.phrase = async () => (asked++, phrase)
+  await ensureSigner(api.account!, true)
+  assert.equal(asked, 1)
+  assert.equal(api.account!.phrase, '')
+  assert.ok(api.account!.pub)
+  // no phrase given, nothing signed
+  api.askUser.phrase = async () => null
+  await assert.rejects(ensureSigner(api.account!, true), /recovery phrase/)
+})

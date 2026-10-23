@@ -331,7 +331,7 @@ function AddWallet({ close }: { close: () => void }) {
         <input value={name} onInput={(e) => setName(e.currentTarget.value)} placeholder={t('Name (optional)')} aria-label={t('Wallet name')} maxLength={40} />
         {mode === 'import' ? (
           <>
-            <textarea value={secret} onInput={(e) => setSecret(e.currentTarget.value)} placeholder={t('Recovery phrase or private key')} aria-label={t('Recovery phrase or private key')} rows={3} spellcheck={false} autocapitalize="off" autocorrect="off" />
+            <textarea value={secret} onInput={(e) => setSecret(e.currentTarget.value)} placeholder={t('Recovery phrase or private key')} aria-label={t('Recovery phrase or private key')} rows={3} spellcheck={false} autocapitalize="off" autocorrect="off" autocomplete="off" data-gramm="false" data-lt-active="false" />
             {secret.trim() && !parsed && <p class="hint warn">{t("That isn't a valid recovery phrase or private key.")}</p>}
             {parsed?.kind === 'phrase' && <label class="wallet-index">{t('Account number')}<input type="number" min={1} max={100} value={index} onInput={(e) => setIndex(Math.max(1, Number(e.currentTarget.value) || 1))} /></label>}
           </>

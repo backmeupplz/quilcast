@@ -821,11 +821,20 @@
   "Approves": "Autoriza a",
   "Contract": "Contrato",
   "Sends": "Envía",
-  "This account's recovery phrase isn't in this browser. Sign in with it again.": "La frase de recuperación de esta cuenta no está en este navegador. Vuelve a iniciar sesión con ella.",
   "This lets someone else take your tokens without asking again.": "Esto permite que otra persona tome tus tokens sin volver a preguntarte.",
   "This message can't be read. Only sign it if you know exactly what it is.": "Este mensaje no se puede leer. Fírmalo solo si sabes exactamente qué es.",
   "This puts your NFTs up for sale. Check the price before you sign.": "Esto pone tus NFT a la venta. Revisa el precio antes de firmar.",
   "Token": "Token",
   "Unlimited": "Ilimitado",
-  "Up to": "Hasta"
+  "Up to": "Hasta",
+  "@{name}'s recovery phrase isn't kept in this browser. Enter it to sign this; Quilcast uses it once and doesn't keep it.": "La frase de recuperación de @{name} no se guarda en este navegador. Escríbela para firmar esto; Quilcast la usa una vez y no la guarda.",
+  "Enter your recovery phrase": "Escribe tu frase de recuperación",
+  "Keep it here": "Guardarla aquí",
+  "Keep it in this browser": "Guardarla en este navegador",
+  "Kept in this browser": "Guardada en este navegador",
+  "Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.": "Después Quilcast te la pedirá cuando la propia cuenta tenga que firmar, como al añadir una clave para este navegador o al iniciar sesión en una mini app. Tenla apuntada antes.",
+  "Remove it?": "¿Quitarla?",
+  "That's not this account's recovery phrase.": "Esa no es la frase de recuperación de esta cuenta.",
+  "This needs the account's recovery phrase.": "Para esto hace falta la frase de recuperación de la cuenta.",
+  "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "Tu frase de recuperación no se guarda en este navegador. Quilcast te la pide cuando la propia cuenta tiene que firmar, como al añadir una clave para este navegador o al iniciar sesión en una mini app."
 }

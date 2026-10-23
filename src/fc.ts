@@ -88,16 +88,18 @@ export async function envelope(type: number, fid: number, body: Uint8Array, key:
 
 const keys = new Map<string, Promise<Uint8Array>>()
 /** Custody key derived the way Warpcast and Quorum do it (BIP-39 seed, m/44'/60'/0'/0/0), so phrases
- *  move between apps. The seed's PBKDF2 runs in WebCrypto: native, async, and cached per phrase. */
-export function custodyKey(phrase: string) {
+ *  move between apps. The seed's PBKDF2 runs in WebCrypto: native, async, and cached per phrase, unless `keep` is
+ *  false (a phrase someone typed in for one action). */
+export function custodyKey(phrase: string, keep = true) {
   const p = phrase.trim().toLowerCase().split(/\s+/).join(' ').normalize('NFKD')
-  if (!keys.has(p))
-    keys.set(p, (async () => {
-      const enc = new TextEncoder()
-      const key = await crypto.subtle.importKey('raw', enc.encode(p), 'PBKDF2', false, ['deriveBits'])
-      const seed = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-512', salt: enc.encode('mnemonic'), iterations: 2048 }, key, 512)
-      return HDKey.fromMasterSeed(new Uint8Array(seed)).derive("m/44'/60'/0'/0/0").privateKey!
-    })())
+  const derive = async () => {
+    const enc = new TextEncoder()
+    const key = await crypto.subtle.importKey('raw', enc.encode(p), 'PBKDF2', false, ['deriveBits'])
+    const seed = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-512', salt: enc.encode('mnemonic'), iterations: 2048 }, key, 512)
+    return HDKey.fromMasterSeed(new Uint8Array(seed)).derive("m/44'/60'/0'/0/0").privateKey!
+  }
+  if (!keep) return keys.get(p) || derive()
+  if (!keys.has(p)) keys.set(p, derive())
   return keys.get(p)!
 }
 

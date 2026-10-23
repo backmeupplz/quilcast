@@ -1,21 +1,24 @@
 // Signed writes: everything here needs the account's keys.
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { account, accounts, byName, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, updateAccount, users, type Account, type Cast } from './api.ts'
+import { account, accounts, askUser, byName, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, updateAccount, users, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
 import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, rawEd, reactionBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, newEd, type Ed } from './keys.ts'
 
-/** The recovery phrase of a phrase account. */
-const phraseOf = async (a: Account) => {
-  if (!a.phrase) throw new Error("This account's recovery phrase isn't in this browser. Sign in with it again.")
-  return a.phrase
+/** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
+ *  can remove it), from one the person types in for this one action, which isn't kept, not even in memory. */
+async function custody(a: Account) {
+  if (a.phrase) return custodyKey(a.phrase)
+  const phrase = await askUser.phrase(a)
+  if (!phrase) throw new Error("This needs the account's recovery phrase.")
+  return custodyKey(phrase, false)
 }
 
 /** Who signs for an account's custody address: the key from its phrase, or the wallet it was connected with. */
 export const custodyOf = async (a: Account): Promise<Custody> =>
-  a.wallet ? (await import('./wallet.ts')).walletCustody(a.wallet) : keyCustody(await custodyKey(await phraseOf(a)))
+  a.wallet ? (await import('./wallet.ts')).walletCustody(a.wallet) : keyCustody(await custody(a))
 
 /** An ed25519 key (`pub`, or raw in `raw`) as a signer; a key this browser doesn't have counts as one the network
  *  dropped, so send() and saveLook() add a new one. */
@@ -78,13 +81,14 @@ async function replaceSigner(a = account!) {
   }
 }
 
-/** A transaction on Optimism from the account's custody: its wallet, or the phrase key (which needs a little ETH there). */
-async function custodyTx(a: Account, to: string, data: string) {
-  if (a.wallet) return (await import('./wallet.ts')).sendTx(a.wallet, to, data)
-  const key = await custodyKey(await phraseOf(a))
+/** A transaction on Optimism from the account's custody: its wallet, or the phrase key (which needs a little ETH there).
+ *  `data` is built with the same custody, so a phrase that has to be typed in is asked for once. */
+async function custodyTx(a: Account, to: string, data: (c: Custody) => Promise<string>) {
+  if (a.wallet) return (await import('./wallet.ts')).sendTx(a.wallet, to, await data(await custodyOf(a)))
+  const key = await custody(a)
   const { address } = keyCustody(key)
   if ((await balance(settings.rpc, address)) === 0n) throw new Error(t("Your account address {address} needs a little ETH on Optimism (a cent's worth) to pay for this.", { address }))
-  return sendTx(settings.rpc, key, to, data)
+  return sendTx(settings.rpc, key, to, await data(keyCustody(key)))
 }
 
 const onChain = async (fid: number, key: Uint8Array) =>
@@ -95,14 +99,14 @@ const onChain = async (fid: number, key: Uint8Array) =>
  *  Hypersnap signer isn't in, so this one is added on chain (KeyGateway.add from the custody), once per browser. */
 export async function ensureAppKey(onWait?: (what: string) => void) {
   let a = account!
-  let key = (a.appPub || a.appKey) && (await keyOf(a.appPub, a.appKey).catch(() => undefined))
+  let key = a.appPub || a.appKey ? await keyOf(a.appPub, a.appKey).catch(() => undefined) : undefined
   if (!key) {
-    let raw: string | undefined
-    ;[key, raw] = await newKey()
+    const [k, raw] = await newKey()
     onWait?.(a.wallet ? t('Confirm the key in your wallet (Optimism)') : t('Adding a notification key on Optimism…'))
-    await custodyTx(a, KEY_GATEWAY, await keyGatewayAdd(a.fid!, await custodyOf(a), key.pub, Math.floor(Date.now() / 1000) + 3600))
+    await custodyTx(a, KEY_GATEWAY, (c) => keyGatewayAdd(a.fid!, c, k.pub, Math.floor(Date.now() / 1000) + 3600))
     // kept as soon as the transaction is out, so a reload doesn't add a second key
-    setAccount((a = { ...account!, appPub: hex(key.pub), appKey: raw }))
+    setAccount((a = { ...account!, appPub: hex(k.pub), appKey: raw }))
+    key = k
   }
   onWait?.(t('Waiting for the network to see the key…'))
   for (let i = 0; !(await onChain(a.fid!, key.pub)); i++) {
@@ -127,7 +131,7 @@ export async function signEvent(payload: object, onWait?: (what: string) => void
 export async function removeAppKey(a: Account) {
   if (a.inbox) await fetch('/api/notify/drop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ inbox: a.inbox }) }).catch(() => {})
   const pub = a.appPub ? unhex(a.appPub) : a.appKey && ed25519.getPublicKey(unhex(a.appKey))
-  if (pub && a.fid) await custodyTx(a, KEY_REGISTRY, keyRegistryRemove(pub))
+  if (pub && a.fid) await custodyTx(a, KEY_REGISTRY, async () => keyRegistryRemove(pub))
 }
 
 /** Sign out: this browser's signer revokes itself, so a copy of the key stops working too. */

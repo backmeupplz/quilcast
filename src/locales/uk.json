@@ -821,11 +821,20 @@
   "Approves": "Дозвіл для",
   "Contract": "Контракт",
   "Sends": "Надсилає",
-  "This account's recovery phrase isn't in this browser. Sign in with it again.": "Фрази відновлення цього акаунта немає в цьому браузері. Увійдіть із нею ще раз.",
   "This lets someone else take your tokens without asking again.": "Це дозволить комусь іншому забирати ваші токени, більше не питаючи.",
   "This message can't be read. Only sign it if you know exactly what it is.": "Це повідомлення неможливо прочитати. Підписуйте його, лише якщо точно знаєте, що це.",
   "This puts your NFTs up for sale. Check the price before you sign.": "Це виставить ваші NFT на продаж. Перевірте ціну, перш ніж підписувати.",
   "Token": "Токен",
   "Unlimited": "Без обмежень",
-  "Up to": "Ліміт"
+  "Up to": "Ліміт",
+  "@{name}'s recovery phrase isn't kept in this browser. Enter it to sign this; Quilcast uses it once and doesn't keep it.": "Фраза відновлення @{name} не зберігається в цьому браузері. Введіть її, щоб підписати це; Quilcast використає її один раз і не збереже.",
+  "Enter your recovery phrase": "Введіть фразу відновлення",
+  "Keep it here": "Зберігати тут",
+  "Keep it in this browser": "Зберігати в цьому браузері",
+  "Kept in this browser": "Зберігається в цьому браузері",
+  "Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.": "Тоді Quilcast проситиме її, коли підписувати має сам акаунт, наприклад щоб додати ключ для цього браузера чи увійти в мінізастосунок. Спершу запишіть її.",
+  "Remove it?": "Видалити її?",
+  "That's not this account's recovery phrase.": "Це не фраза відновлення цього акаунта.",
+  "This needs the account's recovery phrase.": "Для цього потрібна фраза відновлення акаунта.",
+  "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "Ваша фраза відновлення не зберігається в цьому браузері. Quilcast просить її, коли підписувати має сам акаунт, наприклад щоб додати ключ для цього браузера чи увійти в мінізастосунок."
 }
