@@ -5,6 +5,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { read, save, safeUrl } from './api.ts'
 import { t } from './i18n.ts'
 import { Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
+import { SendSheet, SwapSheet } from './walletmove.tsx'
 import { activeWallet, addWallet, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, walletList, type WalletEntry } from './vault.ts'
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
@@ -25,17 +26,19 @@ const pick = (w: WalletEntry) => (setActive(w.id), save('quilcast:wallet', `quil
 
 // --- balances and NFTs ---
 
-const CHAINS = [
+export const CHAINS = [
   { id: 8453, name: 'Base', host: 'base.blockscout.com', symbol: 'ETH' },
   { id: 1, name: 'Ethereum', host: 'eth.blockscout.com', symbol: 'ETH' },
   { id: 10, name: 'Optimism', host: 'explorer.optimism.io', symbol: 'ETH' },
   { id: 42161, name: 'Arbitrum', host: 'arbitrum.blockscout.com', symbol: 'ETH' },
   { id: 137, name: 'Polygon', host: 'polygon.blockscout.com', symbol: 'POL' },
 ]
-type Holding = { chain: string; symbol: string; name: string; icon?: string; amount: number; usd: number }
+// `raw` is the exact balance in base units, for sending all of it
+export type Holding = { chain: string; chainId: number; address?: `0x${string}`; decimals: number; raw: bigint; symbol: string; name: string; icon?: string; amount: number; usd: number }
 type Nft = { chain: string; name: string; image?: string; big?: string; collection: string }
 
-const getJson = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+// an explorer that hangs is skipped after a while, so one slow chain can't hold up the rest
+const getJson = (u: string) => fetch(u, { signal: AbortSignal.timeout(25e3) }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
 const units = (v: string, d: number) => Number(BigInt(v || '0')) / 10 ** d
 
 async function holdings(address: string): Promise<Holding[]> {
@@ -44,14 +47,14 @@ async function holdings(address: string): Promise<Holding[]> {
     const [me, tokens] = await Promise.all([getJson(api).catch(() => null), getJson(`${api}/tokens?type=ERC-20`).catch(() => null)])
     const out: Holding[] = []
     const eth = me ? units(me.coin_balance, 18) : 0
-    if (eth > 0) out.push({ chain: c.name, symbol: c.symbol, name: c.symbol, amount: eth, usd: eth * Number(me.exchange_rate || 0) })
+    if (eth > 0) out.push({ chain: c.name, chainId: c.id, decimals: 18, raw: BigInt(me.coin_balance), symbol: c.symbol, name: c.symbol, amount: eth, usd: eth * Number(me.exchange_rate || 0) })
     // tokens nobody prices or the explorer flags are almost always airdropped spam
     for (const i of tokens?.items || []) {
       const tk = i.token || {}
       if (!tk.exchange_rate || (tk.reputation && tk.reputation !== 'ok')) continue
       const amount = units(i.value, Number(tk.decimals || 18))
       // and dust worth less than a cent is just noise
-      if (amount * Number(tk.exchange_rate) >= 0.01) out.push({ chain: c.name, symbol: String(tk.symbol || '?').slice(0, 12), name: String(tk.name || ''), icon: safeUrl(tk.icon_url), amount, usd: amount * Number(tk.exchange_rate) })
+      if (amount * Number(tk.exchange_rate) >= 0.01) out.push({ chain: c.name, chainId: c.id, address: String(tk.address_hash).toLowerCase() as `0x${string}`, decimals: Number(tk.decimals || 18), raw: BigInt(i.value), symbol: String(tk.symbol || '?').slice(0, 12), name: String(tk.name || ''), icon: safeUrl(tk.icon_url), amount, usd: amount * Number(tk.exchange_rate) })
     }
     return out
   }))
@@ -95,6 +98,12 @@ export function WalletPage() {
   const w = activeWallet()
   const [adding, setAdding] = useState(false)
   const [tab, setTab] = useState<'tokens' | 'nfts'>(() => read('quilcast:walletTab', 'tokens'))
+  const [move, setMove] = useState<{ kind: 'send' | 'swap'; holdings: Holding[] } | null>(null)
+  // after a send or swap the balances are read again
+  const [round, setRound] = useState(0)
+  const [opening, setOpening] = useState('')
+  const open = (kind: 'send' | 'swap') => (setOpening(kind), load(w!.address).then((holdings) => setMove({ kind, holdings }), () => toast("Balances couldn't be loaded. Try again in a bit.")).finally(() => setOpening('')))
+  const sent = () => (cache.delete(w!.address), setTimeout(() => setRound((r) => r + 1), 4000))
   return (
     <>
       <Header title={t('Wallet')} action={list.length > 0 && <Switcher list={list} w={w!} add={() => setAdding(true)} />} />
@@ -107,9 +116,16 @@ export function WalletPage() {
         </div>
       ) : (
         <>
-          <Summary w={w} />
+          <Summary key={w.address + round} w={w} />
+          <div class="wallet-actions">
+            <button class="btn" onClick={() => open('send')} disabled={!!opening}><Icon d="M12 19V5M5 12l7-7 7 7" size={16} />{opening === 'send' ? t('Loading…') : t('Send')}</button>
+            <button class="btn" onClick={() => open('swap')} disabled={!!opening}><Icon d="M7 4v13M3 13l4 4 4-4M17 20V7M21 11l-4-4-4 4" size={16} />{opening === 'swap' ? t('Loading…') : t('Swap')}</button>
+            <button class="btn ghost" onClick={() => navigator.clipboard.writeText(w.address).then(() => toast('Address copied'))}><Icon d="M12 5v14M5 12l7 7 7-7" size={16} />{t('Receive')}</button>
+          </div>
           <Tabs tabs={[['tokens', t('Tokens')], ['nfts', t('NFTs')]]} value={tab} set={(x) => (setTab(x), save('quilcast:walletTab', x))} />
-          {tab === 'tokens' ? <Tokens key={w.address} address={w.address} /> : <Nfts key={w.address} address={w.address} />}
+          {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} /> : <Nfts key={w.address} address={w.address} />}
+          {move?.kind === 'send' && <SendSheet w={w} holdings={move.holdings} close={() => setMove(null)} sent={sent} />}
+          {move?.kind === 'swap' && <SwapSheet w={w} holdings={move.holdings} close={() => setMove(null)} sent={sent} />}
         </>
       )}
       {adding && <AddWallet close={() => setAdding(false)} />}
@@ -144,7 +160,7 @@ function Summary({ w }: { w: WalletEntry }) {
 
 // one load per address per visit, shared by the total and the list
 const cache = new Map<string, Promise<Holding[]>>()
-const load = (a: string) => cache.get(a) || (cache.set(a, holdings(a).catch((e) => (cache.delete(a), Promise.reject(e)))), cache.get(a)!)
+export const load = (a: string) => cache.get(a) || (cache.set(a, holdings(a).catch((e) => (cache.delete(a), Promise.reject(e)))), cache.get(a)!)
 
 function Total({ address }: { address: string }) {
   const [sum, setSum] = useState<number | null>(null)

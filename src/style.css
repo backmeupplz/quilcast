@@ -937,3 +937,24 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .sign-row span { color: var(--muted); }
 .sign-row b { text-align: right; overflow-wrap: anywhere; }
 .sign-preview pre { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.wallet-actions { display: flex; justify-content: center; gap: 8px; padding: 0 16px 16px; }
+.wallet-actions .btn { flex: 1; max-width: 140px; justify-content: center; }
+.move-top { display: flex; align-items: center; justify-content: space-between; }
+.move-form { display: flex; flex-direction: column; gap: 12px; }
+.move-form label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.move-form select, .move-form input { font-size: 15px; color: var(--ink); }
+.move-amount { display: flex; gap: 8px; align-items: center; }
+.move-amount input { flex: 1; min-width: 0; font-size: 22px !important; font-weight: 650; }
+.move-done { display: flex; flex-direction: column; gap: 10px; align-items: stretch; text-align: center; }
+.move-done p { margin: 8px 0; font-weight: 600; }
+.token-pick { position: relative; }
+.token-choice { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); }
+.token-choice b { flex: 1; text-align: left; }
+.token-choice .token-icon, .token-opt .token-icon { width: 28px; height: 28px; font-size: 12px; }
+.token-list { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; margin-top: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.token-list input { margin-bottom: 4px; }
+.token-opt { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 0; border-radius: 9px; background: none; color: var(--ink); text-align: left; }
+.token-opt:hover { background: var(--soft); }
+.token-opt span { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.token-opt small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.move-form select { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); width: 100%; }

@@ -41,7 +41,11 @@ export const transferTx = (t: TokenId, to: string, amount: bigint) =>
 /** Approval for exactly `amount`, to LI.FI only. */
 export const approveTx = (t: TokenId, amount: bigint) => ({ to: t.address!, data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [LIFI, amount] }), value: '0x0' })
 
-export type Quote = { tx: { to: string; data: string; value: string; gas?: string }; toAmount: bigint; toAmountMin: bigint }
+export type Quote = {
+  tx: { to: string; data: string; value: string; gas?: string }; toAmount: bigint; toAmountMin: bigint
+  // what the wallet's swap screen shows: the route LI.FI picked (a DEX or a bridge), how long, and what it costs
+  tool?: string; seconds?: number; feesUsd?: number; fromUsd?: number; toUsd?: number
+}
 /** A LI.FI route selling `amount` of `sell` for `buy`, sent from and to `from`. */
 export async function quote(sell: TokenId, buy: TokenId, amount: bigint, from: string): Promise<Quote> {
   const zero = '0x0000000000000000000000000000000000000000'
@@ -52,5 +56,27 @@ export async function quote(sell: TokenId, buy: TokenId, amount: bigint, from: s
   const t = j.transactionRequest
   // the route must run through LI.FI's own contract, on the chain the tokens are sold on
   if (String(t?.to).toLowerCase() !== LIFI || Number(t.chainId) !== sell.chain || (sell.address && String(j.estimate?.approvalAddress).toLowerCase() !== LIFI)) throw new Error('The swap route looks wrong, so Quilcast stopped.')
-  return { tx: { to: t.to, data: t.data, value: t.value || '0x0', gas: t.gasLimit }, toAmount: BigInt(j.estimate.toAmount), toAmountMin: BigInt(j.estimate.toAmountMin) }
+  const e = j.estimate
+  const usd = (xs: { amountUSD?: string; included?: boolean }[] = []) => xs.reduce((n, x) => n + (Number(x.amountUSD) || 0), 0)
+  return {
+    tx: { to: t.to, data: t.data, value: t.value || '0x0', gas: t.gasLimit }, toAmount: BigInt(e.toAmount), toAmountMin: BigInt(e.toAmountMin),
+    tool: j.toolDetails?.name, seconds: e.executionDuration, feesUsd: usd(e.gasCosts) + usd((e.feeCosts || []).filter((f: { included?: boolean }) => !f.included)), fromUsd: Number(e.fromAmountUSD) || undefined, toUsd: Number(e.toAmountUSD) || undefined,
+  }
+}
+
+export type ListedToken = Token & { name: string; logo?: string; usd: number }
+const lists = new Map<number, Promise<ListedToken[]>>()
+/** LI.FI's verified tokens on a chain (the coin first), for picking what to buy. */
+export const tokensOn = (chain: number) =>
+  lists.get(chain) ||
+  (lists.set(chain, fetch(`https://li.quest/v1/tokens?chains=${chain}`).then((r) => r.json()).then((j) =>
+    ((j.tokens?.[chain] || []) as any[]).filter((x) => x.verificationStatus === 'verified' || /^0x0{40}$/.test(x.address)).map((x): ListedToken => ({
+      chain, address: /^0x0{40}$/.test(x.address) ? undefined : (x.address.toLowerCase() as `0x${string}`), symbol: String(x.symbol).slice(0, 12), name: String(x.name || ''), decimals: Number(x.decimals), logo: x.logoURI, usd: Number(x.priceUSD) || 0,
+    })),
+  ).catch((e) => (lists.delete(chain), Promise.reject(e)))), lists.get(chain)!)
+
+/** Where a cross-chain transfer is: PENDING until the tokens land (DONE) or it fails. */
+export async function transferStatus(hash: string, fromChain: number, toChain: number): Promise<{ status: string; received?: string }> {
+  const j = await fetch(`https://li.quest/v1/status?${new URLSearchParams({ txHash: hash, fromChain: String(fromChain), toChain: String(toChain) })}`).then((r) => r.json())
+  return { status: String(j.status || 'PENDING'), received: j.receiving?.txHash }
 }
