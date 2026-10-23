@@ -30,3 +30,18 @@ test('saving a look with a key the node dropped adds a new key and saves with it
   assert.equal(submits, 1)
   assert.notEqual(api.account!.signer, old)
 })
+
+test('signing into an account this browser doesn\'t hold yet saves and selects it with its new key', async () => {
+  // runs after the test above: account fid 7 is selected and the fake node takes any submitMessage
+  const api = await import('./api.ts')
+  const { ensureSigner } = await import('./write.ts')
+  const phrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+  await ensureSigner({ phrase, fid: 9, done: true })
+  assert.equal(api.account!.fid, 9)
+  assert.ok(api.account!.signer)
+  assert.deepEqual(api.accounts.map((a) => a.fid), [7, 9])
+  // a new key for an account that isn't selected (replying as another one) leaves the selection alone
+  await ensureSigner({ ...api.accounts[0], signer: undefined })
+  assert.equal(api.account!.fid, 9)
+  assert.ok(api.accounts[0].signer)
+})

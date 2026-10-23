@@ -23,6 +23,9 @@ export const idOf = (a: Account) => a.wallet || a.phrase
 export let accounts = read<Account[]>('quilcast:accounts', [])
 const legacy = read<Account | null>('quilcast:account', null)
 if (legacy && !accounts.length) accounts = [{ ...legacy, phrase: legacy.phrase || '' }]
+// 0.19.2–0.20.3 lost accounts signed into with a phrase or wallet and marked the selected one done without an FID:
+// one with no keys at all goes, one still being set up goes back to its setup
+accounts = accounts.filter((a) => a.phrase || a.wallet).map((a) => (a.done && !a.fid ? { ...a, done: false } : a))
 export let account: Account | null = accounts.find((a) => idOf(a) === localStorage.getItem('quilcast:current')) || accounts[0] || null
 
 /** Save `a` (added or updated, matched by idOf) and select it; `null` removes the selected account. */
@@ -52,8 +55,10 @@ addEventListener('storage', (e) => {
 // a full reload is the simplest way to drop the previous account's feeds and likes
 /** Save changes to an account without selecting it (posting as another account renews that account's key). */
 export const updateAccount = (a: Account) => {
-  if (account && idOf(a) === idOf(account)) return setAccount(a)
-  accounts = read<Account[]>('quilcast:accounts', accounts).map((x) => (idOf(x) === idOf(a) ? a : x))
+  const saved = read<Account[]>('quilcast:accounts', accounts)
+  // the selected account, or one this browser doesn't hold yet (signing in), is saved and selected
+  if ((account && idOf(a) === idOf(account)) || !saved.some((x) => idOf(x) === idOf(a))) return setAccount(a)
+  accounts = saved.map((x) => (idOf(x) === idOf(a) ? a : x))
   save('quilcast:accounts', accounts)
 }
 // a full reload drops the previous account's feeds and likes; it stays on this page (a conversation is the account's

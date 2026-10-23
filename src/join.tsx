@@ -1,7 +1,7 @@
 import { generateMnemonic, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, get, getUser, go, setAccount, settings, USER_DATA, type Account } from './api.ts'
+import { account, accounts, get, getUser, go, idOf, setAccount, settings, USER_DATA, type Account } from './api.ts'
 import { balance, fidOf, register, registerPrice } from './eth.ts'
 import { address, fnameProof } from './fc.ts'
 import { t } from './i18n.ts'
@@ -14,7 +14,9 @@ const NAME_RE = /^[a-z0-9][a-z0-9-]{0,15}$/
 // likes and recasts load in the background once the account is set; the feed doesn't wait for them
 const finish = async (a: Account) => {
   const u = await getUser(a.fid!).catch(() => null)
-  setAccount({ ...account!, username: a.username || u?.username, done: true })
+  // the account as ensureSigner saved it, with its new key
+  const saved = accounts.find((x) => idOf(x) === idOf(a)) || a
+  setAccount({ ...saved, username: a.username || u?.username, done: true })
   go('/')
 }
 
