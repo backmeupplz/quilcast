@@ -918,7 +918,11 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .nft b, .nft small { padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nft b { font-size: 13px; }
 .nft small { font-size: 11px; color: var(--muted); }
-.wallet-row { display: flex; flex-direction: column; gap: 6px; }
+.wallet-list { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-top: 4px; }
+.wallet-list > .hint { margin: 0; }
+.wallet-row { display: flex; flex-direction: column; gap: 6px; align-self: stretch; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.wallet-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wallet-name code { font-size: 13px; }
 .wallet-row .phrase { margin: 0; }
 .wallet-form { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-height: 92vh; overflow-y: auto; }
 .wallet-form h2 { margin: 0; font-size: 19px; }

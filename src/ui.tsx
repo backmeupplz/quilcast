@@ -112,7 +112,7 @@ export const Header = ({ title, back: showBack = true, action, children }: { tit
 export const Tabs = <T extends string>({ tabs, value, set }: { tabs: [T, string][]; value: T; set: (t: T) => void }) => (
   <nav class="tabs" role="tablist">
     {/* a list under tabs in the sticky header starts at its top, not wherever the previous one was scrolled to */}
-    {tabs.map(([k, label]) => <button role="tab" aria-selected={value === k} class={value === k ? 'on' : ''} onClick={(e) => (e.currentTarget.closest('.phead') && scrollTo(0, 0), set(k))}>{label}</button>)}
+    {tabs.map(([k, label]) => <button type="button" role="tab" aria-selected={value === k} class={value === k ? 'on' : ''} onClick={(e) => (e.currentTarget.closest('.phead') && scrollTo(0, 0), set(k))}>{label}</button>)}
   </nav>
 )
 

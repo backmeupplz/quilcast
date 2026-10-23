@@ -197,12 +197,12 @@ export function WalletSettings() {
   const list = useWallets()
   const [adding, setAdding] = useState(false)
   return (
-    <>
+    <div class="wallet-list">
       {list.map((w) => <WalletRow w={w} />)}
       <button class="btn ghost small" onClick={() => setAdding(true)}><Icon d={P.plus} />{t('Add a wallet')}</button>
       <p class="hint">{t('Mini apps can use these alongside any wallet extension; Quilcast asks you before each signature or transaction.')}</p>
       {adding && <AddWallet close={() => setAdding(false)} />}
-    </>
+    </div>
   )
 }
 
@@ -218,7 +218,7 @@ function WalletRow({ w }: { w: WalletEntry }) {
   return (
     <div class="wallet-row">
       <div class="setting">
-        <span><b>{w.name}</b> <code class="muted">{short(w.address)}</code></span>
+        <span class="wallet-name"><b>{w.name}</b><code class="muted">{short(w.address)}</code></span>
         <span class="wrap-menu">
           <button class="icon-btn" aria-label={t('More')} aria-haspopup="menu" onClick={() => setOpen(!open)}><Icon d={P.more} /></button>
           {open && (
@@ -255,7 +255,8 @@ function AddWallet({ close }: { close: () => void }) {
   const parsed = mode === 'create' ? { kind: 'phrase' as const, secret: made } : parseSecret(secret)
   const submit = async (e: Event) => {
     e.preventDefault()
-    if (!parsed) return
+    // only the Add button, with the risk ticked (a stray submit must never add a wallet unseen)
+    if (!parsed || !ok) return
     setBusy(true)
     try {
       const w = await addWallet(name, parsed.kind, parsed.secret, parsed.kind === 'phrase' ? Math.max(0, index - 1) : 0)
