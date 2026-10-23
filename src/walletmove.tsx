@@ -12,7 +12,9 @@ import { signerOf, type WalletEntry } from './vault.ts'
 import { CHAINS, type Holding } from './walletui.tsx'
 
 const VIEM: Record<number, Chain> = { 8453: base, 1: mainnet, 10: optimism, 42161: arbitrum, 137: polygon }
-const pub = (chain: number) => createPublicClient({ chain: VIEM[chain], transport: http() })
+// our RPC per chain (viem's default for Polygon now wants a key)
+const rpcOf = (chain: number) => CHAINS.find((c) => c.id === chain)!.rpc
+const pub = (chain: number) => createPublicClient({ chain: VIEM[chain], transport: http(rpcOf(chain)) })
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 const label = (h: Holding) => `${h.symbol} · ${h.chain} (${num(h.amount)})`
 const num = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: n >= 1 ? 4 : 6 })
@@ -22,7 +24,7 @@ const tid = (h: Holding) => ({ chain: h.chainId, address: h.address })
 const explorer = (chain: number, hash: string) => `${VIEM[chain].blockExplorers!.default.url}/tx/${hash}`
 
 async function send(w: WalletEntry, chain: number, tx: { to: string; data?: string; value?: string; gas?: string }) {
-  const client = createWalletClient({ account: await signerOf(w.id), chain: VIEM[chain], transport: http() })
+  const client = createWalletClient({ account: await signerOf(w.id), chain: VIEM[chain], transport: http(rpcOf(chain)) })
   return client.sendTransaction({ chain: VIEM[chain], to: tx.to as `0x${string}`, data: tx.data as `0x${string}` | undefined, value: BigInt(tx.value || 0), ...(tx.gas && { gas: BigInt(tx.gas) }) })
 }
 const mined = (chain: number, hash: `0x${string}`) => pub(chain).waitForTransactionReceipt({ hash, timeout: 180e3 })

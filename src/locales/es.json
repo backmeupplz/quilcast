@@ -737,5 +737,7 @@
   "You pay": "Pagas",
   "a minute": "un minuto",
   "{name} has no address.": "{name} no tiene dirección.",
-  "{n} minutes": "{n} minutos"
+  "{n} minutes": "{n} minutos",
+  "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "No se pudo conectar con el explorador de {chains}, así que pueden faltar tokens de ahí. Actualiza para reintentar.",
+  "Refresh": "Actualizar"
 }

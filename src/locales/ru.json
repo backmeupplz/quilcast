@@ -737,5 +737,7 @@
   "You pay": "Вы платите",
   "a minute": "минуту",
   "{name} has no address.": "У {name} нет адреса.",
-  "{n} minutes": "{n} мин"
+  "{n} minutes": "{n} мин",
+  "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "Не удалось связаться с обозревателем {chains}, поэтому токены оттуда могут не отображаться. Обновите, чтобы попробовать снова.",
+  "Refresh": "Обновить"
 }

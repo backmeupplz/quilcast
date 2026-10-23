@@ -737,5 +737,7 @@
   "You pay": "支付",
   "a minute": "一分钟",
   "{name} has no address.": "{name} 没有地址。",
-  "{n} minutes": "{n} 分钟"
+  "{n} minutes": "{n} 分钟",
+  "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "无法连接 {chains} 的区块浏览器,那里的代币可能没有显示。请刷新重试。",
+  "Refresh": "刷新"
 }

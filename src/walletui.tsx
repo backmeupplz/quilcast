@@ -5,6 +5,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { read, save, safeUrl } from './api.ts'
 import { t } from './i18n.ts'
 import { Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
+import { tokensOn } from './tokens.ts'
 import { SendSheet, SwapSheet } from './walletmove.tsx'
 import { activeWallet, addWallet, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, walletList, type WalletEntry } from './vault.ts'
 
@@ -26,12 +27,13 @@ const pick = (w: WalletEntry) => (setActive(w.id), save('quilcast:wallet', `quil
 
 // --- balances and NFTs ---
 
+// each chain's coin balance comes from its public RPC; tokens and NFTs from its Blockscout explorer
 export const CHAINS = [
-  { id: 8453, name: 'Base', host: 'base.blockscout.com', symbol: 'ETH' },
-  { id: 1, name: 'Ethereum', host: 'eth.blockscout.com', symbol: 'ETH' },
-  { id: 10, name: 'Optimism', host: 'explorer.optimism.io', symbol: 'ETH' },
-  { id: 42161, name: 'Arbitrum', host: 'arbitrum.blockscout.com', symbol: 'ETH' },
-  { id: 137, name: 'Polygon', host: 'polygon.blockscout.com', symbol: 'POL' },
+  { id: 8453, name: 'Base', host: 'base.blockscout.com', symbol: 'ETH', rpc: 'https://mainnet.base.org' },
+  { id: 1, name: 'Ethereum', host: 'eth.blockscout.com', symbol: 'ETH', rpc: 'https://ethereum-rpc.publicnode.com' },
+  { id: 10, name: 'Optimism', host: 'explorer.optimism.io', symbol: 'ETH', rpc: 'https://mainnet.optimism.io' },
+  { id: 42161, name: 'Arbitrum', host: 'arbitrum.blockscout.com', symbol: 'ETH', rpc: 'https://arb1.arbitrum.io/rpc' },
+  { id: 137, name: 'Polygon', host: 'polygon.blockscout.com', symbol: 'POL', rpc: 'https://polygon-bor-rpc.publicnode.com' },
 ]
 // `raw` is the exact balance in base units, for sending all of it
 export type Holding = { chain: string; chainId: number; address?: `0x${string}`; decimals: number; raw: bigint; symbol: string; name: string; icon?: string; amount: number; usd: number }
@@ -41,13 +43,25 @@ type Nft = { chain: string; name: string; image?: string; big?: string; collecti
 const getJson = (u: string) => fetch(u, { signal: AbortSignal.timeout(25e3) }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
 const units = (v: string, d: number) => Number(BigInt(v || '0')) / 10 ** d
 
+const coinBalance = (rpc: string, address: string) =>
+  fetch(rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [address, 'latest'] }), signal: AbortSignal.timeout(15e3) })
+    .then((r) => r.json()).then((j) => BigInt(j.result))
+// the coin's price when the explorer can't be reached
+const coinPrice = (chain: number) => tokensOn(chain).then((l) => l.find((x) => !x.address)?.usd || 0, () => 0)
+
+/** Explorers that couldn't be reached on the last load, per address, so the page can say what may be missing. */
+export const unreachable = new Map<string, string[]>()
+
 async function holdings(address: string): Promise<Holding[]> {
+  const missed: string[] = []
   const per = await Promise.all(CHAINS.map(async (c) => {
     const api = `https://${c.host}/api/v2/addresses/${address}`
-    const [me, tokens] = await Promise.all([getJson(api).catch(() => null), getJson(`${api}/tokens?type=ERC-20`).catch(() => null)])
+    const [raw, me, tokens] = await Promise.all([coinBalance(c.rpc, address).catch(() => null), getJson(api).catch(() => null), getJson(`${api}/tokens?type=ERC-20`).catch(() => null)])
+    if (!tokens) missed.push(c.name)
     const out: Holding[] = []
-    const eth = me ? units(me.coin_balance, 18) : 0
-    if (eth > 0) out.push({ chain: c.name, chainId: c.id, decimals: 18, raw: BigInt(me.coin_balance), symbol: c.symbol, name: c.symbol, amount: eth, usd: eth * Number(me.exchange_rate || 0) })
+    const wei = raw ?? (me ? BigInt(me.coin_balance || 0) : 0n)
+    const eth = Number(wei) / 1e18
+    if (eth > 0) out.push({ chain: c.name, chainId: c.id, decimals: 18, raw: wei, symbol: c.symbol, name: c.symbol, amount: eth, usd: eth * (Number(me?.exchange_rate) || (await coinPrice(c.id))) })
     // tokens nobody prices or the explorer flags are almost always airdropped spam
     for (const i of tokens?.items || []) {
       const tk = i.token || {}
@@ -58,6 +72,7 @@ async function holdings(address: string): Promise<Holding[]> {
     }
     return out
   }))
+  unreachable.set(address, missed)
   return per.flat().sort((a, b) => b.usd - a.usd)
 }
 
@@ -103,7 +118,8 @@ export function WalletPage() {
   const [round, setRound] = useState(0)
   const [opening, setOpening] = useState('')
   const open = (kind: 'send' | 'swap') => (setOpening(kind), load(w!.address).then((holdings) => setMove({ kind, holdings }), () => toast("Balances couldn't be loaded. Try again in a bit.")).finally(() => setOpening('')))
-  const sent = () => (cache.delete(w!.address), setTimeout(() => setRound((r) => r + 1), 4000))
+  const refresh = () => (cache.delete(w!.address), setRound((r) => r + 1))
+  const sent = () => setTimeout(refresh, 4000)
   return (
     <>
       <Header title={t('Wallet')} action={list.length > 0 && <Switcher list={list} w={w!} add={() => setAdding(true)} />} />
@@ -122,8 +138,11 @@ export function WalletPage() {
             <button class="btn" onClick={() => open('swap')} disabled={!!opening}><Icon d="M7 4v13M3 13l4 4 4-4M17 20V7M21 11l-4-4-4 4" size={16} />{opening === 'swap' ? t('Loading…') : t('Swap')}</button>
             <button class="btn ghost" onClick={() => navigator.clipboard.writeText(w.address).then(() => toast('Address copied'))}><Icon d="M12 5v14M5 12l7 7 7-7" size={16} />{t('Receive')}</button>
           </div>
-          <Tabs tabs={[['tokens', t('Tokens')], ['nfts', t('NFTs')]]} value={tab} set={(x) => (setTab(x), save('quilcast:walletTab', x))} />
-          {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} /> : <Nfts key={w.address} address={w.address} />}
+          <div class="wallet-tabs">
+            <Tabs tabs={[['tokens', t('Tokens')], ['nfts', t('NFTs')]]} value={tab} set={(x) => (setTab(x), save('quilcast:walletTab', x))} />
+            <button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={refresh}><Icon d="M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5" /></button>
+          </div>
+          {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} /> : <Nfts key={w.address + round} address={w.address} />}
           {move?.kind === 'send' && <SendSheet w={w} holdings={move.holdings} close={() => setMove(null)} sent={sent} />}
           {move?.kind === 'swap' && <SwapSheet w={w} holdings={move.holdings} close={() => setMove(null)} sent={sent} />}
         </>
@@ -174,9 +193,12 @@ function Tokens({ address }: { address: string }) {
   useEffect(() => void load(address).then(setH, () => setErr(true)), [address])
   if (err) return <div class="note">{t("Balances couldn't be loaded. Try again in a bit.")}</div>
   if (!h) return <div class="spinner" />
-  if (!h.length) return <div class="note">{t('Nothing here yet. Copy the address above to receive tokens on Base, Ethereum, Optimism, Arbitrum or Polygon.')}</div>
+  const missed = unreachable.get(address) || []
+  const warn = missed.length > 0 && <p class="hint warn pad">{t("Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.", { chains: missed.join(', ') })}</p>
+  if (!h.length) return <>{warn}<div class="note">{t('Nothing here yet. Copy the address above to receive tokens on Base, Ethereum, Optimism, Arbitrum or Polygon.')}</div></>
   return (
     <>
+      {warn}
       {h.map((x) => (
         <div class="row token-row">
           {x.icon ? <img class="token-icon" src={x.icon} alt="" loading="lazy" referrerpolicy="no-referrer" /> : <span class="token-icon">{x.symbol[0]}</span>}

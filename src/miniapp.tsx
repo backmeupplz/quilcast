@@ -17,7 +17,9 @@ import { askPush, channelOf, fetchCast, handle, Icon, Img, isPinned, Menu, P, sh
 import { custodyOf, signEvent } from './write.ts'
 
 const QUILCAST_FID = 3356316
-const CHAINS = Object.fromEntries([base, optimism, mainnet, arbitrum, polygon, celo, zora, unichain, monad, degen, baseSepolia].map((c) => [c.id, c]))
+// viem's default Polygon RPC now wants a key, so Polygon reads and sends go through publicnode
+const POLYGON = { ...polygon, rpcUrls: { default: { http: ['https://polygon-bor-rpc.publicnode.com'] } } }
+const CHAINS = Object.fromEntries([base, optimism, mainnet, arbitrum, POLYGON, celo, zora, unichain, monad, degen, baseSepolia].map((c) => [c.id, c]))
 
 // --- Ethereum wallets ---
 

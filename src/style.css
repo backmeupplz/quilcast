@@ -958,3 +958,6 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .token-opt span { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .token-opt small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .move-form select { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); width: 100%; }
+.wallet-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+.wallet-tabs .tabs { flex: 1; border-bottom: 0; }
+.wallet-tabs .icon-btn { margin-right: 8px; color: var(--muted); }
