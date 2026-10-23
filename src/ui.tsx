@@ -391,7 +391,7 @@ export function useApply(th: Theme | null | undefined, meta: Omit<Saved, 'theme'
 }
 
 // what a theme leaves out is the plain app's, not whatever theme the page around the card wears
-const CARD = { '--rs': '1', '--bw': '1px', '--bs': 'solid', '--th-font': FONTS.system, '--th-img': 'none', '--th-scrim': 'transparent', '--th-sheer': '88%', '--th-bar': 'none', '--th-btn': 'none' }
+export const CARD = { '--rs': '1', '--bw': '1px', '--bs': 'solid', '--th-font': FONTS.system, '--th-img': 'none', '--th-scrim': 'transparent', '--th-sheer': '88%', '--th-bar': 'none', '--th-btn': 'none' }
 /** A shared theme (quilcast.com/theme/<id>): a small Quilcast in its colors, background and corners, with its name,
  *  who shared it (`by`) and a button that puts it on. */
 export function ThemeCard({ id, by, big }: { id: string; by?: User; big?: boolean }) {

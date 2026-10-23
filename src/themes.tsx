@@ -7,8 +7,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { t, tn } from './i18n.ts'
 import { PRESETS as EFFECTS } from './fx.ts'
 import { EditSticker, focusSticker, GifPicker } from './looks.tsx'
-import { BG_MODES, BORDERS, cleanTheme, DEFAULTS, FONTS, FX, isLookImg, LIMITS, NAME_FX, ownMedia, sized, themeId, type Theme } from './shared.ts'
-import { Img, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
+import { BG_MODES, BORDERS, cleanTheme, DEFAULTS, FONTS, FX, isLookImg, LIMITS, NAME_FX, ownMedia, sized, themeId, themeVars, type Theme } from './shared.ts'
+import { CARD, Img, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
 
 // --- built-in themes ---
 // two of Quorum's sample skins (theme/skins/samples.ts) and a few of our own; GIFs are Tenor's
@@ -182,15 +182,24 @@ export function Share({ th }: { th: Theme }) {
 
 // --- Settings > Theme ---
 
+/** A theme in small: a window on its background, with a card of text lines and an accent button, in its corners
+ *  and borders. Everything the theme leaves out is the plain app's. */
+export function Mini({ th }: { th: Theme }) {
+  const c: Theme = { ...DEFAULTS[th.base || 'dark'], ...th }
+  return (
+    <span class={`th-mini${th.btnImg ? ' thc-btn' : ''}`} style={{ ...CARD, '--lk-name': c.accent, ...themeVars(c), colorScheme: c.base || 'dark' }}>
+      {th.bgImg && <Img src={ownMedia(th.bgImg)} />}
+      <span class="th-mini-card"><i /><em /><em /></span>
+      <b />
+    </span>
+  )
+}
+
 function Row({ th, sub, meta, del }: { th: Theme; sub?: ComponentChildren; meta?: Omit<Saved, 'theme'>; del?: () => void }) {
   const a = useApply(th, meta)
-  const c = { ...DEFAULTS[th.base || 'dark'], ...th }
   return (
     <div class={`th-row${a.on ? ' on' : ''}`}>
-      <button type="button" class="th-swatch" style={{ background: c.bg, borderColor: c.line, borderRadius: `${Math.min(99, 10 * (th.round ?? 1))}px` }} onClick={a.apply} aria-label={t('Apply theme')}>
-        {th.bgImg && <Img src={ownMedia(th.bgImg)} />}
-        <i style={{ background: c.accent }} /><i style={{ background: c.ink }} />
-      </button>
+      <button type="button" class="th-swatch" onClick={a.apply} aria-label={t('Apply theme')}><Mini th={th} /></button>
       <span class="th-name"><b>{th.name || t('Untitled theme')}</b><small>{sub || (th.base === 'light' ? t('Light') : t('Dark'))}</small></span>
       <span class="btns">
         {a.undo ? <button type="button" class="btn ghost small" onClick={a.undo}>{t('Undo')}</button>
@@ -201,8 +210,8 @@ function Row({ th, sub, meta, del }: { th: Theme; sub?: ComponentChildren; meta?
   )
 }
 
-type Skin = { id: string; name: string; description?: string; base: 'light' | 'dark'; installs: number; author?: string }
-/** Quorum's gallery, through our server; a skin turns into a theme the first time someone opens it. */
+type Skin = { id: string; name: string; description?: string; base: 'light' | 'dark'; installs: number; author?: string; theme?: Theme }
+/** Quorum's gallery, through our server, which converts every skin it lists (a few may come without). */
 function Gallery() {
   const [sort, setSort] = useState<'popular' | 'new'>('popular')
   const [q, setQ] = useState('')
@@ -222,6 +231,7 @@ function Gallery() {
     const tm = setTimeout(() => load(0), q ? 350 : 0)
     return () => clearTimeout(tm)
   }, [sort, q])
+  const facts = (s: Skin) => [s.base === 'light' ? t('Light') : t('Dark'), s.author, tn(s.installs, '{n} install', '{n} installs')].filter(Boolean).join(' · ')
   const open = async (s: Skin) => {
     setBusy(s.id)
     try {
@@ -247,10 +257,10 @@ function Gallery() {
         </div>
       </div>
       {!list ? <div class="spinner" /> : !list.length ? <p class="hint">{t('No themes found.')}</p> : list.map((s) => (
-        got[s.id] ? <Row th={got[s.id]} meta={{ quorum: s.id }} sub={t('From Quorum')} /> : (
+        got[s.id] || s.theme ? <Row th={got[s.id] || cleanTheme(s.theme)} meta={{ quorum: s.id }} sub={facts(s)} /> : (
           <div class="th-row">
             <span class={`th-swatch q ${s.base}`} />
-            <span class="th-name"><b>{s.name || t('Untitled theme')}</b><small>{[s.base === 'light' ? t('Light') : t('Dark'), s.author, tn(s.installs, '{n} install', '{n} installs')].filter(Boolean).join(' · ')}</small></span>
+            <span class="th-name"><b>{s.name || t('Untitled theme')}</b><small>{facts(s)}</small></span>
             <span class="btns"><button type="button" class="btn small" disabled={!!busy} onClick={() => open(s)}>{busy === s.id ? t('Loading…') : t('Apply')}</button></span>
           </div>
         )

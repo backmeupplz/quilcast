@@ -283,8 +283,9 @@ test('shared designs: only the style is kept, under a stable id', async () => {
 
 test('Quorum skins: the gallery is trimmed, a skin becomes a theme, and only real pictures are kept', async () => {
   const list = await (await fetch(base + '/api/quorum/skins?sort=new')).json()
-  assert.deepEqual(list, { more: true, skins: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5 }] })
   const th = await (await fetch(`${base}/api/quorum/skin/${SKIN_ID}`)).json()
+  // each listed skin comes converted, for its preview
+  assert.deepEqual(list, { more: true, skins: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5, theme: th }] })
   assert.match(th.bgImg, /^https:\/\/quilcast\.com\/m\/[0-9a-f]{24}\.png$/)
   assert.deepEqual({ ...th, bgImg: 'x' }, {
     name: 'Coffee', base: 'light', bg: '#fbf6ec', card: '#eeeef3', soft: '#e6e6eb', line: '#dedee3', ink: '#403425', muted: '#a8997e',

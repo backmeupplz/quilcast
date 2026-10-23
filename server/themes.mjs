@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanTheme, DEFAULTS } from '../src/shared.ts'
-import { fail, keep, parseJson, readText } from './net.mjs'
+import { fail, gate, keep, parseJson, readText } from './net.mjs'
 import { looksLike, MEDIA } from './upload.mjs'
 
 export const QUORUM = process.env.QUORUM_URL || 'https://api.quorummessenger.com'
@@ -60,12 +60,18 @@ export function gallery(q) {
       id: e.id, name: String(e.name || '').slice(0, 80), description: e.description ? String(e.description).slice(0, 200) : undefined,
       base: e.base === 'light' ? 'light' : 'dark', installs: Number(e.installs) || 0, author: e.author_name ? String(e.author_name).slice(0, 60) : undefined,
     })),
-  }))
+  })).then(async (l) => {
+    // the list shows each skin as it looks, so every one is converted (once: quorumSkin keeps them); one that
+    // fails just shows without a preview
+    await Promise.all(l.skins.map((s) => skinGate(() => quorumSkin(s.id)).then((theme) => (s.theme = theme), () => {})))
+    return l
+  })
   keep(lists, 200, k, { at: Date.now(), list })
   list.catch(() => lists.delete(k))
   return list
 }
 
+const skinGate = gate(6)
 // a skin never changes under its id, so its theme is worked out once
 const skins = new Map()
 export const quorumSkin = (id) => skins.get(id) || keep(skins, 300, id, quorum(`/skins/${id}`, 8e6).then((r) => fromSkin(parseJson(String(r?.manifest || 'null')))))
