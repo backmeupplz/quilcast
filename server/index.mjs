@@ -398,8 +398,10 @@ createServer(async (req, res) => {
     if (path === '/api/gifs') {
       const q = (url.searchParams.get('q') || '').trim().slice(0, 60)
       if (!q) return json(200, [])
-      if (!gifCache.has(q.toLowerCase()) && limited(`gifs:${ip}`, 30)) return json(429, [])
-      const r = await (gifCache.get(q.toLowerCase()) || keep(gifCache, 500, q.toLowerCase(), previews(() => gifs(q)))).catch(() => [])
+      const stickers = url.searchParams.has('stickers')
+      const k = `${stickers ? 's:' : ''}${q.toLowerCase()}`
+      if (!gifCache.has(k) && limited(`gifs:${ip}`, 30)) return json(429, [])
+      const r = await (gifCache.get(k) || keep(gifCache, 500, k, previews(() => gifs(q, stickers)))).catch(() => [])
       return json(200, r, 'public, max-age=3600')
     }
 

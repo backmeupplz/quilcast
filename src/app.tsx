@@ -562,6 +562,7 @@ function Profile({ id }: { id: string }) {
     document.documentElement.dataset.look = ''
     return () => void delete document.documentElement.dataset.look
   }, [!!shown])
+  const editLook = (f: (d: Look) => Look) => setDraft((d) => f(d || {}))
   const followers = (u?.follower_count || 0) + +!!following - +was.current
   const toggle = () => {
     if (!account?.done) return go('/join')
@@ -569,16 +570,19 @@ function Profile({ id }: { id: string }) {
     setFollowing(on)
     w().then((m) => m.follow(u!.fid, on)).catch((e) => (setFollowing(!on), toast(e.message)))
   }
+  // the header is a box stickers can sit on, like the look's sections
+  const wrapHead = (el: ComponentChildren) => (shown ? <L.At l={shown} at="head" edit={draft ? editLook : undefined}>{el}</L.At> : el)
   return (
     <>
       <div class={`look${shown ? ' on' : ''}`} style={shown ? L.vars(shown) : undefined}>
         {shown && <L.Bg l={shown} />}
+        {shown && <L.Fx fx={shown.fx} />}
         <Header title={u ? nameOf(u) : t('Profile')} />
         {err && <div class="note">{err}</div>}
         {!u && !err && <div class="spinner" />}
         {u && (
           <>
-            <section class="profile lk-box">
+            {wrapHead(<section class="profile lk-box">
               {shown && <L.Banner l={shown} />}
               <div class="row-top">
                 <Avatar u={u} size={72} link={false} onClick={u.fid === OGRE_FID ? (e) => ogreTap(e.currentTarget as Element) : undefined} />
@@ -600,8 +604,8 @@ function Profile({ id }: { id: string }) {
               {shown && <L.Mood l={shown} />}
               {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
               <div class="counts"><span><b>{n(u.following_count)}</b> {t('following')}</span><span><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</span></div>
-            </section>
-            {shown && <L.Sections l={shown} u={u} />}
+            </section>)}
+            {shown && <L.Sections l={shown} u={u} edit={draft ? editLook : undefined} />}
             <div class="lk-box lk-feed">
               <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')]]} value={tab} set={setTab} />
               <Feed k={`${u.fid}${tab}`} empty={tab === 'casts' ? t('No casts yet.') : t('No replies yet.')} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
@@ -611,7 +615,7 @@ function Profile({ id }: { id: string }) {
         )}
       </div>
       {L && draft && self && (
-        <L.Editor draft={draft} set={(f) => setDraft((d) => f(d || {}))} close={() => setDraft(null)} saved={(l) => (setLook(l), setDraft(null))} />
+        <L.Editor draft={draft} set={editLook} close={() => setDraft(null)} saved={(l) => (setLook(l), setDraft(null))} />
       )}
     </>
   )

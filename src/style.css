@@ -662,6 +662,20 @@ small.warn { color: var(--warn); }
 .lk-play { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: var(--soft); border-radius: 10px; padding: 10px 12px; text-align: left; color: var(--ink); }
 .lk-play span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 99px; background: var(--accent); color: #fff; flex: none; }
 .lk-play b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* stickers (looks.tsx At): placed on their box by share of its size; they never take a click except while editing.
+   The column clips what hangs past its sides, so a phone never scrolls sideways */
+.look.on { overflow-x: clip; }
+.lk-at { position: relative; display: flow-root; }
+.lk-stk { position: absolute; z-index: 3; translate: -50% -50%; max-width: none; height: auto; pointer-events: none; user-select: none; -webkit-user-select: none; }
+.lk-stk.edit { pointer-events: auto; cursor: grab; touch-action: none; -webkit-touch-callout: none; outline: none; }
+.lk-stk.edit img { display: block; width: 100%; height: auto; pointer-events: none; }
+.lk-stk.edit:focus-visible, .lk-stk.edit:focus-within { outline: 2px dashed var(--accent); outline-offset: 2px; z-index: 4; }
+.lk-stk .lk-x, .lk-turn { position: absolute; display: none; box-shadow: 0 1px 4px rgb(0 0 0 / 0.35); }
+.lk-stk:focus-within .lk-x, .lk-stk:focus-within .lk-turn { display: grid; }
+.lk-stk .lk-x { top: -13px; right: -13px; background: var(--card); }
+.lk-turn { right: -11px; bottom: -11px; width: 22px; height: 22px; border-radius: 99px; background: var(--accent); border: 2px solid #fff; cursor: nwse-resize; touch-action: none; }
+/* the look's effect (fx.ts) falls over the boxes but under the page header and menus */
+.lk-fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; }
 /* name effects; `--lk-name` is the owner's effect color */
 .lk-name.rainbow, .lk-name.glitter { -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 100%; animation: lk-slide 4s linear infinite; }
 .lk-name.rainbow { background-image: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #2bd44a, #00a2ff, #8a2be2, #ff004c); }

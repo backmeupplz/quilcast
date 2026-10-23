@@ -49,6 +49,13 @@ export const BG_MODES = ['tile', 'cover', 'center'] as const
 export const BORDERS = ['solid', 'dashed', 'dotted', 'double', 'groove', 'ridge', 'none'] as const
 export const NAME_FX = ['none', 'rainbow', 'glow', 'glitter', 'shadow', 'outline'] as const
 export const SIZES = ['small', 'normal', 'large'] as const
+// profile effects, drawn by src/fx.ts
+export const FX = ['snow', 'flakes', 'rain', 'storm', 'leaves', 'sakura', 'confetti', 'hearts', 'bubbles', 'stars', 'glitter', 'fireflies', 'embers', 'bokeh',
+  'meteors', 'fireworks', 'matrix', 'money', 'pizza', 'balloons', 'bats', 'ghosts', 'spooky', 'butterflies', 'notes', 'emoji', 'trail'] as const
+export type Fx = (typeof FX)[number]
+// the boxes a sticker can sit on; its place is a share of that box, so it lands on the same spot on any screen
+export const STICKER_AT = ['head', 'song', 'about', 'meet', 'int', 'top', 'wall'] as const
+export type Sticker = { src: string; at: (typeof STICKER_AT)[number]; x: number; y: number; w: number; r?: number }
 export const INTERESTS = { general: 'General', music: 'Music', movies: 'Movies', tv: 'Television', books: 'Books', heroes: 'Heroes' } as const
 
 export type Look = {
@@ -62,8 +69,10 @@ export type Look = {
   top?: number[]; topTitle?: string
   wall?: string[]; wallTitle?: string
   song?: { id: string; start?: number; title?: string }
+  fx?: Fx
+  stickers?: Sticker[]
 }
-export const LIMITS = { about: 1500, meet: 600, interest: 300, mood: 60, title: 40, top: 8, wall: 12, songTitle: 100 }
+export const LIMITS = { about: 1500, meet: 600, interest: 300, mood: 60, title: 40, top: 8, wall: 12, songTitle: 100, stickers: 16 }
 
 // images only from the GIF search (Tenor), Farcaster's image CDN, and our own uploads; nothing in these can break
 // out of a CSS url("…")
@@ -73,6 +82,8 @@ export const isLookImg = (u: unknown): u is string =>
 
 const color = (v: unknown) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : undefined)
 const int = (v: unknown, lo: number, hi: number) => (Number.isInteger(v) ? Math.min(hi, Math.max(lo, v as number)) : undefined)
+// a number in range, to a tenth
+const num = (v: unknown, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(hi, Math.max(lo, v)) * 10) / 10 : undefined)
 const pick = <T extends readonly string[]>(v: unknown, list: T) => (list.includes(v as string) ? (v as T[number]) : undefined)
 // text is shown as text; control characters (other than new lines) go, and so does anything past the limit
 const text = (v: unknown, max: number) => {
@@ -105,9 +116,15 @@ export function cleanLook(x: unknown): Look {
     topTitle: text(o.topTitle, LIMITS.title),
     wall: Array.isArray(o.wall) ? [...new Set(o.wall.filter(isLookImg))].slice(0, LIMITS.wall) as string[] : undefined,
     wallTitle: text(o.wallTitle, LIMITS.title),
-    song,
+    song, fx: pick(o.fx, FX),
+    stickers: Array.isArray(o.stickers) ? o.stickers.flatMap((x: any): Sticker[] => {
+      const [px, py, w, r] = [num(x?.x, 0, 100), num(x?.y, 0, 100), num(x?.w, 4, 80), num(x?.r, -180, 180)]
+      if (!isLookImg(x?.src) || !STICKER_AT.includes(x.at) || px === undefined || py === undefined || w === undefined) return []
+      return [{ src: x.src, at: x.at, x: px, y: py, w, ...(r ? { r } : {}) }]
+    }).slice(0, LIMITS.stickers) : undefined,
   }
   if (!l.top?.length) delete l.top
+  if (!l.stickers?.length) delete l.stickers
   if (!l.wall?.length) delete l.wall
   for (const k of Object.keys(l) as (keyof Look)[]) if (l[k] === undefined) delete l[k]
   if (l.song && !l.song.start) delete l.song.start
@@ -134,8 +151,8 @@ export function lookVars(l: Look) {
   return v
 }
 
-/** A look's design: its style, without the words, friends, GIF wall and song. Shared as quilcast.com/design/<id>. */
-export const DESIGN_KEYS = ['bg', 'bgImg', 'bgMode', 'bgDim', 'text', 'muted', 'link', 'box', 'boxAlpha', 'border', 'borderStyle', 'borderWidth', 'radius', 'font', 'size', 'nameFx', 'nameColor', 'banner'] as const
+/** A look's design: its style and effect, without the words, friends, GIF wall, stickers and song. Shared as quilcast.com/design/<id>. */
+export const DESIGN_KEYS = ['bg', 'bgImg', 'bgMode', 'bgDim', 'text', 'muted', 'link', 'box', 'boxAlpha', 'border', 'borderStyle', 'borderWidth', 'radius', 'font', 'size', 'nameFx', 'nameColor', 'banner', 'fx'] as const
 export const cleanDesign = (x: unknown): Look => {
   const l = cleanLook(x)
   return Object.fromEntries(DESIGN_KEYS.filter((k) => l[k] !== undefined).map((k) => [k, l[k]]))
@@ -148,4 +165,5 @@ export const lookImages = (l: Look): [string, number][] => [
   ...(l.bgImg ? [[l.bgImg, 6e6] as [string, number]] : []),
   ...(l.banner ? [[l.banner, 4e6] as [string, number]] : []),
   ...(l.wall || []).map((u): [string, number] => [u, 4e6]),
+  ...[...new Set((l.stickers || []).map((s) => s.src))].map((u): [string, number] => [u, 4e6]),
 ]

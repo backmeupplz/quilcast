@@ -26,3 +26,25 @@ test('look images come only from Tenor, the Farcaster CDN and our uploads, and c
     assert.ok(!isLookImg(u), u)
   assert.deepEqual(lookImages({ bgImg: 'a', wall: ['b'] }), [['a', 6e6], ['b', 4e6]])
 })
+
+test('stickers keep a known box, an allowed image and in-range numbers; effects come from the list', () => {
+  const src = 'https://media.tenor.com/Rrl0kEdmhl0AAAAl/amazed-sparkle.webp'
+  const l = cleanLook({
+    fx: 'snow',
+    stickers: [
+      { src, at: 'about', x: 12.345, y: 140, w: 2, r: 0, extra: 'x' },
+      { src, at: 'head', x: -5, y: 50, w: 30, r: 45.06 },
+      { src: 'https://evil.example/a.gif', at: 'head', x: 1, y: 1, w: 10 },
+      { src, at: '__proto__', x: 1, y: 1, w: 10 },
+      { src, at: 'head', x: '1', y: 1, w: 10 },
+      { src, at: 'head', x: NaN, y: 1, w: 10 },
+      ...Array(20).fill({ src, at: 'wall', x: 1, y: 1, w: 10 }),
+    ],
+  })
+  assert.equal(l.fx, 'snow')
+  assert.deepEqual(l.stickers!.slice(0, 2), [{ src, at: 'about', x: 12.3, y: 100, w: 4 }, { src, at: 'head', x: 0, y: 50, w: 30, r: 45.1 }])
+  assert.equal(l.stickers!.length, 16)
+  assert.equal(cleanLook({ fx: 'alert(1)' }).fx, undefined)
+  assert.deepEqual(cleanLook({ stickers: [{ src: 'x' }] }), {})
+  assert.deepEqual(lookImages({ stickers: [{ src, at: 'head', x: 1, y: 1, w: 9 }, { src, at: 'top', x: 1, y: 1, w: 9 }] }), [[src, 4e6]])
+})
