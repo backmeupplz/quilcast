@@ -220,7 +220,7 @@ export async function upload(original: Blob, progress: Progress = () => {}) {
 
 // --- nothing private leaves the device inside a file ---
 
-/** Photos are re-encoded (≤2048px JPEG) so EXIF/GPS is dropped; MP4/MOV lose their metadata boxes; GIFs and WebM go as-is. */
+/** Photos are re-encoded (≤2048px, JPEG or PNG when transparent) so EXIF/GPS is dropped; MP4/MOV lose their metadata boxes; GIFs and WebM go as-is. */
 async function scrub(file: Blob): Promise<Blob> {
   if (/^image\/(jpeg|png|webp)$/.test(file.type)) return shrink(file)
   if (/^video\/(mp4|quicktime)$/.test(file.type)) return stripVideoMeta(file)
@@ -231,11 +231,14 @@ async function shrink(file: Blob): Promise<Blob> {
   const img = await createImageBitmap(file)
   const k = Math.min(1, 2048 / Math.max(img.width, img.height))
   const c = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * k), height: Math.round(img.height * k) })
-  const ctx = c.getContext('2d')!
-  ctx.fillStyle = '#fff'
-  ctx.fillRect(0, 0, c.width, c.height)
+  const ctx = c.getContext('2d', { willReadFrequently: true })!
   ctx.drawImage(img, 0, 0, c.width, c.height)
-  return new Promise((r, e) => c.toBlob((b) => (b ? r(b) : e(new Error("Couldn't read that image"))), 'image/jpeg', 0.88))
+  // anything with a see-through pixel (stickers) stays PNG so it keeps its transparency; opaque photos go JPEG
+  const px = file.type === 'image/jpeg' ? null : ctx.getImageData(0, 0, c.width, c.height).data
+  let alpha = false
+  for (let i = 3; px && i < px.length && !alpha; i += 4) alpha = px[i] < 255
+  const type = alpha ? 'image/png' : 'image/jpeg'
+  return new Promise((r, e) => c.toBlob((b) => (b ? r(b) : e(new Error("Couldn't read that image"))), type, 0.88))
 }
 
 const FREE = new Uint8Array([0x66, 0x72, 0x65, 0x65])
