@@ -11,13 +11,15 @@ export const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padSta
 const unhex = (s: string) => Uint8Array.from(s.match(/../g) || [], (x) => parseInt(x, 16))
 
 let opened: Promise<IDBDatabase> | undefined
+/** The vault opened in this page at least once. */
+export let vaultOpened = false
 const db = () =>
   (opened ||= new Promise<IDBDatabase>((resolve, reject) => {
     // a browser whose storage never answers mustn't hold the app up
     const late = setTimeout(() => reject(new Error(`IndexedDB did not open`)), 4000)
     const r = indexedDB.open('quilcast-vault', 1)
     r.onupgradeneeded = () => r.result.createObjectStore('kv')
-    r.onsuccess = () => (clearTimeout(late), resolve(r.result))
+    r.onsuccess = () => (clearTimeout(late), (vaultOpened = true), resolve(r.result))
     r.onerror = () => (clearTimeout(late), reject(r.error))
   }).catch((e) => ((opened = undefined), Promise.reject(e))))
 

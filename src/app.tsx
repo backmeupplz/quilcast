@@ -2,6 +2,7 @@ import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, accounts, amFollowing, askUser, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
+import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
@@ -1097,13 +1098,21 @@ addEventListener('click', (e) => {
   a.pathname + a.search !== location.pathname + location.search ? go(a.pathname + a.search) : dispatchEvent(new Event('refresh'))
 })
 
-// a deploy replaces the lazy chunks (mini apps, messages, looks…), so a tab opened before it can't load them:
-// reload into the new build, at most once every 30 s so a chunk that's really missing can't loop
-addEventListener('vite:preloadError', () => {
+// at most once every 30 s, so whatever made it reload can't loop
+const reloadOnce = () => {
   const k = 'quilcast:reloaded'
   if (Date.now() - Number(sessionStorage.getItem(k) || 0) < 30e3) return
   sessionStorage.setItem(k, String(Date.now()))
   location.reload()
+}
+// a deploy replaces the lazy chunks (mini apps, messages, looks…), so a tab opened before it can't load them: reload
+// into the new build
+addEventListener('vite:preloadError', reloadOnce)
+// iOS kills WebKit's storage process under apps left in the background, home screen apps above all. The page lives on
+// but its IndexedDB doesn't, not even a new connection ("Connection to Indexed Database server lost. Refresh the
+// page"), so the vault's keys and secrets look gone: coming back to a page whose vault stopped answering reloads it
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && vaultOpened) kv('readonly', (s) => s.count()).catch(reloadOnce)
 })
 
 const useRoute = () => {
