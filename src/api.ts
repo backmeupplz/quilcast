@@ -17,7 +17,7 @@ export const saveSettings = () => save('quilcast:settings', settings)
 // `dm` is a farcaster.xyz token that opens the account's direct casts and nothing else
 // `appKey` is the on-chain key mini app webhooks are signed with; `inbox` is the secret for this browser's mini app
 // notifications on our server, and `notify` lists the app origins that may send them
-export type Account = { phrase: string; wallet?: string; fid?: number; username?: string; display?: string; signer?: string; signerAt?: number; nonce?: number; scopes?: number; done?: boolean; dm?: string; appKey?: string; inbox?: string; notify?: string[] }
+export type Account = { phrase: string; wallet?: string; fid?: number; username?: string; display?: string; signer?: string; signerAt?: number; nonce?: number; scopes?: number; done?: boolean; dm?: string; appKey?: string; inbox?: string; notify?: string[]; fcx?: { secret: string; exp: number } }
 // every account this browser holds; `account` is the selected one, keyed by its wallet or its phrase
 export const idOf = (a: Account) => a.wallet || a.phrase
 export let accounts = read<Account[]>('quilcast:accounts', [])

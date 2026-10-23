@@ -11,6 +11,7 @@ import { brotliCompress, gzip } from 'node:zlib'
 import { castText, cleanDesign, isImg, isVid, LOGO, n, sized, X_LOGO } from '../src/shared.ts'
 import { fetchJson, gate, imageInfo, keep, safeGet } from './net.mjs'
 import { dm } from './dm.mjs'
+import { space } from './spaces.mjs'
 import { cached, unfurl } from './unfurl.mjs'
 import { chunk, done, EXT, MEDIA, start, status } from './upload.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
@@ -36,10 +37,10 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 // The app keeps users' keys in localStorage, so scripts may only come from this origin, and the
 // page may not be framed. Mini apps are https pages framed by the app (src/miniapp.tsx sandboxes them). Images and video come from anywhere (avatars, embeds, CDNs); the node
-// and RPC URLs are user settings, hence https: for connect-src; messages update over farcaster.xyz's websocket.
+// and RPC URLs are user settings, hence https: for connect-src; messages and Spaces update over farcaster.xyz's websocket, and Spaces audio comes from LiveKit.
 const CSP = [
   "default-src 'self'", "script-src 'self'", "style-src 'self'", 'img-src * data: blob:', 'media-src * data: blob:',
-  "connect-src 'self' https: wss://ws.farcaster.xyz http://localhost:* http://127.0.0.1:*", "worker-src 'self' blob:", "font-src 'self'", "manifest-src 'self'",
+  "connect-src 'self' https: wss://ws.farcaster.xyz wss://*.livekit.cloud http://localhost:* http://127.0.0.1:*", "worker-src 'self' blob:", "font-src 'self'", "manifest-src 'self'",
   "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-src https:", "frame-ancestors 'none'",
 ].join('; ')
 const SECURITY = {
@@ -417,6 +418,14 @@ createServer(async (req, res) => {
       const err = r instanceof Error
       if (err && !r.status) console.error('notify', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Something went wrong.' } : r)
+    }
+
+    const sop = path.match(/^\/api\/space\/(\w{1,20})$/)?.[1]
+    if (sop) {
+      if (limited(`space:${ip}`, 600)) return json(429, { error: 'Slow down a little.' })
+      // like messages: a failure here may hold someone's token, so it isn't logged
+      const r = await space(req, sop, url).catch((e) => ({ status: e.status || 502, body: { error: e.status ? e.message : "farcaster.xyz didn't answer." } }))
+      return json(r.status, r.body)
     }
 
     const op = path.match(/^\/api\/dm\/(\w{1,20})$/)?.[1]

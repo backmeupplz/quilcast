@@ -65,6 +65,8 @@ export const P = {
   min: 'M6 12h12',
   wallet: 'M19 7V5a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V6M16.5 13.5h.01',
   apps: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  mic: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3',
+  micOff: 'M2 2l20 20M19 10v2a7 7 0 0 1-.1 1M5 10v2a7 7 0 0 0 12 5M15 9.3V5a3 3 0 0 0-5.7-1.3M9 9v3a3 3 0 0 0 5.1 2.1M12 19v3',
   pin: 'M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2v.8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z',
 }
 export const Icon = ({ d, fill, size = 18 }: { d: string; fill?: boolean; size?: number }) => (
@@ -395,15 +397,34 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   )
 }
 
+/** The room id in a farcaster.xyz Space link. */
+export const spaceOf = (u: string) => u.match(/^https?:\/\/(?:www\.)?(?:warpcast\.com|farcaster\.xyz)\/~\/spaces\/([\w-]{1,64})\/?(?:[?#].*)?$/)?.[1]
+
+/** A Space linked in a cast. Its details need a farcaster.xyz token, so they load only for accounts that turned Spaces on. */
+function SpaceEmbed({ id }: { id: string }) {
+  const [Card, setCard] = useState<((p: { id: string }) => any) | null>(null)
+  useEffect(() => void (account?.fcx && import('./spaces.tsx').then((m) => setCard(() => m.SpaceCard))), [])
+  if (Card) return <Card id={id} />
+  return (
+    <a class="space-card" href={`/spaces/${id}`} onClick={stop}>
+      <span class="space-card-top"><Icon d={P.mic} /><small>{tr('Space')}</small></span>
+      <b>{tr('Live audio Space')}</b>
+      <small>{tr('Listen on Quilcast')}</small>
+    </a>
+  )
+}
+
 function Embeds({ c }: { c: Cast }) {
   const urls = urlsOf(c)
   // a link to a cast on Quilcast is shown as a quote, like a quoted cast
   const linked = (u: string) => castOf(ownPath(safeUrl(u)))
-  const links = urls.filter((u) => !isImg(u) && !isVid(u) && !linked(u))
+  const spaces = [...new Set(urls.flatMap((u) => spaceOf(u) || []))]
+  const links = urls.filter((u) => !isImg(u) && !isVid(u) && !linked(u) && !spaceOf(u))
   const quotes = [...new Set([...c.embeds.flatMap((e) => (/^(0x)?[0-9a-f]{40}$/i.test(e.cast_id?.hash || '') ? [e.cast_id!.hash.replace(/^0x/, '').toLowerCase()] : [])), ...urls.flatMap((u) => linked(u) || [])])]
   const all = (
     <>
       <Media urls={urls} />
+      {spaces.map((id) => <SpaceEmbed id={id} />)}
       {links.map((u) => <LinkCard u={u} c={c} />)}
     </>
   )
@@ -411,7 +432,7 @@ function Embeds({ c }: { c: Cast }) {
   // quoted casts are text, so they stay full width below (squeezed into a tile they stretched into an empty box)
   return (
     <>
-      {+urls.some(isImg) + urls.filter(isVid).length + links.length > 1 ? <div class="strip">{all}</div> : all}
+      {+urls.some(isImg) + urls.filter(isVid).length + links.length + spaces.length > 1 ? <div class="strip">{all}</div> : all}
       {quotes.map((h) => <QuoteCard hash={h} />)}
     </>
   )

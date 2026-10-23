@@ -17,6 +17,9 @@ const lazy = <P extends object>(load: () => Promise<(p: P) => any>) => (p: P) =>
 }
 const Join = lazy<{ step?: string }>(() => import('./join.tsx').then((m) => m.Join))
 const Messages = lazy<{ id?: string }>(() => import('./messages.tsx').then((m) => m.Messages))
+const Spaces = lazy<{}>(() => import('./spaces.tsx').then((m) => m.Spaces))
+const SpaceRoom = lazy<{ id: string }>(() => import('./spaces.tsx').then((m) => m.SpaceRoom))
+const LiveStrip = lazy<{}>(() => import('./spaces.tsx').then((m) => m.LiveStrip))
 
 // --- bits ---
 
@@ -230,7 +233,7 @@ function Home() {
   const [round, reload] = useReload()
   return (
     <>
-      <Header title={t('Home')} back={false}>
+      <Header title={t('Home')} back={false} action={account?.done && <a class="icon-btn" href="/spaces" aria-label={t('Spaces')} title={t('Spaces')}><Icon d={P.mic} /></a>}>
         {account?.done && <Tabs tabs={[['following', t('Following')], ['trending', t('Trending')]]} value={tab} set={(t) => (t === tab ? reload() : setTab(t))} />}
       </Header>
       {!account?.done && (
@@ -239,6 +242,7 @@ function Home() {
           <a class="btn small" href="/join">{t('Join')}</a>
         </div>
       )}
+      {account?.fcx && <LiveStrip />}
       {/* replies show in Following with their conversation (threads()); Trending keeps top-level casts */}
       <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={(c) => !c.parent_hash} thread={tab === 'following'}
         load={(cursor) => (tab === 'following' ? get('/v2/farcaster/feed/following', { fid: account!.fid, limit: 50, cursor }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
@@ -1090,10 +1094,11 @@ function App() {
           : r0 === 'messages' ? <Messages id={r1 && decode(r1)} />
           : r0 === 'settings' ? <Settings />
           : r0 === 'apps' ? <Apps />
+          : r0 === 'spaces' ? (r1 && me ? <SpaceRoom id={decode(r1)} /> : me ? <Spaces /> : <Join />)
           : r0 === 'design' ? <><Header title={t('Profile design')} /><div class="design-page"><DesignCard id={r1} /></div></>
             : r0 === 'join' ? <><Header /><Join step={r1} /></>
               : <Home />
-  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear]]
+  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps], ['spaces', t('Spaces'), P.mic]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear]]
   const href = (k: string) => (k === 'u' ? userPath(me!) : `/${k}`)
   const active = (k: string) => (k === 'u' ? r0 === 'u' && !!me && userPath(me) === `/u/${r1}` : r0 === k)
   const ico = (k: string, d: string) => <span class="ico"><Icon d={d} size={22} />{unread[k as keyof typeof unread] && <i class="badge" />}</span>
@@ -1116,7 +1121,8 @@ function App() {
         </div>
       </aside>
       <nav class="tabbar" aria-label={t('Main')}>
-        {nav.map(([k, label, d]) => <a class={active(k) ? 'on' : ''} href={href(k)} aria-label={label}>{ico(k, d)}</a>)}
+        {/* no room for Spaces down here; Home's header links to it */}
+        {nav.filter(([k]) => k !== 'spaces').map(([k, label, d]) => <a class={active(k) ? 'on' : ''} href={href(k)} aria-label={label}>{ico(k, d)}</a>)}
       </nav>
       {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={P.pen} size={22} /></button>}
       {me && <Dock />}

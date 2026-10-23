@@ -28,7 +28,14 @@ const node = createServer(async (q, r) => {
   // farcaster.xyz's direct casts: echo what arrived, so the relay test can check it
   if (u.pathname === '/v2/get-dc-nonce') return r.end(JSON.stringify({ result: { nonce: 'n1' } }))
   if (u.pathname === '/v2/get-dc-auth-token') return r.end(JSON.stringify({ result: { token: u.searchParams.get('message') === 'hi' && u.searchParams.get('signature')?.length === 132 ? 'fc_dc_test' : null } }))
-  if (u.pathname.startsWith('/v2/direct-cast-') || u.pathname.startsWith('/fc/')) {
+  // farcaster.xyz Spaces: the login exchange, then echo like the DM endpoints
+  if (u.pathname === '/v2/onboarding-state' && q.method === 'PUT') {
+    let body = ''
+    for await (const c of q) body += c
+    const ok = q.headers.authorization === `Bearer eip191:${'A'.repeat(88)}` && JSON.parse(body).authRequest?.method === 'generateToken'
+    return r.end(JSON.stringify({ result: { token: ok ? { secret: 'fc_space_test', expiresAt: 5 } : null } }))
+  }
+  if (u.pathname.startsWith('/v2/direct-cast-') || u.pathname.startsWith('/fc/') || u.pathname.startsWith('/v1/audio-room')) {
     let body = ''
     for await (const c of q) body += c
     return r.end(JSON.stringify({ path: u.pathname, method: q.method, auth: q.headers.authorization, query: u.search, idempotency: q.headers['idempotency-key'], body: body && JSON.parse(body) }))
@@ -168,6 +175,27 @@ test('the DM relay carries the token to the direct-cast endpoints and nowhere el
   const muted = await (await call('mute', { method: 'POST', headers: auth, body: JSON.stringify({ conversationId: 'c', muted: true }) })).json()
   assert.deepEqual([muted.path, muted.body], ['/v2/direct-cast-conversation-notifications', { conversationId: 'c', muted: true }])
   assert.match((await fetch(base + '/')).headers.get('content-security-policy'), /connect-src [^;]*wss:\/\/ws\.farcaster\.xyz/)
+})
+
+test('the Spaces relay mints a token from a signed login and reaches only the audio-room endpoints', async () => {
+  const call = (op, init) => fetch(`${base}/api/space/${op}`, init)
+  const ts = Date.now()
+  const login = (bearer, method = 'generateToken') => call('token', { method: 'POST', body: JSON.stringify({ authRequest: { method, params: { timestamp: ts, expiresAt: ts + 1000 } }, bearer }) })
+  assert.deepEqual(await (await login(`eip191:${'A'.repeat(88)}`)).json(), { secret: 'fc_space_test', expiresAt: 5 })
+  assert.equal((await login('eip191:short')).status, 400)
+  assert.equal((await login(`eip191:${'A'.repeat(88)}`, 'other')).status, 400)
+  assert.equal((await call('token')).status, 405)
+  const auth = { authorization: 'Bearer fc_space_test_token' }
+  const live = await (await call('live?limit=5&fid=1', { headers: auth })).json()
+  assert.deepEqual([live.path, live.auth, live.query], ['/v1/audio-rooms', 'Bearer fc_space_test_token', '?limit=5'])
+  assert.equal((await call('live')).status, 401)
+  for (const op of ['me', 'livekit', '__proto__', 'constructor']) assert.equal((await call(op, { headers: auth })).status, 404, op)
+  assert.equal((await call('join', { headers: auth })).status, 405)
+  const joined = await (await call('join', { method: 'POST', headers: auth, body: JSON.stringify({ roomId: 'r1' }) })).json()
+  assert.deepEqual([joined.path, joined.method, joined.body], ['/v1/audio-room/join', 'POST', { roomId: 'r1' }])
+  const invited = await (await call('invite', { method: 'POST', headers: auth, body: JSON.stringify({ roomId: 'r1', fid: 2, role: 'speaker' }) })).json()
+  assert.deepEqual([invited.path, invited.body], ['/v1/audio-room/accept-speaker', { roomId: 'r1', fid: 2, role: 'speaker' }])
+  assert.match((await fetch(base + '/')).headers.get('content-security-policy'), /connect-src [^;]*wss:\/\/\*\.livekit\.cloud/)
 })
 
 test('mini app notifications: tokens per inbox, the spec answer, rate limits, same-domain targets, drop', async () => {

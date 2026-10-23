@@ -2,7 +2,7 @@
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { HDKey } from '@scure/bip32'
-import { account, byName, get, LINK_RE, myUser, posting, setAccount, settings, toUrl, type Account, type Cast } from './api.ts'
+import { account, byName, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
@@ -305,6 +305,27 @@ Issued At: ${new Date().toISOString()}`
   const t = await dm('token', { method: 'POST', body: { message, signature } })
   if (!t.result?.token) throw new Error("farcaster.xyz didn't open your messages.")
   setAccount({ ...account!, dm: t.result.token })
+}
+
+/** A farcaster.xyz session token for Spaces, from a login request the custody address signs (as farcaster.xyz's
+ *  own apps do). It's kept with the account for a year, so a wallet account isn't asked to sign every visit. */
+let minting: Promise<string> | undefined
+export function spaceToken(fresh = false): Promise<string> {
+  const a = account!
+  if (!fresh && a.fcx && a.fcx.exp > Date.now() + 60e3) return Promise.resolve(a.fcx.secret)
+  // calls made at once share one login, so a wallet account is asked to sign once
+  return (minting ||= mintSpaceToken(a).finally(() => (minting = undefined)))
+}
+async function mintSpaceToken(a: Account) {
+  const ts = Date.now()
+  const exp = ts + 365 * 864e5
+  const authRequest = { method: 'generateToken', params: { timestamp: ts, expiresAt: exp } }
+  const sig = await (await custodyOf(a)).message(new TextEncoder().encode(`{"method":"generateToken","params":{"expiresAt":${exp},"timestamp":${ts}}}`))
+  const r = await fetch('/api/space/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ authRequest, bearer: `eip191:${btoa(String.fromCharCode(...sig))}` }) })
+  const j = await r.json().catch(() => ({}))
+  if (!j.secret) throw new Error("farcaster.xyz didn't let this account into Spaces.")
+  if (account && idOf(account) === idOf(a)) setAccount({ ...account, fcx: { secret: j.secret, exp: j.expiresAt || exp } })
+  return j.secret as string
 }
 
 export const deleteCast = (hash: string) => send(MT.CAST_REMOVE, castRemoveBody(hash))
