@@ -8,7 +8,8 @@ import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, cleanDesign, isImg, isVid, LOGO, n, sized, X_LOGO } from '../src/shared.ts'
+import { castText, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, sized, X_LOGO } from '../src/shared.ts'
+import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { fetchJson, gate, imageInfo, keep, safeGet } from './net.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
@@ -18,6 +19,7 @@ import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
 import { getDesign, getLook, loadLooks, putDesign, putLook } from './looks.mjs'
+import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -26,6 +28,7 @@ const DIST = new URL('../dist/', import.meta.url).pathname
 const DATA = process.env.DATA_DIR || MEDIA
 load(DATA)
 loadLooks(DATA)
+loadThemes(DATA)
 const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) => new URL(`fonts/${f}`, import.meta.url).pathname)
 
 // a stray rejection somewhere must not take the whole server down
@@ -163,6 +166,9 @@ async function visualOf(c) {
   const design = urls.map((u) => u.match(/^https:\/\/quilcast\.com\/design\/([\w-]{10})$/)?.[1]).find(Boolean)
   const d = design && (await getDesign(design))
   if (d) return { design, d, wide: true }
+  const themeLink = urls.map((u) => u.match(/^https:\/\/quilcast\.com\/theme\/([\w-]{10})$/)?.[1]).find(Boolean)
+  const th = themeLink && (await getTheme(themeLink))
+  if (th) return { theme: themeLink, th, wide: true }
   for (const u of urls.filter((u) => !isVid(u)).slice(0, 2)) {
     const d = await unfurl(u).catch(() => null)
     if (d?.tweet) return d.tweet.photos[0] || d.tweet.video ? { src: d.tweet.photos[0] || d.tweet.video, label: `@${d.tweet.author.handle} on X`, video: !d.tweet.photos[0] } : { tweet: d.tweet }
@@ -183,7 +189,8 @@ async function card(c) {
   // the CDN's resized copies are a fraction of the originals and decode faster
   const [pfp, pic] = await Promise.all([
     a.pfp_url ? dataUri(sized(a.pfp_url, 'w=176')) : null,
-    v?.design ? designPng(v.design, v.d).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null) : v?.src ? dataUri(sized(v.src, 'w=840')) : null,
+    v?.design ? designPng(v.design, v.d).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null)
+      : v?.theme ? themePng(v.theme, v.th).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null) : v?.src ? dataUri(sized(v.src, 'w=840')) : null,
   ])
   const tile = !!(pic || v?.video || v?.tweet)
   // link previews are ~1.91:1, so they get a landscape tile; everything else a square
@@ -285,6 +292,184 @@ async function designCard(d) {
 
 // a design never changes, so neither does its card; called inside a render slot already (renders() isn't reentrant)
 const designPng = (id, d) => pngs.get(`design:${id}`) || keep(pngs, 100, `design:${id}`, designCard(cleanDesign(d)).then(render))
+
+/** A theme's picture: our own media from the volume, Tenor's animated WebP as its GIF (resvg can't decode animated
+ *  WebP; Tenor's "AAAAe" variant is a small GIF of the same picture), anything else fetched. */
+const themeImage = (u, max = 6e6, sticker = false) => {
+  const own = u.match(/^https:\/\/quilcast\.com\/m\/([0-9a-f]{24}\.(png|jpg|gif|webp))$/)
+  if (own) return readFile(join(MEDIA, own[1])).then((b) => {
+    const info = imageInfo(b)
+    return info && info.w * info.h <= 16e6 ? { uri: `data:${info.type};base64,${b.toString('base64')}`, w: info.w, h: info.h } : null
+  }, () => null)
+  // a sticker's transparent GIF is "AAAAi"
+  return imageData(u.replace(/^(https:\/\/media\.tenor\.com\/[\w-]+AAAA)\w(\/[\w-]+)\.\w+$/, `$1${sticker ? 'i' : 'e'}$2.gif`), max)
+}
+// the same random spread every time a theme's card is drawn
+// the feed's icons (ui.tsx P)
+const ICONS = {
+  reply: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.9L3 20l1.1-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z',
+  recast: 'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3',
+  like: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z',
+}
+const seeded = (s) => {
+  let h = [...s].reduce((a, c) => Math.imul(a ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0
+  return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)), (h >>>= 0) / 4294967296)
+}
+const mixHex = (a, b, t) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, '0')).join('')
+
+/** The share card of a theme: Quilcast itself wearing it (sidebar, a feed of casts, its effect and stickers), next
+ *  to the theme's name, its colors and an "Apply theme" button. */
+async function themeCard(id, raw) {
+  const th = cleanTheme(raw)
+  const base = th.base || 'dark'
+  const c = { ...DEFAULTS[base], ...Object.fromEntries(Object.entries(th).filter(([k, v]) => typeof v === 'string' && v.startsWith('#'))) }
+  const rs = th.round ?? 1
+  const bw = th.borderStyle === 'none' ? 0 : (th.borderWidth ?? 1) * 1.5
+  const dash = th.borderStyle === 'dashed' ? ` stroke-dasharray="${bw * 3} ${bw * 2}"` : th.borderStyle === 'dotted' ? ` stroke-dasharray="0 ${bw * 2}" stroke-linecap="round"` : ''
+  const stroke = (color = c.line) => (bw ? ` stroke="${color}" stroke-width="${bw}"${dash}` : '')
+  const R = (px) => Math.min(px * rs, 999)
+  const [img, bar, btn] = await Promise.all([th.bgImg && themeImage(th.bgImg), th.barImg && themeImage(th.barImg, 4e6), th.btnImg && themeImage(th.btnImg, 4e6)])
+  const stickers = (await Promise.all((th.stickers || []).slice(0, 16).map(async (s) => ({ s, i: await themeImage(s.src, 4e6, true) })))).filter((x) => x.i)
+  // over a picture the column turns see-through, as it does in the app
+  const sheer = img ? (th.sheer ?? 88) / 100 : 1
+  const rnd = seeded(id)
+  const defs = []
+  const fill = (k, im, w, h) => {
+    if (!im) return null
+    defs.push(`<pattern id="${k}" width="1" height="1" patternContentUnits="objectBoundingBox"><image href="${im.uri}" width="1" height="1" preserveAspectRatio="xMidYMid slice"/></pattern>`)
+    return `url(#${k})`
+  }
+  // the page background as the app draws it: tiled at its own size, filling the screen, or once in the middle
+  let bg = ''
+  if (img) {
+    if (th.bgMode === 'tile' || !th.bgMode) {
+      const tw = Math.max(40, Math.min(img.w, 600)), tht = Math.round((img.h * tw) / img.w)
+      defs.push(`<pattern id="tile" width="${tw}" height="${tht}" patternUnits="userSpaceOnUse"><image href="${img.uri}" width="${tw}" height="${tht}"/></pattern>`)
+      bg = `<rect width="1200" height="630" fill="url(#tile)"/>`
+    } else if (th.bgMode === 'center') bg = `<image href="${img.uri}" x="${(1200 - Math.min(img.w, 1200)) / 2}" y="${(630 - Math.min(img.h, 630)) / 2}" width="${Math.min(img.w, 1200)}" height="${Math.min(img.h, 630)}" preserveAspectRatio="xMidYMid meet"/>`
+    else bg = `<image href="${img.uri}" width="1200" height="630" preserveAspectRatio="xMidYMid slice"/>`
+    if (th.scrim) bg += `<rect width="1200" height="630" fill="${base === 'light' ? '#fff' : '#000'}" fill-opacity="${th.scrim / 100}"/>`
+  }
+  // the effect, frozen: a scatter of its particles in its own colors
+  const p = th.fx && EFFECTS[th.fx]
+  let fx = ''
+  if (p) {
+    const count = Math.max(8, Math.min(46, Math.round(p.n / 3)))
+    for (let i = 0; i < count; i++) {
+      const x = rnd() * 1200, y = rnd() * 630
+      // the sidebar sits on the background itself, so nothing lands on its words
+      if (x < 250 && y < 470) continue
+      const size = (p.size[0] + rnd() * (p.size[1] - p.size[0])) * 1.6
+      const col = p.colors ? p.colors[Math.floor(rnd() * p.colors.length)] : '#fff'
+      const a = p.alpha ?? 0.9
+      const ch = Array.isArray(p.draw) && p.draw[Math.floor(rnd() * p.draw.length)].replace(/\uFE0F/g, '')
+      // Inter and Noto Emoji have no ✦ ✧ ⋆, katakana or ❅ ❆: stars are drawn, code rains as digits, flakes are ❄
+      if (ch && /[✦✧⋆]/.test(ch)) fx += `<path d="M0 -1C.1 -.3 .3 -.1 1 0C.3 .1 .1 .3 0 1C-.1 .3 -.3 .1 -1 0C-.3 -.1 -.1 -.3 0 -1z" fill="${col}" fill-opacity="${a}" transform="translate(${x} ${y}) scale(${size * 0.7})"/>`
+      else if (ch && th.fx === 'matrix') fx += `<text font-family="Inter" font-weight="700" font-size="${size}" fill="${col}" text-anchor="middle">${[...Array(6)].map((_, j) => `<tspan x="${x}" y="${y + j * size * 1.1}" fill-opacity="${(1 - j / 6).toFixed(2)}">${rnd() < 0.5 ? 0 : 1}</tspan>`).join('')}</text>`
+      else if (ch) fx += `<text x="${x}" y="${y}" font-family="Noto Emoji, Inter" font-size="${size * 1.3}" fill="${p.colors ? col : c.accent}" fill-opacity="${a}" transform="rotate(${Math.round((rnd() - 0.5) * 60)} ${x} ${y})">${esc(/[❅❆]/.test(ch) ? '❄' : ch)}</text>`
+      else if (p.draw === 'rect') fx += `<rect x="${x}" y="${y}" width="${size}" height="${size * 0.5}" fill="${col}" transform="rotate(${Math.round(rnd() * 180)} ${x} ${y})"/>`
+      else if (p.draw === 'line') fx += `<line x1="${x}" y1="${y}" x2="${x - size * (p.slant || 0.15)}" y2="${y + size}" stroke="${col}" stroke-opacity="${a}" stroke-width="2" stroke-linecap="round"/>`
+      else if (p.draw === 'ring') fx += `<circle cx="${x}" cy="${y}" r="${size / 2}" fill="none" stroke="${col}" stroke-opacity="${a}" stroke-width="2"/>`
+      else fx += (p.draw === 'glow' ? `<circle cx="${x}" cy="${y}" r="${size * 2.4}" fill="${col}" fill-opacity="0.25" filter="url(#soft)"/>` : '') + `<circle cx="${x}" cy="${y}" r="${size / 2}" fill="${col}" fill-opacity="${a}"/>`
+    }
+  }
+  // a name in the theme's name effect
+  const fxColor = th.nameColor || c.accent
+  const named = (x, y, size, s, base = c.ink) => {
+    const t = (attrs) => `<text x="${x}" y="${y}" font-family="Inter, Noto Emoji" font-weight="800" font-size="${size}" ${attrs}>${esc(s)}</text>`
+    const fx = th.nameFx
+    if (fx === 'rainbow') return t('fill="url(#rainbow)"')
+    if (fx === 'glitter') return t('fill="url(#glitter)"') + `<path d="M0 -1C.1 -.3 .3 -.1 1 0C.3 .1 .1 .3 0 1C-.1 .3 -.3 .1 -1 0C-.3 -.1 -.1 -.3 0 -1z" fill="#ffc928" transform="translate(${x + width(s, size) * 1.04 + size * 0.5} ${y - size * 0.35}) scale(${size * 0.3})"/>`
+    if (fx === 'glow') return t(`fill="${fxColor}" filter="url(#glow)"`) + t(`fill="${base}"`)
+    if (fx === 'shadow') return `<g transform="translate(3 3)">${t(`fill="${base}"`)}</g>` + t(`fill="${fxColor}"`)
+    if (fx === 'outline') return t(`fill="none" stroke="${fxColor}" stroke-width="1.6"`)
+    return t(`fill="${th.nameColor || base}"`)
+  }
+  const btnFill = fill('btn', btn) || c.accent
+  // words on a button picture are white with a dark edge, as in the app
+  const btnText = btn ? 'fill="#fff" stroke="#000" stroke-opacity="0.55" stroke-width="4" paint-order="stroke"' : `fill="${c.onAccent}"`
+  const barFill = fill('bar', bar)
+  // the feed: three casts as a phone or desktop would show them
+  const X = 256, W = 452
+  const casts = [
+    ['Quilcast', 'quilcast', 'gm! trying on a brand new theme today ☀️', [3, 12, 48]],
+    ['Ada', 'ada', 'the colors, the background, the stickers… everything changes ✨', [9, 31, 212]],
+    ['Satoshi', 'sats', 'ok this one is going in my rotation', [1, 4, 27]],
+  ].map(([name, user, text, [rep, rc, lk]], i) => {
+    const y = 120 + i * 156
+    const lines = wrap(text, 21, W - 108, 2)
+    const ay = y + 40
+    const hue = [c.accent, c.like, c.recast][i]
+    return `<circle cx="${X + 44}" cy="${ay}" r="26" fill="${hue}"/><text x="${X + 44}" y="${ay + 9}" font-family="Inter" font-weight="800" font-size="24" fill="${c.onAccent}" text-anchor="middle">${name[0]}</text>
+    ${named(X + 84, y + 34, 21, name)}<text x="${X + 92 + width(name, 21) * 1.06 + (th.nameFx === 'glitter' ? 20 : 0)}" y="${y + 34}" font-family="Inter" font-size="19" fill="${c.muted}">@${user} · ${i + 2}h</text>
+    <text font-family="Inter, Noto Emoji" font-size="21" fill="${c.ink}">${lines.map((l, j) => `<tspan x="${X + 84}" y="${y + 66 + j * 28}">${esc(l)}</tspan>`).join('')}</text>
+    ${[[ICONS.reply, rep, c.muted], [ICONS.recast, rc, c.recast], [ICONS.like, lk, c.like]].map(([d, k, col], j) => `<g transform="translate(${X + 84 + j * 110} ${y + 112}) scale(0.85)"><path d="${d}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g><text x="${X + 112 + j * 110}" y="${y + 130}" font-family="Inter" font-size="18" fill="${col}">${k}</text>`).join('')}
+    <rect x="${X}" y="${y + 154}" width="${W}" height="${bw}" fill="${c.line}"/>`
+  }).join('')
+  const nav = ['Home', 'Search', 'Notifications', 'Messages', 'Profile'].map((label, i) => {
+    const y = 132 + i * 54
+    return `<circle cx="78" cy="${y - 8}" r="11" fill="none" stroke="${c.ink}" stroke-width="2.4"/><text x="104" y="${y}" font-family="Inter" font-weight="${i ? 400 : 800}" font-size="22" fill="${c.ink}">${label}</text>`
+  }).join('')
+  // the name in up to two lines, smaller when it's long
+  const title = th.name || 'Untitled theme'
+  const ts = width(title, 52) > 680 ? 40 : 52
+  const tl = wrap(title, ts, 352, 2)
+  const facts = [base === 'light' ? 'Light' : 'Dark', p?.name, th.font && th.font !== 'system' ? FONT_STACKS[th.font].split(',')[0].replace(/'/g, '') : th.fontUrl ? 'Own font' : null, stickers.length ? `${stickers.length} sticker${stickers.length > 1 ? 's' : ''}` : null].filter(Boolean).join(' · ')
+  const swatches = ['bg', 'card', 'ink', 'accent', 'like', 'recast'].map((k, i) => `<circle cx="${790 + i * 52}" cy="${320 + (tl.length - 1) * ts * 1.1}" r="19" fill="${c[k]}" stroke="${mixHex(c.card, c.ink, 0.25)}" stroke-width="2"/>`).join('')
+  const fl = wrap(facts, 20, 352, 2)
+  // everything under the facts moves down by a second line of them
+  const ty = (tl.length - 1) * ts * 1.1 + (fl.length - 1) * 26
+  const panelH = 352 + ty
+  const py = Math.round((630 - panelH) / 2)
+  const panel = `<g transform="translate(0 ${py - 150})">
+    ${th.glow ? `<rect x="748" y="150" width="404" height="${panelH}" rx="${R(28)}" fill="${c.accent}" fill-opacity="0.55" filter="url(#soft)"/>` : ''}
+    <rect x="748" y="150" width="404" height="${panelH}" rx="${R(28)}" fill="${c.card}" fill-opacity="${Math.max(sheer, 0.9)}"${stroke()}/>
+    <rect x="780" y="182" width="${width('QUILCAST THEME', 16) * 1.12 + 32}" height="34" rx="${R(17)}" fill="${c.accent}" fill-opacity="0.16"/>
+    <text x="796" y="205" font-family="Inter" font-weight="800" font-size="16" letter-spacing="1.6" fill="${c.accent}">QUILCAST THEME</text>
+    ${tl.map((l, i) => named(780, 266 + i * ts * 1.1, ts, l)).join('')}
+    ${swatches}
+    <text font-family="Inter" font-size="20" fill="${c.muted}">${fl.map((l, i) => `<tspan x="780" y="${380 + ty + i * 26}">${esc(l)}</tspan>`).join('')}</text>
+    <rect x="780" y="${412 + ty}" width="340" height="60" rx="${R(30)}" fill="${btnFill}"/>
+    <text x="950" y="${451 + ty}" font-family="Inter" font-weight="800" font-size="24" ${btnText} text-anchor="middle">Apply theme</text>
+  </g>`
+  const stk = stickers.map(({ s, i }) => {
+    const w = s.w * 6, h = (w * i.h) / i.w, x = (s.x / 100) * 1200, y = (s.y / 100) * 630
+    return `<image href="${i.uri}" x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}"${s.r ? ` transform="rotate(${s.r} ${x} ${y})"` : ''}/>`
+  }).join('')
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="rainbow"><stop offset="0" stop-color="#ff004c"/><stop offset="0.2" stop-color="#ff8a00"/><stop offset="0.4" stop-color="#ffe600"/><stop offset="0.6" stop-color="#2bd44a"/><stop offset="0.8" stop-color="#00a2ff"/><stop offset="1" stop-color="#8a2be2"/></linearGradient>
+    <linearGradient id="glitter" x2="1" y2="0.3"><stop offset="0.3" stop-color="${fxColor}"/><stop offset="0.5" stop-color="#fff"/><stop offset="0.7" stop-color="${fxColor}"/></linearGradient>
+    <filter id="glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+    <clipPath id="col"><rect x="${X}" y="0" width="${W}" height="630"/></clipPath>
+    ${defs.join('')}
+  </defs>
+  <rect width="1200" height="630" fill="${c.bg}"/>${bg}
+  ${fx}
+  <g transform="translate(64 40)"><rect width="34" height="34" rx="${R(10)}" fill="${c.accent}"/><g transform="translate(1 1)"><path d="${LOGO}" fill="${c.onAccent}"/></g></g>
+  <text x="110" y="66" font-family="Inter" font-weight="800" font-size="25" fill="${c.ink}">Quilcast</text>
+  ${nav}
+  <rect x="64" y="404" width="170" height="54" rx="${R(27)}" fill="${btnFill}"/><text x="149" y="439" font-family="Inter" font-weight="800" font-size="22" ${btnText} text-anchor="middle">Cast</text>
+  ${th.glow ? `<rect x="${X}" y="0" width="${W}" height="630" fill="${c.accent}" fill-opacity="0.45" filter="url(#soft)"/>` : ''}
+  <g clip-path="url(#col)">
+    <rect x="${X}" y="0" width="${W}" height="630" fill="${c.bg}" fill-opacity="${sheer}"/>
+    <rect x="${X}" y="0" width="${W}" height="112" fill="${th.bar || c.bg}" fill-opacity="${img ? 0.9 : 0.97}"/>
+    ${barFill ? `<rect x="${X}" y="0" width="${W}" height="112" fill="${barFill}"/>` : ''}
+    <text x="${X + 24}" y="44" font-family="Inter" font-weight="800" font-size="24" fill="${c.ink}">Home</text>
+    <text x="${X + W / 4}" y="94" font-family="Inter" font-weight="700" font-size="19" fill="${c.ink}" text-anchor="middle">Following</text>
+    <text x="${X + (W * 3) / 4}" y="94" font-family="Inter" font-weight="700" font-size="19" fill="${c.muted}" text-anchor="middle">Trending</text>
+    <rect x="${X + W / 4 - 32}" y="106" width="64" height="5" rx="2.5" fill="${c.accent}"/>
+    <rect x="${X}" y="111" width="${W}" height="${bw}" fill="${c.line}"/>
+    ${casts}
+  </g>
+  ${bw ? `<line x1="${X}" y1="0" x2="${X}" y2="630"${stroke()}/><line x1="${X + W}" y1="0" x2="${X + W}" y2="630"${stroke()}/>` : ''}
+  ${panel}
+  ${stk}
+</svg>`
+}
+// a theme never changes, so neither does its card; called inside a render slot already (renders() isn't reentrant)
+const themePng = (id, th) => pngs.get(`theme:${id}`) || keep(pngs, 100, `theme:${id}`, themeCard(id, th).then(render))
 
 // rendering runs on libuv's pool, so it never blocks the event loop
 const render = (svg) => renderAsync(svg, { font: { fontFiles: FONTS, loadSystemFonts: false, defaultFontFamily: 'Inter' } }).then((img) => img.asPng())
@@ -396,6 +581,25 @@ createServer(async (req, res) => {
       if (r instanceof Error && !r.status) console.error('design', r)
       return r instanceof Error ? json(r.status || 500, { error: r.status ? r.message : 'Sharing failed.' }) : json(200, r)
     }
+    // app themes and Quorum's skins (server/themes.mjs)
+    const theme = path.match(/^\/api\/theme(?:\/([\w-]{10}))?$/)
+    if (theme) {
+      if (req.method === 'GET' && theme[1]) return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await getTheme(theme[1]))
+      if (req.method !== 'POST' || theme[1]) return json(405, { error: 'POST /api/theme or GET /api/theme/<id>' })
+      if (limited(`theme:${ip}`, 30, 600e3)) return json(429, { error: 'Too many themes, try again in a few minutes.' })
+      const r = await putTheme(req).catch((e) => e)
+      if (r instanceof Error && !r.status) console.error('theme', r)
+      return r instanceof Error ? json(r.status || 500, { error: r.status ? r.message : 'Sharing failed.' }) : json(200, r)
+    }
+    const skin = path.match(/^\/api\/quorum\/(skins|skin\/(Qm\w{44})|import)$/)
+    if (skin) {
+      const imp = skin[1] === 'import'
+      if (imp !== (req.method === 'POST')) return json(405, { error: 'GET /api/quorum/skins or /api/quorum/skin/<id>, POST /api/quorum/import' })
+      if (imp ? limited(`skinput:${ip}`, 20, 600e3) : limited(`skins:${ip}`, 120)) return json(429, { error: 'Too many themes, try again in a few minutes.' })
+      const r = await (imp ? importSkin(req) : skin[2] ? quorumSkin(skin[2]) : gallery(url.searchParams)).catch((e) => e)
+      if (r instanceof Error && !r.status) console.error('quorum', r)
+      return r instanceof Error ? json(r.status || 500, { error: r.status ? r.message : "Couldn't load that theme." }) : json(200, r, skin[2] ? 'public, max-age=86400' : 'no-store')
+    }
     if (path === '/api/gifs') {
       const q = (url.searchParams.get('q') || '').trim().slice(0, 60)
       if (!q) return json(200, [])
@@ -451,7 +655,8 @@ createServer(async (req, res) => {
 
     const media = path.match(/^\/m\/([0-9a-f]{24})\.([a-z0-9]{3,4})$/)
     if (media) {
-      const type = Object.keys(EXT).find((t) => EXT[t] === media[2])
+      // fonts get here only from Quorum themes (server/themes.mjs)
+      const type = Object.keys(EXT).find((t) => EXT[t] === media[2]) || { ttf: 'font/ttf', otf: 'font/otf' }[media[2]]
       const file = join(MEDIA, `${media[1]}.${media[2]}`)
       const size = type && (await stat(file).catch(() => null))?.size
       if (!size) return res.writeHead(404).end()
@@ -511,6 +716,23 @@ createServer(async (req, res) => {
       const d = await getDesign(ogDesign[1])
       if (!d) return res.writeHead(404).end()
       const png = await (pngs.get(k) || renders(() => designPng(ogDesign[1], d)))
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
+    }
+
+    const themePage = path.match(/^\/theme\/([\w-]{10})$/)
+    if (themePage) {
+      const th = await getTheme(themePage[1])
+      const name = th?.name || 'A Quilcast theme'
+      const desc = 'A theme for Quilcast: colors, a background, fonts and more for the whole app. Open it to try it on.'
+      return html(page({ title: th?.name ? `${th.name}, a theme for Quilcast` : 'A theme for Quilcast', desc, path, ...(th && { image: `${SITE}/og/theme/${themePage[1]}.png`, alt: `A preview of ${name}` }) }))
+    }
+    const ogTheme = path.match(/^\/og\/theme\/([\w-]{10})\.png$/)
+    if (ogTheme) {
+      const k = `theme:${ogTheme[1]}`
+      if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
+      const th = await getTheme(ogTheme[1])
+      if (!th) return res.writeHead(404).end()
+      const png = await (pngs.get(k) || renders(() => themePng(ogTheme[1], th)))
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
     }
 

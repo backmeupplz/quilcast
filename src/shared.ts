@@ -167,3 +167,84 @@ export const lookImages = (l: Look): [string, number][] => [
   ...(l.wall || []).map((u): [string, number] => [u, 4e6]),
   ...[...new Set((l.stickers || []).map((s) => s.src))].map((u): [string, number] => [u, 4e6]),
 ]
+
+// --- app themes (src/themes.tsx, server/themes.mjs) ---
+// A theme restyles the whole app for whoever wears it: colors, a background (a GIF works), bars and buttons, corners,
+// borders, a font, the size of everything, name effects, a moving effect and stickers on the screen. Like a look it's
+// plain settings checked here, never CSS. Quorum's skins (github.com/QuilibriumNetwork/quorum-mobile, theme/skins)
+// convert into these on our server (server/themes.mjs) and back in the browser (themes.tsx toSkin).
+
+export const THEME_COLORS = ['bg', 'card', 'ink', 'muted', 'line', 'soft', 'accent', 'onAccent', 'like', 'recast', 'warn', 'bar', 'nameColor'] as const
+type ThemeColor = (typeof THEME_COLORS)[number]
+/** Stickers on a theme sit on the screen: x and y are % of it, w is about a share of its width (capped on wide screens). */
+export type ScreenSticker = Omit<Sticker, 'at'>
+export type Theme = Partial<Record<ThemeColor, string>> & {
+  name?: string; base?: 'light' | 'dark'
+  bgImg?: string; bgMode?: (typeof BG_MODES)[number]; scrim?: number; sheer?: number
+  barImg?: string; btnImg?: string
+  round?: number; borderWidth?: number; borderStyle?: (typeof BORDERS)[number]; glow?: boolean
+  font?: keyof typeof FONTS; fontUrl?: string; size?: number
+  nameFx?: (typeof NAME_FX)[number]; fx?: Fx
+  stickers?: ScreenSticker[]
+}
+/** The app's own colors, for anything a theme leaves out (style.css :root has the same). */
+export const DEFAULTS = {
+  light: { bg: '#ffffff', card: '#ffffff', ink: '#0f1419', muted: '#64676f', line: '#e8e8ec', soft: '#f4f4f6', accent: '#6447f5', onAccent: '#ffffff', like: '#e0245e', recast: '#00a67d', warn: '#c2410c' },
+  dark: { bg: '#0b0b0f', card: '#131319', ink: '#ececf1', muted: '#8b8b98', line: '#23232b', soft: '#1a1a21', accent: '#8f7bff', onAccent: '#ffffff', like: '#f9518e', recast: '#2fd08c', warn: '#fb923c' },
+}
+// a font a Quorum skin brought along, kept on our server
+export const isThemeFont = (u: unknown): u is string => typeof u === 'string' && /^https:\/\/quilcast\.com\/m\/[0-9a-f]{24}\.(ttf|otf)$/.test(u)
+
+/** The valid part of a theme; anything unknown or out of range is dropped. */
+export function cleanTheme(x: unknown): Theme {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return {}
+  const o = x as Record<string, any>
+  const img = (v: unknown) => (isLookImg(v) ? v : undefined)
+  const th: Theme = {
+    name: text(o.name, 60)?.replace(/\n/g, ' '), base: pick(o.base, ['light', 'dark'] as const),
+    ...Object.fromEntries(THEME_COLORS.map((k) => [k, color(o[k])])),
+    bgImg: img(o.bgImg), bgMode: pick(o.bgMode, BG_MODES), scrim: int(o.scrim, 0, 90) || undefined, sheer: int(o.sheer, 0, 100),
+    barImg: img(o.barImg), btnImg: img(o.btnImg),
+    round: num(o.round, 0, 3), borderWidth: int(o.borderWidth, 0, 6), borderStyle: pick(o.borderStyle, BORDERS), glow: o.glow === true || undefined,
+    font: Object.hasOwn(FONTS, o.font) ? o.font : undefined, fontUrl: isThemeFont(o.fontUrl) ? o.fontUrl : undefined, size: num(o.size, 0.8, 1.4),
+    nameFx: pick(o.nameFx, NAME_FX), fx: pick(o.fx, FX),
+    stickers: Array.isArray(o.stickers) ? o.stickers.flatMap((x: any): ScreenSticker[] => {
+      const [px, py, w, r] = [num(x?.x, 0, 100), num(x?.y, 0, 100), num(x?.w, 4, 80), num(x?.r, -180, 180)]
+      return isLookImg(x?.src) && px !== undefined && py !== undefined && w !== undefined ? [{ src: x.src, x: px, y: py, w, ...(r ? { r } : {}) }] : []
+    }).slice(0, LIMITS.stickers) : undefined,
+  }
+  if (th.size === 1) delete th.size
+  if (th.nameFx === 'none') delete th.nameFx
+  if (!th.stickers?.length) delete th.stickers
+  for (const k of Object.keys(th) as (keyof Theme)[]) if (th[k] === undefined) delete th[k]
+  return th
+}
+
+/** Our own media as a same-origin path, so it loads wherever this copy runs (and fonts pass font-src 'self'). */
+export const ownMedia = (u: string) => u.replace(/^https:\/\/quilcast\.com(?=\/m\/)/, '')
+
+/** The theme as CSS variables, for the page (app.tsx) or one element (a theme's card); style.css takes them from there. */
+export function themeVars(th: Theme) {
+  const v: Record<string, string> = {}
+  const set = (k: string, val?: string) => val !== undefined && (v[k] = val)
+  set('--bg', th.bg), set('--card', th.card), set('--ink', th.ink), set('--muted', th.muted), set('--line', th.line), set('--soft', th.soft)
+  set('--accent', th.accent), set('--on-accent', th.onAccent), set('--like', th.like), set('--recast', th.recast), set('--warn', th.warn)
+  set('--bar', th.bar), set('--lk-name', th.nameColor)
+  if (th.ink) v['--hover'] = `rgb(${rgb(th.ink)} / 0.04)`
+  if (th.accent) v['--accent-soft'] = `color-mix(in srgb, ${th.accent} 16%, ${th.bg || 'var(--bg)'})`
+  if (th.bgImg) v['--th-img'] = `url("${ownMedia(th.bgImg)}")`
+  if (th.barImg) v['--th-bar'] = `url("${ownMedia(th.barImg)}")`
+  if (th.btnImg) v['--th-btn'] = `url("${ownMedia(th.btnImg)}")`
+  // Quorum's scrim: white over a light theme's wallpaper, black over a dark one
+  if (th.scrim) v['--th-scrim'] = `rgb(${th.base === 'light' ? '255 255 255' : '0 0 0'} / ${th.scrim / 100})`
+  if (th.sheer !== undefined) v['--th-sheer'] = `${th.sheer}%`
+  if (th.round !== undefined) v['--rs'] = String(th.round)
+  if (th.borderWidth !== undefined) v['--bw'] = `${th.borderWidth}px`
+  if (th.borderStyle) v['--bs'] = th.borderStyle
+  if (th.fontUrl) v['--th-font'] = `'quilcast-theme', ${FONTS.system}`
+  else if (th.font) v['--th-font'] = FONTS[th.font]
+  if (th.size) v['--zoom'] = String(th.size)
+  return v
+}
+/** A shared theme's id, from its link or the bare id. */
+export const themeId = (s: string) => s.trim().match(/^(?:https?:\/\/[^/]+)?(?:\/theme\/)?([\w-]{10})\/?$/)?.[1]

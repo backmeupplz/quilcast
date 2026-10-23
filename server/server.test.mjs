@@ -40,6 +40,9 @@ const node = createServer(async (q, r) => {
     for await (const c of q) body += c
     return r.end(JSON.stringify({ path: u.pathname, method: q.method, auth: q.headers.authorization, query: u.search, idempotency: q.headers['idempotency-key'], body: body && JSON.parse(body) }))
   }
+  // Quorum's skin gallery
+  if (u.pathname === '/skins') return r.end(JSON.stringify({ has_more: true, total: 2, entries: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5, author_address: 'Qmx', manifest: 'big' }, { id: '../etc', name: 'bad' }] }))
+  if (u.pathname === `/skins/${SKIN_ID}`) return r.end(JSON.stringify({ id: SKIN_ID, manifest: JSON.stringify(SKIN) }))
   if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : [] }))
   if (u.pathname === '/v2/farcaster/cast')
     return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: evil, timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: `http://127.0.0.1:${internalPort}/a.png` }], author: { fid: 1, username: 'x', display_name: evil, pfp_url: `http://127.0.0.1:${internalPort}/pfp.png` }, reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } }))
@@ -47,6 +50,17 @@ const node = createServer(async (q, r) => {
   r.statusCode = 404
   r.end('{}')
 })
+// a Quorum skin with an inline wallpaper (a real 1×1 PNG), a fake "PNG" button and a font that isn't one
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+const SKIN_ID = 'Qm' + 'a'.repeat(44)
+const SKIN = {
+  schemaVersion: 1, id: '', meta: { name: 'Coffee' }, base: 'light', frame: { corner: 'square', panelGlow: true },
+  colors: { light: { accent: '#FFD700', surface1: '#fbf6ec', textMain: '#403425', textMuted: 'rgba(168, 153, 126, 0.5)' } },
+  wallpaper: { source: { dataUri: `data:image/png;base64,${PNG}` }, fit: 'tile', scrimOpacity: 0.5, surfaceAlpha: 0.8 },
+  surfaces: { button: { background: `data:image/png;base64,${Buffer.from('<svg onload=alert(1)>').toString('base64')}` } },
+  font: { family: 'x', weights: 'static-single', source: { dataUri: 'data:font/ttf;base64,' + Buffer.from('not a font at all').toString('base64') } },
+  borders: { scale: 2.2 }, fontScale: 1.25, spacing: { scale: 2 },
+}
 const nodePort = await listen(node)
 const media = await mkdtemp(join(tmpdir(), 'qc-media-'))
 await writeFile(join(media, '0123456789abcdef01234567.png'), Buffer.from('0123456789'))
@@ -54,7 +68,7 @@ const port = 40000 + Math.floor(Math.random() * 20000)
 const base = `http://127.0.0.1:${port}`
 let srv
 before(async () => {
-  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, SITE_URL: 'https://quilcast.test' }, stdio: 'ignore' })
+  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}` }, stdio: 'ignore' })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -265,4 +279,40 @@ test('shared designs: only the style is kept, under a stable id', async () => {
   const png = await fetch(`${base}/og/design/${id}.png`)
   assert.equal(png.headers.get('content-type'), 'image/png')
   assert.ok((await png.arrayBuffer()).byteLength > 5000)
+})
+
+test('Quorum skins: the gallery is trimmed, a skin becomes a theme, and only real pictures are kept', async () => {
+  const list = await (await fetch(base + '/api/quorum/skins?sort=new')).json()
+  assert.deepEqual(list, { more: true, skins: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5 }] })
+  const th = await (await fetch(`${base}/api/quorum/skin/${SKIN_ID}`)).json()
+  assert.match(th.bgImg, /^https:\/\/quilcast\.com\/m\/[0-9a-f]{24}\.png$/)
+  assert.deepEqual({ ...th, bgImg: 'x' }, {
+    name: 'Coffee', base: 'light', bg: '#fbf6ec', card: '#eeeef3', soft: '#e6e6eb', line: '#dedee3', ink: '#403425', muted: '#a8997e',
+    accent: '#ffd700', onAccent: '#000000', like: '#e74a4a', recast: '#46c236', warn: '#e7b04a', bgImg: 'x', bgMode: 'tile', scrim: 50, sheer: 80, round: 0, borderWidth: 2, glow: true, size: 1.3,
+  })
+  // the stored picture is the skin's own bytes, served from /m/
+  const img = await fetch(base + th.bgImg.replace('https://quilcast.com', ''))
+  assert.equal(img.headers.get('content-type'), 'image/png')
+  assert.equal(Buffer.from(await img.arrayBuffer()).toString('base64'), PNG)
+  // pasted skins go the same way; anything that isn't a skin is refused
+  const imp = await fetch(base + '/api/quorum/import', { method: 'POST', body: JSON.stringify(SKIN) })
+  assert.deepEqual(await imp.json(), th)
+  const bad = await fetch(base + '/api/quorum/import', { method: 'POST', body: JSON.stringify({ name: 'x' }) })
+  assert.equal(bad.status, 400)
+  // an id that isn't one never reaches Quorum: it's just the app's page
+  assert.match((await fetch(base + '/api/quorum/skin/Qm..%2F..')).headers.get('content-type'), /^text\/html/)
+})
+
+test('shared themes: cleaned, stored under a stable id, with their page and share card', async () => {
+  const put = (b) => fetch(base + '/api/theme', { method: 'POST', body: JSON.stringify(b) }).then(async (r) => [r.status, await r.json()])
+  const [code, { id }] = await put({ name: evil, base: 'dark', accent: '#ff00aa', round: 0, fx: 'stars', nameFx: 'rainbow', evil: 1 })
+  assert.equal(code, 200)
+  assert.deepEqual((await put({ evil: 2, fx: 'stars', round: 0, accent: '#ff00aa', base: 'dark', name: evil, nameFx: 'rainbow' }))[1].id, id)
+  assert.equal((await put({ nope: 1 }))[0], 400)
+  assert.deepEqual(await (await fetch(`${base}/api/theme/${id}`)).json(), { name: evil.slice(0, 60).trim(), base: 'dark', accent: '#ff00aa', round: 0, nameFx: 'rainbow', fx: 'stars' })
+  const page = await (await fetch(`${base}/theme/${id}`)).text()
+  assert.ok(page.includes(`/og/theme/${id}.png`) && !page.includes('<script>alert'))
+  const png = await fetch(`${base}/og/theme/${id}.png`)
+  assert.equal(png.headers.get('content-type'), 'image/png')
+  assert.equal(Buffer.from(await png.arrayBuffer()).readUInt32BE(16), 1200)
 })

@@ -78,7 +78,10 @@ export function At({ l, at, edit, children }: { l: Look; at: Sticker['at']; edit
   const here = (l.stickers || []).map((s, i) => [s, i] as const).filter(([s]) => s.at === at || (at === 'head' && !boxes.has(s.at)))
   return <div class="lk-at" data-at={at}>{children}{here.map(([s, i]) => (edit ? <EditSticker s={s} i={i} set={edit} /> : <img class="lk-stk" src={s.src} alt="" loading="lazy" referrerpolicy="no-referrer" style={place(s)} />))}</div>
 }
-const place = (s: Sticker) => ({ left: `${s.x}%`, top: `${s.y}%`, width: `${s.w}%`, rotate: s.r ? `${s.r}deg` : undefined })
+// a sticker's width is a share of its box; a theme's (on the screen) passes its own `unit`
+type Unit = (w: number) => string
+const pct: Unit = (w) => `${w}%`
+const place = (s: { x: number; y: number; w: number; r?: number }, unit = pct) => ({ left: `${s.x}%`, top: `${s.y}%`, width: unit(s.w), rotate: s.r ? `${s.r}deg` : undefined })
 const tenth = (v: number, lo: number, hi: number) => Math.round(Math.min(hi, Math.max(lo, v)) * 10) / 10
 
 /** Where a point on the screen falls: the box under it (or the nearest one), and how far into it. */
@@ -89,13 +92,17 @@ function spot(cx: number, cy: number): { at: Sticker['at']; x: number; y: number
   return { at: el.dataset.at as Sticker['at'], x: tenth(((cx - r.left) / r.width) * 100, 0, 100), y: tenth(((cy - r.top) / r.height) * 100, 0, 100) }
 }
 // a moved sticker can land in another box, which draws it anew, so it gets its handles back here
-const focusSticker = (i: number) => setTimeout(() => document.querySelector<HTMLElement>(`.lk-stk[data-i="${i}"]`)?.focus({ preventScroll: true }), 30)
+export const focusSticker = (i: number) => setTimeout(() => document.querySelector<HTMLElement>(`.lk-stk[data-i="${i}"]`)?.focus({ preventScroll: true }), 30)
 
-// tap to pick a sticker; drag it to move it, drag its corner dot to resize and turn it, × (or Delete) removes it
-function EditSticker({ s, i, set }: { s: Sticker; i: number; set: Set }) {
+// tap to pick a sticker; drag it to move it, drag its corner dot to resize and turn it, × (or Delete) removes it.
+// A theme's stickers sit on the screen: it passes where a drop lands (`at`), the width `unit` and a class.
+type Put = { src: string; x: number; y: number; w: number; r?: number }
+// a look's or a theme's setter: either keeps everything but the stickers as it is
+type SetStickers = (f: (d: any) => any) => void
+export function EditSticker({ s, i, set, at = spot, unit = pct, class: cls = '' }: { s: Put; i: number; set: SetStickers; at?: (cx: number, cy: number) => Partial<Sticker>; unit?: Unit; class?: string }) {
   const ref = useRef<HTMLDivElement>(null)
-  const put = (p: Partial<Sticker>) => set((l) => ({ ...l, stickers: l.stickers?.map((x, j) => (j === i ? { ...x, ...p } : x)) }))
-  const remove = () => set((l) => ({ ...l, stickers: l.stickers?.filter((_, j) => j !== i) }))
+  const put = (p: Partial<Sticker>) => set((l) => ({ ...l, stickers: l.stickers?.map((x: Put, j: number) => (j === i ? { ...x, ...p } : x)) }))
+  const remove = () => set((l) => ({ ...l, stickers: l.stickers?.filter((_: Put, j: number) => j !== i) }))
   // follows the pointer until it lets go; the page only learns the result then, so dragging stays smooth
   const follow = (e: PointerEvent, el: Element, move: (e: PointerEvent) => void, done: (e: PointerEvent) => void) => {
     el.setPointerCapture(e.pointerId)
@@ -114,7 +121,7 @@ function EditSticker({ s, i, set }: { s: Sticker; i: number; set: Set }) {
       const r = el.getBoundingClientRect()
       ;(el.style.left = `${s.x}%`), (el.style.top = `${s.y}%`)
       if (Math.abs(u.clientX - x0) + Math.abs(u.clientY - y0) < 3) return
-      put(spot(r.left + r.width / 2, r.top + r.height / 2))
+      put(at(r.left + r.width / 2, r.top + r.height / 2))
       focusSticker(i)
     })
   }
@@ -127,7 +134,7 @@ function EditSticker({ s, i, set }: { s: Sticker; i: number; set: Set }) {
     follow(e, e.currentTarget as Element, (m) => {
       w = tenth((s.w * Math.hypot(m.clientX - cx, m.clientY - cy)) / d0, 4, 80)
       rot = tenth(((((s.r || 0) + ((Math.atan2(m.clientY - cy, m.clientX - cx) - a0) * 180) / Math.PI) % 360) + 540) % 360 - 180, -180, 180)
-      ;(el.style.width = `${w}%`), (el.style.rotate = `${rot}deg`)
+      ;(el.style.width = unit(w)), (el.style.rotate = `${rot}deg`)
     }, () => put({ w, r: rot || undefined }))
   }
   const key = (e: KeyboardEvent) => {
@@ -136,7 +143,7 @@ function EditSticker({ s, i, set }: { s: Sticker; i: number; set: Set }) {
     else if (step) e.preventDefault(), put({ x: tenth(s.x + step[0], 0, 100), y: tenth(s.y + step[1], 0, 100) })
   }
   return (
-    <div ref={ref} class="lk-stk edit" data-i={i} tabIndex={0} style={place(s)} onPointerDown={drag} onKeyDown={key} aria-label={t('Sticker')}>
+    <div ref={ref} class={`lk-stk edit ${cls}`} data-i={i} tabIndex={0} style={place(s, unit)} onPointerDown={drag} onKeyDown={key} aria-label={t('Sticker')}>
       <img src={s.src} alt="" draggable={false} referrerpolicy="no-referrer" />
       <button class="lk-x" aria-label={t('Remove')} onClick={remove}>×</button>
       <span class="lk-turn" onPointerDown={turn} aria-hidden="true" />
@@ -440,7 +447,7 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
 }
 
 type Gif = { url: string; preview: string; title: string }
-function GifPicker({ pick, close, stickers }: { pick: (url: string) => void; close: () => void; stickers?: boolean }) {
+export function GifPicker({ pick, close, stickers }: { pick: (url: string) => void; close: () => void; stickers?: boolean }) {
   const [q, setQ] = useState('')
   const [list, setList] = useState<Gif[] | null>(null)
   const input = useRef<HTMLInputElement>(null)

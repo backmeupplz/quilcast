@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, back, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, toUrl, users, type Cast, type User } from './api.ts'
-import { castText, cleanDesign, designId, isImg, isVid, LOGO, lookVars, n, sized, X_LOGO, type Look } from './shared.ts'
+import { account, back, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
+import { castText, cleanDesign, cleanTheme, DEFAULTS, designId, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, sized, themeId, themeVars, X_LOGO, type Look, type Theme } from './shared.ts'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
 
@@ -18,6 +18,8 @@ export const shell = {
   me: (): ComponentChildren => null,
   // the open mini apps (miniapp.tsx keeps these current and fires 'dock'); the dock shows them next to the pinned ones
   dock: { apps: [] as { id: number; url: string; name: string; icon?: string }[], shown: null as number | null, show: (_id: number) => {} },
+  // opens the theme editor (themes.tsx) on a theme, or on the one being worn
+  editTheme: (_?: Theme | null) => {},
 }
 // errors thrown with English text (ours and the server's) are translated here too
 export const toast = (m: string) => shell.toast(t(m))
@@ -299,17 +301,153 @@ export const unfurl = (u: string) => {
   return unfurls.get(u)!
 }
 
+// --- the app's theme (themes.tsx makes and picks them) ---
+// `theme` is the one this browser wears, saved; `worn` is what the page shows, which differs only while the editor
+// previews a draft. Everything is CSS variables and data-* switches on <html> (style.css), set before the first paint.
+
+export let theme: Theme | null = (() => {
+  const th = cleanTheme(read('quilcast:theme', null))
+  return Object.keys(th).length ? th : null
+})()
+export let worn = theme
+let vars: string[] = []
+let face: { url: string; f?: FontFace } | undefined
+/** Show `th` on the page (null: the plain app); `keep` also makes it this browser's theme. */
+export function wear(th: Theme | null, keep = false) {
+  const root = document.documentElement
+  for (const k of vars) root.style.removeProperty(k)
+  const v = th ? themeVars(th) : {}
+  for (const [k, val] of Object.entries(v)) root.style.setProperty(k, val)
+  vars = Object.keys(v)
+  const d = root.dataset
+  const flag = (k: string, on: unknown, val = '') => (on ? (d[k] = val) : delete d[k])
+  flag('th', th), flag('thImg', th?.bgImg), flag('thBar', th?.barImg), flag('thBtn', th?.btnImg), flag('thGlow', th?.glow), flag('thName', th?.nameFx, th?.nameFx)
+  // light or dark: a theme brings its own, else Settings decides
+  th?.base ? (d.theme = th.base) : settings.theme === 'system' ? delete d.theme : (d.theme = settings.theme)
+  // a Quorum theme's own font, from our media
+  if (face?.url !== th?.fontUrl) {
+    face?.f && document.fonts.delete(face.f)
+    const now: typeof face = (face = th?.fontUrl ? { url: th.fontUrl } : undefined)
+    if (now) new FontFace('quilcast-theme', `url("${ownMedia(now.url)}")`).load().then((f) => face === now && document.fonts.add((now.f = f)), () => {})
+  }
+  if (keep) (theme = th), th ? save('quilcast:theme', th) : localStorage.removeItem('quilcast:theme')
+  worn = th
+  dispatchEvent(new Event('theme'))
+}
+
+/** Themes this browser has tried, newest first (Settings > Theme lists them); a shared one keeps its link id. */
+export type Saved = { theme: Theme; id?: string; quorum?: string }
+export const library = () => read<Saved[]>('quilcast:themes', []).map((x) => ({ ...x, theme: cleanTheme(x?.theme) })).filter((x) => Object.keys(x.theme).length)
+export const remember = (x: Saved) => {
+  const same = (y: Saved) => JSON.stringify(y.theme) === JSON.stringify(x.theme)
+  save('quilcast:themes', [x, ...library().filter((y) => !same(y))].slice(0, 40))
+}
+
+// a theme's stickers are placed on the screen, a bit smaller than a share of it on wide ones
+export const screenUnit = (w: number) => `calc(min(1vw, 6px) * ${w})`
+
+/** The worn theme's background, effect and stickers, behind and over the page. */
+export function ThemeLayers({ stickers = true }: { stickers?: boolean }) {
+  const [th, setTh] = useState(worn)
+  const fx = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    const f = () => setTh(worn)
+    addEventListener('theme', f)
+    return () => removeEventListener('theme', f)
+  }, [])
+  useEffect(() => {
+    if (!th?.fx) return
+    let stop: (() => void) | undefined
+    let live = true
+    import('./fx.ts').then((m) => live && fx.current && (stop = m.start(fx.current, th.fx!)))
+    return () => ((live = false), stop?.())
+  }, [th?.fx])
+  if (!th) return null
+  return (
+    <>
+      {th.bgImg && <div class={`th-bg ${th.bgMode || 'tile'}`} aria-hidden="true" />}
+      {th.fx && <canvas class="lk-fx th-fx" ref={fx} aria-hidden="true" />}
+      {stickers && th.stickers?.map((s) => (
+        <img class="lk-stk th-stk" src={s.src} alt="" loading="lazy" referrerpolicy="no-referrer" style={{ left: `${s.x}%`, top: `${s.y}%`, width: screenUnit(s.w), rotate: s.r ? `${s.r}deg` : undefined }} />
+      ))}
+    </>
+  )
+}
+
+const shared = new Map<string, Promise<Theme | null>>()
+export const themeOf = (id: string) => {
+  if (!shared.has(id)) shared.set(id, fetch(`/api/theme/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => j && cleanTheme(j), () => null))
+  return shared.get(id)!
+}
+
+/** Wear a theme and keep it in the list; the one it replaced comes back with undo(). */
+export function useApply(th: Theme | null | undefined, meta: Omit<Saved, 'theme'> = {}) {
+  const [before, setBefore] = useState<Theme | null | false>(false)
+  const on = !!th && JSON.stringify(theme) === JSON.stringify(th)
+  return {
+    on, undo: before !== false && on ? () => (wear(before, true), setBefore(false)) : undefined,
+    apply: () => th && (setBefore(theme), remember({ ...meta, theme: th }), wear(th, true), toast('Theme applied')),
+  }
+}
+
+// what a theme leaves out is the plain app's, not whatever theme the page around the card wears
+const CARD = { '--rs': '1', '--bw': '1px', '--bs': 'solid', '--th-font': FONTS.system, '--th-img': 'none', '--th-scrim': 'transparent', '--th-sheer': '88%', '--th-bar': 'none', '--th-btn': 'none' }
+/** A shared theme (quilcast.com/theme/<id>): a small Quilcast in its colors, background and corners, with its name,
+ *  who shared it (`by`) and a button that puts it on. */
+export function ThemeCard({ id, by, big }: { id: string; by?: User; big?: boolean }) {
+  const [th, setTh] = useState<Theme | null>()
+  useEffect(() => void themeOf(id).then(setTh), [id])
+  const [, force] = useState(0)
+  useEffect(() => {
+    const f = () => force((x) => x + 1)
+    addEventListener('theme', f)
+    return () => removeEventListener('theme', f)
+  }, [])
+  const a = useApply(th, { id })
+  if (th === null) return <div class="quote muted">{t('This theme is unavailable.')}</div>
+  if (!th) return <div class="quote skeleton" />
+  // the card shows the theme whole, so whatever it leaves out comes from the app's own colors for its base
+  const c: Theme = { ...DEFAULTS[th.base || 'dark'], ...th }
+  const cls = (k: string, on: unknown) => (on ? ` ${k}` : '')
+  return (
+    <div class={`thc${big ? ' big' : ''}${cls('thc-img', th.bgImg)}${cls('thc-bar-img', th.barImg)}${cls('thc-btn', th.btnImg)}${cls('thc-glow', th.glow)}`} style={{ ...CARD, '--bar': c.bg, '--lk-name': c.accent, ...themeVars(c), colorScheme: c.base || 'dark' }} onClick={stop}>
+      {th.bgImg && <div class={`th-bg ${th.bgMode || 'tile'}`} aria-hidden="true" />}
+      <div class="thc-app" aria-hidden="true">
+        <div class="thc-bar"><b>{t('Home')}</b></div>
+        {[c.accent, c.like, c.recast].map((col, i) => (
+          <div class="thc-cast">
+            <i style={{ background: col as string }} />
+            <span><b class={`name${th.nameFx ? ` lk-name ${th.nameFx}` : ''}`}>{['Quilcast', 'Ada', 'Satoshi'][i]}</b><em /><em /></span>
+          </div>
+        ))}
+      </div>
+      <div class="thc-info">
+        <small>{by ? t('Theme by {name}', { name: nameOf(by) }) : t('Quilcast theme')}</small>
+        <b class={th.nameFx ? `lk-name ${th.nameFx}` : undefined}>{th.name || t('Untitled theme')}</b>
+        <span class="thc-dots">{(['bg', 'card', 'ink', 'accent', 'like', 'recast'] as const).map((k) => <i style={{ background: c[k] as string }} />)}</span>
+        <span class="btns">
+          <button class="btn small" disabled={a.on} onClick={a.apply}>{a.on ? t('Applied') : t('Apply theme')}</button>
+          {a.undo && <button class="btn ghost small" onClick={a.undo}>{t('Undo')}</button>}
+          {big && <button class="btn ghost small" onClick={() => shell.editTheme(th)}>{t('Customize')}</button>}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // Open Graph preview, fetched through our server; a plain domain row until (or unless) it arrives.
 // In a cast (`c`), a mini app's card opens the app.
 export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const u = safeUrl(given)
   const path = ownPath(u)
   const design = /^\/design\//.test(path) ? designId(path) : undefined
+  const themeLink = /^\/theme\//.test(path) ? themeId(path) : undefined
   const cast = castOf(path)
   const [d, setD] = useState<Unfurl>()
-  useEffect(() => void (u && !design && !cast && unfurl(u).then(setD)), [u])
+  useEffect(() => void (u && !design && !themeLink && !cast && unfurl(u).then(setD)), [u])
   if (!u) return null
   if (design) return <DesignCard id={design} by={c?.author} />
+  if (themeLink) return <ThemeCard id={themeLink} by={c?.author} />
   if (cast) return <QuoteCard hash={cast} />
   if (d?.tweet) return <TweetCard u={u} t={d.tweet} />
   const image = safeUrl(d?.image)

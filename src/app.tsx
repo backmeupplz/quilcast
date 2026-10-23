@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, accounts, amFollowing, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, users, USER_DATA, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, n, sized, type Look } from './shared.ts'
-import { ago, AppIcon, Avatar, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { castText, n, sized, type Look, type Theme } from './shared.ts'
+import { ago, AppIcon, Avatar, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import './style.css'
@@ -21,6 +21,8 @@ const Spaces = lazy<{}>(() => import('./spaces.tsx').then((m) => m.Spaces))
 const WalletPage = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletPage))
 const WalletSettings = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletSettings))
 const SpaceRoom = lazy<{ id: string }>(() => import('./spaces.tsx').then((m) => m.SpaceRoom))
+const ThemeSettings = lazy<{}>(() => import('./themes.tsx').then((m) => m.ThemeSettings))
+const ThemeEditor = lazy<{ start: Theme | null; close: () => void }>(() => import('./themes.tsx').then((m) => m.Editor))
 
 // --- bits ---
 
@@ -958,12 +960,17 @@ function Settings() {
           </section>
         )}
         <section>
+          <h2>{t('Theme')}</h2>
+          <ThemeSettings />
+        </section>
+        <section>
           <div class="setting">
-            <h2>{t('Theme')}</h2>
+            <h2>{t('Light or dark')}</h2>
             <div class="seg">
               {[['system', t('System')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, label]) => <button class={settings.theme === k ? 'on' : ''} onClick={() => ((settings.theme = k), saveSettings(), applyTheme(), force((x) => x + 1))}>{label}</button>)}
             </div>
           </div>
+          {theme?.base && <p class="hint">{t('Your theme picks its own; this counts when you wear none.')}</p>}
         </section>
         <section>
           <div class="setting">
@@ -1025,7 +1032,8 @@ function Settings() {
 
 function applyTheme() {
   const d = document.documentElement.dataset
-  settings.theme === 'system' ? delete d.theme : (d.theme = settings.theme)
+  // light or dark and everything else a theme sets (ui.tsx wear)
+  wear(worn)
   // Japanese mode is all CSS under :root[data-jp]
   settings.jp ? (d.jp = '') : delete d.jp
 }
@@ -1093,6 +1101,9 @@ function App() {
   composing.current = !!compose
   shell.compose = (o = {}) => (o.onDone && composing.current ? o.onDone(null) : setCompose(o))
   shell.view = (urls, index) => setViewer({ urls, index })
+  // the theme editor sits over the whole app, so every page can be seen in the draft
+  const [editing, setEditing] = useState<{ start: Theme | null } | null>(null)
+  shell.editTheme = (th) => setEditing({ start: th === undefined ? theme : th })
   useEffect(() => {
     const f = () => force((x) => x + 1)
     addEventListener('account', f)
@@ -1118,6 +1129,7 @@ function App() {
           : r0 === 'wallet' ? (me ? <WalletPage /> : <Join />)
           : r0 === 'spaces' ? (r1 && me ? <SpaceRoom id={decode(r1)} /> : me ? <Spaces /> : <Join />)
           : r0 === 'design' ? <><Header title={t('Profile design')} /><div class="design-page"><DesignCard id={r1} /></div></>
+          : r0 === 'theme' ? <><Header title={t('Theme')} /><div class="design-page"><ThemeCard id={r1} big /></div></>
             : r0 === 'join' ? <><Header /><Join step={r1} /></>
               : <Home />
   const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps], ['spaces', t('Spaces'), P.mic]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear], ...(me ? [['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : [])]
@@ -1125,6 +1137,10 @@ function App() {
   const active = (k: string) => (k === 'u' ? r0 === 'u' && !!me && userPath(me) === `/u/${r1}` : r0 === k)
   const ico = (k: string, d: string) => <span class="ico"><Icon d={d} size={22} />{unread[k as keyof typeof unread] && <i class="badge" />}</span>
   return (
+    <>
+    {/* outside .app, so a theme's size (zoom) leaves its background and stickers alone */}
+    <ThemeLayers stickers={!editing} />
+    {editing && <ThemeEditor start={editing.start} close={() => setEditing(null)} />}
     <div class="app">
       <nav class="side" aria-label={t('Main')}>
         <a class="brand" href="/"><Logo size={30} /><span>Quilcast</span></a>
@@ -1151,6 +1167,7 @@ function App() {
       {viewer && <Lightbox {...viewer} close={() => setViewer(null)} />}
       <Toast />
     </div>
+    </>
   )
 }
 
