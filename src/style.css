@@ -1020,9 +1020,10 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .lk-stk.edit.th-stk { position: fixed; z-index: 29; }
 
 /* a shared theme (ui.tsx ThemeCard): a small Quilcast wearing it, its name and an Apply button. The theme's
-   variables are set on the card itself, so everything inside takes its colors, corners and borders */
+   variables are set on the card itself, so everything inside takes its colors, corners and borders. The two halves
+   sit side by side when there's room and stack in a narrow tile (a cast's strip of embeds) */
 .thc {
-  position: relative; isolation: isolate; overflow: hidden; margin-top: 10px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 12px; padding: 12px;
+  position: relative; isolation: isolate; overflow: hidden; margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; padding: 12px;
   background: var(--bg); color: var(--ink); font-family: var(--th-font, inherit); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(16px * var(--rs, 1)); cursor: default;
 }
 .thc .th-bg { position: absolute; z-index: -1; }
@@ -1048,5 +1049,4 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .thc .btn.ghost { color: var(--ink); }
 .thc.big { padding: 18px; gap: 18px; }
 .thc.big .thc-info > b { font-size: 1.6em; }
-@media (max-width: 420px) { .thc { grid-template-columns: minmax(0, 1fr); } .thc-app { display: none; } }
 .lk-presets .btn.on { box-shadow: inset 0 0 0 2px var(--accent); }
