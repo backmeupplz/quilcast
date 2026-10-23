@@ -18,6 +18,8 @@ const lazy = <P extends object>(load: () => Promise<(p: P) => any>) => (p: P) =>
 const Join = lazy<{ step?: string }>(() => import('./join.tsx').then((m) => m.Join))
 const Messages = lazy<{ id?: string }>(() => import('./messages.tsx').then((m) => m.Messages))
 const Spaces = lazy<{}>(() => import('./spaces.tsx').then((m) => m.Spaces))
+const WalletPage = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletPage))
+const WalletSettings = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletSettings))
 const SpaceRoom = lazy<{ id: string }>(() => import('./spaces.tsx').then((m) => m.SpaceRoom))
 
 // --- bits ---
@@ -923,6 +925,12 @@ function Settings() {
         )}
         {account?.done && (
           <section>
+            <h2>{t('Wallets')}</h2>
+            <WalletSettings />
+          </section>
+        )}
+        {account?.done && (
+          <section>
             <h2>{t('Profile')}</h2>
             <div class="photo-row">
               <Avatar u={{ fid: account.fid!, pfp_url: prof[USER_DATA.PFP], username: account.username }} size={48} link={false} />
@@ -1092,11 +1100,12 @@ function App() {
           : r0 === 'messages' ? <Messages id={r1 && decode(r1)} />
           : r0 === 'settings' ? <Settings />
           : r0 === 'apps' ? <Apps />
+          : r0 === 'wallet' ? (me ? <WalletPage /> : <Join />)
           : r0 === 'spaces' ? (r1 && me ? <SpaceRoom id={decode(r1)} /> : me ? <Spaces /> : <Join />)
           : r0 === 'design' ? <><Header title={t('Profile design')} /><div class="design-page"><DesignCard id={r1} /></div></>
             : r0 === 'join' ? <><Header /><Join step={r1} /></>
               : <Home />
-  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps], ['spaces', t('Spaces'), P.mic]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear]]
+  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps], ['spaces', t('Spaces'), P.mic]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear], ...(me ? [['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : [])]
   const href = (k: string) => (k === 'u' ? userPath(me!) : `/${k}`)
   const active = (k: string) => (k === 'u' ? r0 === 'u' && !!me && userPath(me) === `/u/${r1}` : r0 === k)
   const ico = (k: string, d: string) => <span class="ico"><Icon d={d} size={22} />{unread[k as keyof typeof unread] && <i class="badge" />}</span>

@@ -22,7 +22,7 @@ const CHAINS = Object.fromEntries([base, optimism, mainnet, arbitrum, polygon, c
 // --- Ethereum wallets ---
 
 type Provider = { request: (a: { method: string; params?: unknown }) => Promise<any>; on?: (e: string, f: (x: any) => void) => void }
-type Wallet = { name: string; icon: string; key: string; provider: Provider; address?: string }
+type Wallet = { name: string; icon: string; key: string; provider: Provider; address?: string; local?: string }
 // declared before the wallet listeners below: extensions announce synchronously, while this module still loads
 let update = () => {}
 const wallets: Wallet[] = []
@@ -296,12 +296,113 @@ async function eth(app: App, r: any): Promise<unknown> {
   if (READS.has(method) && CHAINS[app.chain]) return publicRpc(app.chain, method, params)
   if (!READS.has(method) && !SIGNS.has(method) && !WALLET_READS.has(method)) throw rpcError(4200, `Quilcast doesn't let mini apps use ${method}.`)
   const w = live(app)
+  if (w.local) return local(app, w, method, params)
   if (WALLET_READS.has(method)) return serial(() => w.provider.request({ method, params }))
   // signing, sending, and reads on a chain only the wallet knows
   foreground(app)
   const site = SIGNS.has(method) ? checkWallet(app.host, w.address!, method, params) : undefined
   if (site && !(await confirmSite(app, site))) throw declined()
   return waitFor(app, t('Check {wallet}: {host} asked for this', { wallet: w.name, host: app.host }), () => serial(async () => (await align(w, app.chain), w.provider.request({ method, params }))))
+}
+
+// --- the Quilcast wallet (src/vault.ts): keys kept in this browser, so Quilcast asks before each signature ---
+
+const vault = () => import('./vault.ts')
+/** The wallets from Settings, listed first (so a new app offers them first), each with a provider that only answers
+ *  who it is; signing goes through local() with the app in hand, to ask on top of it. */
+async function syncLocal() {
+  const list = (await vault()).walletList()
+  for (const w of wallets.filter((x) => x.local && !list.some((e) => e.id === x.local))) {
+    wallets.splice(wallets.indexOf(w), 1)
+    for (const app of apps) if (app.wallet === w) app.connected ? disconnect(app, true) : (app.wallet = undefined)
+  }
+  list.forEach((e, i) => {
+    const had = wallets.find((x) => x.local === e.id)
+    if (had) return void (had.name = e.name)
+    const address = e.address.toLowerCase()
+    const provider: Provider = {
+      request: async ({ method }) => {
+        if (method === 'eth_accounts' || method === 'eth_requestAccounts') return [address]
+        throw rpcError(4200, "The Quilcast wallet can't do that here.")
+      },
+    }
+    wallets.splice(i, 0, { name: e.name, icon: LOGO_ICON, key: `quilcast:${e.id}`, provider, address, local: e.id })
+  })
+  update()
+}
+addEventListener('wallets', () => void syncLocal())
+
+const batches = new Map<string, { chain: number; hashes: `0x${string}`[] }>()
+const textOf = (m: string) => {
+  if (!/^0x([0-9a-f]{2})*$/i.test(m)) return m
+  const s = new TextDecoder('utf-8', { fatal: false }).decode(Uint8Array.from(m.slice(2).match(/../g) || [], (h) => parseInt(h, 16)))
+  return /[\u0000-\u0008\u000e-\u001f]/.test(s) ? m : s
+}
+const Preview = ({ rows, text }: { rows: [string, string][]; text?: string }) => (
+  <div class="sign-preview">
+    {rows.map(([k, v]) => <div class="sign-row"><span>{k}</span><b>{v}</b></div>)}
+    {text && <pre>{text.length > 4000 ? text.slice(0, 4000) + '…' : text}</pre>}
+  </div>
+)
+
+async function local(app: App, w: Wallet, method: string, params: any[]): Promise<unknown> {
+  const chain = CHAINS[app.chain]
+  if (method === 'wallet_getCapabilities') return {}
+  if (method === 'wallet_getCallsStatus') {
+    const c = batches.get(String(params[0]))
+    if (!c) throw rpcError(5730, 'Unknown call batch.')
+    const receipts = await Promise.all(c.hashes.map((h) => publicRpc(c.chain, 'eth_getTransactionReceipt', [h])))
+    const done = receipts.every(Boolean)
+    return { version: '2.0.0', id: params[0], chainId: toHex(c.chain), atomic: false, status: done ? (receipts.every((r: any) => r.status === '0x1') ? 200 : 500) : 100, receipts: done ? receipts : [] }
+  }
+  if (method === 'wallet_watchAsset') return true
+  if (!chain) throw rpcError(4901, "The Quilcast wallet doesn't work on that chain.")
+  foreground(app)
+  const site = SIGNS.has(method) ? checkWallet(app.host, w.address!, method, params) : undefined
+  if (site && !(await confirmSite(app, site))) throw declined()
+  const who: [string, string][] = [[t('Wallet'), `${w.name} · ${short(w.address!)}`], [t('Network'), chain.name]]
+  const money = (v: unknown) => `${formatUnits(BigInt((v as string) || 0), chain.nativeCurrency.decimals)} ${chain.nativeCurrency.symbol}`
+  const ok = (title: string, rows: [string, string][], text?: string, yes = t('Sign')) =>
+    ask(app, { title, body: t('{host} asks the Quilcast wallet for this. Only approve what you expect.', { host: app.host }), yes, extra: () => <Preview rows={[...who, ...rows]} text={text} /> })
+  const m = await vault()
+  if (method === 'personal_sign') {
+    const msg = String(params[0] ?? '')
+    if (!(await ok(t('Sign a message?'), [], textOf(msg)))) throw declined()
+    return (await m.signerOf(w.local!)).signMessage({ message: /^0x([0-9a-f]{2})*$/i.test(msg) ? { raw: msg as `0x${string}` } : msg })
+  }
+  if (method === 'eth_signTypedData_v4') {
+    const data = typeof params[1] === 'string' ? JSON.parse(params[1]) : params[1]
+    const { EIP712Domain: _, ...types } = data?.types || {}
+    if (!(await ok(t('Sign this data?'), [[t('Site'), String(data?.domain?.name || app.host)], [t('Type'), String(data?.primaryType)]], JSON.stringify(data?.message, null, 2)))) throw declined()
+    return (await m.signerOf(w.local!)).signTypedData({ domain: data.domain, types, primaryType: data.primaryType, message: data.message })
+  }
+  const send = async (txs: { to?: string; data?: string; value?: string; gas?: string }[]) => {
+    const { createWalletClient, http } = await import('viem')
+    const client = createWalletClient({ account: await m.signerOf(w.local!), chain, transport: http(chain.rpcUrls.default.http[0]) })
+    const hashes: `0x${string}`[] = []
+    for (const tx of txs) hashes.push(await client.sendTransaction({ chain, to: tx.to as `0x${string}`, data: tx.data as `0x${string}` | undefined, value: BigInt(tx.value || 0), ...(tx.gas && { gas: BigInt(tx.gas) }) }))
+    return hashes
+  }
+  const describe = (tx: { to?: string; data?: string; value?: string }): [string, string][] => [
+    [t('To'), tx.to ? short(tx.to) : t('New contract')], [t('Amount'), money(tx.value)], ...(tx.data && tx.data !== '0x' ? [[t('Data'), t('{n} bytes', { n: (tx.data.length - 2) / 2 })] as [string, string]] : []),
+  ]
+  if (method === 'eth_sendTransaction') {
+    const tx = params[0] || {}
+    if (!(await ok(t('Send this transaction?'), describe(tx), undefined, t('Send')))) throw declined()
+    return (await waitFor(app, t('Sending…'), () => send([tx])))[0]
+  }
+  if (method === 'wallet_sendCalls') {
+    const list = Array.isArray(params[0]?.calls) ? params[0].calls : []
+    if (!list.length) throw rpcError(-32602, 'No calls.')
+    if (params[0]?.chainId && Number(params[0].chainId) !== app.chain) throw rpcError(4901, 'Switch to that chain first.')
+    const rows = list.flatMap((c: any, i: number) => describe(c).map(([k, v]) => [`${i + 1}. ${k}`, v] as [string, string]))
+    if (!(await ok(list.length > 1 ? t('Send {n} transactions?', { n: list.length }) : t('Send this transaction?'), rows, undefined, t('Send')))) throw declined()
+    const hashes = await waitFor(app, t('Sending…'), () => send(list))
+    const id = crypto.randomUUID()
+    batches.set(id, { chain: app.chain, hashes })
+    return { id }
+  }
+  throw rpcError(4200, "The Quilcast wallet can't do that here.")
 }
 
 // --- Solana ---
@@ -820,3 +921,5 @@ function Host() {
   // the windows keep their order, so iframes never move in the DOM (moving one reloads it)
   return <>{apps.map((app) => <Window key={app.id} app={app} />)}</>
 }
+
+void syncLocal()
