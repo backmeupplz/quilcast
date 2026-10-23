@@ -49,7 +49,7 @@ async function api<T = any>(op: string, body?: object, query?: Record<string, st
   return j.result
 }
 
-export const listLive = () => api<{ rooms: Room[] }>('live', undefined, { limit: 30 }).then((r) => r.rooms || [])
+const listLive = () => api<{ rooms: Room[] }>('live', undefined, { limit: 30 }).then((r) => r.rooms || [])
 const listScheduled = () => api<{ rooms: Room[] }>('scheduled', undefined, { limit: 30 }).then((r) => r.rooms || [])
 const getRoom = (id: string) => api<{ room: Room }>('room', undefined, { roomId: id }).then((r) => r.room)
 const getParticipants = (id: string) => api<{ participants: Participant[] }>('participants', undefined, { roomId: id }).then((r) => r.participants || [])
@@ -551,24 +551,6 @@ function Bar() {
       </a>
       {stage(s.role) && <button class="icon-btn" aria-label={s.muted ? t('Unmute') : t('Mute')} aria-pressed={!s.muted} onClick={() => mic(s, s.muted)}><Icon d={s.muted ? P.micOff : P.mic} /></button>}
       <button class="icon-btn" aria-label={t('Leave')} onClick={() => leave()}><Icon d={P.x} /></button>
-    </div>
-  )
-}
-
-/** Live Spaces as a strip on Home; only for accounts that already turned Spaces on (it needs farcaster.xyz's token). */
-export function LiveStrip() {
-  const [rooms, setRooms] = useState<Room[]>([])
-  useEffect(() => void (account?.fcx && listLive().then(setRooms, () => {})), [])
-  if (!rooms.length) return null
-  return (
-    <div class="space-strip" aria-label={t('Live Spaces')}>
-      {rooms.slice(0, 12).map((r) => (
-        <a class="space-chip" href={`/spaces/${r.id}`}>
-          <Avatar u={userOf(r.host)} size={28} link={false} />
-          <span><b>{r.title || t('Untitled Space')}</b><small>{tn(r.listenerCount || 0, '{n} listening', '{n} listening')}</small></span>
-        </a>
-      ))}
-      <a class="space-chip more" href="/spaces">{t('All Spaces')}</a>
     </div>
   )
 }
