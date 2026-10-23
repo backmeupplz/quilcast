@@ -739,5 +739,8 @@
   "{name} has no address.": "{name} no tiene dirección.",
   "{n} minutes": "{n} minutos",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "No se pudo conectar con el explorador de {chains}, así que pueden faltar tokens de ahí. Actualiza para reintentar.",
-  "Refresh": "Actualizar"
+  "Refresh": "Actualizar",
+  "Post as": "Publicar como",
+  "Posting as @{name}": "Publicando como @{name}",
+  "Using @{name}. Switch account": "Usando @{name}. Cambiar de cuenta"
 }

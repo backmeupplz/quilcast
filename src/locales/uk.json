@@ -739,5 +739,8 @@
   "{name} has no address.": "У {name} немає адреси.",
   "{n} minutes": "{n} хв",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "Не вдалося зв'язатися з оглядачем {chains}, тому токени звідти можуть не відображатися. Оновіть, щоб спробувати знову.",
-  "Refresh": "Оновити"
+  "Refresh": "Оновити",
+  "Post as": "Публікувати як",
+  "Posting as @{name}": "Публікується від @{name}",
+  "Using @{name}. Switch account": "Використовується @{name}. Змінити акаунт"
 }

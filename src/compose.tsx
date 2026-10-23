@@ -1,11 +1,40 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, findUsers, get, go, LINK_RE, myUser, toUrl, type Cast, type User } from './api.ts'
+import { account, accounts, findUsers, get, go, idOf, LINK_RE, loadUsers, myUser, toUrl, users, type Account, type Cast, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { castText, isImg, isVid } from './shared.ts'
 import { Avatar, channelUrl, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, toast, w } from './ui.tsx'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
 const bytes = (s: string) => new TextEncoder().encode(s).length
+
+const userOf = (a: Account): User => (a.fid && users.get(a.fid)) || { fid: a.fid || 0, username: a.username }
+
+/** Which signed-in account a cast or reply goes out as; another one is used for this cast only, without switching. */
+function AsPicker({ value, set }: { value: Account; set: (a: Account) => void }) {
+  const [open, setOpen] = useState(false)
+  const [, force] = useState(0)
+  const list = accounts.filter((a) => a.done && a.fid)
+  useEffect(() => void loadUsers(list.map((a) => a.fid!)).then(() => force((x) => x + 1)), [])
+  if (list.length < 2) return null
+  const u = userOf(value)
+  return (
+    <span class="wrap-menu as-picker">
+      <button type="button" class="as-btn" aria-haspopup="menu" aria-label={t('Posting as @{name}', { name: handle(u) })} title={t('Posting as @{name}', { name: handle(u) })} onClick={() => setOpen(!open)}>
+        <Avatar u={u} size={28} link={false} /><Icon d="M6 9l6 6 6-6" size={14} />
+      </button>
+      {open && (
+        <Menu close={() => setOpen(false)}>
+          <div class="menu-label muted">{t('Post as')}</div>
+          {list.map((a) => (
+            <button role="menuitemradio" aria-checked={idOf(a) === idOf(value)} onClick={() => (set(a), setOpen(false))}>
+              <Avatar u={userOf(a)} size={24} link={false} /><span class="wname">@{handle(userOf(a))}</span>{idOf(a) === idOf(value) && <Icon d={P.check} />}
+            </button>
+          ))}
+        </Menu>
+      )}
+    </span>
+  )
+}
 
 function ChannelPicker({ value, set }: { value?: string; set: (v?: string) => void }) {
   const [open, setOpen] = useState(false)
@@ -138,6 +167,7 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
   const [active, setActive] = useState(0)
   const [channel, setChannel] = useState(initial)
   const [busy, setBusy] = useState(false)
+  const [as, setAs] = useState<Account>(account!)
   const pick = useRef<HTMLInputElement>(null)
   const update = (id: number, p: Partial<Part> | ((x: Part) => Partial<Part>)) =>
     setParts((ps) => ps.map((x) => (x.id === id ? { ...x, ...(typeof p === 'function' ? p(x) : p) } : x)))
@@ -174,9 +204,10 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
           channel: i === 0 && !parent && channel ? channelUrl(channel) : undefined,
           quote: i === 0 && quote ? { fid: quote.author.fid, hash: quote.hash } : undefined,
           media: [...(i === 0 ? embeds : []), ...p.files.map((f) => f.url!)],
+          as,
         })
         first ||= hash
-        prev = { fid: account!.fid!, hash }
+        prev = { fid: as.fid!, hash }
         setParts((ps) => ps.filter((x) => x.id !== p.id))
       }
       onClose(first)
@@ -195,6 +226,7 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
         onKeyDown={(e) => (e.key === 'Escape' && onClose(null), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
         <div class="sheet-top">
           <button class="link-btn" onClick={() => onClose()}>{t('Cancel')}</button>
+          <AsPicker value={as} set={setAs} />
           <button class="btn" disabled={busy || !ready} onClick={send}>{busy ? t('Sending…') : parts.length > 1 ? t('Post all') : parent ? t('Reply') : t('Cast')}</button>
         </div>
         {parent && (

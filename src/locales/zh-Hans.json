@@ -739,5 +739,8 @@
   "{name} has no address.": "{name} 没有地址。",
   "{n} minutes": "{n} 分钟",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "无法连接 {chains} 的区块浏览器,那里的代币可能没有显示。请刷新重试。",
-  "Refresh": "刷新"
+  "Refresh": "刷新",
+  "Post as": "发布身份",
+  "Posting as @{name}": "以 @{name} 发布",
+  "Using @{name}. Switch account": "正在使用 @{name}。切换账号"
 }

@@ -50,7 +50,15 @@ addEventListener('storage', (e) => {
   dispatchEvent(new Event('account'))
 })
 // a full reload is the simplest way to drop the previous account's feeds and likes
-export const switchAccount = (a: Account) => (localStorage.setItem('quilcast:current', idOf(a)), location.assign('/'))
+/** Save changes to an account without selecting it (posting as another account renews that account's key). */
+export const updateAccount = (a: Account) => {
+  if (account && idOf(a) === idOf(account)) return setAccount(a)
+  accounts = read<Account[]>('quilcast:accounts', accounts).map((x) => (idOf(x) === idOf(a) ? a : x))
+  save('quilcast:accounts', accounts)
+}
+// a full reload drops the previous account's feeds and likes; it stays on this page (a conversation is the account's
+// own, so that one goes back to the inbox)
+export const switchAccount = (a: Account) => (localStorage.setItem('quilcast:current', idOf(a)), location.assign(location.pathname.startsWith('/messages/') ? '/messages' : location.pathname + location.search))
 
 let depth = 0
 export const go = (path: string) => {

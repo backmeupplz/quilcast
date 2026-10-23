@@ -739,5 +739,8 @@
   "{name} has no address.": "{name} 沒有地址。",
   "{n} minutes": "{n} 分鐘",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "無法連線 {chains} 的區塊瀏覽器,那裡的代幣可能沒有顯示。請重新整理再試一次。",
-  "Refresh": "重新整理"
+  "Refresh": "重新整理",
+  "Post as": "發布身分",
+  "Posting as @{name}": "以 @{name} 發布",
+  "Using @{name}. Switch account": "正在使用 @{name}。切換帳號"
 }

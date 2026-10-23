@@ -961,3 +961,8 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wallet-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
 .wallet-tabs .tabs { flex: 1; border-bottom: 0; }
 .wallet-tabs .icon-btn { margin-right: 8px; color: var(--muted); }
+.header-me { margin-left: 4px; }
+.header-me .menu { min-width: 240px; }
+.as-picker { margin-left: auto; margin-right: 8px; }
+.as-btn { display: inline-flex; align-items: center; gap: 2px; padding: 2px 4px 2px 2px; border: 1px solid var(--line); border-radius: 99px; background: var(--card); color: var(--muted); }
+.note-avatars .avatar { cursor: pointer; }

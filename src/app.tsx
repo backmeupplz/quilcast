@@ -61,6 +61,19 @@ function AccountList({ onDone }: { onDone?: () => void }) {
   )
 }
 
+/** On phones, the account you're using sits in every page's header; tapping it switches. */
+function HeaderMe({ me }: { me: User }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span class="wrap-menu only-mobile header-me">
+      <button class="icon-btn" aria-haspopup="menu" aria-expanded={open} aria-label={t('Using @{name}. Switch account', { name: handle(me) })} onClick={() => setOpen(!open)}>
+        <Avatar u={me} size={28} link={false} />
+      </button>
+      {open && <Menu class="right" close={() => setOpen(false)}><AccountList onDone={() => setOpen(false)} /></Menu>}
+    </span>
+  )
+}
+
 function AccountMenu({ me }: { me: User }) {
   const [open, setOpen] = useState(false)
   return (
@@ -274,7 +287,8 @@ function NoteRow({ g }: { g: Group }) {
     <a class="note-row" href={g.cast ? `/c/${g.cast.hash}` : userPath(first)}>
       <span class={`note-icon ${cls}`}><Icon d={icon} fill={g.type === 'likes'} size={20} /></span>
       <span class="note-body">
-        <span class="note-avatars">{g.users.slice(0, 7).map((u) => <Avatar u={u} size={30} link={false} />)}</span>
+        {/* the row opens the cast; each face opens that person's profile instead */}
+        <span class="note-avatars">{g.users.slice(0, 7).map((u) => <Avatar u={u} size={30} link={false} onClick={(e) => (e.preventDefault(), e.stopPropagation(), go(userPath(u)))} />)}</span>
         <span><With s={line} k="name"><b>{nameOf(first)}</b></With> <span class="muted">· {ago(g.timestamp)}</span></span>
         {g.cast && <NotePeek c={g.cast} />}
       </span>
@@ -1092,6 +1106,7 @@ function App() {
     account?.fid && getUser(account.fid).then(f, () => {})
   }, [account?.fid])
   const me = account?.done ? myUser() : null
+  shell.me = () => me && <HeaderMe me={me} />
   const view =
     r0 === 'c' ? (Object.hasOwn(WHO, r2) ? <Who hash={r1} kind={r2 as keyof typeof WHO} /> : <Thread hash={r1} />)
       : r0 === 'u' ? (Object.hasOwn(FOLLOWS, r2) ? <Follows id={decode(r1)} kind={r2 as keyof typeof FOLLOWS} /> : <Profile id={decode(r1)} />)

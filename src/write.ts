@@ -2,7 +2,7 @@
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { HDKey } from '@scure/bip32'
-import { account, byName, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, type Account, type Cast } from './api.ts'
+import { account, accounts, byName, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, updateAccount, users, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
@@ -49,18 +49,18 @@ export async function ensureSigner(a = account!, fresh = false) {
   const priv = a.signer && !fresh ? unhex(a.signer) : ed25519.utils.randomSecretKey()
   const nonce = Math.max((a.nonce || 0) + 1, now)
   await submit(await keyAdd(a.fid!, await custodyOf(a), priv, nonce))
-  setAccount({ ...a, signer: hex(priv), signerAt: now, nonce, scopes: SCOPES_VERSION })
+  updateAccount({ ...a, signer: hex(priv), signerAt: now, nonce, scopes: SCOPES_VERSION })
 }
 
-const signerListed = () =>
-  get('/v1/signer', { fid: account!.fid, signer: '0x' + hex(ed25519.getPublicKey(unhex(account!.signer!))) }).then(() => true, () => false)
+const signerListed = (a = account!) =>
+  get('/v1/signer', { fid: a.fid, signer: '0x' + hex(ed25519.getPublicKey(unhex(a.signer!))) }).then(() => true, () => false)
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** The node can stop knowing this browser's key (revoked, dropped, or its KEY_ADD never landed), while the
  *  account still holds it: add a new key and wait until the node lists it. */
-async function replaceSigner() {
-  await ensureSigner(account!, true)
-  for (let i = 0; !(await signerListed()); i++) {
+async function replaceSigner(a = account!) {
+  await ensureSigner(a, true)
+  for (let i = 0; !(await signerListed(fresh(a))); i++) {
     if (i >= 10) throw new Error("Your new key hasn't reached the network yet. Try again in a minute.")
     await sleep(3000)
   }
@@ -121,12 +121,18 @@ export async function revokeSigner(a: Account) {
   if (a.signer && a.fid) await submit(keyRemoveSelf(a.fid, unhex(a.signer), Math.floor(Date.now() / 1000)))
 }
 
-const send = async (type: number, body: Uint8Array) => {
-  await ensureSigner()
-  const go = () => submit(envelope(type, account!.fid!, body, unhex(account!.signer!)))
+// the stored copy of an account, which ensureSigner may have just updated
+const fresh = (a: Account) => accounts.find((x) => idOf(x) === idOf(a)) || a
+/** Sign and submit a message as `as` (the selected account unless a reply is sent as another one). */
+const send = async (type: number, body: Uint8Array, as = account!) => {
+  await ensureSigner(fresh(as))
+  const go = () => {
+    const a = fresh(as)
+    return submit(envelope(type, a.fid!, body, unhex(a.signer!)))
+  }
   return go().catch(async (e) => {
     if (!/invalid signer/.test(e.message)) throw e
-    await replaceSigner()
+    await replaceSigner(fresh(as))
     return go()
   })
 }
@@ -134,13 +140,14 @@ const send = async (type: number, body: Uint8Array) => {
 const fidByName = (name: string) => byName(name).then((u) => u.fid, () => undefined)
 
 /** A cast can carry two embeds: uploads and a quoted cast first, then links from the text. */
-export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: string[] } = {}) {
+export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: string[]; as?: Account } = {}) {
   const m = await mentions(text, fidByName)
   const embeds: (string | CastRef)[] = [...(o.media || []), ...(o.quote ? [o.quote] : [])]
   for (const u of new Set((m.text.match(LINK_RE) || []).map(toUrl))) embeds.length < 2 && embeds.push(u)
-  const hash = await send(MT.CAST_ADD, castBody({ ...m, parent: o.parent || o.channel, embeds: embeds.slice(0, 2) }))
+  const as = o.as || account!
+  const hash = await send(MT.CAST_ADD, castBody({ ...m, parent: o.parent || o.channel, embeds: embeds.slice(0, 2) }), as)
   const c: Cast = {
-    hash, text, timestamp: new Date().toISOString(), author: myUser()!,
+    hash, text, timestamp: new Date().toISOString(), author: idOf(as) === idOf(account!) ? myUser()! : users.get(as.fid!) || { fid: as.fid!, username: as.username },
     parent_hash: o.parent?.hash ?? null, parent_url: o.channel ?? null, parent_author: { fid: o.parent?.fid ?? null },
     embeds: embeds.slice(0, 2).map((e) => (typeof e === 'string' ? { url: e } : { cast_id: e })),
     reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 },

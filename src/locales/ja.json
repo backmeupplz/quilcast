@@ -739,5 +739,8 @@
   "{name} has no address.": "{name}にはアドレスがありません。",
   "{n} minutes": "{n}分",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "{chains}のエクスプローラーにつながらなかったため、そこのトークンが表示されていない可能性があります。更新してもう一度お試しください。",
-  "Refresh": "更新"
+  "Refresh": "更新",
+  "Post as": "投稿するアカウント",
+  "Posting as @{name}": "@{name}として投稿",
+  "Using @{name}. Switch account": "@{name}を使用中。アカウントを切り替え"
 }

@@ -14,6 +14,8 @@ export const shell = {
   // text, embeds and onDone come from mini apps; onDone gets the new cast's hash, or null if nothing was posted
   compose: (_: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void } = {}) => {},
   view: (_urls: string[], _index: number) => {},
+  // the account indicator in page headers (app.tsx), for phones
+  me: (): ComponentChildren => null,
   // the open mini apps (miniapp.tsx keeps these current and fires 'dock'); the dock shows them next to the pinned ones
   dock: { apps: [] as { id: number; url: string; name: string; icon?: string }[], shown: null as number | null, show: (_id: number) => {} },
 }
@@ -104,6 +106,7 @@ export const Header = ({ title, back: showBack = true, action, children }: { tit
       {showBack ? <button class="icon-btn" aria-label={t('Back')} onClick={back}><Icon d={P.back} /></button> : <a class="brand only-mobile" href="/" aria-label={t('Quilcast home')}><Logo size={26} /></a>}
       <h1>{title}</h1>
       {action}
+      {shell.me()}
     </div>
     {children}
   </div>
