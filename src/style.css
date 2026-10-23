@@ -605,6 +605,8 @@ small.warn { color: var(--warn); }
 :root[data-ogre] .brand > span { font-size: 0; display: flex; align-items: center; gap: 2px; }
 :root[data-ogre] .brand > span::before { content: ''; width: 76px; height: 22px; background: var(--accent); mask: url(/shrek/logo.svg) center / contain no-repeat; }
 :root[data-ogre] .brand > span::after { content: 'cast'; font-size: 19px; }
+/* the icon rail has no room for it, as for the plain name */
+@media (max-width: 1099px) { :root[data-ogre] .side .brand > span { display: none; } }
 :root[data-ogre] .act.lk::before { width: 20px; height: 20px; filter: grayscale(1) opacity(0.6); }
 :root[data-ogre] .act.lk.on::before { filter: none; animation: pop 0.25s ease; }
 :root[data-ogre] .note-icon.lk::before { width: 24px; height: 24px; }
