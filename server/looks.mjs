@@ -67,14 +67,21 @@ const checkImage = (url, max) => {
 // a song has to be a YouTube video that may be embedded; its title comes from YouTube
 const songTitle = (id) => fetchJson(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}`).catch(() => null)
 
-export async function putLook(req, fid, node) {
-  const body = await readText(req, 20e3)
+/** The account's Farcaster key (one the node lists for `fid`) that signed "<what>:<fid>:<ts>:<body>" in the last five
+ *  minutes, from the x-key, x-ts and x-sig headers. `stale` makes the answer when they're missing or too old. */
+export async function keySigned(req, what, fid, body, node, stale = () => fail(401, 'missing auth')) {
   const key = String(req.headers['x-key'] || '').toLowerCase()
   const ts = Number(req.headers['x-ts'])
   const sig = String(req.headers['x-sig'] || '')
-  if (!/^0x[0-9a-f]{64}$/.test(key) || !/^[0-9a-f]{128}$/.test(sig) || !(Math.abs(Date.now() - ts) < 300e3)) throw fail(401, 'Sign in again to save your look.')
-  if (!ed25519.verify(Buffer.from(sig, 'hex'), Buffer.from(`quilcast-look:${fid}:${ts}:${body}`), Buffer.from(key.slice(2), 'hex'))) throw fail(401, 'Bad signature.')
+  if (!/^0x[0-9a-f]{64}$/.test(key) || !/^[0-9a-f]{128}$/.test(sig) || !(Math.abs(Date.now() - ts) < 300e3)) throw stale()
+  if (!ed25519.verify(Buffer.from(sig, 'hex'), Buffer.from(`${what}:${fid}:${ts}:${body}`), Buffer.from(key.slice(2), 'hex'))) throw fail(401, 'Bad signature.')
   if (!(await keysOf(node, fid)).includes(key) && !(await keysOf(node, fid, 3e3)).includes(key)) throw fail(403, "That key doesn't belong to this account.")
+  return { key, ts }
+}
+
+export async function putLook(req, fid, node) {
+  const body = await readText(req, 20e3)
+  await keySigned(req, 'quilcast-look', fid, body, node, () => fail(401, 'Sign in again to save your look.'))
   const raw = parseJson(body)
   if (raw === null) {
     await rm(file(fid), { force: true })

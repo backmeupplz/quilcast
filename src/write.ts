@@ -48,12 +48,13 @@ async function submit(m: { msg: Uint8Array; hash: string }) {
   return m.hash
 }
 
-const TTL = 90 * 86400
-/** Make sure this browser holds a live Hypersnap signer for the account, adding or renewing one when
- *  needed. Older signers are re-issued once with the narrower permissions (same key); `fresh` swaps in a new key. */
+/** Make sure this browser holds a Hypersnap signer for the account, adding one when needed. Hypersnap keeps a key
+ *  alive as long as it's used (90 days idle), so there's no renewing: a key the network stops taking is replaced when
+ *  send() or saveLook() notice. Older signers are re-issued once with the narrower permissions (same key); `fresh`
+ *  swaps in a new key. */
 export async function ensureSigner(a = account!, fresh = false) {
   const now = Math.floor(Date.now() / 1000)
-  if (!fresh && (a.pub || a.signer) && a.signerAt! + TTL - 7 * 86400 > now && a.scopes === SCOPES_VERSION) return
+  if (!fresh && (a.pub || a.signer) && a.scopes === SCOPES_VERSION) return
   const old = !fresh && (await signerOf(a).catch(() => undefined))
   const [key, raw] = old ? [old, a.signer] : await newKey()
   const nonce = Math.max((a.nonce || 0) + 1, now)
@@ -146,7 +147,8 @@ const send = async (type: number, body: Uint8Array, as = account!) => {
     return submit(await envelope(type, a.fid!, body, await signerOf(a)))
   }
   return go().catch(async (e) => {
-    if (!/invalid signer/.test(e.message)) throw e
+    // a key the node doesn't know, or one that went 90 days unused
+    if (!/invalid signer|last_used_at expired/.test(e.message)) throw e
     await replaceSigner(fresh(as))
     return go()
   })
@@ -192,8 +194,18 @@ const put = (url: string, body: Blob, onSent: (n: number) => void) =>
 
 export type Progress = (stage: 'uploading' | 'processing', fraction?: number, secondsLeft?: number) => void
 
-// a farcaster.xyz login request signed with the custody key, valid for 10 minutes: the server checks who is
-// uploading with it and swaps it for the CDN token. Timestamps never repeat, because each one works only once.
+/** Headers that prove this browser's key signed "<what>:<fid>:<ts>:<body>" for the account just now; our server checks the
+ *  key against the node (server/looks.mjs keySigned). */
+async function keySigned(what: string, body = '') {
+  await ensureSigner()
+  const key = await signerOf(account!).catch(() => replaceSigner().then(() => signerOf(account!)))
+  const ts = Date.now()
+  const sig = await key.sign(new TextEncoder().encode(`${what}:${account!.fid}:${ts}:${body}`))
+  return { 'x-key': '0x' + hex(key.pub), 'x-ts': String(ts), 'x-sig': hex(sig) }
+}
+
+// a farcaster.xyz login request signed with the custody key, valid for 10 minutes: the server swaps it for the CDN
+// token. Timestamps never repeat, because each one works only once.
 let lastLogin = 0
 async function login() {
   const ts = (lastLogin = Math.max(Date.now(), lastLogin + 1))
@@ -207,8 +219,18 @@ async function login() {
 /** Upload a file in chunks through our server, which passes it to Farcaster's CDN (or keeps it). Returns the embed URL. */
 export async function upload(original: Blob, progress: Progress = () => {}) {
   const file = await scrub(original)
-  const headers = { 'content-type': file.type, ...(await login()), 'x-fid': String(account!.fid), 'x-size': String(file.size) }
-  const { id, chunk: max } = await json(await fetch('/api/upload', { method: 'POST', headers }))
+  // the browser's key says who's uploading. A recovery phrase kept here also signs a farcaster.xyz login without asking
+  // anyone, which gets the file onto Farcaster's CDN for accounts farcaster.xyz serves; nothing else asks the custody
+  // (a wallet, or a phrase this browser doesn't keep), and those files stay on our server
+  const cdn = !!account!.phrase
+  const begin = async (tries = 2): Promise<{ id: string; chunk: number }> => {
+    const auth = cdn ? await login() : await keySigned('quilcast-upload')
+    const r = await fetch('/api/upload', { method: 'POST', headers: { 'content-type': file.type, ...auth, 'x-fid': String(account!.fid), 'x-size': String(file.size) } })
+    // a key the node doesn't list any more is replaced, as in saveLook
+    if (r.status === 403 && !cdn && tries > 1) return replaceSigner().then(() => begin(tries - 1))
+    return json(r)
+  }
+  const { id, chunk: max } = await begin()
   progress('uploading', 0)
   // each request must finish well inside the proxy's 60 s, so chunks grow on fast links and shrink on slow ones
   let size = 512 * 1024
@@ -231,7 +253,7 @@ export async function upload(original: Blob, progress: Progress = () => {}) {
     }
   }
   progress('processing')
-  let st = await json(await fetch(`/api/upload/${id}/done`, { method: 'POST', headers: await login() }))
+  let st = await json(await fetch(`/api/upload/${id}/done`, { method: 'POST', headers: cdn ? await login() : {} }))
   while (st.state === 'sending' || st.state === 'processing') {
     await new Promise((r) => setTimeout(r, 1500))
     st = await json(await fetch(`/api/upload/${id}`))
@@ -359,13 +381,8 @@ export const setUserData = (type: number, value: string) => send(MT.USER_DATA_AD
 
 /** Save the account's profile look on our server (null goes back to plain), signed with its Farcaster key. */
 export async function saveLook(look: object | null, tries = 3): Promise<unknown> {
-  await ensureSigner()
-  const key = await signerOf(account!).catch(() => replaceSigner().then(() => signerOf(account!)))
-  const a = account!
   const body = JSON.stringify(look)
-  const ts = Date.now()
-  const sig = await key.sign(new TextEncoder().encode(`quilcast-look:${a.fid}:${ts}:${body}`))
-  const r = await fetch(`/api/look/${a.fid}`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-key': '0x' + hex(key.pub), 'x-ts': String(ts), 'x-sig': hex(sig) }, body })
+  const r = await fetch(`/api/look/${account!.fid}`, { method: 'PUT', headers: { 'content-type': 'application/json', ...(await keySigned('quilcast-look', body)) }, body })
   const j = await r.json().catch(() => null)
   // a key ensureSigner just added takes the node a few seconds to list; one the node doesn't list at all is replaced
   if (r.status === 403 && tries > 1) return ((await signerListed()) ? sleep(3000) : replaceSigner()).then(() => saveLook(look, tries - 1))

@@ -1,17 +1,19 @@
 // Uploads, in small steps so no request outlives the proxy's 60 s limit:
-//   POST /api/upload            start: checks the custody signature, returns { id }
+//   POST /api/upload            start: checks who's uploading, returns { id }
 //   PUT  /api/upload/<id>?offset=n   append one chunk (≤ 8 MB)
 //   POST /api/upload/<id>/done  hand the file to Farcaster's CDN (or our volume) in the background
 //   GET  /api/upload/<id>       { state: 'receiving' | 'processing' | 'ready' | 'failed', url?, error? }
-// Farcaster's CDN takes uploads the way Quorum does it, with a farcaster.xyz token the browser
-// signs with the custody key; it only serves accounts that have a Warpcast signer, so other
-// accounts' files are kept on our volume and served from /m/<name>.
+// Who's uploading is proven by one of the account's Farcaster keys (the browser's signer, as the node lists it). Farcaster's
+// CDN takes uploads the way Quorum does it, with a farcaster.xyz token from a login the custody signs; a browser that holds
+// the recovery phrase sends one along. The CDN only serves accounts that have a Warpcast signer, so other files (and every
+// upload without a login) are kept on our volume and served from /m/<name>.
 import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
 import { mkdir, readdir, readFile, rename, rm, stat, statfs, truncate } from 'node:fs/promises'
 import { join } from 'node:path'
+import { keySigned } from './looks.mjs'
 import { fail, fetchJson, gate, imageInfo } from './net.mjs'
 
 export const FC = process.env.FC_URL || 'https://client.farcaster.xyz'
@@ -161,7 +163,13 @@ export async function start(req, { node }) {
   if (size > LIMIT[kind]) throw fail(413, `Files are limited to ${LIMIT[kind] / 1e6} MB.`)
   const fid = Number(req.headers['x-fid'])
   if (!Number.isSafeInteger(fid) || fid <= 0) throw fail(400, 'missing fid')
-  const auth = await signedBy(req, fid, node)
+  // a custody login says who it is and opens the CDN; without one, a signature from the account's key, once
+  const auth = req.headers['x-auth-request'] ? await signedBy(req, fid, node) : null
+  if (!auth) {
+    const { key, ts } = await keySigned(req, 'quilcast-upload', fid, '', node)
+    if (spent.has(`${key}:${ts}`)) throw fail(401, 'this signature was already used')
+    spent.set(`${key}:${ts}`, Date.now())
+  }
   const mine = [...jobs.values()].filter(active)
   if (mine.filter((j) => j.fid === fid).length >= MAX_ACTIVE_PER_FID) throw fail(429, 'Finish your other uploads first.')
   if (mine.length >= MAX_ACTIVE || mine.reduce((n, j) => n + (j.state === 'receiving' ? j.size : 0), 0) + size > MAX_INCOMING) throw fail(503, 'Uploads are busy right now, try again in a minute.')
@@ -170,13 +178,13 @@ export async function start(req, { node }) {
   // a farcaster.xyz token means the CDN will take it; no token (no Warpcast signer) means our volume.
   // The token is only a probe: the upload itself uses a fresh one from /done, so none is held while bytes arrive.
   let cdn = false
-  const token = await fcToken(auth)
+  const token = auth && (await fcToken(auth))
   if (token) cdn = await fcJson('/v1/generate-image-upload-url', token, { method: 'POST', body: '{}' }).then(() => true, (e) => e.message !== 'missing_warpcast_signer')
   // files we keep ourselves count against a daily allowance and a total cap
   if (!cdn && (used(fid) + size > DAILY_LOCAL_PER_FID || mediaBytes + size > MEDIA_CAP)) throw fail(429, 'Upload limit reached for today.')
   const id = randomUUID()
   await mkdir(TMP, { recursive: true })
-  jobs.set(id, { id, fid, signer: auth.signer, kind, type, size, cdn, file: join(TMP, id), received: 0, state: 'receiving', at: Date.now() })
+  jobs.set(id, { id, fid, signer: auth?.signer, kind, type, size, cdn, file: join(TMP, id), received: 0, state: 'receiving', at: Date.now() })
   return { id, chunk: CHUNK }
 }
 

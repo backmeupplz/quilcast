@@ -137,7 +137,7 @@ function WalletIn() {
   return (
     <div class="join">
       <h1>{t('Use a wallet')}</h1>
-      <p class="lede">{t('Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and later asks again only to renew that key, claim a username or sign uploads.')}</p>
+      <p class="lede">{t('Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and after that it asks only when something needs the account itself, like claiming a username or signing in to a mini app.')}</p>
       <Progress {...f} steps={WALLET_IN()} />
       <button class="btn wide" disabled={f.busy} onClick={connect}>{f.busy ? t('Check your wallet…') : t('Connect wallet')}</button>
     </div>

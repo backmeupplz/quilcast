@@ -85,7 +85,7 @@
   "Connect a Solana wallet to {name}?": "¿Conectar una billetera de Solana a {name}?",
   "Connect a wallet first.": "Primero conecta una billetera.",
   "Connect a wallet to {name}?": "¿Conectar una billetera a {name}?",
-  "Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and later asks again only to renew that key, claim a username or sign uploads.": "Conecta la billetera dueña de tu cuenta de Farcaster. Quilcast nunca ve sus claves: la billetera aprueba una clave de firma para este navegador y después solo vuelve a preguntarte para renovar esa clave, reclamar un nombre de usuario o firmar subidas.",
+  "Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and after that it asks only when something needs the account itself, like claiming a username or signing in to a mini app.": "Conecta la billetera dueña de tu cuenta de Farcaster. Quilcast nunca ve sus claves: la billetera aprueba una clave de firma para este navegador y, después, solo te pregunta cuando algo necesita la cuenta en sí, como reclamar un nombre de usuario o iniciar sesión en una mini app.",
   "Connect wallet": "Conectar billetera",
   "Connecting your wallet": "Conectando tu billetera",
   "Console": "Consola",

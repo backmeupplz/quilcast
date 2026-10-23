@@ -85,7 +85,7 @@
   "Connect a Solana wallet to {name}?": "Подключить кошелёк Solana к {name}?",
   "Connect a wallet first.": "Сначала подключите кошелёк.",
   "Connect a wallet to {name}?": "Подключить кошелёк к {name}?",
-  "Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and later asks again only to renew that key, claim a username or sign uploads.": "Подключите кошелёк, которому принадлежит ваш аккаунт Farcaster. Quilcast никогда не видит его ключей: кошелёк одобряет ключ подписи для этого браузера и потом спрашивает снова, только чтобы продлить этот ключ, занять имя пользователя или подписать загрузки.",
+  "Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and after that it asks only when something needs the account itself, like claiming a username or signing in to a mini app.": "Подключите кошелёк, которому принадлежит ваш аккаунт Farcaster. Quilcast никогда не видит его ключей: кошелёк одобряет ключ подписи для этого браузера, а потом спрашивает, только когда нужен сам аккаунт, например чтобы занять имя пользователя или войти в мини-приложение.",
   "Connect wallet": "Подключить кошелёк",
   "Connecting your wallet": "Подключаем кошелёк",
   "Console": "Консольный",

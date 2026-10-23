@@ -85,7 +85,7 @@
   "Connect a Solana wallet to {name}?": "要將 Solana 錢包連接到 {name} 嗎？",
   "Connect a wallet first.": "請先連接錢包。",
   "Connect a wallet to {name}?": "要將錢包連接到 {name} 嗎？",
-  "Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and later asks again only to renew that key, claim a username or sign uploads.": "請連接擁有你 Farcaster 帳號的錢包。Quilcast 永遠看不到它的金鑰：錢包會為這個瀏覽器核准一把簽署金鑰，之後只有在更新這把金鑰、取得使用者名稱或簽署上傳時才會再詢問你。",
+  "Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and after that it asks only when something needs the account itself, like claiming a username or signing in to a mini app.": "請連接擁有你 Farcaster 帳號的錢包。Quilcast 永遠看不到它的金鑰：錢包會為這個瀏覽器核准一把簽署金鑰，之後只有在需要帳號本身時才會詢問你，例如取得使用者名稱或登入小程式。",
   "Connect wallet": "連接錢包",
   "Connecting your wallet": "正在連接你的錢包",
   "Console": "主控台",

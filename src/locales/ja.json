@@ -85,7 +85,7 @@
   "Connect a Solana wallet to {name}?": "Solana ウォレットを {name} に接続しますか？",
   "Connect a wallet first.": "先にウォレットを接続してください。",
   "Connect a wallet to {name}?": "ウォレットを {name} に接続しますか？",
-  "Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and later asks again only to renew that key, claim a username or sign uploads.": "Farcaster アカウントを持つウォレットを接続してください。Quilcast がその鍵を見ることはありません。ウォレットはこのブラウザ用の署名キーを承認し、以降はそのキーの更新、ユーザー名の取得、アップロードの署名のときだけ再度確認を求めます。",
+  "Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and after that it asks only when something needs the account itself, like claiming a username or signing in to a mini app.": "Farcaster アカウントを持つウォレットを接続してください。Quilcast がその鍵を見ることはありません。ウォレットはこのブラウザ用の署名キーを承認し、以降はユーザー名の取得やミニアプリへのサインインなど、アカウントそのものが必要なときだけ確認を求めます。",
   "Connect wallet": "ウォレットを接続",
   "Connecting your wallet": "ウォレットに接続中",
   "Console": "コンソール",

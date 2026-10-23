@@ -169,6 +169,26 @@ test('an upload signature works once, also when re-encoded, and the file lands o
   assert.match(st.url, /^https:\/\/quilcast\.test\/m\/[0-9a-f]{24}\.png$/)
 })
 
+test('an upload signed by one of the account\'s keys works once; a key the node doesn\'t list, or none, is refused', async () => {
+  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 2]), Buffer.alloc(40)])
+  // as write.ts keySigned builds it
+  const signed = (k, ts) => ({ 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(k)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`quilcast-upload:7:${ts}:`), k)).toString('hex') })
+  const start = (auth) => fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(png.length), 'x-fid': '7', ...auth } })
+  const ts = Date.now()
+  const r = await start(signed(signer, ts))
+  assert.equal(r.status, 200)
+  assert.equal((await start(signed(signer, ts))).status, 401)
+  assert.equal((await start(signed(ed25519.utils.randomSecretKey(), ts + 1))).status, 403)
+  assert.equal((await start(signed(signer, ts - 600e3))).status, 401)
+  assert.equal((await start({})).status, 401)
+  const { id } = await r.json()
+  assert.equal((await fetch(`${base}/api/upload/${id}?offset=0`, { method: 'PUT', body: png })).status, 200)
+  let st = await (await fetch(`${base}/api/upload/${id}/done`, { method: 'POST' })).json()
+  for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
+  assert.equal(st.state, 'ready')
+  assert.match(st.url, /^https:\/\/quilcast\.test\/m\/[0-9a-f]{24}\.png$/)
+})
+
 test('the DM relay carries the token to the direct-cast endpoints and nowhere else', async () => {
   const call = (op, init) => fetch(`${base}/api/dm/${op}`, init)
   assert.equal((await (await call('nonce')).json()).result.nonce, 'n1')
