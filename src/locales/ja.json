@@ -393,7 +393,6 @@
   "Sign out anyway": "それでもログアウト",
   "Sign out of @{username}": "@{username} からログアウト",
   "Signing in…": "ログイン中…",
-  "Signing key as a file": "署名キーをファイルで",
   "Signing out…": "ログアウト中…",
   "Signing…": "署名中…",
   "Slow down a little.": "少しペースを落としてください。",
@@ -678,7 +677,6 @@
   "Sign": "署名",
   "Sign a message?": "メッセージに署名しますか?",
   "Sign this data?": "このデータに署名しますか?",
-  "Site": "サイト",
   "Switch to that chain first.": "先にそのチェーンに切り替えてください。",
   "That isn't a valid recovery phrase or private key.": "有効なリカバリーフレーズまたは秘密鍵ではありません。",
   "That wallet is already here.": "そのウォレットはすでにあります。",
@@ -819,5 +817,15 @@
   "No tokens match.": "一致するトークンはありません。",
   "Balance: {n}": "残高: {n}",
   "Swap the tokens around": "トークンを入れ替える",
-  "Rate": "レート"
+  "Rate": "レート",
+  "Approves": "承認先",
+  "Contract": "コントラクト",
+  "Sends": "送金額",
+  "This account's recovery phrase isn't in this browser. Sign in with it again.": "このアカウントのリカバリーフレーズはこのブラウザにありません。フレーズでもう一度サインインしてください。",
+  "This lets someone else take your tokens without asking again.": "これを承認すると、他の誰かが確認なしであなたのトークンを持ち出せるようになります。",
+  "This message can't be read. Only sign it if you know exactly what it is.": "このメッセージは読める形ではありません。内容を正確に把握している場合だけ署名してください。",
+  "This puts your NFTs up for sale. Check the price before you sign.": "これであなたのNFTが売りに出されます。署名する前に価格を確認してください。",
+  "Token": "トークン",
+  "Unlimited": "無制限",
+  "Up to": "上限"
 }

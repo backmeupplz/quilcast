@@ -1,31 +1,39 @@
 // Signed writes: everything here needs the account's keys.
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { keccak_256 } from '@noble/hashes/sha3.js'
-import { HDKey } from '@scure/bip32'
 import { account, accounts, byName, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, updateAccount, users, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
-import { castBody, castRemoveBody, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, reactionBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
+import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, rawEd, reactionBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
+import { dropEd, edKey, newEd, type Ed } from './keys.ts'
 
-const keys = new Map<string, Promise<Uint8Array>>()
-/** Custody key derived the way Warpcast and Quorum do it (BIP-39 seed, m/44'/60'/0'/0/0), so phrases
- *  move between apps. The seed's PBKDF2 runs in WebCrypto: native, async, and cached per phrase. */
-export function custodyKey(phrase: string) {
-  const p = phrase.trim().toLowerCase().split(/\s+/).join(' ').normalize('NFKD')
-  if (!keys.has(p))
-    keys.set(p, (async () => {
-      const enc = new TextEncoder()
-      const key = await crypto.subtle.importKey('raw', enc.encode(p), 'PBKDF2', false, ['deriveBits'])
-      const seed = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-512', salt: enc.encode('mnemonic'), iterations: 2048 }, key, 512)
-      return HDKey.fromMasterSeed(new Uint8Array(seed)).derive("m/44'/60'/0'/0/0").privateKey!
-    })())
-  return keys.get(p)!
+/** The recovery phrase of a phrase account. */
+const phraseOf = async (a: Account) => {
+  if (!a.phrase) throw new Error("This account's recovery phrase isn't in this browser. Sign in with it again.")
+  return a.phrase
 }
 
 /** Who signs for an account's custody address: the key from its phrase, or the wallet it was connected with. */
 export const custodyOf = async (a: Account): Promise<Custody> =>
-  a.wallet ? (await import('./wallet.ts')).walletCustody(a.wallet) : keyCustody(await custodyKey(a.phrase))
+  a.wallet ? (await import('./wallet.ts')).walletCustody(a.wallet) : keyCustody(await custodyKey(await phraseOf(a)))
+
+/** An ed25519 key (`pub`, or raw in `raw`) as a signer; a key this browser doesn't have counts as one the network
+ *  dropped, so send() and saveLook() add a new one. */
+async function keyOf(pub?: string, raw?: string): Promise<Ed> {
+  const k = raw ? rawEd(unhex(raw)) : pub && (await edKey(pub).catch(() => undefined))
+  if (!k) throw new Error(`invalid signer: not in this browser`)
+  return k
+}
+const signerOf = (a: Account) => keyOf(a.pub, a.signer)
+/** A new key in the vault, where page code can use it but never read it; raw (as before) where the vault can't take it. */
+async function newKey(): Promise<[Ed, string | undefined]> {
+  try {
+    return [await newEd(), undefined]
+  } catch {
+    const raw = ed25519.utils.randomSecretKey()
+    return [rawEd(raw), hex(raw)]
+  }
+}
 
 async function submit(m: { msg: Uint8Array; hash: string }) {
   const r = await fetch(`${settings.node}/v1/submitMessage`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: m.msg as BodyInit })
@@ -45,15 +53,18 @@ const TTL = 90 * 86400
  *  needed. Older signers are re-issued once with the narrower permissions (same key); `fresh` swaps in a new key. */
 export async function ensureSigner(a = account!, fresh = false) {
   const now = Math.floor(Date.now() / 1000)
-  if (!fresh && a.signer && a.signerAt! + TTL - 7 * 86400 > now && a.scopes === SCOPES_VERSION) return
-  const priv = a.signer && !fresh ? unhex(a.signer) : ed25519.utils.randomSecretKey()
+  if (!fresh && (a.pub || a.signer) && a.signerAt! + TTL - 7 * 86400 > now && a.scopes === SCOPES_VERSION) return
+  const old = !fresh && (await signerOf(a).catch(() => undefined))
+  const [key, raw] = old ? [old, a.signer] : await newKey()
   const nonce = Math.max((a.nonce || 0) + 1, now)
-  await submit(await keyAdd(a.fid!, await custodyOf(a), priv, nonce))
-  updateAccount({ ...a, signer: hex(priv), signerAt: now, nonce, scopes: SCOPES_VERSION })
+  await submit(await keyAdd(a.fid!, await custodyOf(a), key, nonce))
+  updateAccount({ ...a, pub: hex(key.pub), signer: raw, signerAt: now, nonce, scopes: SCOPES_VERSION })
+  // a key that was replaced is no use to anyone
+  if (a.pub && a.pub !== hex(key.pub)) dropEd(a.pub).catch(() => {})
 }
 
 const signerListed = (a = account!) =>
-  get('/v1/signer', { fid: a.fid, signer: '0x' + hex(ed25519.getPublicKey(unhex(a.signer!))) }).then(() => true, () => false)
+  signerOf(a).then((k) => get('/v1/signer', { fid: a.fid, signer: '0x' + hex(k.pub) })).then(() => true, () => false)
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** The node can stop knowing this browser's key (revoked, dropped, or its KEY_ADD never landed), while the
@@ -69,7 +80,7 @@ async function replaceSigner(a = account!) {
 /** A transaction on Optimism from the account's custody: its wallet, or the phrase key (which needs a little ETH there). */
 async function custodyTx(a: Account, to: string, data: string) {
   if (a.wallet) return (await import('./wallet.ts')).sendTx(a.wallet, to, data)
-  const key = await custodyKey(a.phrase)
+  const key = await custodyKey(await phraseOf(a))
   const { address } = keyCustody(key)
   if ((await balance(settings.rpc, address)) === 0n) throw new Error(t("Your account address {address} needs a little ETH on Optimism (a cent's worth) to pay for this.", { address }))
   return sendTx(settings.rpc, key, to, data)
@@ -83,42 +94,46 @@ const onChain = async (fid: number, key: Uint8Array) =>
  *  Hypersnap signer isn't in, so this one is added on chain (KeyGateway.add from the custody), once per browser. */
 export async function ensureAppKey(onWait?: (what: string) => void) {
   let a = account!
-  if (!a.appKey) {
-    const priv = ed25519.utils.randomSecretKey()
+  let key = (a.appPub || a.appKey) && (await keyOf(a.appPub, a.appKey).catch(() => undefined))
+  if (!key) {
+    let raw: string | undefined
+    ;[key, raw] = await newKey()
     onWait?.(a.wallet ? t('Confirm the key in your wallet (Optimism)') : t('Adding a notification key on Optimism…'))
-    await custodyTx(a, KEY_GATEWAY, await keyGatewayAdd(a.fid!, await custodyOf(a), ed25519.getPublicKey(priv), Math.floor(Date.now() / 1000) + 3600))
+    await custodyTx(a, KEY_GATEWAY, await keyGatewayAdd(a.fid!, await custodyOf(a), key.pub, Math.floor(Date.now() / 1000) + 3600))
     // kept as soon as the transaction is out, so a reload doesn't add a second key
-    setAccount((a = { ...account!, appKey: hex(priv) }))
+    setAccount((a = { ...account!, appPub: hex(key.pub), appKey: raw }))
   }
-  const priv = unhex(a.appKey!)
   onWait?.(t('Waiting for the network to see the key…'))
-  for (let i = 0; !(await onChain(a.fid!, ed25519.getPublicKey(priv))); i++) {
+  for (let i = 0; !(await onChain(a.fid!, key.pub)); i++) {
     if (i >= 40) throw new Error('The notification key is still being confirmed. Try again in a minute.')
     await new Promise((r) => setTimeout(r, 3000))
   }
-  return priv
+  return key
 }
 
 const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 /** A JSON Farcaster Signature over `payload`, signed with the app key: what mini app webhooks receive. */
 export async function signEvent(payload: object, onWait?: (what: string) => void) {
-  const priv = await ensureAppKey(onWait)
+  const key = await ensureAppKey(onWait)
   const enc = new TextEncoder()
-  const header = b64url(enc.encode(JSON.stringify({ fid: account!.fid, type: 'app_key', key: '0x' + hex(ed25519.getPublicKey(priv)) })))
+  const header = b64url(enc.encode(JSON.stringify({ fid: account!.fid, type: 'app_key', key: '0x' + hex(key.pub) })))
   const body = b64url(enc.encode(JSON.stringify(payload)))
-  return { header, payload: body, signature: b64url(ed25519.sign(enc.encode(`${header}.${body}`), priv)) }
+  return { header, payload: body, signature: b64url(await key.sign(enc.encode(`${header}.${body}`))) }
 }
 
 /** Sign out, step one: the on-chain app key is removed (KeyRegistry.remove from the custody), and the
  *  notification inbox on our server is dropped. */
 export async function removeAppKey(a: Account) {
   if (a.inbox) await fetch('/api/notify/drop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ inbox: a.inbox }) }).catch(() => {})
-  if (a.appKey && a.fid) await custodyTx(a, KEY_REGISTRY, keyRegistryRemove(ed25519.getPublicKey(unhex(a.appKey))))
+  const pub = a.appPub ? unhex(a.appPub) : a.appKey && ed25519.getPublicKey(unhex(a.appKey))
+  if (pub && a.fid) await custodyTx(a, KEY_REGISTRY, keyRegistryRemove(pub))
 }
 
 /** Sign out: this browser's signer revokes itself, so a copy of the key stops working too. */
 export async function revokeSigner(a: Account) {
-  if (a.signer && a.fid) await submit(keyRemoveSelf(a.fid, unhex(a.signer), Math.floor(Date.now() / 1000)))
+  // a key this browser doesn't have can't be used by anyone, so there's nothing to revoke
+  const key = a.fid && (await signerOf(a).catch(() => undefined))
+  if (key) await submit(await keyRemoveSelf(a.fid!, key, Math.floor(Date.now() / 1000)))
 }
 
 // the stored copy of an account, which ensureSigner may have just updated
@@ -126,9 +141,9 @@ const fresh = (a: Account) => accounts.find((x) => idOf(x) === idOf(a)) || a
 /** Sign and submit a message as `as` (the selected account unless a reply is sent as another one). */
 const send = async (type: number, body: Uint8Array, as = account!) => {
   await ensureSigner(fresh(as))
-  const go = () => {
+  const go = async () => {
     const a = fresh(as)
-    return submit(envelope(type, a.fid!, body, unhex(a.signer!)))
+    return submit(await envelope(type, a.fid!, body, await signerOf(a)))
   }
   return go().catch(async (e) => {
     if (!/invalid signer/.test(e.message)) throw e
@@ -315,7 +330,7 @@ Issued At: ${new Date().toISOString()}`
 }
 
 /** A farcaster.xyz session token for Spaces, from a login request the custody address signs (as farcaster.xyz's
- *  own apps do). It's kept with the account for a year, so a wallet account isn't asked to sign every visit. */
+ *  own apps do). It's kept with the account for 30 days, so a wallet account isn't asked to sign every visit. */
 let minting: Promise<string> | undefined
 export function spaceToken(fresh = false): Promise<string> {
   const a = account!
@@ -325,7 +340,7 @@ export function spaceToken(fresh = false): Promise<string> {
 }
 async function mintSpaceToken(a: Account) {
   const ts = Date.now()
-  const exp = ts + 365 * 864e5
+  const exp = ts + 30 * 864e5
   const authRequest = { method: 'generateToken', params: { timestamp: ts, expiresAt: exp } }
   const sig = await (await custodyOf(a)).message(new TextEncoder().encode(`{"method":"generateToken","params":{"expiresAt":${exp},"timestamp":${ts}}}`))
   const r = await fetch('/api/space/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ authRequest, bearer: `eip191:${btoa(String.fromCharCode(...sig))}` }) })
@@ -345,12 +360,12 @@ export const setUserData = (type: number, value: string) => send(MT.USER_DATA_AD
 /** Save the account's profile look on our server (null goes back to plain), signed with its Farcaster key. */
 export async function saveLook(look: object | null, tries = 3): Promise<unknown> {
   await ensureSigner()
+  const key = await signerOf(account!).catch(() => replaceSigner().then(() => signerOf(account!)))
   const a = account!
-  const priv = unhex(a.signer!)
   const body = JSON.stringify(look)
   const ts = Date.now()
-  const sig = ed25519.sign(new TextEncoder().encode(`quilcast-look:${a.fid}:${ts}:${body}`), priv)
-  const r = await fetch(`/api/look/${a.fid}`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-key': '0x' + hex(ed25519.getPublicKey(priv)), 'x-ts': String(ts), 'x-sig': hex(sig) }, body })
+  const sig = await key.sign(new TextEncoder().encode(`quilcast-look:${a.fid}:${ts}:${body}`))
+  const r = await fetch(`/api/look/${a.fid}`, { method: 'PUT', headers: { 'content-type': 'application/json', 'x-key': '0x' + hex(key.pub), 'x-ts': String(ts), 'x-sig': hex(sig) }, body })
   const j = await r.json().catch(() => null)
   // a key ensureSigner just added takes the node a few seconds to list; one the node doesn't list at all is replaced
   if (r.status === 403 && tries > 1) return ((await signerListed()) ? sleep(3000) : replaceSigner()).then(() => saveLook(look, tries - 1))

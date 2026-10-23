@@ -393,7 +393,6 @@
   "Sign out anyway": "仍然退出",
   "Sign out of @{username}": "退出 @{username}",
   "Signing in…": "登录中…",
-  "Signing key as a file": "签名密钥（文件）",
   "Signing out…": "正在退出…",
   "Signing…": "签名中…",
   "Slow down a little.": "慢一点哦。",
@@ -678,7 +677,6 @@
   "Sign": "签名",
   "Sign a message?": "签名一条消息?",
   "Sign this data?": "签名这些数据?",
-  "Site": "网站",
   "Switch to that chain first.": "请先切换到那条链。",
   "That isn't a valid recovery phrase or private key.": "这不是有效的助记词或私钥。",
   "That wallet is already here.": "这个钱包已经添加过了。",
@@ -819,5 +817,15 @@
   "No tokens match.": "没有匹配的代币。",
   "Balance: {n}": "余额：{n}",
   "Swap the tokens around": "交换两种代币",
-  "Rate": "汇率"
+  "Rate": "汇率",
+  "Approves": "授权给",
+  "Contract": "合约",
+  "Sends": "发送",
+  "This account's recovery phrase isn't in this browser. Sign in with it again.": "此浏览器中没有这个账号的助记词。请用它重新登录。",
+  "This lets someone else take your tokens without asking again.": "这会让别人无需再次询问就能拿走你的代币。",
+  "This message can't be read. Only sign it if you know exactly what it is.": "这条消息无法阅读。只有在你确切知道它是什么时才签名。",
+  "This puts your NFTs up for sale. Check the price before you sign.": "这会把你的 NFT 挂出出售。签名前请检查价格。",
+  "Token": "代币",
+  "Unlimited": "无限额",
+  "Up to": "上限"
 }

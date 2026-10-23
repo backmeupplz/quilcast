@@ -393,7 +393,6 @@
   "Sign out anyway": "Всё равно выйти",
   "Sign out of @{username}": "Выйти из @{username}",
   "Signing in…": "Входим…",
-  "Signing key as a file": "Ключ подписи файлом",
   "Signing out…": "Выходим…",
   "Signing…": "Подписываем…",
   "Slow down a little.": "Чуть помедленнее.",
@@ -678,7 +677,6 @@
   "Sign": "Подписать",
   "Sign a message?": "Подписать сообщение?",
   "Sign this data?": "Подписать эти данные?",
-  "Site": "Сайт",
   "Switch to that chain first.": "Сначала переключитесь на эту сеть.",
   "That isn't a valid recovery phrase or private key.": "Это не похоже на фразу восстановления или приватный ключ.",
   "That wallet is already here.": "Этот кошелёк уже добавлен.",
@@ -819,5 +817,15 @@
   "No tokens match.": "Подходящих токенов нет.",
   "Balance: {n}": "Баланс: {n}",
   "Swap the tokens around": "Поменять токены местами",
-  "Rate": "Курс"
+  "Rate": "Курс",
+  "Approves": "Разрешение для",
+  "Contract": "Контракт",
+  "Sends": "Отправляет",
+  "This account's recovery phrase isn't in this browser. Sign in with it again.": "Фразы восстановления этого аккаунта нет в этом браузере. Войдите с ней ещё раз.",
+  "This lets someone else take your tokens without asking again.": "Это позволит кому-то другому забирать ваши токены, больше не спрашивая.",
+  "This message can't be read. Only sign it if you know exactly what it is.": "Это сообщение нельзя прочитать. Подписывайте его, только если точно знаете, что это.",
+  "This puts your NFTs up for sale. Check the price before you sign.": "Это выставит ваши NFT на продажу. Проверьте цену, прежде чем подписывать.",
+  "Token": "Токен",
+  "Unlimited": "Без ограничений",
+  "Up to": "Лимит"
 }

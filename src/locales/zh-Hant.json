@@ -393,7 +393,6 @@
   "Sign out anyway": "仍要登出",
   "Sign out of @{username}": "登出 @{username}",
   "Signing in…": "登入中…",
-  "Signing key as a file": "簽署金鑰（檔案）",
   "Signing out…": "登出中…",
   "Signing…": "簽署中…",
   "Slow down a little.": "慢一點喔。",
@@ -678,7 +677,6 @@
   "Sign": "簽署",
   "Sign a message?": "簽署一則訊息?",
   "Sign this data?": "簽署這些資料?",
-  "Site": "網站",
   "Switch to that chain first.": "請先切換到那條鏈。",
   "That isn't a valid recovery phrase or private key.": "這不是有效的助記詞或私鑰。",
   "That wallet is already here.": "這個錢包已經新增過了。",
@@ -819,5 +817,15 @@
   "No tokens match.": "沒有相符的代幣。",
   "Balance: {n}": "餘額：{n}",
   "Swap the tokens around": "交換兩種代幣",
-  "Rate": "匯率"
+  "Rate": "匯率",
+  "Approves": "授權給",
+  "Contract": "合約",
+  "Sends": "送出",
+  "This account's recovery phrase isn't in this browser. Sign in with it again.": "這個瀏覽器裡沒有此帳號的復原詞組。請用它重新登入。",
+  "This lets someone else take your tokens without asking again.": "這會讓別人不必再次詢問就能拿走你的代幣。",
+  "This message can't be read. Only sign it if you know exactly what it is.": "這則訊息無法閱讀。只有在你確切知道它是什麼時才簽署。",
+  "This puts your NFTs up for sale. Check the price before you sign.": "這會把你的 NFT 掛出出售。簽署前請檢查價格。",
+  "Token": "代幣",
+  "Unlimited": "無限額",
+  "Up to": "上限"
 }

@@ -393,7 +393,6 @@
   "Sign out anyway": "Cerrar sesión de todos modos",
   "Sign out of @{username}": "Cerrar sesión de @{username}",
   "Signing in…": "Iniciando sesión…",
-  "Signing key as a file": "Clave de firma en un archivo",
   "Signing out…": "Cerrando sesión…",
   "Signing…": "Firmando…",
   "Slow down a little.": "Ve un poco más despacio.",
@@ -678,7 +677,6 @@
   "Sign": "Firmar",
   "Sign a message?": "¿Firmar un mensaje?",
   "Sign this data?": "¿Firmar estos datos?",
-  "Site": "Sitio",
   "Switch to that chain first.": "Primero cambia a esa red.",
   "That isn't a valid recovery phrase or private key.": "Eso no es una frase de recuperación ni una clave privada válida.",
   "That wallet is already here.": "Esa billetera ya está aquí.",
@@ -819,5 +817,15 @@
   "No tokens match.": "Ningún token coincide.",
   "Balance: {n}": "Saldo: {n}",
   "Swap the tokens around": "Intercambiar los tokens",
-  "Rate": "Tipo de cambio"
+  "Rate": "Tipo de cambio",
+  "Approves": "Autoriza a",
+  "Contract": "Contrato",
+  "Sends": "Envía",
+  "This account's recovery phrase isn't in this browser. Sign in with it again.": "La frase de recuperación de esta cuenta no está en este navegador. Vuelve a iniciar sesión con ella.",
+  "This lets someone else take your tokens without asking again.": "Esto permite que otra persona tome tus tokens sin volver a preguntarte.",
+  "This message can't be read. Only sign it if you know exactly what it is.": "Este mensaje no se puede leer. Fírmalo solo si sabes exactamente qué es.",
+  "This puts your NFTs up for sale. Check the price before you sign.": "Esto pone tus NFT a la venta. Revisa el precio antes de firmar.",
+  "Token": "Token",
+  "Unlimited": "Ilimitado",
+  "Up to": "Hasta"
 }

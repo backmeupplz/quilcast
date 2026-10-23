@@ -78,6 +78,39 @@ export function checkWallet(host: string, me: string, method: string, params: an
   }
 }
 
+// --- what a request does, in words: the calls and signatures drainers use ---
+
+const sel = (sig: string) => '0x' + hex(keccak_256(utf8(sig)).slice(0, 4))
+const CALLS = Object.fromEntries(([
+  ['approve(address,uint256)', 'approve'], ['increaseAllowance(address,uint256)', 'approve'], ['setApprovalForAll(address,bool)', 'approveAll'],
+  // Permit2's own approve(token, spender, amount, expiration)
+  ['approve(address,address,uint160,uint48)', 'approve2'],
+  ['transfer(address,uint256)', 'transfer'], ['transferFrom(address,address,uint256)', 'move'],
+  ['safeTransferFrom(address,address,uint256)', 'move'], ['safeTransferFrom(address,address,uint256,bytes)', 'move'],
+] as const).map(([sig, kind]) => [sel(sig), { kind, types: sig.slice(sig.indexOf('(') + 1, -1).split(',').filter((t) => t !== 'bytes') }]))
+
+export type TokenCall = { kind: 'approve' | 'approveAll' | 'approve2' | 'transfer' | 'move'; args: (string | bigint | boolean)[] }
+/** The token call in a transaction's data, when it's one that gives tokens away or lets someone else take them. */
+export function tokenCall(data: unknown): TokenCall | undefined {
+  const d = String(data || '').toLowerCase()
+  const c = /^0x[0-9a-f]*$/.test(d) ? CALLS[d.slice(0, 10)] : undefined
+  const words = c?.types.map((_, i) => d.slice(10 + i * 64, 74 + i * 64))
+  if (!c || !words || words.some((w) => w.length < 64)) return
+  return { kind: c.kind, args: c.types.map((t, i) => (t === 'address' ? '0x' + words[i].slice(24) : t === 'bool' ? BigInt('0x' + words[i]) !== 0n : BigInt('0x' + words[i]))) }
+}
+/** Amounts this big are "everything you have", whatever the token. */
+export const UNLIMITED = 2n ** 128n
+
+/** A typed-data signature that hands something over: a permit lets `spender` take tokens without asking again, a
+ *  Seaport order puts NFTs up for sale. */
+export function typedRisk(t: any): { kind: 'permit' | 'listing'; spender?: string } | undefined {
+  const name = String(t?.domain?.name || '')
+  const type = String(t?.primaryType || '')
+  if (type === 'Permit' || name === 'Permit2' || /^Permit(Single|Batch|TransferFrom|BatchTransferFrom|WitnessTransferFrom|BatchWitnessTransferFrom)$/.test(type))
+    return { kind: 'permit', spender: typeof t?.message?.spender === 'string' ? t.message.spender : undefined }
+  if (name === 'Seaport' || type === 'OrderComponents') return { kind: 'listing' }
+}
+
 /** EIP-55 mixed-case address: Sign-In with Ethereum verifiers refuse lowercase ones. */
 export const checksum = (a: string) => {
   const low = a.toLowerCase().replace(/^0x/, '')

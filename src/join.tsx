@@ -3,9 +3,9 @@ import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, get, getUser, go, idOf, setAccount, settings, USER_DATA, type Account } from './api.ts'
 import { balance, fidOf, register, registerPrice } from './eth.ts'
-import { address, fnameProof } from './fc.ts'
+import { address, custodyKey, fnameProof } from './fc.ts'
 import { t } from './i18n.ts'
-import { custodyKey, custodyOf, ensureSigner, setUserData } from './write.ts'
+import { custodyOf, ensureSigner, setUserData } from './write.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const eth = (wei: bigint) => (Number(wei) / 1e18).toFixed(6).replace(/\.?0+$/, '')
@@ -61,7 +61,11 @@ function Create({ wallet }: { wallet?: string }) {
     const t = setTimeout(() => fetch(`https://fnames.farcaster.xyz/transfers/current?name=${name}`).then((r) => setState(r.status === 404 ? 'free' : 'taken'), () => setState('')), 350)
     return () => clearTimeout(t)
   }, [name])
-  const go = () => setAccount({ phrase: wallet ? '' : generateMnemonic(wordlist), wallet, username: name, display: display.trim() || name })
+  const go = async () => {
+    const phrase = wallet ? '' : generateMnemonic(wordlist)
+    // a phrase account is known by its custody address, never by the phrase
+    setAccount({ phrase, wallet, custody: phrase ? address(await custodyKey(phrase)) : undefined, username: name, display: display.trim() || name })
+  }
   return (
     <div class="join">
       <h1>{t('Pick your name')}</h1>
@@ -152,7 +156,7 @@ function SignIn() {
     step(1)
     const fid = await fidFor(addr)
     if (!fid) throw new Error('No Farcaster account belongs to this phrase.')
-    await enter({ phrase: p, fid, done: true }, step)
+    await enter({ phrase: p, custody: addr, fid, done: true }, step)
   })
   return (
     <div class="join">

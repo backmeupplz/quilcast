@@ -10,7 +10,8 @@ test('saving a look with a key the node dropped adds a new key and saves with it
   const api = await import('./api.ts')
   const { saveLook } = await import('./write.ts')
   const old = hex(new Uint8Array(32).fill(1))
-  api.setAccount({ phrase: 'test test test test test test test test test test test junk', fid: 7, signer: old, signerAt: Math.floor(Date.now() / 1000), scopes: 2, done: true })
+  // no IndexedDB here, so keys stay raw in the account, as they do in a browser whose vault fails
+  api.setAccount({ phrase: 'test test test test test test test test test test test junk', custody: '0x7', fid: 7, signer: old, signerAt: Math.floor(Date.now() / 1000), scopes: 2, done: true })
   // the node doesn't list the old key, only one added through submitMessage; our server answers 403 for a key it doesn't list
   const oldKey = '0x' + hex(ed25519.getPublicKey(Uint8Array.from(Buffer.from(old, 'hex'))))
   let submits = 0
@@ -36,7 +37,7 @@ test('signing into an account this browser doesn\'t hold yet saves and selects i
   const api = await import('./api.ts')
   const { ensureSigner } = await import('./write.ts')
   const phrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
-  await ensureSigner({ phrase, fid: 9, done: true })
+  await ensureSigner({ phrase, custody: '0x9', fid: 9, done: true })
   assert.equal(api.account!.fid, 9)
   assert.ok(api.account!.signer)
   assert.deepEqual(api.accounts.map((a) => a.fid), [7, 9])

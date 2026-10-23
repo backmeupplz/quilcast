@@ -1,6 +1,8 @@
-:root {
-  /* one value per theme: the system picks unless Settings forces data-theme */
-  color-scheme: light dark;
+/* one value per theme: the system picks unless Settings forces data-theme */
+:root { color-scheme: light dark; }
+/* the app's colors. A theme replaces them on <html>, but not where signatures and money get approved (mini app
+   prompts, the wallet's send and swap): its colors could hide words there, and its font could draw "1" as "0.001" */
+:root, .mini-ask, .wallet-form {
   --bg: light-dark(#fff, #0b0b0f);
   --card: light-dark(#fff, #131319);
   --ink: light-dark(#0f1419, #ececf1);
@@ -16,6 +18,9 @@
 }
 :root[data-theme='light'] { color-scheme: light; }
 :root[data-theme='dark'] { color-scheme: dark; }
+/* (color is inherited already worked out from the page's, so it's set here again) */
+.mini-ask, .wallet-form { color: var(--ink); }
+.mini-ask, .wallet-form, .mini-top small { --th-font: initial; --th-btn: initial; --on-accent: initial; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -939,6 +944,10 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .sign-row { display: flex; justify-content: space-between; gap: 12px; }
 .sign-row span { color: var(--muted); }
 .sign-row b { text-align: right; overflow-wrap: anywhere; }
+.sign-preview .warn { margin: 0 0 4px; color: var(--warn); font-weight: 650; }
+/* a prompt's yes button takes clicks only after a second (miniapp.tsx); it looks it */
+.arm { animation: arm 1s step-end; }
+@keyframes arm { from, to { opacity: 0.45; } }
 .sign-preview pre { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
 .wallet-actions { display: flex; justify-content: center; gap: 8px; padding: 0 16px 16px; }
 .wallet-actions .btn { flex: 1; max-width: 140px; justify-content: center; }

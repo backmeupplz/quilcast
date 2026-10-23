@@ -1,5 +1,6 @@
-// Hypersnap reads plus the locally stored account. Writes live in write.ts,
+// Hypersnap reads plus the locally stored accounts. Writes live in write.ts,
 // loaded on demand so readers never download the crypto.
+import { dropEd, hex, keep, newEd, SECRETS, secretsOf, type Secrets } from './keys.ts'
 
 export const read = <T,>(k: string, d: T): T => {
   try {
@@ -13,44 +14,120 @@ export const save = (k: string, v: unknown) => localStorage.setItem(k, JSON.stri
 export const settings: { node: string; rpc: string; theme: string; looks?: boolean; lang?: string; jp?: boolean } = { node: 'https://haatz.quilibrium.com', rpc: 'https://mainnet.optimism.io', theme: 'system', ...read('quilcast:settings', {}) }
 export const saveSettings = () => save('quilcast:settings', settings)
 
-// a phrase account keeps its recovery phrase; a wallet account has phrase '' and signs with `wallet` (its custody address)
+// a phrase account is known by its custody address and keeps its recovery phrase in the vault (keys.ts); a wallet
+// account has phrase '' and signs with `wallet` (its custody address). Secrets (phrase, dm, fcx, inbox) live in memory
+// and the vault, never in localStorage
 // `dm` is a farcaster.xyz token that opens the account's direct casts and nothing else
-// `appKey` is the on-chain key mini app webhooks are signed with; `inbox` is the secret for this browser's mini app
-// notifications on our server, and `notify` lists the app origins that may send them
-export type Account = { phrase: string; wallet?: string; fid?: number; username?: string; display?: string; signer?: string; signerAt?: number; nonce?: number; scopes?: number; done?: boolean; dm?: string; appKey?: string; inbox?: string; notify?: string[]; fcx?: { secret: string; exp: number } }
-// every account this browser holds; `account` is the selected one, keyed by its wallet or its phrase
-export const idOf = (a: Account) => a.wallet || a.phrase
+// `pub` is this browser's signing key and `appPub` the on-chain key mini app webhooks are signed with: their private
+// halves are in the vault (`signer`/`appKey` hold them raw only where the vault couldn't take them); `inbox` is the
+// secret for this browser's mini app notifications on our server, and `notify` lists the app origins that may send them
+export type Account = { phrase: string; custody?: string; wallet?: string; fid?: number; username?: string; display?: string; pub?: string; signer?: string; signerAt?: number; nonce?: number; scopes?: number; done?: boolean; dm?: string; appPub?: string; appKey?: string; inbox?: string; notify?: string[]; fcx?: { secret: string; exp: number } }
+// every account this browser holds; `account` is the selected one, keyed by its wallet or custody address
+export const idOf = (a: Account) => a.wallet || a.custody || ''
+
+// --- where accounts are kept ---
+// localStorage has the list. A secret leaves it only once the vault has read it back, so a vault that fails leaves
+// everything as it was. `known` is what this tab knows the vault holds.
+const known = new Map<string, Secrets>()
+const isSecret = (f: string) => (SECRETS as readonly string[]).includes(f)
+const same = (a: unknown, b: unknown) => JSON.stringify(a || undefined) === JSON.stringify(b || undefined)
+const strip = (a: Account) => Object.fromEntries(Object.entries(a).filter(([f, v]) => !isSecret(f) || !same(v, known.get(idOf(a))?.[f as keyof Secrets]))) as Account
+// an account read from localStorage, with the secrets this tab holds for it
+const withSecrets = (x: Account): Account => ({ ...known.get(idOf(x)), ...x, phrase: x.phrase || known.get(idOf(x))?.phrase || '' })
+// one write per secret at a time, in order; a secret the account doesn't carry at all is one this tab never loaded,
+// so it's left alone (clearing one means setting it to undefined)
+const lines = new Map<string, Promise<unknown>>()
+function sync(id: string, f: keyof Secrets, v: unknown) {
+  const run = (lines.get(`${id}:${f}`) || Promise.resolve()).then(async () => {
+    if (same(v, known.get(id)?.[f])) return
+    await keep(id, f, v || undefined)
+    known.set(id, { ...known.get(id), [f]: v || undefined })
+  })
+  lines.set(`${id}:${f}`, run.catch(() => {}))
+  return run
+}
+/** Save the list, put its secrets in the vault, then take out of localStorage what the vault now has. `gone` are
+ *  accounts removed from this browser, whose secrets and keys go too. */
+function persist(gone: Account[] = []) {
+  save('quilcast:accounts', accounts.map(strip))
+  const writes: Promise<unknown>[] = accounts.flatMap((a) => SECRETS.filter((f) => f in a).map((f) => sync(idOf(a), f, a[f])))
+  for (const a of gone) writes.push(...SECRETS.map((f) => sync(idOf(a), f, undefined)), ...[a.pub, a.appPub].flatMap((k) => (k ? [dropEd(k)] : [])))
+  // another tab may have saved the list meanwhile, so this only takes secrets out of what's there now
+  return Promise.all(writes).then(() => save('quilcast:accounts', read<Account[]>('quilcast:accounts', []).map(strip)), (e) => console.error('vault', e))
+}
+
 export let accounts = read<Account[]>('quilcast:accounts', [])
 const legacy = read<Account | null>('quilcast:account', null)
 if (legacy && !accounts.length) accounts = [{ ...legacy, phrase: legacy.phrase || '' }]
+
+/** Startup: an account from before 0.22 gets its custody address as its id and its keys moved into the vault, then
+ *  every account's secrets come out of the vault. When the vault fails, everything stays where it was. */
+async function settle() {
+  const old = accounts.some((a) => SECRETS.some((f) => a[f]) || a.signer || a.appKey)
+  try {
+    if (accounts.some((a) => a.phrase && !a.custody)) {
+      const { address, custodyKey } = await import('./fc.ts')
+      const current = localStorage.getItem('quilcast:current')
+      for (const a of accounts) if (a.phrase && !a.custody) {
+        a.custody = address(await custodyKey(a.phrase))
+        if (current === a.phrase) localStorage.setItem('quilcast:current', a.custody)
+      }
+    }
+    // a tab still on an older version can add an account twice: one copy stays, with the later copy's values
+    const byId = new Map<string, Account>()
+    for (const a of accounts) byId.set(idOf(a), { ...byId.get(idOf(a)), ...a })
+    accounts = [...byId.values()]
+    for (const a of accounts) {
+      const s = await secretsOf(idOf(a))
+      known.set(idOf(a), s)
+      // a copy still in localStorage is newer than the vault's
+      for (const f of SECRETS) a[f] ||= s[f] as any
+      a.phrase ||= ''
+      // newEd reads a moved key back and makes it sign before the raw one goes
+      if (a.signer) await newEd(a.signer).then((k) => ((a.pub = hex(k.pub)), delete a.signer), () => {})
+      if (a.appKey) await newEd(a.appKey).then((k) => ((a.appPub = hex(k.pub)), delete a.appKey), () => {})
+    }
+    if (old) await persist().then(() => localStorage.removeItem('quilcast:account'))
+  } catch (e) {
+    // the app opens whatever happens here; what couldn't move stays where it was
+    console.error('vault', e)
+  }
+}
+await settle()
 // 0.19.2–0.20.3 lost accounts signed into with a phrase or wallet and marked the selected one done without an FID:
 // one with no keys at all goes, one still being set up goes back to its setup
-accounts = accounts.filter((a) => a.phrase || a.wallet).map((a) => (a.done && !a.fid ? { ...a, done: false } : a))
+accounts = accounts.filter((a) => a.custody || a.wallet).map((a) => (a.done && !a.fid ? { ...a, done: false } : a))
 export let account: Account | null = accounts.find((a) => idOf(a) === localStorage.getItem('quilcast:current')) || accounts[0] || null
 
-/** Save `a` (added or updated, matched by idOf) and select it; `null` removes the selected account. */
+/** Save `a` (added or updated, matched by idOf) and select it; `null` removes the selected account. Resolves once its
+ *  secrets are in the vault (or failed to get there and stayed in localStorage). */
 export const setAccount = (a: Account | null) => {
   // re-read first: another tab may have added or removed accounts since this one loaded
   const fresh = read<Account[]>('quilcast:accounts', [])
-  if (fresh.length || !legacy) accounts = fresh
+  if (fresh.length || !legacy) accounts = fresh.map(withSecrets)
+  const gone = a ? [] : accounts.filter((x) => account && idOf(x) === idOf(account))
   if (a) {
     const i = accounts.findIndex((x) => idOf(x) === idOf(a))
     i < 0 ? accounts.push(a) : (accounts[i] = a)
   } else accounts = accounts.filter((x) => !account || idOf(x) !== idOf(account))
   account = a || accounts.find((x) => x.done) || accounts[0] || null
-  save('quilcast:accounts', accounts)
+  const saved = persist(gone)
   account ? localStorage.setItem('quilcast:current', idOf(account)) : localStorage.removeItem('quilcast:current')
   localStorage.removeItem('quilcast:account')
   dispatchEvent(new Event('account'))
+  return saved
 }
 // another tab changed the accounts: take its list, and start over if it signed this account out
 addEventListener('storage', (e) => {
   if (e.key !== 'quilcast:accounts') return
-  accounts = read<Account[]>('quilcast:accounts', [])
+  accounts = read<Account[]>('quilcast:accounts', []).map(withSecrets)
   const mine = account && accounts.find((x) => idOf(x) === idOf(account!))
   if (account && !mine) return location.assign('/')
   account = mine || null
   dispatchEvent(new Event('account'))
+  // an account another tab added brings its secrets from the vault
+  for (const a of accounts)
+    if (!known.has(idOf(a))) secretsOf(idOf(a)).then((s) => (known.set(idOf(a), s), Object.assign(a, withSecrets(a)), dispatchEvent(new Event('account'))), () => {})
 })
 // a full reload is the simplest way to drop the previous account's feeds and likes
 /** Save changes to an account without selecting it (posting as another account renews that account's key). */
@@ -58,8 +135,8 @@ export const updateAccount = (a: Account) => {
   const saved = read<Account[]>('quilcast:accounts', accounts)
   // the selected account, or one this browser doesn't hold yet (signing in), is saved and selected
   if ((account && idOf(a) === idOf(account)) || !saved.some((x) => idOf(x) === idOf(a))) return setAccount(a)
-  accounts = saved.map((x) => (idOf(x) === idOf(a) ? a : x))
-  save('quilcast:accounts', accounts)
+  accounts = saved.map((x) => (idOf(x) === idOf(a) ? a : withSecrets(x)))
+  return persist()
 }
 // a full reload drops the previous account's feeds and likes; it stays on this page (a conversation is the account's
 // own, so that one goes back to the inbox)

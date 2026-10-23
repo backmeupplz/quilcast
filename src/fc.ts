@@ -5,6 +5,8 @@ import { ed25519 } from '@noble/curves/ed25519.js'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { blake3 } from '@noble/hashes/blake3.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
+import { HDKey } from '@scure/bip32'
+import type { Ed } from './keys.ts'
 
 export const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
 export const unhex = (s: string) => {
@@ -70,16 +72,34 @@ export const followBody = (fid: number) => pb([1, 'follow'], [3, fid])
 export const userDataBody = (type: number, value: string) => pb([1, type], [2, value])
 export const castRemoveBody = (hash: string) => pb([1, unhex(hash)])
 
+/** A raw ed25519 key as a signing key (tests, and accounts whose key the vault couldn't take). */
+export const rawEd = (priv: Uint8Array): Ed => ({ pub: ed25519.getPublicKey(priv), sign: async (m) => ed25519.sign(m, priv) })
+
 /** Sign MessageData with an ed25519 key, return the Message envelope and its hash. */
-export function envelope(type: number, fid: number, body: Uint8Array, signerPriv: Uint8Array) {
+export async function envelope(type: number, fid: number, body: Uint8Array, key: Ed) {
   const data = pb([1, type], [2, fid], [3, fcNow()], [4, 1], [BODY_FIELD[type], body])
   const hash = blake3(data, { dkLen: 20 })
   // hypersnap merges read `data` while hashing uses `data_bytes`: send both
-  const msg = pb([1, data], [2, hash], [3, 1], [4, ed25519.sign(hash, signerPriv)], [5, 1], [6, ed25519.getPublicKey(signerPriv)], [7, data])
+  const msg = pb([1, data], [2, hash], [3, 1], [4, await key.sign(hash)], [5, 1], [6, key.pub], [7, data])
   return { msg, hash: hex(hash) }
 }
 
 // --- Ethereum-style signing ---
+
+const keys = new Map<string, Promise<Uint8Array>>()
+/** Custody key derived the way Warpcast and Quorum do it (BIP-39 seed, m/44'/60'/0'/0/0), so phrases
+ *  move between apps. The seed's PBKDF2 runs in WebCrypto: native, async, and cached per phrase. */
+export function custodyKey(phrase: string) {
+  const p = phrase.trim().toLowerCase().split(/\s+/).join(' ').normalize('NFKD')
+  if (!keys.has(p))
+    keys.set(p, (async () => {
+      const enc = new TextEncoder()
+      const key = await crypto.subtle.importKey('raw', enc.encode(p), 'PBKDF2', false, ['deriveBits'])
+      const seed = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-512', salt: enc.encode('mnemonic'), iterations: 2048 }, key, 512)
+      return HDKey.fromMasterSeed(new Uint8Array(seed)).derive("m/44'/60'/0'/0/0").privateKey!
+    })())
+  return keys.get(p)!
+}
 
 const word = (v: number | bigint) => unhex(BigInt(v).toString(16).padStart(64, '0'))
 const kstr = (s: string) => keccak_256(utf8(s))
@@ -118,9 +138,9 @@ export const keyCustody = (priv: Uint8Array): Custody => ({
 const KEY_ADD_DOMAIN = { name: 'Farcaster KeyAdd', version: '1', chainId: 1 }
 const n = (name: string, type: string) => ({ name, type })
 
-/** KEY_ADD that registers `signerPriv` for `fid` without an on-chain tx (Hypersnap gasless signers). */
-export async function keyAdd(fid: number, custody: Custody, signerPriv: Uint8Array, nonce: number) {
-  const key = ed25519.getPublicKey(signerPriv)
+/** KEY_ADD that registers `signer` for `fid` without an on-chain tx (Hypersnap gasless signers). */
+export async function keyAdd(fid: number, custody: Custody, signer: Ed, nonce: number) {
+  const key = signer.pub
   // Hypersnap checks the deadline against the message timestamp, so it counts from the same epoch
   const deadline = fcNow() + 3600
   const ttl = 90 * 86400
@@ -136,7 +156,7 @@ export async function keyAdd(fid: number, custody: Custody, signerPriv: Uint8Arr
     types: { KeyAdd: [n('fid', 'uint256'), n('key', 'bytes'), n('keyType', 'uint32'), n('scopes', 'uint32[]'), n('ttl', 'uint32'), n('nonce', 'uint32'), n('deadline', 'uint256')] },
     message: { fid, key: '0x' + hex(key), keyType: 1, scopes: SCOPES, ttl, nonce, deadline },
   })
-  return envelope(MT.KEY_ADD, fid, pb([1, key], [2, 1], [3, custodySig], [4, deadline], [5, nonce], [6, metadata], [7, 1], [9, SCOPES], [10, ttl]), signerPriv)
+  return envelope(MT.KEY_ADD, fid, pb([1, key], [2, 1], [3, custodySig], [4, deadline], [5, nonce], [6, metadata], [7, 1], [9, SCOPES], [10, ttl]), signer)
 }
 
 // Farcaster's key contracts on Optimism, for the one on-chain key mini app webhooks are signed with
@@ -173,8 +193,8 @@ export function base58(b: Uint8Array) {
 }
 
 /** KEY_REMOVE signed by the signer itself (Hypersnap self-revocation): no custody signature needed. */
-export const keyRemoveSelf = (fid: number, signerPriv: Uint8Array, nonce: number) =>
-  envelope(MT.KEY_REMOVE, fid, pb([1, ed25519.getPublicKey(signerPriv)], [3, 2], [4, fcNow() + 3600], [5, nonce]), signerPriv)
+export const keyRemoveSelf = (fid: number, signer: Ed, nonce: number) =>
+  envelope(MT.KEY_REMOVE, fid, pb([1, signer.pub], [3, 2], [4, fcNow() + 3600], [5, nonce]), signer)
 
 /** Signature the fname server wants to assign `name` to the custody address. */
 export async function fnameProof(name: string, timestamp: number, custody: Custody) {

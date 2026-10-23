@@ -3,7 +3,7 @@ import { test } from 'node:test'
 
 test('a wallet signs exactly what the phrase key would, switching to the chain each signature is for', async () => {
   const { privateKeyToAccount } = await import('viem/accounts')
-  const { fnameProof, hex, keyAdd, keyCustody } = await import('./fc.ts')
+  const { fnameProof, hex, keyAdd, keyCustody, rawEd } = await import('./fc.ts')
   const priv = new Uint8Array(32).fill(7)
   const acct = privateKeyToAccount(`0x${hex(priv)}`)
   // a stand-in EIP-1193 wallet that, like MetaMask, refuses typed data for a chain other than the one it's on
@@ -36,7 +36,7 @@ test('a wallet signs exactly what the phrase key would, switching to the chain e
   const now = Date.now
   Date.now = () => 1792500000000
   try {
-    const signer = new Uint8Array(32).fill(9)
+    const signer = rawEd(new Uint8Array(32).fill(9))
     assert.equal(hex((await keyAdd(3, wallet, signer, 5)).msg), hex((await keyAdd(3, key, signer, 5)).msg))
     assert.deepEqual(await fnameProof('alice', 1792500000, wallet), await fnameProof('alice', 1792500000, key))
     const login = new TextEncoder().encode('{"method":"generateToken","params":{"expiresAt":2,"timestamp":1}}')

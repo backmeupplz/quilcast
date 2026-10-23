@@ -909,16 +909,17 @@ function Settings() {
         return setOut('stuck')
       }
     }
-    setAccount(null)
+    // the keys are erased before leaving, so nothing is left half-deleted
+    await setAccount(null)
     location.assign('/')
   }
+  // the signing key can't leave the browser (the vault won't give it out, and a new one is a sign-in away), so the
+  // file holds what the account itself is: its recovery phrase and custody key
   const exportKeys = async () => {
-    const [m, fc] = await Promise.all([w(), import('./fc.ts')])
+    const fc = await import('./fc.ts')
     const acc = account!
-    // a wallet account has no phrase or custody key here, only its signer
-    const custody = acc.wallet ? undefined : await m.custodyKey(acc.phrase)
-    const keys = custody ? { recoveryPhrase: acc.phrase, custodyAddress: fc.address(custody), custodyPrivateKey: '0x' + fc.hex(custody) } : { custodyAddress: acc.wallet }
-    const data = { fid: acc.fid, username: acc.username, ...keys, signerPrivateKey: acc.signer && '0x' + acc.signer }
+    const custody = await fc.custodyKey(acc.phrase)
+    const data = { fid: acc.fid, username: acc.username, recoveryPhrase: acc.phrase, custodyAddress: fc.address(custody), custodyPrivateKey: '0x' + fc.hex(custody) }
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })), download: `quilcast-${acc.username || acc.fid}-keys.json` })
     a.click()
     URL.revokeObjectURL(a.href)
@@ -1005,14 +1006,14 @@ function Settings() {
             <h2>{t('Keys')}</h2>
             {account.wallet ? (
               <p class="hint"><With s={t('This account belongs to the wallet {wallet}, which keeps its own keys. Quilcast only holds a signing key for this browser.')} k="wallet"><code>{account.wallet}</code></With></p>
-            ) : (
+            ) : account.phrase && (
               <>
                 <p class="hint">{t('Your recovery phrase controls your account and also works in Quorum and Warpcast. It lives only in this browser, so keep a copy somewhere safe.')}</p>
                 <div class="setting"><span>{t('Recovery phrase')}</span><span class="btns"><button class="btn ghost small" onClick={() => setPhrase(!phrase)}>{phrase ? t('Hide') : t('Show')}</button><button class="btn ghost small" onClick={() => navigator.clipboard.writeText(account!.phrase).then(() => toast('Copied'))}>{t('Copy')}</button></span></div>
                 {phrase && <code class="phrase">{account.phrase}</code>}
               </>
             )}
-            <div class="setting"><span>{account.wallet ? t('Signing key as a file') : t('All keys as a file')}</span><button class="btn ghost small" onClick={exportKeys}>{t('Export')}</button></div>
+            {account.phrase && <div class="setting"><span>{t('All keys as a file')}</span><button class="btn ghost small" onClick={exportKeys}>{t('Export')}</button></div>}
             {account.dm && <div class="setting"><span>{t('Key to your messages on farcaster.xyz')}</span><button class="btn ghost small" onClick={() => (setAccount({ ...account!, dm: undefined }), import('./dms.ts').then((m) => m.stop()))}>{t('Forget')}</button></div>}
             <div class="setting"><span>{account.username ? t('Sign out of @{username}', { username: account.username }) : t('Sign out')}</span><button class="btn danger small" disabled={out === 'busy'} onClick={signOut}>{out === 'busy' ? t('Signing out…') : out === 'stuck' ? t('Sign out anyway') : out ? t('Erase keys?') : t('Sign out')}</button></div>
             {out && <p class="hint">{account.wallet ? t('This removes the account and its signing key from this browser. Your wallet is not affected.') : t('This erases the recovery phrase from this browser. Export your keys first if it\'s your only copy.')}</p>}

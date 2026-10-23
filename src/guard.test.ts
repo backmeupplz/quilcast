@@ -47,3 +47,25 @@ test('Sign In With Farcaster takes nothing from the app it does not check', () =
   assert.throws(() => siwf({ origin: 'https://app.example', address: me, fid: 42, nonce: 'abcdefgh\nResources:\n- farcaster://fid/1' }))
   assert.throws(() => siwf({ origin: 'https://app.example', address: me, fid: 42, nonce: 'abcdefgh', notBefore: 'soon\nURI: https://evil' }))
 })
+
+test('token calls and typed data that hand tokens over are spelled out', async () => {
+  const { encodeFunctionData, erc20Abi, erc721Abi, maxUint256 } = await import('viem')
+  const { tokenCall, typedRisk, UNLIMITED } = await import('./guard.ts')
+  const spender = '0x' + 'de'.repeat(20)
+  const approve = tokenCall(encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [spender as `0x${string}`, maxUint256] }))
+  assert.deepEqual(approve, { kind: 'approve', args: [spender, maxUint256] })
+  assert.ok((approve!.args[1] as bigint) >= UNLIMITED)
+  assert.deepEqual(tokenCall(encodeFunctionData({ abi: erc721Abi, functionName: 'setApprovalForAll', args: [spender as `0x${string}`, true] })), { kind: 'approveAll', args: [spender, true] })
+  assert.deepEqual(tokenCall(encodeFunctionData({ abi: erc20Abi, functionName: 'transfer', args: [spender as `0x${string}`, 5n] })), { kind: 'transfer', args: [spender, 5n] })
+  assert.deepEqual(tokenCall(encodeFunctionData({ abi: erc721Abi, functionName: 'safeTransferFrom', args: [me as `0x${string}`, spender as `0x${string}`, 7n, '0x1234'] })), { kind: 'move', args: [me, spender, 7n] })
+  const permit2 = [{ type: 'function', name: 'approve', inputs: [{ type: 'address' }, { type: 'address' }, { type: 'uint160' }, { type: 'uint48' }], outputs: [], stateMutability: 'nonpayable' }] as const
+  assert.deepEqual(tokenCall(encodeFunctionData({ abi: permit2, functionName: 'approve', args: [me as `0x${string}`, spender as `0x${string}`, 2n ** 160n - 1n, 1900000000] })), { kind: 'approve2', args: [me, spender, 2n ** 160n - 1n, 1900000000n] })
+  // anything else, or cut short, is left as bytes
+  assert.equal(tokenCall('0xdeadbeef' + '00'.repeat(64)), undefined)
+  assert.equal(tokenCall('0x095ea7b3' + '00'.repeat(40)), undefined)
+  assert.equal(tokenCall(undefined), undefined)
+  assert.deepEqual(typedRisk({ primaryType: 'Permit', domain: { name: 'USD Coin' }, message: { spender } }), { kind: 'permit', spender })
+  assert.deepEqual(typedRisk({ primaryType: 'PermitSingle', domain: { name: 'Permit2' }, message: { spender } }), { kind: 'permit', spender })
+  assert.deepEqual(typedRisk({ primaryType: 'OrderComponents', domain: { name: 'Seaport' } }), { kind: 'listing' })
+  assert.equal(typedRisk({ primaryType: 'Mail', domain: { name: 'Ether Mail' } }), undefined)
+})

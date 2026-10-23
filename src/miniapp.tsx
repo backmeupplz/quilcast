@@ -10,7 +10,7 @@ import { arbitrum, base, baseSepolia, celo, degen, mainnet, monad, optimism, pol
 import { lang, t } from './i18n.ts'
 import { account, getUser, go, myUser, read, safeUrl, save, setAccount, type Cast, type User } from './api.ts'
 import { base58, hex } from './fc.ts'
-import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, WALLET_READS } from './guard.ts'
+import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
 import { castText, LOGO } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
 import { askPush, channelOf, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl } from './ui.tsx'
@@ -92,7 +92,7 @@ const remembered = (app: App) => {
 
 export type AppMeta = { url: string; name?: string; icon?: string; splash?: string; bg?: string }
 type Notice = { notificationId: string; title: string; body: string }
-type Ask = { title: string; body: string; yes: string; extra?: () => ComponentChildren; done: (ok: boolean) => void }
+type Ask = { title: string; body: string; yes: string; extra?: () => ComponentChildren; at: number; done: (ok: boolean) => void }
 type App = {
   id: number; url: string; origin: string; host: string; name: string; icon?: string; bg?: string
   cast?: Cast; embed?: string; from?: string; notification?: Notice; frame?: HTMLIFrameElement; ready: boolean
@@ -155,10 +155,10 @@ const foreground = (app: App) => {
   if (shown !== app.id || document.hidden) throw rpcError(4100, `Open ${app.name} to continue.`)
 }
 /** Ask the person something on top of the app; resolves true for the yes button. */
-const ask = (app: App, a: Omit<Ask, 'done'>) =>
+const ask = (app: App, a: Omit<Ask, 'done' | 'at'>) =>
   new Promise<boolean>((resolve) => {
     if (app.ask) return resolve(false)
-    app.ask = { ...a, done: (ok) => ((app.ask = undefined), update(), resolve(ok)) }
+    app.ask = { ...a, at: Date.now(), done: (ok) => ((app.ask = undefined), update(), resolve(ok)) }
     update()
   })
 async function waitFor<T>(app: App, label: string, f: () => Promise<T>) {
@@ -338,10 +338,12 @@ const batches = new Map<string, { chain: number; hashes: `0x${string}`[] }>()
 const textOf = (m: string) => {
   if (!/^0x([0-9a-f]{2})*$/i.test(m)) return m
   const s = new TextDecoder('utf-8', { fatal: false }).decode(Uint8Array.from(m.slice(2).match(/../g) || [], (h) => parseInt(h, 16)))
-  return /[\u0000-\u0008\u000e-\u001f]/.test(s) ? m : s
+  // bytes that aren't text (control characters, or not UTF-8 at all) stay hex
+  return /[\u0000-\u0008\u000e-\u001f\ufffd]/.test(s) ? m : s
 }
-const Preview = ({ rows, text }: { rows: [string, string][]; text?: string }) => (
+const Preview = ({ rows, text, warn }: { rows: [string, string][]; text?: string; warn?: string }) => (
   <div class="sign-preview">
+    {warn && <p class="warn">{warn}</p>}
     {rows.map(([k, v]) => <div class="sign-row"><span>{k}</span><b>{v}</b></div>)}
     {text && <pre>{text.length > 4000 ? text.slice(0, 4000) + '…' : text}</pre>}
   </div>
@@ -362,20 +364,34 @@ async function local(app: App, w: Wallet, method: string, params: any[]): Promis
   foreground(app)
   const site = SIGNS.has(method) ? checkWallet(app.host, w.address!, method, params) : undefined
   if (site && !(await confirmSite(app, site))) throw declined()
-  const who: [string, string][] = [[t('Wallet'), `${w.name} · ${short(w.address!)}`], [t('Network'), chain.name]]
+  const wallet: [string, string] = [t('Wallet'), `${w.name} · ${short(w.address!)}`]
   const money = (v: unknown) => `${formatUnits(BigInt((v as string) || 0), chain.nativeCurrency.decimals)} ${chain.nativeCurrency.symbol}`
-  const ok = (title: string, rows: [string, string][], text?: string, yes = t('Sign')) =>
-    ask(app, { title, body: t('{host} asks the Quilcast wallet for this. Only approve what you expect.', { host: app.host }), yes, extra: () => <Preview rows={[...who, ...rows]} text={text} /> })
+  const ok = (title: string, rows: [string, string][], o: { text?: string; warn?: string; yes?: string } = {}) =>
+    ask(app, { title, body: t('{host} asks the Quilcast wallet for this. Only approve what you expect.', { host: app.host }), yes: o.yes || t('Sign'), extra: () => <Preview rows={[wallet, ...rows]} text={o.text} warn={o.warn} /> })
+  const take = t('This lets someone else take your tokens without asking again.')
   const m = await vault()
   if (method === 'personal_sign') {
     const msg = String(params[0] ?? '')
-    if (!(await ok(t('Sign a message?'), [], textOf(msg)))) throw declined()
+    const text = textOf(msg)
+    // bytes that aren't text (a hash, say) can be a signature for anything
+    const blind = text === msg && /^0x./i.test(msg)
+    if (!(await ok(t('Sign a message?'), [], { text, warn: blind ? t("This message can't be read. Only sign it if you know exactly what it is.") : undefined }))) throw declined()
     return (await m.signerOf(w.local!)).signMessage({ message: /^0x([0-9a-f]{2})*$/i.test(msg) ? { raw: msg as `0x${string}` } : msg })
   }
   if (method === 'eth_signTypedData_v4') {
     const data = typeof params[1] === 'string' ? JSON.parse(params[1]) : params[1]
     const { EIP712Domain: _, ...types } = data?.types || {}
-    if (!(await ok(t('Sign this data?'), [[t('Site'), String(data?.domain?.name || app.host)], [t('Type'), String(data?.primaryType)]], JSON.stringify(data?.message, null, 2)))) throw declined()
+    // the domain's name is whatever the app wrote, so it's shown as the contract's name next to its address, not as a site
+    const d = data?.domain || {}
+    const risk = typedRisk(data)
+    const rows: [string, string][] = [
+      [t('Contract'), [d.name, d.verifyingContract && short(String(d.verifyingContract))].filter(Boolean).join(' · ') || '?'],
+      ...(d.chainId !== undefined ? [[t('Network'), CHAINS[Number(d.chainId)]?.name || String(d.chainId)] as [string, string]] : []),
+      [t('Type'), String(data?.primaryType)],
+      ...(risk?.spender ? [[t('Approves'), short(risk.spender)] as [string, string]] : []),
+    ]
+    const warn = risk?.kind === 'permit' ? take : risk?.kind === 'listing' ? t('This puts your NFTs up for sale. Check the price before you sign.') : undefined
+    if (!(await ok(t('Sign this data?'), rows, { text: JSON.stringify(data?.message, null, 2), warn }))) throw declined()
     return (await m.signerOf(w.local!)).signTypedData({ domain: data.domain, types, primaryType: data.primaryType, message: data.message })
   }
   const send = async (txs: { to?: string; data?: string; value?: string; gas?: string }[]) => {
@@ -385,20 +401,36 @@ async function local(app: App, w: Wallet, method: string, params: any[]): Promis
     for (const tx of txs) hashes.push(await client.sendTransaction({ chain, to: tx.to as `0x${string}`, data: tx.data as `0x${string}` | undefined, value: BigInt(tx.value || 0), ...(tx.gas && { gas: BigInt(tx.gas) }) }))
     return hashes
   }
-  const describe = (tx: { to?: string; data?: string; value?: string }): [string, string][] => [
-    [t('To'), tx.to ? short(tx.to) : t('New contract')], [t('Amount'), money(tx.value)], ...(tx.data && tx.data !== '0x' ? [[t('Data'), t('{n} bytes', { n: (tx.data.length - 2) / 2 })] as [string, string]] : []),
-  ]
+  // a token call is spelled out (who gets what, who may take what), since "68 bytes" hides an unlimited approval
+  const describe = async (tx: { to?: string; data?: string; value?: string }): Promise<{ rows: [string, string][]; warn?: string }> => {
+    const c = tokenCall(tx.data)
+    const value: [string, string][] = c && !BigInt(tx.value || 0) ? [] : [[t('Amount'), money(tx.value)]]
+    if (!c || (c.kind === 'approveAll' && !c.args[1]))
+      return { rows: [[t('To'), tx.to ? short(tx.to) : t('New contract')], ...value, ...(tx.data && tx.data !== '0x' ? [[t('Data'), t('{n} bytes', { n: (tx.data.length - 2) / 2 })] as [string, string]] : [])] }
+    const at = String(c.kind === 'approve2' ? c.args[0] : tx.to)
+    const tk = await info({ chain: app.chain, address: at as `0x${string}` }).catch(() => null)
+    // an approval this big is for everything you'll ever hold; a transfer's number is what moves (an NFT's id, say)
+    const amount = (n: unknown, cap = false) => (cap && (n as bigint) >= UNLIMITED ? t('Unlimited') : tk ? fmt(n as bigint, tk) : String(n))
+    const token: [string, string] = [t('Token'), tk ? `${tk.symbol} · ${short(at)}` : short(at)]
+    const [a, b, n] = c.kind === 'approve2' ? c.args.slice(1) : c.args
+    if (c.kind === 'transfer') return { rows: [token, [t('Sends'), amount(b)], [t('To'), short(String(a))], ...value] }
+    if (c.kind === 'move') return { rows: [token, [t('Sends'), amount(n)], [t('From'), short(String(a))], [t('To'), short(String(b))], ...value] }
+    // an approval of 0 takes one back
+    return { rows: [token, [t('Approves'), short(String(a))], [t('Up to'), c.kind === 'approveAll' ? t('Unlimited') : amount(b, true)], ...value], warn: c.kind === 'approveAll' || (b as bigint) > 0n ? take : undefined }
+  }
   if (method === 'eth_sendTransaction') {
     const tx = params[0] || {}
-    if (!(await ok(t('Send this transaction?'), describe(tx), undefined, t('Send')))) throw declined()
+    const { rows, warn } = await describe(tx)
+    if (!(await ok(t('Send this transaction?'), [[t('Network'), chain.name], ...rows], { warn, yes: t('Send') }))) throw declined()
     return (await waitFor(app, t('Sending…'), () => send([tx])))[0]
   }
   if (method === 'wallet_sendCalls') {
-    const list = Array.isArray(params[0]?.calls) ? params[0].calls : []
+    const list: any[] = Array.isArray(params[0]?.calls) ? params[0].calls : []
     if (!list.length) throw rpcError(-32602, 'No calls.')
     if (params[0]?.chainId && Number(params[0].chainId) !== app.chain) throw rpcError(4901, 'Switch to that chain first.')
-    const rows = list.flatMap((c: any, i: number) => describe(c).map(([k, v]) => [`${i + 1}. ${k}`, v] as [string, string]))
-    if (!(await ok(list.length > 1 ? t('Send {n} transactions?', { n: list.length }) : t('Send this transaction?'), rows, undefined, t('Send')))) throw declined()
+    const each = await Promise.all(list.map(describe))
+    const rows = each.flatMap((d, i) => d.rows.map(([k, v]) => [`${i + 1}. ${k}`, v] as [string, string]))
+    if (!(await ok(list.length > 1 ? t('Send {n} transactions?', { n: list.length }) : t('Send this transaction?'), [[t('Network'), chain.name], ...rows], { warn: each.find((d) => d.warn)?.warn, yes: t('Send') }))) throw declined()
     const hashes = await waitFor(app, t('Sending…'), () => send(list))
     const id = crypto.randomUUID()
     batches.set(id, { chain: app.chain, hashes })
@@ -879,7 +911,9 @@ function AskCard({ app }: { app: App }) {
         {a.extra?.()}
         <div class="btns">
           <button class="btn ghost small" onClick={() => a.done(false)}>{t('Cancel')}</button>
-          <button class="btn small" onClick={() => a.done(true)}>{a.yes}</button>
+          {/* the yes button ignores clicks for its first second, so an app can't time a click (or the second half of a
+              double-click it asked for) onto it */}
+          <button class="btn small arm" onClick={() => Date.now() - a.at > 1000 && a.done(true)}>{a.yes}</button>
         </div>
       </div>
     </div>
