@@ -69,7 +69,7 @@ export const FX = ['snow', 'flakes', 'rain', 'storm', 'leaves', 'sakura', 'confe
   'meteors', 'fireworks', 'matrix', 'money', 'pizza', 'balloons', 'bats', 'ghosts', 'spooky', 'butterflies', 'notes', 'emoji', 'trail'] as const
 export type Fx = (typeof FX)[number]
 // the boxes a sticker can sit on; its place is a share of that box, so it lands on the same spot on any screen
-export const STICKER_AT = ['head', 'song', 'about', 'meet', 'int', 'top', 'wall'] as const
+export const STICKER_AT = ['head', 'song', 'amp', 'about', 'meet', 'int', 'top', 'wall'] as const
 export type Sticker = { src: string; at: (typeof STICKER_AT)[number]; x: number; y: number; w: number; r?: number }
 export const INTERESTS = { general: 'General', music: 'Music', movies: 'Movies', tv: 'Television', books: 'Books', heroes: 'Heroes' } as const
 
@@ -84,10 +84,36 @@ export type Look = {
   top?: number[]; topTitle?: string
   wall?: string[]; wallTitle?: string
   song?: { id: string; start?: number; title?: string }
+  amp?: Amp
   fx?: Fx
   stickers?: Sticker[]
 }
-export const LIMITS = { about: 1500, meet: 600, interest: 300, mood: 60, title: 40, top: 8, wall: 12, songTitle: 100, stickers: 16 }
+export const LIMITS = { about: 1500, meet: 600, interest: 300, mood: 60, title: 40, top: 8, wall: 12, songTitle: 100, stickers: 16, amp: 50 }
+
+// Winamp on the profile (src/amp.tsx): YouTube videos and playlists played as audio in a skin from the Winamp Skin
+// Museum (skins.webamp.org, by the skin file's md5). `on` shows it; the list stays while it's off.
+export type AmpItem = { id: string; pl?: 1; title?: string }
+export type Amp = { on?: true; skin?: string; list: AmpItem[] }
+/** A YouTube link (watch, youtu.be, shorts, embed, playlist) as a Winamp list item; a link with a playlist is the playlist. */
+export function ampItem(s: string): AmpItem | undefined {
+  const pl = s.match(/[?&]list=([\w-]{12,64})/)?.[1]
+  if (pl) return { id: pl, pl: 1 }
+  const id = (s.match(/(?:youtu\.be\/|[?&]v=|\/(?:embed|shorts|live)\/)([\w-]{11})/) || s.trim().match(/^([\w-]{11})$/))?.[1]
+  return id ? { id } : undefined
+}
+const cleanAmp = (o: any): Amp | undefined => {
+  if (!o || typeof o !== 'object' || !Array.isArray(o.list)) return
+  const seen = new Set<string>()
+  const list = o.list.flatMap((x: any): AmpItem[] => {
+    const pl = x?.pl === 1
+    if (typeof x?.id !== 'string' || !(pl ? /^[\w-]{12,64}$/ : /^[\w-]{11}$/).test(x.id) || seen.has(x.id)) return []
+    seen.add(x.id)
+    const title = text(x.title, LIMITS.songTitle)
+    return [{ id: x.id, ...(pl ? { pl: 1 as const } : {}), ...(title ? { title } : {}) }]
+  }).slice(0, LIMITS.amp)
+  if (!list.length) return
+  return { ...(o.on === true ? { on: true as const } : {}), ...(typeof o.skin === 'string' && /^[0-9a-f]{32}$/.test(o.skin) ? { skin: o.skin } : {}), list }
+}
 
 // images only from the GIF search (Tenor), Farcaster's image CDN, and our own uploads; nothing in these can break
 // out of a CSS url("…")
@@ -131,7 +157,7 @@ export function cleanLook(x: unknown): Look {
     topTitle: text(o.topTitle, LIMITS.title),
     wall: Array.isArray(o.wall) ? [...new Set(o.wall.filter(isLookImg))].slice(0, LIMITS.wall) as string[] : undefined,
     wallTitle: text(o.wallTitle, LIMITS.title),
-    song, fx: pick(o.fx, FX),
+    song, amp: cleanAmp(o.amp), fx: pick(o.fx, FX),
     stickers: Array.isArray(o.stickers) ? o.stickers.flatMap((x: any): Sticker[] => {
       const [px, py, w, r] = [num(x?.x, 0, 100), num(x?.y, 0, 100), num(x?.w, 4, 80), num(x?.r, -180, 180)]
       if (!isLookImg(x?.src) || !STICKER_AT.includes(x.at) || px === undefined || py === undefined || w === undefined) return []

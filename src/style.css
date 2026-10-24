@@ -1122,3 +1122,105 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .mute-words .chip button { display: inline-flex; border: 0; background: none; padding: 0; margin-right: -4px; color: var(--muted); }
 .mute-who { display: flex; align-items: center; gap: 10px; min-width: 0; color: inherit; }
 .settings h3 { font-size: 14px; margin: 14px 0 2px; }
+
+/* Winamp (src/amp.tsx): every part is a sprite from the skin's sheets (--s-<sheet>), at Webamp's places */
+.wa-yt { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; border: 0; opacity: 0; pointer-events: none; }
+.wa { position: relative; width: 275px; font-size: 0; line-height: 0; image-rendering: pixelated; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.wa i { display: block; font-style: normal; }
+.wa button { all: unset; position: absolute; display: block; cursor: default; }
+.wa button:focus-visible { outline: 1px dotted #fff; }
+.wa-main, .wa-main > * { position: absolute; }
+.wa-main { position: relative; width: 275px; height: 116px; background: var(--s-main) 0 0; }
+.wa-tb { left: 0; top: 0; width: 275px; height: 14px; background: var(--s-titlebar) -27px 0; touch-action: none; }
+.wa-tb button, .wa-sh > .wa-min, .wa-sh > .wa-unshade, .wa-sh > .wa-close { top: 3px; width: 9px; height: 9px; background-image: var(--s-titlebar); }
+.wa .wa-min { left: 244px; background-position: -9px 0; } .wa .wa-min:active { background-position: -9px -9px; }
+.wa .wa-shade { left: 254px; background-position: 0 -18px; } .wa .wa-shade:active { background-position: -9px -18px; }
+.wa .wa-unshade { left: 254px; background-position: 0 -27px; } .wa .wa-unshade:active { background-position: -9px -27px; }
+.wa .wa-close { left: 264px; background-position: -18px 0; } .wa .wa-close:active { background-position: -18px -9px; }
+.wa-clutter { left: 10px; top: 22px; width: 8px; height: 43px; background: var(--s-titlebar) -304px 0; }
+.wa-st { left: 26px; top: 28px; width: 9px; height: 9px; background: var(--s-playpaus) 0 0; }
+.wa[data-st=pause] .wa-st { background-position: -9px 0; } .wa[data-st=stop] .wa-st { background-position: -18px 0; }
+.wa-work { left: 24px; top: 28px; width: 3px; height: 9px; background: var(--s-playpaus) -36px 0; }
+.wa-time { left: 39px; top: 26px; width: 59px; height: 13px; }
+.wa[data-st=stop] .wa-time { display: none; }
+.wa[data-st=pause] .wa-time { animation: wa-blink 2s step-start 1s infinite; }
+@keyframes wa-blink { 50% { visibility: hidden; } }
+.wa-d { position: absolute; top: 0; width: 9px; height: 13px; background-image: var(--s-num); }
+.wa-d.d0 { left: 9px; } .wa-d.d1 { left: 21px; } .wa-d.d2 { left: 39px; } .wa-d.d3 { left: 51px; }
+.wa-vis { left: 24px; top: 43px; width: 76px; height: 16px; }
+.wa-marquee { left: 111px; top: 27px; width: 154px; height: 6px; overflow: hidden; }
+.wa-mq, .wa-mq > span, .wa-sh-time { display: flex; white-space: nowrap; }
+.wa .wa-ch { flex: none; width: 5px; height: 6px; background-image: var(--s-text); }
+.wa .wa-u { flex: none; font: 7px/6px Arial, sans-serif; color: var(--wa-fg); }
+.wa-mono { left: 212px; top: 41px; width: 27px; height: 12px; background: var(--s-monoster) -29px -12px; }
+.wa-stereo { left: 239px; top: 41px; width: 29px; height: 12px; background: var(--s-monoster) 0 -12px; } .wa-stereo.on { background-position: 0 0; }
+.wa-vol { left: 107px; top: 57px; width: 68px; height: 13px; background: var(--s-volume) 0 0; touch-action: none; }
+.wa-bal { left: 177px; top: 57px; width: 38px; height: 13px; background: var(--s-balance) -9px 0; }
+.wa-vol i, .wa-bal i { position: absolute; top: 1px; width: 14px; height: 11px; background: var(--s-volume) -15px -422px; }
+.wa-vol:active i { background-position: 0 -422px; }
+.wa-bal i { left: 12px; background-image: var(--s-balance); }
+.wa-eqb { left: 219px; top: 58px; width: 23px; height: 12px; background: var(--s-shufrep) 0 -61px; }
+.wa .wa-plb { left: 242px; top: 58px; width: 23px; height: 12px; background: var(--s-shufrep) -23px -61px; } .wa .wa-plb.on { background-position: -23px -73px; }
+.wa-pos { left: 16px; top: 72px; width: 248px; height: 10px; background: var(--s-posbar) 0 0; touch-action: none; }
+.wa-pos i { position: absolute; top: 0; width: 29px; height: 10px; background: var(--s-posbar) -248px 0; } .wa-pos:active i { background-position: -278px 0; }
+.wa .wa-btn { top: 88px; width: 23px; height: 18px; background-image: var(--s-cbuttons); }
+.wa .wa-prev { left: 16px; background-position: 0 0; } .wa .wa-prev:active { background-position: 0 -18px; }
+.wa .wa-play { left: 39px; background-position: -23px 0; } .wa .wa-play:active { background-position: -23px -18px; }
+.wa .wa-pause { left: 62px; background-position: -46px 0; } .wa .wa-pause:active { background-position: -46px -18px; }
+.wa .wa-stop { left: 85px; background-position: -69px 0; } .wa .wa-stop:active { background-position: -69px -18px; }
+.wa .wa-next { left: 108px; width: 22px; background-position: -92px 0; } .wa .wa-next:active { background-position: -92px -18px; }
+.wa .wa-eject { left: 136px; top: 89px; width: 22px; height: 16px; background: var(--s-cbuttons) -114px 0; } .wa .wa-eject:active { background-position: -114px -16px; }
+.wa .wa-shuf { left: 164px; top: 89px; width: 47px; height: 15px; background: var(--s-shufrep) -28px 0; } .wa .wa-shuf:active { background-position: -28px -15px; }
+.wa .wa-shuf.on { background-position: -28px -30px; } .wa .wa-shuf.on:active { background-position: -28px -45px; }
+.wa .wa-rep { left: 210px; top: 89px; width: 28px; height: 15px; background: var(--s-shufrep) 0 0; } .wa .wa-rep:active { background-position: 0 -15px; }
+.wa .wa-rep.on { background-position: 0 -30px; } .wa .wa-rep.on:active { background-position: 0 -45px; }
+/* the playlist: corners from PLEDIT.BMP, edges from the tiles cut out of it (src/skin.ts) */
+.wa-pl { position: relative; width: 275px; height: 174px; }
+.wa-pl > div { position: absolute; left: 0; width: 275px; }
+.wa-pl i { position: absolute; }
+.wa-pl-top { top: 0; height: 20px; background: var(--s-top) repeat-x; touch-action: none; }
+.wa-pl-top .l { left: 0; width: 25px; height: 20px; background: var(--s-pledit) 0 0; }
+.wa-pl-top .t { left: 87px; width: 100px; height: 20px; background: var(--s-pledit) -26px 0; }
+.wa-pl-top .r { right: 0; width: 25px; height: 20px; background: var(--s-pledit) -153px 0; }
+.wa .wa-pl-x { right: 2px; top: 3px; width: 9px; height: 9px; }
+.wa .wa-pl-x:active { background: var(--s-pledit) -52px -42px; }
+.wa-pl-mid { top: 20px; height: 116px; }
+.wa-pl-mid .l { left: 0; top: 0; width: 12px; height: 116px; background: var(--s-left) repeat-y; }
+.wa-pl-mid .r { right: 0; top: 0; width: 20px; height: 116px; background: var(--s-right) repeat-y; }
+.wa-pl-thumb { right: 7px; width: 8px; height: 18px; background: var(--s-pledit) -52px -53px; }
+.wa-rows { position: absolute; left: 12px; top: 0; width: 243px; height: 116px; box-sizing: border-box; padding: 3px 0; overflow-y: auto; scrollbar-width: none; background: var(--wa-bg); }
+.wa-rows::-webkit-scrollbar { display: none; }
+.wa .wa-row { position: static; display: flex; gap: 6px; width: 100%; box-sizing: border-box; padding: 0 3px; font: 9px/13px var(--wa-font); letter-spacing: 0.5px; color: var(--wa-fg); white-space: nowrap; }
+.wa .wa-row span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wa .wa-row.sub { padding-left: 14px; }
+.wa .wa-row.cur { color: var(--wa-cur); }
+.wa-pl-bot { bottom: 0; height: 38px; background: var(--s-bottom) repeat-x; }
+.wa-pl-bot .l { left: 0; width: 125px; height: 38px; background: var(--s-pledit) 0 -72px; }
+.wa-pl-bot .r { right: 0; width: 150px; height: 38px; background: var(--s-pledit) -126px -72px; }
+/* windowshade mode: the bar at the bottom of the app */
+.wa-sh { position: relative; width: 275px; height: 14px; background: var(--s-titlebar) -27px -29px; }
+.wa-sh-time { position: absolute; left: 127px; top: 4px; }
+.wa .wa-sp { top: 2px; height: 10px; }
+/* the bar is small on a phone, so its buttons take taps a little above and below themselves */
+.wa-sh button::after { content: ""; position: absolute; inset: -5px 0; }
+.wa-sh-pos { position: absolute; left: 226px; top: 4px; width: 17px; height: 7px; background: var(--s-titlebar) 0 -36px; }
+.wa-sh-pos i { position: absolute; top: 0; width: 3px; height: 7px; background: var(--s-titlebar) -20px -36px; }
+.wa-bar { position: fixed; z-index: 11; left: 50%; bottom: 16px; translate: -50% 0; box-shadow: 0 6px 20px rgb(0 0 0 / 0.35); }
+.wa-float { position: fixed; z-index: 32; box-shadow: 0 10px 40px rgb(0 0 0 / 0.4); }
+body:has(.wa-bar) .dock { bottom: 64px; }
+body:has(.wa-bar) .space-bar { bottom: 64px; }
+.wa-in { display: flex; justify-content: center; }
+.wa-wait { height: 290px; }
+@media (max-width: 699px) {
+  .wa-bar { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  body:has(.wa-bar) .dock { bottom: calc(108px + env(safe-area-inset-bottom)); }
+  body:has(.wa-bar) .space-bar { bottom: calc(108px + env(safe-area-inset-bottom)); }
+}
+.lk-amp { padding: 12px 0; }
+.lk-amp-list { margin: 0 0 8px; padding-left: 22px; font-size: 13px; color: var(--muted); }
+.lk-amp-list li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-amp-list li.bad { color: var(--like); }
+.lk-skin { width: 110px; height: auto; image-rendering: pixelated; border-radius: calc(4px * var(--rs, 1)); }
+.lk-skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.lk-skins button { padding: 0; border: 0; background: none; display: block; }
+.lk-skins img { display: block; width: 100%; height: auto; image-rendering: pixelated; border-radius: calc(4px * var(--rs, 1)); }

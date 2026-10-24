@@ -6,7 +6,9 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { findUsers, loadUsers, users, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { PRESETS as EFFECTS, start } from './fx.ts'
-import { cleanDesign, cleanLook, DESIGN_KEYS, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look, type Sticker } from './shared.ts'
+import { ProfileAmp } from './amp.tsx'
+import { BASE, museum, skinShot, type MuseumSkin } from './skin.ts'
+import { ampItem, cleanDesign, cleanLook, DESIGN_KEYS, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look, type Sticker } from './shared.ts'
 import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 
 export const clean = cleanLook
@@ -50,6 +52,7 @@ export function Sections({ l, u, edit }: { l: Look; u: User; edit?: Set }) {
   return (
     <>
       {l.song && at('song', <Song s={l.song} />)}
+      {l.amp?.on && at('amp', <section class="lk-box lk-sec lk-amp"><ProfileAmp owner={{ fid: u.fid, who: userPath(u), name: who, amp: l.amp }} /></section>)}
       {l.about && at('about', <Box title={t('About me')}><RichText text={l.about} /></Box>)}
       {l.meet && at('meet', <Box title={t("Who I'd like to meet")}><RichText text={l.meet} /></Box>)}
       {ints.length > 0 && at('int',
@@ -70,7 +73,7 @@ export function Sections({ l, u, edit }: { l: Look; u: User; edit?: Set }) {
 
 /** The boxes the look shows; a sticker whose box is gone sits on the profile header. */
 const boxesOf = (l: Look) =>
-  new Set<string>(['head', ...([['song', l.song], ['about', l.about], ['meet', l.meet], ['int', l.interests], ['top', l.top], ['wall', l.wall]] as const).filter(([, v]) => v).map(([k]) => k)])
+  new Set<string>(['head', ...([['song', l.song], ['amp', l.amp?.on], ['about', l.about], ['meet', l.meet], ['int', l.interests], ['top', l.top], ['wall', l.wall]] as const).filter(([, v]) => v).map(([k]) => k)])
 
 /** A box and the stickers on it. */
 export function At({ l, at, edit, children }: { l: Look; at: Sticker['at']; edit?: Set; children: ComponentChildren }) {
@@ -211,6 +214,8 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
   const [busy, setBusy] = useState(false)
   const [gif, setGif] = useState<(Pick & { stickers?: boolean }) | null>(null)
   const [song, setSong] = useState(d.song ? `https://youtu.be/${d.song.id}${d.song.start ? `?t=${d.song.start}` : ''}` : '')
+  const [links, setLinks] = useState(() => (d.amp?.list || []).map(ytLink).join('\n'))
+  const [skins, setSkins] = useState(false)
   const [q, setQ] = useState('')
   const [link, setLink] = useState('')
   const [found, setFound] = useState<User[]>([])
@@ -322,7 +327,8 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
       <input ref={file} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => (gotFile(e.currentTarget.files?.[0]), (e.currentTarget.value = ''))} />
       {/* the editor stays mounted under the picker, so its open groups and scroll survive a pick */}
       {gif && <GifPicker stickers={gif.stickers} pick={(u) => (gif.pick(u), setGif(null))} close={() => setGif(null)} />}
-      <div class="lk-edit-body" hidden={!!gif}>
+      {skins && <SkinPicker pick={(skin) => (set((x) => ({ ...x, amp: { list: [], ...x.amp, skin } })), setSkins(false))} close={() => setSkins(false)} />}
+      <div class="lk-edit-body" hidden={!!gif || skins}>
         {group(t('Layouts'), <>
           <div class="lk-presets">{PRESETS.map(([name, p]) => <button class="btn ghost small" onClick={() => up({ ...STYLE, ...p })}>{t(name)}</button>)}</div>
           <div class="lk-design">
@@ -390,6 +396,27 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
           </label>
           <p class="hint">{d.song ? d.song.title ? t('Now: {title}', { title: d.song.title }) : t('The song is checked when you save.') : t('Visitors press play to hear it. Add ?t=37 to start partway in.')}</p>
         </>)}
+        {group(t('Winamp'), <>
+          <label class="check"><input type="checkbox" checked={!!d.amp?.on} onChange={(e) => {
+            const on = e.currentTarget.checked
+            set((x) => ({ ...x, amp: { ...x.amp, list: x.amp?.list || [], on: on || undefined } }))
+          }} />{t('Show Winamp on my profile')}</label>
+          <label class="field"><span>{t('YouTube videos and playlists, one link a line')}</span>
+            <textarea rows={5} value={links} placeholder={'https://youtu.be/…\nhttps://www.youtube.com/playlist?list=…'} onInput={(e) => {
+              const v = e.currentTarget.value
+              setLinks(v)
+              const old = new Map((d.amp?.list || []).map((x) => [x.id, x]))
+              const list = [...new Map(v.split('\n').map(ampItem).filter((x) => x).map((x) => [x!.id, old.get(x!.id) || x!])).values()].slice(0, LIMITS.amp)
+              set((x) => ({ ...x, amp: { ...x.amp, list } }))
+            }} />
+          </label>
+          <AmpCheck list={d.amp?.list || []} />
+          <div class="lk-row"><span>{t('Skin')}</span><span class="lk-ctl">
+            <img class="lk-skin" src={skinShot(d.amp?.skin || BASE)} alt="" loading="lazy" />
+            <button type="button" class="btn ghost small" onClick={() => setSkins(true)}>{t('Choose a skin')}</button>
+          </span></div>
+          <p class="hint">{t('Visitors press play to hear your list as sound only, and it keeps playing as they move around Quilcast. Up to {n} links; a playlist counts as one.', { n: LIMITS.amp })}</p>
+        </>)}
         {group(t('About me'), <>
           {text('about', t('About me'), LIMITS.about, '', true)}
           {text('meet', t("Who I'd like to meet"), LIMITS.meet, '', true)}
@@ -442,6 +469,63 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
         <button class="btn danger small lk-reset" onClick={() => set(() => ({}))}>{t('Start over (plain profile)')}</button>
         <p class="hint">{t('Images can be up to 6 MB for the background and 4 MB for everything else. People can turn profile looks off in their Settings.')}</p>
       </div>
+    </div>
+  )
+}
+
+const ytLink = (x: { id: string; pl?: 1 }) => (x.pl ? `https://www.youtube.com/playlist?list=${x.id}` : `https://youtu.be/${x.id}`)
+
+// YouTube answers oEmbed for anything that may be played on other sites, so the list is checked while it's typed
+// (the server checks it again on save)
+const checked = new Map<string, Promise<string | null>>()
+const check = (x: { id: string; pl?: 1 }) => {
+  if (!checked.has(x.id)) checked.set(x.id, fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(x.pl ? ytLink(x) : `https://www.youtube.com/watch?v=${x.id}`)}`).then((r) => (r.ok ? r.json() : null)).then((j) => (j?.title ? String(j.title) : null), () => null))
+  return checked.get(x.id)!
+}
+function AmpCheck({ list }: { list: NonNullable<Look['amp']>['list'] }) {
+  const [names, setNames] = useState<Record<string, string | null>>({})
+  useEffect(() => {
+    let live = true
+    for (const x of list) if (!x.title && !(x.id in names)) check(x).then((n) => live && setNames((m) => ({ ...m, [x.id]: n })))
+    return () => void (live = false)
+  }, [list.map((x) => x.id).join()])
+  if (!list.length) return null
+  return (
+    <ol class="lk-amp-list">
+      {list.map((x) => {
+        const n = x.title || names[x.id]
+        return <li class={n === null ? 'bad' : ''}>{x.pl ? '▸ ' : ''}{n === null ? t("Can't be played on other sites") : n || '…'}</li>
+      })}
+    </ol>
+  )
+}
+
+function SkinPicker({ pick, close }: { pick: (md5: string) => void; close: () => void }) {
+  const [q, setQ] = useState('')
+  const [list, setList] = useState<MuseumSkin[] | null>(null)
+  const [more, setMore] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => input.current?.focus(), [])
+  useEffect(() => {
+    let live = true
+    const t = setTimeout(() => {
+      setList(null)
+      museum(q.trim(), 0).then((l) => live && (setList(l), setMore(l.length > 0)), () => live && setList([]))
+    }, 350)
+    return () => ((live = false), clearTimeout(t))
+  }, [q])
+  const next = () => museum(q.trim(), list!.length).then((l) => (setList((x) => [...(x || []), ...l]), setMore(l.length > 0)), () => setMore(false))
+  return (
+    <div class="lk-edit-body lk-gifs">
+      <div class="lk-gifs-head">
+        <input ref={input} value={q} placeholder={t('Search skins')} onInput={(e) => setQ(e.currentTarget.value)} />
+        <button class="btn ghost small" onClick={close}>{t('Back')}</button>
+      </div>
+      {!list ? <div class="spinner" /> : !list.length ? <p class="hint">{t('No skins found.')}</p> : (
+        <div class="lk-skins">{list.map((k) => <button onClick={() => pick(k.md5)} title={k.filename.replace(/\.(wsz|zip)$/i, '')}><img src={skinShot(k.md5)} alt={k.filename} loading="lazy" /></button>)}</div>
+      )}
+      {list && more && <button class="btn ghost small" onClick={next}>{t('More skins')}</button>}
+      <p class="hint">{t('Skins from the Winamp Skin Museum.')}</p>
     </div>
   )
 }

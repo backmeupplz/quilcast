@@ -1299,4 +1299,10 @@ function App() {
 }
 
 applyTheme()
-loadLang().then(() => render(<App />, document.getElementById('app')!))
+loadLang().then(() => {
+  render(<App />, document.getElementById('app')!)
+  // a Winamp left open (src/amp.tsx) comes back, paused, until it's closed
+  try {
+    if (localStorage.getItem('quilcast:amp')) import('./amp.tsx')
+  } catch {}
+})

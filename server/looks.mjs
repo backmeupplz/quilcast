@@ -64,8 +64,9 @@ const checkImage = (url, max) => {
   }))
 }
 
-// a song has to be a YouTube video that may be embedded; its title comes from YouTube
-const songTitle = (id) => fetchJson(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}`).catch(() => null)
+// a song (or a Winamp list item) has to be a YouTube video or playlist that may be embedded; its title comes from YouTube
+const yt = gate(4, 200)
+const songTitle = (id, pl) => yt(() => fetchJson(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(pl ? `https://www.youtube.com/playlist?list=${id}` : `https://www.youtube.com/watch?v=${id}`)}`)).catch(() => null)
 
 /** The account's Farcaster key (one the node lists for `fid`) that signed "<what>:<fid>:<ts>:<body>" in the last five
  *  minutes, from the x-key, x-ts and x-sig headers. `stale` makes the answer when they're missing or too old. */
@@ -95,6 +96,14 @@ export async function putLook(req, fid, node) {
     const title = old?.song?.id === look.song.id ? old.song.title : (await songTitle(look.song.id))?.title
     if (!title) throw fail(400, "That YouTube video can't be played on other sites.")
     look.song.title = String(title).slice(0, 100)
+  }
+  if (look.amp) {
+    const old = new Map((await getLook(fid))?.amp?.list.map((x) => [x.id, x.title]) || [])
+    await Promise.all(look.amp.list.map(async (x) => {
+      const title = old.get(x.id) || (await songTitle(x.id, x.pl))?.title
+      if (!title) throw fail(400, "A YouTube link in your Winamp list can't be played on other sites.")
+      x.title = String(title).slice(0, 100)
+    }))
   }
   await writeFile(file(fid) + '.tmp', JSON.stringify(look))
   await rename(file(fid) + '.tmp', file(fid))

@@ -1,7 +1,7 @@
 // cleanLook is the only thing between a stored look and the page's CSS, so hostile input has to come out inert.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cleanLook, isLookImg, lookImages } from './shared.ts'
+import { ampItem, cleanLook, isLookImg, lookImages } from './shared.ts'
 
 test('cleanLook keeps valid settings and drops everything else', () => {
   const l = cleanLook({
@@ -47,4 +47,24 @@ test('stickers keep a known box, an allowed image and in-range numbers; effects 
   assert.equal(cleanLook({ fx: 'alert(1)' }).fx, undefined)
   assert.deepEqual(cleanLook({ stickers: [{ src: 'x' }] }), {})
   assert.deepEqual(lookImages({ stickers: [{ src, at: 'head', x: 1, y: 1, w: 9 }, { src, at: 'top', x: 1, y: 1, w: 9 }] }), [[src, 4e6]])
+})
+
+test('a Winamp list keeps real YouTube ids, once each, and a skin only as an md5', () => {
+  const l = cleanLook({ amp: { on: 'yes', skin: '../x', list: [
+    { id: 'dQw4w9WgXcQ', title: 'a\u0000b', extra: 1 }, { id: 'dQw4w9WgXcQ' }, { id: 'PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI', pl: 1 },
+    { id: 'short', pl: 1 }, { id: 'bad id here' }, { id: 'PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI', pl: true },
+  ] } })
+  assert.deepEqual(l, { amp: { list: [{ id: 'dQw4w9WgXcQ', title: 'ab' }, { id: 'PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI', pl: 1 }] } })
+  assert.deepEqual(cleanLook({ amp: { on: true, skin: '5e4f10275dcb1fb211d4a8b4f1bda236', list: [{ id: 'dQw4w9WgXcQ' }] } }).amp, { on: true, skin: '5e4f10275dcb1fb211d4a8b4f1bda236', list: [{ id: 'dQw4w9WgXcQ' }] })
+  assert.equal(cleanLook({ amp: { on: true, list: [] } }).amp, undefined)
+  assert.equal(cleanLook({ amp: { on: true, list: Array.from({ length: 80 }, (_, i) => ({ id: `abcdefghi${String(i).padStart(2, '0')}` })) } }).amp!.list.length, 50)
+})
+
+test('Winamp list lines: videos in any link form, and a link with a playlist is the playlist', () => {
+  assert.deepEqual(ampItem('https://youtu.be/dQw4w9WgXcQ?t=3'), { id: 'dQw4w9WgXcQ' })
+  assert.deepEqual(ampItem('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), { id: 'dQw4w9WgXcQ' })
+  assert.deepEqual(ampItem(' dQw4w9WgXcQ '), { id: 'dQw4w9WgXcQ' })
+  assert.deepEqual(ampItem('https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI'), { id: 'PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI', pl: 1 })
+  assert.deepEqual(ampItem('https://music.youtube.com/playlist?list=OLAK5uy_kNWq9zW2'), { id: 'OLAK5uy_kNWq9zW2', pl: 1 })
+  assert.equal(ampItem('hello'), undefined)
 })
