@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { deflateRawSync } from 'node:zlib'
-import { pledit, unzip, viscolor } from './skin.ts'
+import { pledit, unrle, unzip, viscolor } from './skin.ts'
 
 // a zip as skins come: one file stored, one deflated, in a folder, with a data descriptor's zero sizes locally
 function zip(files: [string, string, boolean][]) {
@@ -53,4 +53,25 @@ test('PLEDIT.TXT and VISCOLOR.TXT become colors, with defaults for what is missi
   assert.equal(v.length, 24)
   assert.equal(v[2], 'rgb(2,2,2)')
   assert.equal(viscolor('nope'), undefined)
+})
+
+// a 4×3 RLE8 BMP, stored bottom-up: a run, a literal run, a delta that skips pixels (they take palette color 0)
+test('unrle decodes RLE8 runs, literal runs and skips, top row first', () => {
+  const pal = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 0, 255]]
+  const data = [4, 1, 0, 0, /* bottom row: red ×4 */ 0, 3, 2, 3, 2, 0, 0, 0, /* literal green, blue, green + pad, its 4th skipped */ 0, 2, 2, 0, 2, 3, /* top row: skip 2, blue ×2 */ 0, 1]
+  const head = Buffer.alloc(54 + pal.length * 4)
+  head.write('BM')
+  head.writeUInt32LE(54 + pal.length * 4, 10)
+  head.writeUInt32LE(40, 14)
+  head.writeInt32LE(4, 18)
+  head.writeInt32LE(3, 22)
+  head.writeUInt16LE(8, 28)
+  head.writeUInt32LE(1, 30)
+  head.writeUInt32LE(pal.length, 46)
+  pal.forEach(([r, g, b], i) => head.set([b, g, r, 0], 54 + i * 4))
+  const r = unrle(new Uint8Array(Buffer.concat([head, Buffer.from(data)])))!
+  const row = (y: number) => Array.from({ length: 4 }, (_, x) => [...r.px.slice((y * 4 + x) * 4, (y * 4 + x) * 4 + 3)].join())
+  assert.deepEqual(row(2), ['255,0,0', '255,0,0', '255,0,0', '255,0,0'])
+  assert.deepEqual(row(1), ['0,255,0', '0,0,255', '0,255,0', '0,0,0'])
+  assert.deepEqual(row(0), ['0,0,0', '0,0,0', '0,0,255', '0,0,255'])
 })

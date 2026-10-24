@@ -71,6 +71,56 @@ const cut = async (bmp: Blob, [x, y, w, h]: readonly number[]) => {
   return URL.createObjectURL(await c.convertToBlob())
 }
 
+/** An RLE-compressed BMP (BI_RLE8 or BI_RLE4) as RGBA pixels, top row first. Chrome won't decode some of these
+ *  (TEXT.BMP in the XP skin, for one), and pixels a file skips show in the palette's first color, as on Windows. */
+export function unrle(d: Uint8Array) {
+  const v = new DataView(d.buffer, d.byteOffset, d.byteLength)
+  const [w, h0, bpp, comp] = [v.getInt32(18, true), v.getInt32(22, true), v.getUint16(28, true), v.getUint32(30, true)]
+  const h = Math.abs(h0)
+  const four = comp === 2
+  if (comp !== 1 && comp !== 2 || w <= 0 || w > 4096 || h > 4096 || bpp !== (four ? 4 : 8)) return null
+  const pal = 14 + v.getUint32(14, true)
+  const n = v.getUint32(46, true) || 1 << bpp
+  const rgb = (c: number) => (c < n ? [d[pal + c * 4 + 2], d[pal + c * 4 + 1], d[pal + c * 4]] : [0, 0, 0])
+  const px = new Uint8ClampedArray(w * h * 4)
+  const [r0, g0, b0] = rgb(0)
+  for (let k = 0; k < px.length; k += 4) (px[k] = r0), (px[k + 1] = g0), (px[k + 2] = b0), (px[k + 3] = 255)
+  let x = 0
+  let y = 0
+  const put = (c: number) => {
+    if (x < w && y < h) {
+      const k = ((h0 > 0 ? h - 1 - y : y) * w + x) * 4
+      ;[px[k], px[k + 1], px[k + 2]] = rgb(c)
+    }
+    x++
+  }
+  for (let i = v.getUint32(10, true); i + 1 < d.length;) {
+    const [count, c] = [d[i++], d[i++]]
+    if (count) for (let j = 0; j < count; j++) put(four ? (j & 1 ? c & 15 : c >> 4) : c)
+    else if (c === 0) (x = 0), y++
+    else if (c === 1) break
+    else if (c === 2) (x += d[i++]), (y += d[i++])
+    else {
+      // a literal run, padded to a whole 16-bit word
+      for (let j = 0; j < c; j++) put(four ? (j & 1 ? d[i + (j >> 1)] & 15 : d[i + (j >> 1)] >> 4) : d[i + j])
+      const len = four ? Math.ceil(c / 2) : c
+      i += len + (len & 1)
+    }
+  }
+  return { w, h, px }
+}
+
+/** A sheet as an image the browser can show: as it is, or decoded here when the browser can't; null if neither. */
+async function image(d: Uint8Array): Promise<Blob | null> {
+  const b = new Blob([d as BlobPart], { type: 'image/bmp' })
+  if (await createImageBitmap(b).then((im) => (im.close(), true), () => false)) return b
+  const r = d[0] === 0x42 && d[1] === 0x4d && d.length > 58 ? unrle(d) : null
+  if (!r) return null
+  const c = new OffscreenCanvas(r.w, r.h)
+  c.getContext('2d')!.putImageData(new ImageData(r.px, r.w, r.h), 0, 0)
+  return c.convertToBlob()
+}
+
 async function read(md5: string): Promise<Skin> {
   const r = await fetch(skinFile(md5))
   if (!r.ok) throw new Error("Couldn't load the skin.")
@@ -80,7 +130,9 @@ async function read(md5: string): Promise<Skin> {
   const blobs: Partial<Record<Sheet, Blob>> = {}
   await Promise.all(SHEETS.map(async (s) => {
     const d = await get(`${s}.bmp`)
-    if (d) img[s] = URL.createObjectURL((blobs[s] = new Blob([d as BlobPart], { type: 'image/bmp' })))
+    // a sheet that can't be read at all is left to the base skin, like a missing one
+    const b = d && (await image(d))
+    if (b) img[s] = URL.createObjectURL((blobs[s] = b))
   }))
   const pl = blobs.pledit
   const base = md5 !== BASE && SHEETS.some((s) => s !== 'nums_ex' && !img[s]) ? await loadSkin(BASE) : null

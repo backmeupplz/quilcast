@@ -1226,7 +1226,7 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa-pl.shade { height: 14px; background: var(--s-plshade) repeat-x; touch-action: none; }
 .wa-pl.shade .l { left: 0; top: 0; width: 25px; height: 14px; background: var(--s-pledit) -72px -42px; }
 .wa-pl.shade .r { right: 0; top: 0; width: 50px; height: 14px; background: var(--s-pledit) -99px -42px; }
-.wa-pls-title { position: absolute; left: 5px; top: 4px; width: 200px; height: 6px; overflow: hidden; display: flex; white-space: nowrap; }
+.wa .wa-pls-title { position: absolute; left: 5px; top: 4px; width: 200px; height: 6px; overflow: hidden; }
 .wa-pls-time { position: absolute; right: 30px; top: 4px; display: flex; }
 .wa-pl.shade .wa-pl-sh:active { background: var(--s-pledit) -150px -42px; }
 /* the equalizer (EQMAIN.BMP, and EQ_EX.BMP for its shade) */

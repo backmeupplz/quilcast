@@ -126,11 +126,22 @@ addEventListener('message', (e) => {
   if (typeof i.currentTime === 'number') p.at = i.currentTime
   if (i.duration > 0) p.len = i.duration
   if (i.videoData?.title) p.title = i.videoData.title
-  if (s.list[s.i]?.pl) {
-    if (Array.isArray(i.playlist) && i.playlist.length) p.ids = i.playlist
-    if (i.playlistIndex >= 0) p.sub = i.playlistIndex
+  const it = s.list[s.i]
+  if (it?.pl) {
+    if (Array.isArray(i.playlist) && i.playlist.length) (p.ids = i.playlist), sizes.set(it.id, i.playlist.length)
+    if (i.playlistIndex >= 0 && i.playlistIndex !== s.sub) {
+      // YouTube went on to the playlist's next video by itself: on shuffle, the next one is ours to pick
+      if (pf.shuffle && Date.now() - asked > 3e3) return next(true)
+      p.sub = i.playlistIndex
+    }
   }
   set(p, true)
+  // a playlist shuffle took us to, once its length is known: start on a random video of it
+  if (randomSub && s.ids?.length) {
+    randomSub = false
+    const r = Math.floor(Math.random() * s.ids.length)
+    if (r !== s.sub) (asked = Date.now()), set({ sub: r, at: 0, len: 0, title: undefined }), cmd('playVideoAt', r)
+  }
   if (typeof i.playerState === 'number') state(i.playerState)
 })
 
@@ -143,14 +154,19 @@ function state(n: number) {
   else if (n === 0) next(true)
 }
 
+let asked = 0
 function load(at = 0) {
   const it = s?.list[s.i]
   if (!it) return
   last = -9
+  asked = Date.now()
   set({ st: 'play' })
   if (!frame) return void ((cur = it.id), mount(it, at))
   if (it.pl && cur === it.id) return cmd('playVideoAt', s!.sub)
   cur = it.id
+  // with a playlist already loaded, YouTube's player loads the one asked for before instead of this one, unless
+  // it's stopped first (seen 2026-10-24: switching playlists played the previous one)
+  cmd('stopVideo')
   it.pl ? cmd('loadPlaylist', { list: it.id, listType: 'playlist', index: s!.sub, startSeconds: at }) : cmd('loadVideoById', { videoId: it.id, startSeconds: at })
 }
 
@@ -164,18 +180,45 @@ const pause = () => (s?.st === 'play' ? (cmd('pauseVideo'), set({ st: 'pause' })
 const stop = () => (cmd('pauseVideo'), cmd('seekTo', 0, true), set({ st: 'stop', at: 0 }))
 const seek = (f: number) => s && s.len && (cmd('seekTo', f * s.len, true), set({ at: f * s.len }))
 const volume = (v: number) => (cmd('setVolume', v), pref({ vol: v }))
-const pick = (i: number, sub = 0) => (set({ i, sub, at: 0, len: 0, title: undefined, ...(i !== s!.i && { ids: undefined }) }), load())
+// how many videos each playlist has, as the player reported them
+const sizes = new Map<string, number>()
+let randomSub = false
+/** Play entry `i` at video `sub` of it (a playlist's; -1 is a random one, once its length is known). */
+const pick = (i: number, sub = 0) => {
+  randomSub = sub < 0
+  set({ i, sub: Math.max(0, sub), at: 0, len: 0, title: undefined, ...(i !== s!.i && { ids: undefined }) })
+  load()
+}
+// where shuffle went, so Previous goes back the same way
+let hist: [number, number][] = []
+/** Shuffle across every video: one in a playlist is as likely as one on its own, so a 200-song playlist isn't a
+ *  single ticket among the other links. A playlist that hasn't played yet counts as 20 until the player says. */
+function shuffled() {
+  const { list, i, sub } = s!
+  const w = list.map((x) => (x.pl ? sizes.get(x.id) || 20 : 1))
+  const all = w.reduce((a, b) => a + b, 0)
+  for (let tries = 0; tries < 8; tries++) {
+    let r = Math.random() * all
+    let j = 0
+    while (j < w.length - 1 && r >= w[j]) r -= w[j++]
+    const it = list[j]
+    const n = it.pl ? sizes.get(it.id) : 1
+    const k = it.pl ? (n ? Math.floor(Math.random() * n) : -1) : 0
+    if (j !== i || (it.pl && k !== sub)) return pick(j, k)
+  }
+  pick((i + 1) % list.length)
+}
 function next(auto = false) {
   if (!s) return
   const { i, sub, list, ids } = s
+  if (pf.shuffle && (list.length > 1 || list[0]?.pl)) return hist.push([i, sub]), (hist = hist.slice(-100)), shuffled()
   if (list[i]?.pl && ids && sub < ids.length - 1) return pick(i, sub + 1)
-  if (pf.shuffle && list.length > 1) return pick((i + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length)
   if (i + 1 < list.length || pf.repeat || !auto) return pick((i + 1) % list.length)
   stop()
 }
 function prev() {
   if (!s) return
-  if (s.at > 3) return seek(0)
+  if (pf.shuffle && hist.length) return pick(...hist.pop()!)
   if (s.list[s.i]?.pl && s.sub > 0) return pick(s.i, s.sub - 1)
   pick((s.i - 1 + s.list.length) % s.list.length)
 }
@@ -346,19 +389,19 @@ const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 // the time shown: gone by, or (Winamp's other mode) still to go
 const shown = (v: View) => (pf.rem && v.len ? Math.max(0, v.len - v.at) : v.at)
 
-function Marquee({ text }: { text: string }) {
+function Marquee({ text, width = 154, cls = 'wa-marquee' }: { text: string; width?: number; cls?: string }) {
   const ref = useRef<HTMLSpanElement>(null)
   const [w, setW] = useState(0)
   const [x, setX] = useState(0)
   useLayoutEffect(() => (setX(0), setW(ref.current!.offsetWidth)), [text])
   // longer than the display: it goes round, five pixels at a time, with "***" between the ends
-  const long = w > 154
+  const long = w > width
   useEffect(() => {
     if (!long || still()) return
     const id = setInterval(() => setX((x) => (x + 5) % (w + 35)), 220)
     return () => clearInterval(id)
   }, [w])
-  return <div class="wa-marquee"><div class="wa-mq" style={{ transform: `translateX(-${x}px)` }}><span ref={ref}>{chars(text)}</span>{long && <>{chars('  ***  ')}{chars(text)}</>}</div></div>
+  return <div class={cls}><div class="wa-mq" style={{ transform: `translateX(-${x}px)` }}><span ref={ref}>{chars(text)}</span>{long && <>{chars('  ***  ')}{chars(text)}</>}</div></div>
 }
 
 // YouTube's sound can't be read from the page, so the visualizer is for the look: it moves in the skin's colors
@@ -617,6 +660,21 @@ function Title({ id }: { id: string }) {
 const touch = () => matchMedia('(pointer: coarse)').matches
 const byTitle = (x: AmpItem, y: AmpItem) => (x.title || x.id).localeCompare(y.title || y.id)
 
+/** The playlist folded to a strip: what's playing (going round when it's long) and its length. */
+function PlStrip({ v, move, open, close }: { v: View; move?: (e: PointerEvent) => void; open: () => void; close: () => void }) {
+  const it = v.list[v.i]
+  const now = it ? `${v.i + 1}. ${(it.pl && v.title) || it.title || it.id}` : ''
+  return (
+    <div class="wa-pl shade" onPointerDown={move}>
+      <i class="l" /><i class="r" />
+      <Marquee text={now} width={200} cls="wa-pls-title" />
+      <span class="wa-pls-time">{v.len ? chars(mss(v.len)) : null}</span>
+      <button class="wa-pl-sh" aria-label={t('Open the playlist')} onClick={open} />
+      <button class="wa-pl-x" aria-label={t('Close the playlist')} onClick={close} />
+    </div>
+  )
+}
+
 function List({ v, a, move }: { v: View; a: (f: () => void) => () => void; move?: (e: PointerEvent) => void }) {
   const box = useRef<HTMLDivElement>(null)
   const [top, setTop] = useState(0)
@@ -659,17 +717,7 @@ function List({ v, a, move }: { v: View; a: (f: () => void) => () => void; move?
       [t('Copy the list links'), () => navigator.clipboard.writeText(v.list.map((x) => (x.pl ? `https://www.youtube.com/playlist?list=${x.id}` : `https://youtu.be/${x.id}`)).join('\n')).then(() => toast('Links copied'), () => {})],
     ],
   }
-  const it = v.list[v.i]
-  const now = it ? `${v.i + 1}. ${(it.pl && v.title) || it.title || it.id}` : ''
-  if (pf.plShade) return (
-    <div class="wa-pl shade" onPointerDown={move}>
-      <i class="l" /><i class="r" />
-      <span class="wa-pls-title">{chars(now)}</span>
-      <span class="wa-pls-time">{v.len ? chars(mss(v.len)) : null}</span>
-      <button class="wa-pl-sh" aria-label={t('Open the playlist')} onClick={() => pref({ plShade: false })} />
-      <button class="wa-pl-x" aria-label={t('Close the playlist')} onClick={() => pref({ pl: false })} />
-    </div>
-  )
+  if (pf.plShade) return <PlStrip v={v} move={move} open={() => pref({ plShade: false })} close={() => pref({ pl: false })} />
   return (
     <div class="wa-pl">
       <div class="wa-pl-top" onPointerDown={move} onDblClick={(e) => !(e.target as Element).closest('button') && pref({ plShade: true })}>
@@ -807,7 +855,7 @@ function Shell() {
   } else if (v && k && !showing.has(v.fid)) {
     const it = v.list[v.i]
     const a = (f: () => void) => f
-    const [w, h] = [275 * z, 14 * z]
+    const [w, h] = [275 * z, 28 * z]
     const col = document.querySelector('.col')?.getBoundingClientRect()
     const x = Math.min(Math.max(0, pf.bx ?? (col ? col.left + col.width / 2 - w / 2 : (innerWidth - w) / 2)), innerWidth - w)
     const at = pf.by === undefined ? {} : { top: `${Math.min(Math.max(0, pf.by), innerHeight - h)}px`, bottom: 'auto' }
@@ -815,6 +863,8 @@ function Shell() {
       <div class="wa-bar" style={{ left: `${Math.round(x)}px`, ...at }} role="region" aria-label={label!} title={(it?.pl && v.title) || it?.title}>
         <div class="wa" data-st={v.st} style={{ ...vars(k), zoom: z }}>
           <ShadeBar v={v} md5={v.skin} a={a} win={{ float: false, min: () => pref({ open: true }), close, move: moveWin }} unshade={() => pref({ open: true, shade: false })} />
+          {/* Winamp's windowshade has no room for the title, so the shaded playlist is docked under it, as people did */}
+          <PlStrip v={v} move={moveWin} open={() => pref({ open: true, pl: true, plShade: false })} close={close} />
         </div>
       </div>
     )
