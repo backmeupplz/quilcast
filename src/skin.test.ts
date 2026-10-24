@@ -48,7 +48,7 @@ test('unzip finds files by lower-case name in any folder and inflates them', asy
 })
 
 test('PLEDIT.TXT and VISCOLOR.TXT become colors, with defaults for what is missing or broken', () => {
-  assert.deepEqual(pledit('[Text]\r\nnormal=00ff00\r\nCurrent=#FFFFFF\r\nNormalBG=red;x\r\nFont=Arial"};\r\n'), { normal: '#00ff00', current: '#FFFFFF', bg: '#000000', font: 'Arial' })
+  assert.deepEqual(pledit('[Text]\r\nnormal=00ff00\r\nCurrent=#FFFFFF\r\nNormalBG=red;x\r\nFont=Arial"};\r\n'), { normal: '#00ff00', current: '#FFFFFF', bg: '#000000', sel: '#0000c6', font: 'Arial' })
   const v = viscolor(Array.from({ length: 24 }, (_, i) => `${i},${i}, ${i}, // color ${i}`).join('\n'))!
   assert.equal(v.length, 24)
   assert.equal(v[2], 'rgb(2,2,2)')

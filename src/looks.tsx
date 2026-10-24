@@ -314,7 +314,7 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
     toast('Drag it anywhere')
   }
   const addWall = (u: string) => set((x) => ({ ...x, wall: [...new Set([...(x.wall || []), u])].slice(0, LIMITS.wall) }))
-  const group = (title: string, body: ComponentChildren, open = false) => <details class="lk-group" open={open}><summary>{title}</summary>{body}</details>
+  const group = (title: string, body: ComponentChildren, open = false) => <details class="lk-group" open={open}><summary>{title}</summary><div class="lk-gb">{body}</div></details>
 
   return (
     <div class={`lk-edit${min ? ' min' : ''}`} role="dialog" aria-label={t('Customize your profile')}>
@@ -411,10 +411,12 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
             }} />
           </label>
           <AmpCheck list={d.amp?.list || []} />
-          <div class="lk-row"><span>{t('Skin')}</span><span class="lk-ctl">
-            <img class="lk-skin" src={skinShot(d.amp?.skin || BASE)} alt="" loading="lazy" />
-            <button type="button" class="btn ghost small" onClick={() => setSkins(true)}>{t('Choose a skin')}</button>
-          </span></div>
+          <div class="field"><span>{t('Skin')}</span>
+            <div class="lk-skin-row">
+              <button type="button" class="lk-skin-btn" aria-label={t('Choose a skin')} onClick={() => setSkins(true)}><img class="lk-skin" src={skinShot(d.amp?.skin || BASE)} alt="" loading="lazy" /></button>
+              <button type="button" class="btn ghost small" onClick={() => setSkins(true)}>{t('Choose a skin')}</button>
+            </div>
+          </div>
           <p class="hint">{t('Visitors press play to hear your list as sound only, and it keeps playing as they move around Quilcast. Up to {n} links; a playlist counts as one.', { n: LIMITS.amp })}</p>
         </>)}
         {group(t('About me'), <>
@@ -492,9 +494,9 @@ function AmpCheck({ list }: { list: NonNullable<Look['amp']>['list'] }) {
   if (!list.length) return null
   return (
     <ol class="lk-amp-list">
-      {list.map((x) => {
+      {list.map((x, i) => {
         const n = x.title || names[x.id]
-        return <li class={n === null ? 'bad' : ''}>{x.pl ? '▸ ' : ''}{n === null ? t("Can't be played on other sites") : n || '…'}</li>
+        return <li class={n === null ? 'bad' : ''}>{i + 1}. {x.pl ? '▸ ' : ''}{n === null ? t("Can't be played on other sites") : n || '…'}</li>
       })}
     </ol>
   )

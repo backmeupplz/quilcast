@@ -21,6 +21,10 @@ for (const s of server) all(s, new RegExp(String.raw`\b(?:fail\(\d+,|error:)\s*(
 
 // labels kept in English in module-level lists and translated where they're shown: t(label)
 const LABELS = [
+  // the Winamp (amp.tsx): side buttons, visualizations, equalizer presets, playlist buttons
+  'Options', 'Always on top', 'Track info on YouTube', 'Double size', 'Visualization', 'Spectrum analyzer', 'Oscilloscope', 'No visualization',
+  'Flat', 'Classical', 'Club', 'Dance', 'Full bass', 'Full treble', 'Pop', 'Rock', 'Techno', 'Add', 'Remove', 'Select', 'Misc', 'List',
+  'Previous', 'Play', 'Pause', 'Stop', 'Next', 'Play a YouTube link…',
   'Classic', 'Emo night', 'Glitter', 'Scene kid', 'Y2K chrome', 'Swamp',
   'System', 'Verdana', 'Arial', 'Trebuchet', 'Georgia', 'Times', 'Courier', 'Comic Sans', 'Impact', 'Rounded', 'Console',
   'General', 'Music', 'Movies', 'Television', 'Books', 'Heroes',

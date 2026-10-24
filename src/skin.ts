@@ -39,7 +39,7 @@ export function pledit(s: string) {
   const kv = new Map(s.split(/\r?\n/).map((l) => l.split('=')).filter((p) => p.length > 1).map(([k, v]) => [k.trim().toLowerCase(), v.trim()]))
   return {
     normal: hex(kv.get('normal')) || '#00ff00', current: hex(kv.get('current')) || '#ffffff',
-    bg: hex(kv.get('normalbg')) || '#000000', font: (kv.get('font') || 'Arial').replace(/[^\w ]/g, ''),
+    bg: hex(kv.get('normalbg')) || '#000000', sel: hex(kv.get('selectedbg')) || '#0000c6', font: (kv.get('font') || 'Arial').replace(/[^\w ]/g, ''),
   }
 }
 
@@ -49,11 +49,20 @@ export function viscolor(s: string) {
   return c.length >= 18 ? c : undefined
 }
 
-export const SHEETS = ['main', 'cbuttons', 'titlebar', 'shufrep', 'posbar', 'volume', 'balance', 'numbers', 'nums_ex', 'playpaus', 'monoster', 'text', 'pledit'] as const
+export const SHEETS = ['main', 'cbuttons', 'titlebar', 'shufrep', 'posbar', 'volume', 'balance', 'numbers', 'nums_ex', 'playpaus', 'monoster', 'text', 'pledit', 'eqmain', 'eq_ex'] as const
 type Sheet = (typeof SHEETS)[number]
 // the playlist's edges repeat, and a background can only repeat a whole image, so these are cut out of PLEDIT.BMP
-const TILES = { top: [127, 0, 25, 20], left: [0, 42, 12, 29], right: [31, 42, 20, 29], bottom: [179, 0, 25, 38] } as const
-export type Skin = { img: Partial<Record<Sheet | keyof typeof TILES, string>>; pl: ReturnType<typeof pledit>; vis: string[] }
+const TILES = { top: [127, 0, 25, 20], left: [0, 42, 12, 29], right: [31, 42, 20, 29], bottom: [179, 0, 25, 38], plshade: [72, 57, 25, 14] } as const
+export type Skin = { img: Partial<Record<Sheet | keyof typeof TILES, string>>; pl: ReturnType<typeof pledit>; vis: string[]; eqLine: string[] }
+
+// the equalizer's curve takes its color at each height from a 1×19 strip in EQMAIN.BMP
+const strip = async (bmp: Blob) => {
+  const c = new OffscreenCanvas(1, 19)
+  const g = c.getContext('2d')!
+  g.drawImage(await createImageBitmap(bmp), 115, 294, 1, 19, 0, 0, 1, 19)
+  const d = g.getImageData(0, 0, 1, 19).data
+  return Array.from({ length: 19 }, (_, i) => `rgb(${d[i * 4]},${d[i * 4 + 1]},${d[i * 4 + 2]})`)
+}
 
 const cut = async (bmp: Blob, [x, y, w, h]: readonly number[]) => {
   const im = await createImageBitmap(bmp)
@@ -68,14 +77,12 @@ async function read(md5: string): Promise<Skin> {
   const files = unzip(await r.arrayBuffer())
   const get = (n: string) => files.get(n)?.()
   const img: Skin['img'] = {}
-  let pl: Blob | undefined
+  const blobs: Partial<Record<Sheet, Blob>> = {}
   await Promise.all(SHEETS.map(async (s) => {
     const d = await get(`${s}.bmp`)
-    if (!d) return
-    const b = new Blob([d as BlobPart], { type: 'image/bmp' })
-    if (s === 'pledit') pl = b
-    img[s] = URL.createObjectURL(b)
+    if (d) img[s] = URL.createObjectURL((blobs[s] = new Blob([d as BlobPart], { type: 'image/bmp' })))
   }))
+  const pl = blobs.pledit
   const base = md5 !== BASE && SHEETS.some((s) => s !== 'nums_ex' && !img[s]) ? await loadSkin(BASE) : null
   for (const s of SHEETS) if (s !== 'nums_ex') img[s] ||= base?.img[s]
   // (the page's CSP doesn't let it fetch its own blob: URLs, so the tiles come from the bytes)
@@ -84,6 +91,7 @@ async function read(md5: string): Promise<Skin> {
     img,
     pl: pledit(latin1(await get('pledit.txt'))),
     vis: viscolor(latin1(await get('viscolor.txt'))) || base?.vis || (await loadSkin(BASE)).vis,
+    eqLine: blobs.eqmain ? await strip(blobs.eqmain) : base?.eqLine || (await loadSkin(BASE)).eqLine,
   }
 }
 

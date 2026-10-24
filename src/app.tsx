@@ -730,9 +730,29 @@ function Search() {
         <Tabs tabs={[['people', t('People')], ['casts', t('Casts')]]} value={tab} set={setTab} />
       </Header>
       {!term && <div class="note">{t('Find people by name or username, or search the text of casts.')}</div>}
+      {!term && tab === 'people' && <Customized />}
       {term && tab === 'people' && (people === null ? <div class="spinner" /> : people.length ? people.map((u) => <UserRow u={u} />) : <div class="note">{t('No one matches “{term}”.', { term })}</div>)}
       {term && tab === 'casts' && <Feed k={`s${term}`} empty={t('No casts match “{term}”.', { term })} load={(cursor) => get('/v2/farcaster/cast/search', { q: term, limit: 25, cursor }).then((r) => r.result || r)} />}
     </>
+  )
+}
+
+/** Everyone who customized their profile (src/looks.tsx), the latest saved first. */
+function Customized() {
+  const [list, setList] = useState<{ fid: number; amp: boolean }[] | null>(null)
+  const [n, setN] = useState(30)
+  const [, force] = useState(0)
+  useEffect(() => void fetch('/api/looks').then((r) => r.json()).then((l) => setList(Array.isArray(l) ? l : []), () => setList([])), [])
+  useEffect(() => void (list && loadUsers(list.slice(0, n).map((x) => x.fid)).then(() => force((x) => x + 1))), [list, n])
+  if (!list) return <div class="spinner" />
+  if (!list.length) return null
+  const shown = list.slice(0, n).flatMap((x) => users.get(x.fid) || [])
+  return (
+    <section class="customized">
+      <h2 class="apps-h">{t('Customized profiles')}</h2>
+      {shown.map((u) => <UserRow u={u} />)}
+      {n < list.length && <button type="button" class="btn ghost small wide" onClick={() => setN(n + 30)}>{t('Show more')}</button>}
+    </section>
   )
 }
 

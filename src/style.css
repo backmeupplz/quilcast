@@ -717,9 +717,16 @@ small.warn { color: var(--warn); }
 .lk-edit-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
 .lk-edit-head b { flex: 1; }
 .lk-edit-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 14px 24px; }
-.lk-group { border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); padding-bottom: 10px; }
-.lk-group summary { cursor: pointer; font-weight: 700; padding: 12px 0 6px; }
-.lk-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; }
+.lk-group { border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+.lk-group summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; font-weight: 700; padding: 14px 0; }
+.lk-group summary::-webkit-details-marker { display: none; }
+.lk-group summary::after { content: ''; flex: none; width: 7px; height: 7px; margin: 0 4px 3px; border: solid var(--muted); border-width: 0 2px 2px 0; rotate: 45deg; transition: rotate 0.15s; }
+.lk-group[open] summary::after { rotate: -135deg; margin-bottom: -3px; }
+/* a group's body is one column with even gaps; its parts bring no margins of their own */
+.lk-gb { display: flex; flex-direction: column; gap: 12px; padding-bottom: 18px; }
+.lk-gb > * { margin: 0; }
+.lk-gb > .hint { margin-top: -4px; }
+.lk-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; }
 .lk-row > span:first-child { font-size: 14px; }
 .lk-ctl { display: flex; align-items: center; gap: 6px; }
 .lk-ctl input[type='color'] { width: 42px; height: 32px; padding: 2px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(8px * var(--rs, 1)); background: none; }
@@ -1132,35 +1139,47 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa-main, .wa-main > * { position: absolute; }
 .wa-main { position: relative; width: 275px; height: 116px; background: var(--s-main) 0 0; }
 .wa-tb { left: 0; top: 0; width: 275px; height: 14px; background: var(--s-titlebar) -27px 0; touch-action: none; }
-.wa-tb button, .wa-sh > .wa-min, .wa-sh > .wa-unshade, .wa-sh > .wa-close { top: 3px; width: 9px; height: 9px; background-image: var(--s-titlebar); }
+.wa-tb button, .wa-sh > .wa-opt, .wa-sh > .wa-min, .wa-sh > .wa-unshade, .wa-sh > .wa-close { top: 3px; width: 9px; height: 9px; background-image: var(--s-titlebar); }
+.wa .wa-opt { left: 6px; background: none; } .wa .wa-opt:active { background: var(--s-titlebar) 0 -9px; }
 .wa .wa-min { left: 244px; background-position: -9px 0; } .wa .wa-min:active { background-position: -9px -9px; }
 .wa .wa-shade { left: 254px; background-position: 0 -18px; } .wa .wa-shade:active { background-position: -9px -18px; }
 .wa .wa-unshade { left: 254px; background-position: 0 -27px; } .wa .wa-unshade:active { background-position: -9px -27px; }
 .wa .wa-close { left: 264px; background-position: -18px 0; } .wa .wa-close:active { background-position: -18px -9px; }
 .wa-clutter { left: 10px; top: 22px; width: 8px; height: 43px; background: var(--s-titlebar) -304px 0; }
+.wa .wa-clutter button { left: 0; width: 8px; height: 7px; }
+.wa .c-o { top: 3px; height: 8px; } .wa .c-a { top: 11px; } .wa .c-i { top: 18px; } .wa .c-d { top: 25px; height: 8px; } .wa .c-v { top: 33px; }
+.wa .c-o:active { background: var(--s-titlebar) -304px -47px; } .wa .c-a:active, .wa .c-a.on { background: var(--s-titlebar) -312px -55px; }
+.wa .c-i:active { background: var(--s-titlebar) -320px -62px; } .wa .c-d:active, .wa .c-d.on { background: var(--s-titlebar) -328px -69px; }
+.wa .c-v:active { background: var(--s-titlebar) -336px -77px; }
 .wa-st { left: 26px; top: 28px; width: 9px; height: 9px; background: var(--s-playpaus) 0 0; }
 .wa[data-st=pause] .wa-st { background-position: -9px 0; } .wa[data-st=stop] .wa-st { background-position: -18px 0; }
 .wa-work { left: 24px; top: 28px; width: 3px; height: 9px; background: var(--s-playpaus) -36px 0; }
-.wa-time { left: 39px; top: 26px; width: 59px; height: 13px; }
+.wa .wa-time { left: 39px; top: 26px; width: 59px; height: 13px; }
+.wa-minus { position: absolute; left: -1px; top: 6px; width: 5px; height: 1px; background: var(--s-numbers) -20px -6px; }
+.wa[data-ex] .wa-minus { top: 0; width: 9px; height: 13px; background: var(--s-nums_ex) -99px 0; }
+.wa-kbps, .wa-khz { display: flex; top: 43px; height: 6px; overflow: hidden; } .wa-kbps { left: 111px; width: 15px; } .wa-khz { left: 156px; width: 10px; }
 .wa[data-st=stop] .wa-time { display: none; }
 .wa[data-st=pause] .wa-time { animation: wa-blink 2s step-start 1s infinite; }
 @keyframes wa-blink { 50% { visibility: hidden; } }
 .wa-d { position: absolute; top: 0; width: 9px; height: 13px; background-image: var(--s-num); }
 .wa-d.d0 { left: 9px; } .wa-d.d1 { left: 21px; } .wa-d.d2 { left: 39px; } .wa-d.d3 { left: 51px; }
-.wa-vis { left: 24px; top: 43px; width: 76px; height: 16px; }
+.wa-vis { left: 24px; top: 43px; width: 76px; height: 16px; cursor: pointer; }
 .wa-marquee { left: 111px; top: 27px; width: 154px; height: 6px; overflow: hidden; }
 .wa-mq, .wa-mq > span, .wa-sh-time { display: flex; white-space: nowrap; }
+.wa .wa-ch, .wa .wa-u { position: static; }
 .wa .wa-ch { flex: none; width: 5px; height: 6px; background-image: var(--s-text); }
 .wa .wa-u { flex: none; font: 7px/6px Arial, sans-serif; color: var(--wa-fg); }
 .wa-mono { left: 212px; top: 41px; width: 27px; height: 12px; background: var(--s-monoster) -29px -12px; }
 .wa-stereo { left: 239px; top: 41px; width: 29px; height: 12px; background: var(--s-monoster) 0 -12px; } .wa-stereo.on { background-position: 0 0; }
 .wa-vol { left: 107px; top: 57px; width: 68px; height: 13px; background: var(--s-volume) 0 0; touch-action: none; }
-.wa-bal { left: 177px; top: 57px; width: 38px; height: 13px; background: var(--s-balance) -9px 0; }
+.wa-bal { left: 177px; top: 57px; width: 38px; height: 13px; background: var(--s-balance) -9px 0; touch-action: none; }
 .wa-vol i, .wa-bal i { position: absolute; top: 1px; width: 14px; height: 11px; background: var(--s-volume) -15px -422px; }
 .wa-vol:active i { background-position: 0 -422px; }
-.wa-bal i { left: 12px; background-image: var(--s-balance); }
-.wa-eqb { left: 219px; top: 58px; width: 23px; height: 12px; background: var(--s-shufrep) 0 -61px; }
-.wa .wa-plb { left: 242px; top: 58px; width: 23px; height: 12px; background: var(--s-shufrep) -23px -61px; } .wa .wa-plb.on { background-position: -23px -73px; }
+.wa-bal i { background-image: var(--s-balance); } .wa-bal:active i { background-position: 0 -422px; }
+.wa .wa-eqb { left: 219px; top: 58px; width: 23px; height: 12px; background: var(--s-shufrep) 0 -61px; } .wa .wa-eqb:active { background-position: -46px -61px; }
+.wa .wa-eqb.on { background-position: 0 -73px; } .wa .wa-eqb.on:active { background-position: -46px -73px; }
+.wa .wa-plb { left: 242px; top: 58px; width: 23px; height: 12px; background: var(--s-shufrep) -23px -61px; } .wa .wa-plb:active { background-position: -69px -61px; } .wa .wa-plb.on { background-position: -23px -73px; } .wa .wa-plb.on:active { background-position: -69px -73px; }
+.wa .wa-about { left: 253px; top: 91px; width: 13px; height: 15px; }
 .wa-pos { left: 16px; top: 72px; width: 248px; height: 10px; background: var(--s-posbar) 0 0; touch-action: none; }
 .wa-pos i { position: absolute; top: 0; width: 29px; height: 10px; background: var(--s-posbar) -248px 0; } .wa-pos:active i { background-position: -278px 0; }
 .wa .wa-btn { top: 88px; width: 23px; height: 18px; background-image: var(--s-cbuttons); }
@@ -1183,10 +1202,11 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa-pl-top .t { left: 87px; width: 100px; height: 20px; background: var(--s-pledit) -26px 0; }
 .wa-pl-top .r { right: 0; width: 25px; height: 20px; background: var(--s-pledit) -153px 0; }
 .wa .wa-pl-x { right: 2px; top: 3px; width: 9px; height: 9px; }
+.wa .wa-pl-sh { right: 12px; top: 3px; width: 9px; height: 9px; } .wa .wa-pl-sh:active { background: var(--s-pledit) -62px -42px; }
 .wa .wa-pl-x:active { background: var(--s-pledit) -52px -42px; }
 .wa-pl-mid { top: 20px; height: 116px; }
 .wa-pl-mid .l { left: 0; top: 0; width: 12px; height: 116px; background: var(--s-left) repeat-y; }
-.wa-pl-mid .r { right: 0; top: 0; width: 20px; height: 116px; background: var(--s-right) repeat-y; }
+.wa-pl-mid > .r { position: absolute; right: 0; top: 0; width: 20px; height: 116px; background: var(--s-right) repeat-y; touch-action: none; }
 .wa-pl-thumb { right: 7px; width: 8px; height: 18px; background: var(--s-pledit) -52px -53px; }
 .wa-rows { position: absolute; left: 12px; top: 0; width: 243px; height: 116px; box-sizing: border-box; padding: 3px 0; overflow-y: auto; scrollbar-width: none; background: var(--wa-bg); }
 .wa-rows::-webkit-scrollbar { display: none; }
@@ -1194,19 +1214,56 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa .wa-row span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .wa .wa-row.sub { padding-left: 14px; }
 .wa .wa-row.cur { color: var(--wa-cur); }
+.wa .wa-row.sel { background: var(--wa-sel); }
 .wa-pl-bot { bottom: 0; height: 38px; background: var(--s-bottom) repeat-x; }
 .wa-pl-bot .l { left: 0; width: 125px; height: 38px; background: var(--s-pledit) 0 -72px; }
 .wa-pl-bot .r { right: 0; width: 150px; height: 38px; background: var(--s-pledit) -126px -72px; }
+.wa .wa-plm { bottom: 12px; width: 22px; height: 18px; } .wa .m-add { left: 14px; } .wa .m-rem { left: 43px; } .wa .m-sel { left: 72px; } .wa .m-misc { left: 101px; } .wa .m-list { right: 22px; }
+.wa-pl-run { position: absolute; left: 132px; top: 10px; display: flex; }
+.wa .wa-pl-mini { left: 191px; top: 23px; display: flex; height: 6px; }
+.wa .wa-pl-tp { top: 22px; width: 10px; height: 10px; }
+.wa .wa-pl-up, .wa .wa-pl-down { right: 7px; width: 8px; height: 5px; } .wa .wa-pl-up { top: 2px; } .wa .wa-pl-down { top: 8px; }
+.wa-pl.shade { height: 14px; background: var(--s-plshade) repeat-x; touch-action: none; }
+.wa-pl.shade .l { left: 0; top: 0; width: 25px; height: 14px; background: var(--s-pledit) -72px -42px; }
+.wa-pl.shade .r { right: 0; top: 0; width: 50px; height: 14px; background: var(--s-pledit) -99px -42px; }
+.wa-pls-title { position: absolute; left: 5px; top: 4px; width: 200px; height: 6px; overflow: hidden; display: flex; white-space: nowrap; }
+.wa-pls-time { position: absolute; right: 30px; top: 4px; display: flex; }
+.wa-pl.shade .wa-pl-sh:active { background: var(--s-pledit) -150px -42px; }
+/* the equalizer (EQMAIN.BMP, and EQ_EX.BMP for its shade) */
+.wa-eq { position: relative; width: 275px; height: 116px; background: var(--s-eqmain) 0 0; }
+.wa-eq > * { position: absolute; }
+.wa-eq-tb { left: 0; top: 0; width: 275px; height: 14px; background: var(--s-eqmain) 0 -134px; touch-action: none; }
+.wa .wa-eq-shade, .wa .wa-eq-x, .wa .wa-eq-unshade, .wa .wa-eq-sx { top: 3px; width: 9px; height: 9px; }
+.wa .wa-eq-shade, .wa .wa-eq-unshade { left: 254px; } .wa .wa-eq-x, .wa .wa-eq-sx { left: 264px; }
+.wa .wa-eq-shade:active { background: var(--s-eq_ex) -1px -38px; } .wa .wa-eq-x:active { background: var(--s-eqmain) 0 -125px; }
+.wa .wa-eq-unshade:active { background: var(--s-eq_ex) -1px -47px; }
+.wa .wa-eq-sx { background: var(--s-eq_ex) -11px -38px; } .wa .wa-eq-sx:active { background-position: -11px -47px; }
+.wa .wa-eq-on { left: 14px; top: 18px; width: 26px; height: 12px; background: var(--s-eqmain) -10px -119px; } .wa .wa-eq-on:active { background-position: -128px -119px; }
+.wa .wa-eq-on.on { background-position: -69px -119px; } .wa .wa-eq-on.on:active { background-position: -187px -119px; }
+.wa .wa-eq-auto { left: 40px; top: 18px; width: 32px; height: 12px; background: var(--s-eqmain) -36px -119px; } .wa .wa-eq-auto:active { background-position: -154px -119px; }
+.wa .wa-eq-auto.on { background-position: -95px -119px; } .wa .wa-eq-auto.on:active { background-position: -213px -119px; }
+.wa-eq-graph { left: 86px; top: 17px; width: 113px; height: 19px; background: var(--s-eqmain) 0 -294px; }
+.wa .wa-eq-pre { left: 217px; top: 18px; width: 44px; height: 12px; background: var(--s-eqmain) -224px -164px; } .wa .wa-eq-pre:active { background-position: -224px -176px; }
+.wa-band { top: 38px; width: 14px; height: 63px; background-image: var(--s-eqmain); touch-action: none; }
+.wa-band i { position: absolute; left: 1px; width: 11px; height: 11px; background: var(--s-eqmain) 0 -164px; } .wa-band:active i { background-position: 0 -176px; }
+.wa-eq.shade { height: 14px; background: var(--s-eq_ex) 0 0; touch-action: none; }
+/* Winamp's menus are Windows' own */
+.wa-menu { position: fixed; z-index: 70; min-width: 180px; padding: 2px; background: #fff; color: #000; border: 1px solid #808080; box-shadow: 2px 2px 0 rgb(0 0 0 / 0.25); font: 12px/1.2 Tahoma, 'Segoe UI', system-ui, sans-serif; }
+.wa-menu button { display: flex; gap: 6px; width: 100%; padding: 4px 18px 4px 4px; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; white-space: nowrap; }
+.wa-menu button span { width: 14px; flex: none; text-align: center; }
+.wa-menu button:hover, .wa-menu button:focus-visible { background: #000080; color: #fff; outline: none; }
+.wa-menu hr { border: 0; border-top: 1px solid #c0c0c0; margin: 3px 2px; }
 /* windowshade mode: the bar at the bottom of the app */
-.wa-sh { position: relative; width: 275px; height: 14px; background: var(--s-titlebar) -27px -29px; }
-.wa-sh-time { position: absolute; left: 127px; top: 4px; }
+.wa-sh { position: relative; width: 275px; height: 14px; background: var(--s-titlebar) -27px -29px; touch-action: none; }
+.wa .wa-sh-time { left: 127px; top: 4px; display: flex; height: 6px; }
 .wa .wa-sp { top: 2px; height: 10px; }
 /* the bar is small on a phone, so its buttons take taps a little above and below themselves */
 .wa-sh button::after { content: ""; position: absolute; inset: -5px 0; }
-.wa-sh-pos { position: absolute; left: 226px; top: 4px; width: 17px; height: 7px; background: var(--s-titlebar) 0 -36px; }
+.wa-sh-pos { position: absolute; left: 226px; top: 4px; width: 17px; height: 7px; background: var(--s-titlebar) 0 -36px; touch-action: none; }
 .wa-sh-pos i { position: absolute; top: 0; width: 3px; height: 7px; background: var(--s-titlebar) -20px -36px; }
-.wa-bar { position: fixed; z-index: 11; left: 50%; bottom: 16px; translate: -50% 0; box-shadow: 0 6px 20px rgb(0 0 0 / 0.35); }
-.wa-float { position: fixed; z-index: 32; box-shadow: 0 10px 40px rgb(0 0 0 / 0.4); }
+.wa-bar { position: fixed; z-index: 11; bottom: 16px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.35); }
+.wa-float.top { z-index: 45; }
+.wa-float { position: fixed; z-index: 29; box-shadow: 0 10px 40px rgb(0 0 0 / 0.4); }
 body:has(.wa-bar) .dock { bottom: 64px; }
 body:has(.wa-bar) .space-bar { bottom: 64px; }
 .wa-in { display: flex; justify-content: center; }
@@ -1217,10 +1274,15 @@ body:has(.wa-bar) .space-bar { bottom: 64px; }
   body:has(.wa-bar) .space-bar { bottom: calc(108px + env(safe-area-inset-bottom)); }
 }
 .lk-amp { padding: 12px 0; }
-.lk-amp-list { margin: 0 0 8px; padding-left: 22px; font-size: 13px; color: var(--muted); }
+.lk-amp-list { list-style: none; display: flex; flex-direction: column; gap: 3px; padding: 8px 12px; border-radius: calc(10px * var(--rs, 1)); background: var(--soft); font-size: 13px; }
 .lk-amp-list li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lk-amp-list li.bad { color: var(--like); }
-.lk-skin { width: 110px; height: auto; image-rendering: pixelated; border-radius: calc(4px * var(--rs, 1)); }
+.lk-skin-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.lk-skin-btn { display: block; padding: 0; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(6px * var(--rs, 1)); overflow: hidden; background: #000; line-height: 0; }
+/* the museum's shots show every window; the main one is enough here */
+.lk-skin { display: block; width: 206px; aspect-ratio: 275 / 116; object-fit: cover; object-position: top; }
 .lk-skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
 .lk-skins button { padding: 0; border: 0; background: none; display: block; }
 .lk-skins img { display: block; width: 100%; height: auto; image-rendering: pixelated; border-radius: calc(4px * var(--rs, 1)); }
+.customized .apps-h { margin: 10px 16px 2px; font-size: 17px; }
+.customized .btn.wide { margin: 8px 16px; width: calc(100% - 32px); }

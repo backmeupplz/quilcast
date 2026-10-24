@@ -2,13 +2,14 @@
 //   GET /api/look/<fid>   the look, or null
 //   PUT /api/look/<fid>   save one (a JSON look, or null to go back to plain), signed by one of the account's
 //                         Farcaster keys: x-key, x-ts and x-sig (ed25519 over "quilcast-look:<fid>:<ts>:<body>")
+//   GET /api/looks        every profile with a look, newest save first: [{ fid, amp }] (amp: its Winamp is on)
 //   POST /api/design      share a look's design (its style only): stored once in <data>/designs under a hash of
 //                         itself, so a link always shows the same design; answers { id } for quilcast.com/design/<id>
 //   GET /api/design/<id>  a shared design, or null
 // The look is cut down to what src/shared.ts allows, and every image in it has to be a real image under its size cap.
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanDesign, cleanLook, lookImages } from '../src/shared.ts'
 import { fail, fetchJson, gate, imageInfo, keep, parseJson, readText, safeGet } from './net.mjs'
@@ -33,6 +34,20 @@ export const getDesign = (id) => readFile(join(designs, `${id}.json`), 'utf8').t
 
 const looks = new Map()
 const file = (fid) => join(dir, `${fid}.json`)
+// the list behind Search's "Customized profiles"; it's read again at most once a minute
+let listed = null
+export function listLooks() {
+  if (listed && listed.at > Date.now() - 60e3) return listed.list
+  const list = readdir(dir).then((names) => Promise.all(names.filter((n) => /^[1-9]\d*\.json$/.test(n)).map(async (n) => {
+    const fid = Number(n.slice(0, -5))
+    const [s, look] = await Promise.all([stat(join(dir, n)), getLook(fid)])
+    return look && { fid, at: s.mtimeMs, amp: !!look.amp?.on }
+  }))).then((l) => l.filter(Boolean).sort((a, b) => b.at - a.at).map(({ fid, amp }) => ({ fid, amp })))
+  listed = { at: Date.now(), list }
+  list.catch(() => (listed = null))
+  return list
+}
+
 export const getLook = (fid) => looks.get(fid) || keep(looks, 5000, fid, readFile(file(fid), 'utf8').then(JSON.parse, () => null))
 
 // a key counts while the node lists it for the FID and it hasn't expired; asked again after a minute, or after
@@ -87,6 +102,7 @@ export async function putLook(req, fid, node) {
   if (raw === null) {
     await rm(file(fid), { force: true })
     looks.set(fid, Promise.resolve(null))
+    listed = null
     return null
   }
   const look = cleanLook(raw)
@@ -108,5 +124,6 @@ export async function putLook(req, fid, node) {
   await writeFile(file(fid) + '.tmp', JSON.stringify(look))
   await rename(file(fid) + '.tmp', file(fid))
   looks.set(fid, Promise.resolve(look))
+  listed = null
   return look
 }

@@ -384,7 +384,7 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
       {clear(k, label)}
     </span></div>
   )
-  const group = (title: string, body: ComponentChildren, open = false) => <details class="lk-group" open={open}><summary>{title}</summary>{body}</details>
+  const group = (title: string, body: ComponentChildren, open = false) => <details class="lk-group" open={open}><summary>{title}</summary><div class="lk-gb">{body}</div></details>
   const times = (v: number) => `${v}×`
 
   return (

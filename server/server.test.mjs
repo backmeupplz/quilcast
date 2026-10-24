@@ -298,8 +298,11 @@ test('profile looks: saved only with a key the node lists for that FID, cleaned,
   const saved = { bg: '#ff00ff', about: 'hi', top: [1, 2] }
   assert.deepEqual(await r.json(), saved)
   assert.deepEqual(await (await fetch(`${base}/api/look/7`)).json(), saved)
+  // Search's "Customized profiles" lists it while it's there
+  assert.deepEqual(await (await fetch(`${base}/api/looks`)).json(), [{ fid: 7, amp: false }])
   assert.equal((await put(7, null)).status, 200)
   assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
+  assert.deepEqual(await (await fetch(`${base}/api/looks`)).json(), [])
 })
 
 test('shared designs: only the style is kept, under a stable id', async () => {

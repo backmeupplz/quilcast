@@ -18,7 +18,7 @@ import { chunk, done, EXT, MEDIA, start, status } from './upload.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
-import { getDesign, getLook, loadLooks, putDesign, putLook } from './looks.mjs'
+import { getDesign, getLook, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
 import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 
@@ -563,6 +563,7 @@ createServer(async (req, res) => {
     }
 
     // profile looks (server/looks.mjs) and their GIF search
+    if (path === '/api/looks') return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await listLooks())
     const look = path.match(/^\/api\/look\/([1-9]\d{0,9})$/)
     if (look) {
       const fid = Number(look[1])
