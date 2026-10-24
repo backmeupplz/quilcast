@@ -19,6 +19,7 @@ import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
 import { getDesign, getLook, loadLooks, putDesign, putLook } from './looks.mjs'
+import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
@@ -28,6 +29,7 @@ const DIST = new URL('../dist/', import.meta.url).pathname
 const DATA = process.env.DATA_DIR || MEDIA
 load(DATA)
 loadLooks(DATA)
+loadMutes(DATA)
 loadThemes(DATA)
 const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) => new URL(`fonts/${f}`, import.meta.url).pathname)
 
@@ -570,6 +572,17 @@ createServer(async (req, res) => {
       const r = await putLook(req, fid, NODE).catch((e) => e)
       const err = r instanceof Error
       if (err && !r.status) console.error('look', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // mutes and blocks (server/mutes.mjs)
+    const mutes = path.match(/^\/api\/mutes\/([1-9]\d{0,9})$/)
+    if (mutes) {
+      const fid = Number(mutes[1])
+      if (req.method !== 'GET' && req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
+      if (limited(`mutes:${ip}`, 120, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      const r = await (req.method === 'GET' ? getMutes : putMutes)(req, fid, NODE).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('mutes', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
     }
     const design = path.match(/^\/api\/design(?:\/([\w-]{10}))?$/)

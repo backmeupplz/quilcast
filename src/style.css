@@ -1108,3 +1108,15 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .thc.big .thc-info > b { font-size: 1.6em; }
 @container (width < 372px) { .thc-cast ~ .thc-cast { display: none; } }
 .lk-presets .btn.on { box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* mutes and blocks */
+.btn.small.icon { padding: 6px 8px; display: inline-flex; }
+.menu .hint { width: 230px; white-space: normal; font-size: 12px; }
+.mute-add { display: flex; gap: 8px; margin: 8px 0; }
+.mute-add input { flex: 1; min-width: 0; }
+.mute-words { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.mute-words .chip { color: var(--ink); }
+.mute-words .chip small { color: var(--muted); font-weight: 400; }
+.mute-words .chip button { display: inline-flex; border: 0; background: none; padding: 0; margin-right: -4px; color: var(--muted); }
+.mute-who { display: flex; align-items: center; gap: 10px; min-width: 0; color: inherit; }
+.settings h3 { font-size: 14px; margin: 14px 0 2px; }

@@ -383,13 +383,21 @@ export const follow = (fid: number, on: boolean) => send(on ? MT.LINK_ADD : MT.L
 export const setUserData = (type: number, value: string) => send(MT.USER_DATA_ADD, userDataBody(type, value))
 
 
-/** Save the account's profile look on our server (null goes back to plain), signed with its Farcaster key. */
-export async function saveLook(look: object | null, tries = 3): Promise<unknown> {
-  const body = JSON.stringify(look)
-  const r = await fetch(`/api/look/${account!.fid}`, { method: 'PUT', headers: { 'content-type': 'application/json', ...(await keySigned('quilcast-look', body)) }, body })
+/** A request to our server signed with the account's Farcaster key. A key ensureSigner just added takes the node a
+ *  few seconds to list; one the node doesn't list at all is replaced (`tries` > 1). */
+async function keyFetch(url: string, what: string, method: string, body = '', tries = 3): Promise<any> {
+  const r = await fetch(url, { method, headers: { ...(method !== 'GET' && { 'content-type': 'application/json' }), ...(await keySigned(what, body)) }, body: method === 'GET' ? undefined : body })
   const j = await r.json().catch(() => null)
-  // a key ensureSigner just added takes the node a few seconds to list; one the node doesn't list at all is replaced
-  if (r.status === 403 && tries > 1) return ((await signerListed()) ? sleep(3000) : replaceSigner()).then(() => saveLook(look, tries - 1))
+  if (r.status === 403 && tries > 1) return ((await signerListed()) ? sleep(3000) : replaceSigner()).then(() => keyFetch(url, what, method, body, tries - 1))
   if (!r.ok) throw new Error(j?.error || t('Saving failed ({status})', { status: r.status }))
   return j
 }
+
+/** Save the account's profile look on our server (null goes back to plain), signed with its Farcaster key. */
+export const saveLook = (look: object | null) => keyFetch(`/api/look/${account!.fid}`, 'quilcast-look', 'PUT', JSON.stringify(look))
+
+/** The account's mutes and blocks from our server, or null when this browser has no working key yet (reading them
+ *  never adds one, so it can't ask for the recovery phrase). */
+export const fetchMutes = (a = account!) =>
+  (a.pub || a.signer) && a.scopes === SCOPES_VERSION ? keyFetch(`/api/mutes/${a.fid}`, 'quilcast-mutes-read', 'GET', '', 1) : Promise.resolve(null)
+export const saveMutes = (m: object) => keyFetch(`/api/mutes/${account!.fid}`, 'quilcast-mutes', 'PUT', JSON.stringify(m))

@@ -263,3 +263,33 @@ export function themeVars(th: Theme) {
 }
 /** A shared theme's id, from its link or the bare id. */
 export const themeId = (s: string) => s.trim().match(/^(?:https?:\/\/[^/]+)?(?:\/theme\/)?([\w-]{10})\/?$/)?.[1]
+
+// --- mutes and blocks (src/mutes.ts keeps them, server/mutes.mjs stores them) ---
+// `until` is when a mute ends (ms); none means it lasts until it's lifted
+export type Timed<T> = { v: T; until?: number }
+export type Mutes = { words: Timed<string>[]; users: Timed<number>[]; blocks: Timed<number>[] }
+const live = (x: Timed<unknown>, now: number) => !x.until || x.until > now
+/** Mutes cut down to what's allowed and still running; the same word or person once, the later entry winning. */
+export function cleanMutes(raw: any, now = Date.now()): Mutes {
+  const list = <T,>(xs: unknown, ok: (v: any) => T | undefined, max: number) => {
+    const out = new Map<T, Timed<T>>()
+    for (const x of Array.isArray(xs) ? xs : []) {
+      const v = ok(x?.v)
+      const until = Number.isSafeInteger(x?.until) && x.until > 0 ? x.until : undefined
+      if (v !== undefined && live({ v, until }, now)) out.set(v, until ? { v, until } : { v })
+    }
+    return [...out.values()].slice(-max)
+  }
+  const fid = (v: any) => (Number.isSafeInteger(v) && v > 0 ? v : undefined)
+  const word = (v: any) => (typeof v === 'string' && (v = v.trim().toLowerCase().slice(0, 60)) ? v : undefined)
+  return { words: list(raw?.words, word, 300), users: list(raw?.users, fid, 3000), blocks: list(raw?.blocks, fid, 3000) }
+}
+/** One pattern for all muted words: whole words, any case, so "$based" doesn't catch "$basedgod". Chinese and Japanese
+ *  have no spaces between words, so words in those scripts match anywhere. */
+export function wordsRe(words: string[]) {
+  const esc = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const cjk = (w: string) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(w)
+  const whole = words.filter((w) => !cjk(w)).map(esc)
+  const parts = [...(whole.length ? [`(?:^|[^\\p{L}\\p{N}_])(?:${whole.join('|')})(?![\\p{L}\\p{N}_])`] : []), ...words.filter(cjk).map(esc)]
+  return parts.length ? new RegExp(parts.join('|'), 'iu') : null
+}

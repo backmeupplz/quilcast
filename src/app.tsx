@@ -5,9 +5,10 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, Tabs, toast, thumbOf, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
+import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
 import './style.css'
 
 // views most visits never open load when first needed
@@ -228,8 +229,8 @@ async function threads(casts: Cast[], shown: Set<string>) {
   return oncePerFeed(units, shown)
 }
 
-function Unit({ c }: { c: Cast }) {
-  if (!c.up?.length) return <CastCard c={c} />
+function Unit({ c, owner }: { c: Cast; owner?: number }) {
+  if (!c.up?.length) return <CastCard c={c} owner={owner} />
   const parent = c.up[c.up.length - 1]
   return (
     <div class="unit">
@@ -241,11 +242,12 @@ function Unit({ c }: { c: Cast }) {
   )
 }
 
-// `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately
-function Feed({ load, k, empty, keep, cacheKey, thread }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean }) {
+// `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately; `owner` is the profile
+// it's on. A conversation with a muted post in it is left out whole.
+function Feed({ load, k, empty, keep, cacheKey, thread, owner }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number }) {
   // the posts this feed shows so far, for threads(); a first page starts over
   const shown = useRef(new Set<string>())
-  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.map((c) => <Unit key={c.hash} c={c} />)}
+  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
     initial={() => (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
     load={async (cursor) => {
       const r = await load(cursor)
@@ -417,7 +419,7 @@ function Notifications() {
       </Header>
       {tab === 'apps' ? <AppNotes key={round} /> : <Pager<Note> k={`${tab}:${round}`} empty={t('Nothing yet. When people reply, like or follow you, it shows up here.')}
         id={(n) => `${n.type}:${n.cast?.hash}:${n.user.fid}:${n.timestamp}`}
-        row={(ns) => group(ns).map((g) => <NoteRow key={g.key} g={g} />)}
+        row={(ns) => group(ns.filter((n) => !silenced(n.user.fid) && !(n.cast && !ACT(n.type) && hides(n.cast)))).map((g) => <NoteRow key={g.key} g={g} />)}
         load={async (cursor) => {
           const [r, qs] = await Promise.all([get('/v2/farcaster/notifications', { fid: account!.fid, limit: 50, cursor }), cursor ? held.current : extra])
           const notes = r.notifications as Note[]
@@ -562,8 +564,8 @@ function Thread({ hash }: { hash: string }) {
             {account?.done && <Avatar u={myUser()!} size={32} link={false} />}
             <span>{t('Post your reply')}</span>
           </button>
-          {(c.direct_replies || []).map((r) => {
-            const kids = r.direct_replies || []
+          {(c.direct_replies || []).filter((r) => !hides(r)).map((r) => {
+            const kids = (r.direct_replies || []).filter((k) => !hides(k))
             return (
               <div class="reply-group" key={r.hash}>
                 <CastCard c={r} line={kids.length > 0} inThread />
@@ -587,6 +589,7 @@ function Profile({ id }: { id: string }) {
   const [err, setErr] = useState('')
   const [tab, setTab] = useState<'casts' | 'replies'>('casts')
   const [following, setFollowing] = useState<boolean | null>(null)
+  const [menu, setMenu] = useState(false)
   // the profile's look (src/looks.tsx), and the owner's unsaved version while they edit it
   const [L, setL] = useState<Looks | null>(null)
   const [look, setLook] = useState<Look | null>(null)
@@ -668,11 +671,17 @@ function Profile({ id }: { id: string }) {
                     {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
                     {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
                     <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? t('Following') : t('Follow')}</button>
+                    {account?.done && (
+                      <span class="wrap-menu">
+                        <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
+                        {menu && <Menu class="right" close={() => setMenu(false)}><SilenceItems u={u} done={() => setMenu(false)} /></Menu>}
+                      </span>
+                    )}
                   </span>
                 )}
               </div>
               <h2><span class={shown ? L.nameClass(shown) : undefined}>{nameOf(u)}</span></h2>
-              <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span></div>
+              <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span>{!self && (blockOf(u.fid) || muteOf(u.fid)) && <span class="pill">{blockOf(u.fid) ? t('Blocked') : t('Muted')} {untilText((blockOf(u.fid) || muteOf(u.fid))!.until)}</span>}</div>
               {shown && <L.Mood l={shown} />}
               {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
               <div class="counts"><a href={`${userPath(u)}/following`}><b>{n(u.following_count)}</b> {t('following')}</a><a href={`${userPath(u)}/followers`}><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</a></div>
@@ -680,8 +689,12 @@ function Profile({ id }: { id: string }) {
             {shown && <L.Sections l={shown} u={u} edit={draft ? editLook : undefined} />}
             <div class="lk-box lk-feed">
               <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')]]} value={tab} set={setTab} />
-              <Feed k={`${u.fid}${tab}`} empty={tab === 'casts' ? t('No casts yet.') : t('No replies yet.')} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
-                load={(cursor) => get(tab === 'casts' ? '/v2/farcaster/feed/user/casts' : '/v2/farcaster/feed/user/replies_and_recasts', { fid: u.fid, limit: 25, cursor })} />
+              {!self && blockOf(u.fid) ? (
+                <div class="note">{t('You blocked @{name}, so their casts are hidden.', { name: handle(u) })} <button class="link-btn" onClick={() => setMute('blocks', u.fid, false).catch((e) => toast(e.message))}>{t('Unblock')}</button></div>
+              ) : (
+                <Feed k={`${u.fid}${tab}`} owner={u.fid} empty={tab === 'casts' ? t('No casts yet.') : t('No replies yet.')} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
+                  load={(cursor) => get(tab === 'casts' ? '/v2/farcaster/feed/user/casts' : '/v2/farcaster/feed/user/replies_and_recasts', { fid: u.fid, limit: 25, cursor })} />
+              )}
             </div>
           </>
         )}
@@ -882,6 +895,54 @@ function Apps() {
   )
 }
 
+/** Settings > Muted and blocked: words kept out of sight (for a while or for good), and the people muted or blocked. */
+function MuteSettings() {
+  const [word, setWord] = useState('')
+  const [span, setSpan] = useState('')
+  const [, force] = useState(0)
+  const fids = [...mutes.users, ...mutes.blocks].map((x) => x.v)
+  useEffect(() => void loadUsers(fids).then(() => force((x) => x + 1), () => {}), [fids.join()])
+  const lift = (k: 'words' | 'users' | 'blocks', v: string | number) => setMute(k, v, false).catch((e) => toast(e.message))
+  const add = (e: Event) => {
+    e.preventDefault()
+    setWord('')
+    setMute('words', word, span ? Date.now() + Number(span) : undefined).catch((e) => toast(e.message))
+  }
+  const people = (k: 'users' | 'blocks', title: string) => mutes[k].length > 0 && (
+    <>
+      <h3>{title}</h3>
+      {mutes[k].map((x) => {
+        const u = users.get(x.v) || { fid: x.v }
+        return (
+          <div class="setting">
+            <a class="mute-who" href={userPath(u)}><Avatar u={u} size={28} link={false} /><span>{nameOf(u)} <small class="muted">{untilText(x.until)}</small></span></a>
+            <button class="btn ghost small" onClick={() => lift(k, x.v)}>{k === 'blocks' ? t('Unblock') : t('Unmute')}</button>
+          </div>
+        )
+      })}
+    </>
+  )
+  return (
+    <>
+      <p class="hint">{t('Casts with these words, or from these people, stay out of your feeds, threads and notifications. The list is kept with your account, so your other devices hide them too.')}</p>
+      <form class="mute-add" onSubmit={add}>
+        <input value={word} onInput={(e) => setWord(e.currentTarget.value)} placeholder={t('A word, $ticker or #tag')} maxLength={60} aria-label={t('Word to mute')} />
+        <select class="pick" value={span} onChange={(e) => setSpan(e.currentTarget.value)} aria-label={t('How long')}>
+          {spans().map(([label, ms]) => <option value={ms ? String(ms) : ''}>{label}</option>)}
+        </select>
+        <button class="btn small" disabled={!word.trim()}>{t('Mute')}</button>
+      </form>
+      {mutes.words.length > 0 && (
+        <div class="mute-words">
+          {mutes.words.map((x) => <span class="chip">{x.v}{x.until && <small>{untilText(x.until)}</small>}<button type="button" aria-label={t('Unmute {word}', { word: x.v })} onClick={() => lift('words', x.v)}><Icon d={P.x} size={14} /></button></span>)}
+        </div>
+      )}
+      {people('users', t('Muted accounts'))}
+      {people('blocks', t('Blocked accounts'))}
+    </>
+  )
+}
+
 function Settings() {
   const [, force] = useState(0)
   const [prof, setProf] = useState<Record<number, string>>({})
@@ -1002,6 +1063,12 @@ function Settings() {
             {field(USER_DATA.BIO, t('Bio'), t('A line or two about you'), true)}
             {field(USER_DATA.URL, t('Website'), 'https://…')}
             {changed.length > 0 && <div class="actions"><button class="btn small" onClick={saveProfile} disabled={saving}>{saving ? t('Saving…') : t('Save changes')}</button></div>}
+          </section>
+        )}
+        {account?.done && (
+          <section>
+            <h2>{t('Muted and blocked')}</h2>
+            <MuteSettings />
           </section>
         )}
         <section>
@@ -1167,7 +1234,8 @@ function App() {
   useEffect(() => {
     const f = () => force((x) => x + 1)
     addEventListener('account', f)
-    return () => removeEventListener('account', f)
+    addEventListener('mutes', f)
+    return () => (removeEventListener('account', f), removeEventListener('mutes', f))
   }, [])
   // accounts that opened messages listen for them from the start (dms.ts loads only for them)
   useEffect(() => void (account?.dm && import('./dms.ts').then((m) => m.start())), [account?.dm])
@@ -1175,6 +1243,7 @@ function App() {
     const f = () => force((x) => x + 1)
     loadMine().then(f)
     account?.fid && getUser(account.fid).then(f, () => {})
+    syncMutes()
   }, [account?.fid])
   const me = account?.done ? myUser() : null
   shell.me = () => me && <HeaderMe me={me} />

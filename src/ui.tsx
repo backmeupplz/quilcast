@@ -4,6 +4,7 @@ import { account, back, get, go, LINK_RE, read, save, mine, mineVersion, myUser,
 import { castText, cleanDesign, cleanTheme, DEFAULTS, designId, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, sized, themeId, themeVars, X_LOGO, type Look, type Theme } from './shared.ts'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
+import { blockOf, hides, muteOf, setMute } from './mutes.ts'
 
 // keys and crypto load only when someone signs in or writes
 export const w = () => import('./write.ts')
@@ -71,6 +72,8 @@ export const P = {
   apps: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   mic: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3',
   micOff: 'M2 2l20 20M19 10v2a7 7 0 0 1-.1 1M5 10v2a7 7 0 0 0 12 5M15 9.3V5a3 3 0 0 0-5.7-1.3M9 9v3a3 3 0 0 0 5.1 2.1M12 19v3',
+  mute: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0M3 3l18 18',
+  block: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8',
   pin: 'M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2v.8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z',
 }
 export const Icon = ({ d, fill, size = 18 }: { d: string; fill?: boolean; size?: number }) => (
@@ -524,6 +527,7 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   useEffect(() => void (hash && !given && fetchCast(hash).then(setC)), [hash])
   if (c === null) return <div class="quote muted">{t('This cast is unavailable.')}</div>
   if (!c) return <div class="quote skeleton" />
+  if (hides(c)) return <div class="quote muted">{t('Hidden by your mutes.')}</div>
   const img = thumbOf(c)
   const text = castText(c).trim()
   return (
@@ -579,8 +583,44 @@ function Embeds({ c }: { c: Cast }) {
   )
 }
 
-/** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row. */
-export function CastCard({ c, focus, line, inThread, quotes = 0 }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number }) {
+// how long a mute or block lasts
+export const spans = (): [string, number | undefined][] => [[t('For a day'), 864e5], [t('For a week'), 7 * 864e5], [t('For a month'), 30 * 864e5], [t('Until I lift it'), undefined]]
+export const untilText = (until?: number) =>
+  until ? t('until {date}', { date: new Date(until).toLocaleString(lang, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }) : ''
+
+/** Menu items that mute or block someone, or lift it; picking one asks how long, in the same menu. */
+export function SilenceItems({ u, done }: { u: User; done: () => void }) {
+  const [kind, setKind] = useState<'users' | 'blocks' | null>(null)
+  const set = (k: 'users' | 'blocks', until?: number | false) => {
+    done()
+    const name = handle(u)
+    setMute(k, u.fid, until).then(
+      () => toast(until === false ? (k === 'blocks' ? t('Unblocked @{name}', { name }) : t('Unmuted @{name}', { name })) : k === 'blocks' ? t('Blocked @{name}', { name }) : t('Muted @{name}', { name })),
+      (e) => toast(e.message),
+    )
+  }
+  const ask = (k: 'users' | 'blocks', on: unknown) => requireAccount() && (on ? set(k, false) : setKind(k))
+  if (kind)
+    return (
+      <>
+        <div class="menu-label muted">{kind === 'blocks' ? t('Block @{name} for…', { name: handle(u) }) : t('Mute @{name} for…', { name: handle(u) })}</div>
+        {spans().map(([label, ms]) => <button role="menuitem" onClick={() => set(kind, ms && Date.now() + ms)}>{label}</button>)}
+        <p class="menu-label hint">{kind === 'blocks' ? t('Their casts, replies and notifications vanish everywhere on Quilcast. Farcaster has no blocking, so they can still see your casts.') : t('Their casts and notifications stay out of sight, except on their profile.')}</p>
+      </>
+    )
+  const m = muteOf(u.fid)
+  const b = blockOf(u.fid)
+  return (
+    <>
+      <button role="menuitem" onClick={() => ask('users', m)}><Icon d={P.mute} />{m ? t('Unmute @{name}', { name: handle(u) }) : t('Mute @{name}', { name: handle(u) })}</button>
+      <button role="menuitem" class="danger" onClick={() => ask('blocks', b)}><Icon d={P.block} />{b ? t('Unblock @{name}', { name: handle(u) }) : t('Block @{name}', { name: handle(u) })}</button>
+    </>
+  )
+}
+
+/** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row; `owner` is
+ *  the profile it's shown on (see hides()). */
+export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number }) {
   // what the node counted already includes our earlier reactions; local taps adjust from there
   const was = useMemo(() => [mine.likes.has(c.hash), mine.recasts.has(c.hash)], [c.hash, mineVersion])
   const [likedTap, setLiked] = useState<boolean | null>(null)
@@ -588,6 +628,8 @@ export function CastCard({ c, focus, line, inThread, quotes = 0 }: { c: Cast; fo
   const liked = likedTap ?? was[0]
   const recast = recastTap ?? was[1]
   const [menu, setMenu] = useState(false)
+  const [more, setMore] = useState(false)
+  const [sure, setSure] = useState(false)
   const [gone, setGone] = useState(false)
   const toggle = (type: 1 | 2, on: boolean, set: (v: boolean) => void, bag: Set<string>) => {
     if (!requireAccount()) return
@@ -599,7 +641,14 @@ export function CastCard({ c, focus, line, inThread, quotes = 0 }: { c: Cast; fo
     const url = `${location.origin}/c/${c.hash}`
     navigator.share ? navigator.share({ url }).catch(() => {}) : navigator.clipboard.writeText(url).then(() => toast('Link copied'))
   }
-  if (gone) return null
+  // the delete button asks once more in the same spot
+  const del = () => {
+    if (!sure) return setSure(true)
+    setMore(false)
+    w().then((m) => m.deleteCast(c.hash)).then(() => (setGone(true), toast('Deleted')), (e) => toast(e.message))
+  }
+  // a cast opened on its own page shows whatever mutes say
+  if (gone || (!focus && hides(c, owner))) return null
   const sending = posting.get(c.hash) === c
   const ch = channelOf(c.parent_url)
   const parentUser = c.parent_author?.fid ? users.get(c.parent_author.fid) : undefined
@@ -619,7 +668,18 @@ export function CastCard({ c, focus, line, inThread, quotes = 0 }: { c: Cast; fo
       </span>
       <button class={`act lk${liked ? ' on' : ''}`} aria-label={t('Like')} onClick={() => toggle(1, !liked, setLiked, mine.likes)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
       <button class="act" aria-label={t('Share')} onClick={share}><Icon d={P.share} /></button>
-      {focus && account?.fid === c.author.fid && <button class="act" aria-label={t('Delete')} onClick={() => w().then((m) => m.deleteCast(c.hash)).then(() => (setGone(true), toast('Deleted')), (e) => toast(e.message))}><Icon d={P.trash} /></button>}
+      {account?.done && (
+        <span class="wrap-menu">
+          <button class="act" aria-label={t('More')} aria-haspopup="menu" onClick={() => (setMore(!more), setSure(false))}><Icon d={P.more} /></button>
+          {more && (
+            <Menu class="right" close={() => setMore(false)}>
+              {account.fid === c.author.fid
+                ? <button role="menuitem" class="danger" onClick={del}><Icon d={P.trash} />{sure ? t('Delete this cast?') : t('Delete')}</button>
+                : <SilenceItems u={c.author} done={() => setMore(false)} />}
+            </Menu>
+          )}
+        </span>
+      )}
     </footer>
   )
   const name = (

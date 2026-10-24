@@ -263,6 +263,25 @@ test('mini app notifications: tokens per inbox, the spec answer, rate limits, sa
   assert.deepEqual((await (await send('n5')).json()).result.invalidTokens, [t.token, 'nope'])
 })
 
+test('mutes: private to the account, read and written only with its key', async () => {
+  const call = (method, fid, body = '', { key = signer, what = method === 'GET' ? 'quilcast-mutes-read' : 'quilcast-mutes' } = {}) => {
+    const ts = Date.now()
+    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex')
+    return fetch(`${base}/api/mutes/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
+  }
+  assert.equal((await fetch(`${base}/api/mutes/7`)).status, 401)
+  assert.deepEqual(await (await call('GET', 7)).json(), { words: [], users: [], blocks: [] })
+  const body = JSON.stringify({ words: [{ v: '$BASED', until: Date.now() + 864e5 }, { v: 'gone', until: 1 }], users: [{ v: 3 }], blocks: [{ v: 4 }] })
+  assert.equal((await call('PUT', 7, body, { what: 'quilcast-mutes-read' })).status, 401)
+  assert.equal((await call('PUT', 8, body)).status, 403)
+  const r = await call('PUT', 7, body)
+  assert.equal(r.status, 200)
+  const got = await (await call('GET', 7)).json()
+  assert.deepEqual(got, await r.json())
+  assert.deepEqual([got.words.map((x) => x.v), got.users, got.blocks], [['$based'], [{ v: 3 }], [{ v: 4 }]])
+  assert.equal((await call('GET', 7, '', { key: ed25519.utils.randomSecretKey() })).status, 403)
+})
+
 test('profile looks: saved only with a key the node lists for that FID, cleaned, and removable', async () => {
   const put = (fid, look, { key = signer, ts = Date.now(), as = fid } = {}) => {
     const body = JSON.stringify(look)
