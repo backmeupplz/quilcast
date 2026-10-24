@@ -210,19 +210,16 @@ async function threads(casts: Cast[], shown: Set<string>) {
     // nodes with Hypersnap PR #43 say whether the viewer follows the author; others are asked
     if (to !== account?.fid && !(parent.author.viewer_context?.following ?? (await ask(() => amFollowing(to))))) return null
     if (!parent.parent_hash) return { ...c, up: [parent], gap: false }
-    // the root: straight from thread_hash (PR #43), else at most two more steps up
+    // the root: straight from thread_hash (PR #43), else up to five more steps up, like the thread page
     let root: Cast | null = null
     let skipped = false
     if (parent.thread_hash) {
       root = await ask(() => fetchCast(parent.thread_hash!))
       skipped = !!root && parent.parent_hash !== root.hash
     } else {
-      const g1 = await ask(() => fetchCast(parent.parent_hash!))
-      if (g1 && !g1.parent_hash) root = g1
-      else if (g1?.parent_hash) {
-        const g2 = await ask(() => fetchCast(g1.parent_hash!))
-        if (g2 && !g2.parent_hash) (root = g2), (skipped = true)
-      }
+      let up: Cast | null = parent
+      for (let i = 0; up?.parent_hash && i < 5; i++) up = await ask(() => fetchCast(up!.parent_hash!))
+      if (up && !up.parent_hash) (root = up), (skipped = parent.parent_hash !== root.hash)
     }
     return root ? { ...c, up: [root, parent], gap: skipped } : { ...c, up: [parent], gap: true }
   }))

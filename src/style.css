@@ -404,8 +404,10 @@ small.warn { color: var(--warn); }
 .embed-preview { margin-left: 42px; pointer-events: none; }
 .embed-preview .linkcard, .embed-preview .tweet, .embed-preview .quote { margin-top: 8px; }
 .embed-preview .lc-img, .embed-preview .imgs img, .embed-preview .tw-video img { max-height: 180px; }
-.embed-preview .linkcard.big { flex-direction: row; }
-.embed-preview .linkcard.big .lc-img { width: 140px; aspect-ratio: 1.91 / 1; height: auto; border-bottom: 0; border-right: var(--bw, 1px) var(--bs, solid) var(--line); flex: none; }
+/* compact card: image on the left across both rows, text then a mini app's button on the right */
+.embed-preview .linkcard.big { display: grid; grid-template-columns: 140px minmax(0, 1fr); }
+.embed-preview .linkcard.big .lc-img { grid-row: span 2; width: 100%; height: 100%; aspect-ratio: auto; border-bottom: 0; border-right: var(--bw, 1px) var(--bs, solid) var(--line); }
+.embed-preview .linkcard.big .lc-btn { justify-self: start; padding: 5px 12px; }
 .part-x { color: var(--muted); width: 28px; height: 28px; margin-top: 4px; }
 .add-part { color: var(--accent); border: var(--bw, 1px) var(--bs, solid) var(--line) !important; width: 32px !important; height: 32px !important; }
 .editor .avatar { margin-left: -4px; }
