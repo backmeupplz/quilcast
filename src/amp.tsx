@@ -24,10 +24,16 @@ type State = {
 const P0 = {
   vol: 80, bal: 0, shuffle: false, repeat: true, pl: true, eq: false, eqOn: true, eqAuto: false, bands: Array<number>(11).fill(50),
   rem: false, vis: 0, dbl: true, top: false, shade: false, eqShade: false, plShade: false, open: false,
+  // the playlist's size past its smallest, in Winamp's steps of 25 px across and 29 px down
+  plW: 0, plH: 0,
   // where the window (x, y) and the bar (bx, by) were dragged to; the bar starts centered under the feed
   x: undefined as number | undefined, y: undefined as number | undefined, bx: undefined as number | undefined, by: undefined as number | undefined,
 }
 type Prefs = typeof P0
+const plWidth = () => 275 + pf.plW * 25
+const plMid = () => 116 + pf.plH * 29
+/** How wide and tall the windows stand, stacked, at 1×. */
+const size = () => [pf.pl ? Math.max(275, plWidth()) : 275, (pf.shade ? 14 : 116) + (pf.eq ? (pf.eqShade ? 14 : 116) : 0) + (pf.pl ? (pf.plShade ? 14 : plMid() + 58) : 0)]
 
 const read = (k: string) => {
   try {
@@ -660,14 +666,32 @@ function Title({ id }: { id: string }) {
 const touch = () => matchMedia('(pointer: coarse)').matches
 const byTitle = (x: AmpItem, y: AmpItem) => (x.title || x.id).localeCompare(y.title || y.id)
 
+// the corner at the playlist's bottom right resizes it in Winamp's steps (the page may be zoomed, so pixels are
+// measured against the window's drawn size)
+function resize(e: PointerEvent) {
+  if (e.button) return
+  e.stopPropagation()
+  const el = e.currentTarget as HTMLElement
+  const box = el.parentElement!
+  const z = box.getBoundingClientRect().width / box.offsetWidth
+  const [x0, y0, w0, h0] = [e.clientX, e.clientY, pf.plW, pf.plH]
+  el.setPointerCapture(e.pointerId)
+  el.onpointermove = (ev) => {
+    const plW = Math.min(12, Math.max(0, w0 + Math.round((ev.clientX - x0) / z / 25)))
+    const plH = Math.min(16, Math.max(0, h0 + Math.round((ev.clientY - y0) / z / 29)))
+    if (plW !== pf.plW || plH !== pf.plH) pref({ plW, plH })
+  }
+  el.onpointerup = el.onpointercancel = () => (el.onpointermove = el.onpointerup = el.onpointercancel = null)
+}
+
 /** The playlist folded to a strip: what's playing (going round when it's long) and its length. */
 function PlStrip({ v, move, open, close }: { v: View; move?: (e: PointerEvent) => void; open: () => void; close: () => void }) {
   const it = v.list[v.i]
   const now = it ? `${v.i + 1}. ${(it.pl && v.title) || it.title || it.id}` : ''
   return (
-    <div class="wa-pl shade" onPointerDown={move}>
+    <div class="wa-pl shade" style={{ width: `${plWidth()}px` }} onPointerDown={move}>
       <i class="l" /><i class="r" />
-      <Marquee text={now} width={200} cls="wa-pls-title" />
+      <div class="wa-pls-box" style={{ width: `${plWidth() - 75}px` }}><Marquee text={now} width={plWidth() - 75} cls="wa-pls-title" /></div>
       <span class="wa-pls-time">{v.len ? chars(mss(v.len)) : null}</span>
       <button class="wa-pl-sh" aria-label={t('Open the playlist')} onClick={open} />
       <button class="wa-pl-x" aria-label={t('Close the playlist')} onClick={close} />
@@ -719,15 +743,15 @@ function List({ v, a, move }: { v: View; a: (f: () => void) => () => void; move?
   }
   if (pf.plShade) return <PlStrip v={v} move={move} open={() => pref({ plShade: false })} close={() => pref({ pl: false })} />
   return (
-    <div class="wa-pl">
+    <div class="wa-pl" style={{ width: `${plWidth()}px`, height: `${plMid() + 58}px` }}>
       <div class="wa-pl-top" onPointerDown={move} onDblClick={(e) => !(e.target as Element).closest('button') && pref({ plShade: true })}>
         <i class="l" /><i class="t" /><i class="r" />
         <button class="wa-pl-sh" aria-label={t('Shade')} onClick={() => pref({ plShade: true })} />
         <button class="wa-pl-x" aria-label={t('Close the playlist')} onClick={() => pref({ pl: false })} />
       </div>
-      <div class="wa-pl-mid">
+      <div class="wa-pl-mid" style={{ height: `${plMid()}px` }}>
         <i class="l" />
-        <div class="r" onPointerDown={drag(scrollTo, undefined, true)}><i class="wa-pl-thumb" style={{ top: `${Math.round(top * 98)}px` }} /></div>
+        <div class="r" onPointerDown={drag(scrollTo, undefined, true)}><i class="wa-pl-thumb" style={{ top: `${Math.round(top * (plMid() - 18))}px` }} /></div>
         <div class="wa-rows" ref={box} onScroll={scrolled}>
           {v.list.map((x, i) => (
             <>
@@ -748,14 +772,17 @@ function List({ v, a, move }: { v: View; a: (f: () => void) => () => void; move?
         {(['add', 'rem', 'sel', 'misc', 'list'] as const).map((m) => (
           <button class={`wa-plm m-${m}`} aria-label={t(m === 'add' ? 'Add' : m === 'rem' ? 'Remove' : m === 'sel' ? 'Select' : m === 'misc' ? 'Misc' : 'List')} aria-haspopup="menu" onClick={(e) => openMenu(e, menus[m]())} />
         ))}
-        <span class="wa-pl-run">{v.st === 'stop' ? null : chars(`${mss(v.at)}/${mss(v.len)}`)}</span>
-        <button class="wa-pl-mini" aria-label={t('Time remaining')} onClick={() => pref({ rem: !pf.rem })}>{v.st === 'stop' ? null : chars((pf.rem && v.len ? '-' : ' ') + mss(shown(v)).padStart(4, ' '))}</button>
-        {([[prev, 'Previous'], [play, 'Play'], [pause, 'Pause'], [stop, 'Stop'], [() => next(), 'Next'], [() => addUrl(), 'Play a YouTube link…']] as const).map(([f, l], i) => (
-          <button class="wa-pl-tp" style={{ left: `${128 + i * 10}px` }} aria-label={t(l)} onClick={a(f)} />
-        ))}
+        <div class="wa-pl-br">
+          <span class="wa-pl-run">{v.st === 'stop' ? null : chars(`${mss(v.at)}/${mss(v.len)}`)}</span>
+          <button class="wa-pl-mini" aria-label={t('Time remaining')} onClick={() => pref({ rem: !pf.rem })}>{v.st === 'stop' ? null : chars((pf.rem && v.len ? '-' : ' ') + mss(shown(v)).padStart(4, ' '))}</button>
+          {([[prev, 'Previous'], [play, 'Play'], [pause, 'Pause'], [stop, 'Stop'], [() => next(), 'Next'], [() => addUrl(), 'Play a YouTube link…']] as const).map(([f, l], i) => (
+            <button class="wa-pl-tp" style={{ left: `${3 + i * 10}px` }} aria-label={t(l)} onClick={a(f)} />
+          ))}
+        </div>
         <button class="wa-pl-up" aria-label={t('Scroll up')} onClick={() => page(-1)} />
         <button class="wa-pl-down" aria-label={t('Scroll down')} onClick={() => page(1)} />
       </div>
+      <div class="wa-pl-grip" role="slider" aria-label={t('Resize the playlist')} onPointerDown={resize} />
     </div>
   )
 }
@@ -765,7 +792,7 @@ export function ProfileAmp({ owner }: { owner: Owner }) {
   const live = useAmp()
   const k = useSkin(owner.amp.skin)
   const box = useRef<HTMLDivElement>(null)
-  const z = useFit(box)
+  const z = useFit(box, size()[0])
   const mine = live?.fid === owner.fid
   // while it's on screen here, the bar at the bottom steps aside
   useEffect(() => fresh(owner), [owner.amp])
@@ -780,25 +807,27 @@ export function ProfileAmp({ owner }: { owner: Owner }) {
   const win: Win = { float: false, min: () => (before(), pref({ open: true })), close: () => (before(), stop()) }
   return (
     <div class="wa-in" ref={box}>
-      {k ? <div style={{ zoom: pf.dbl ? z : 1 }}><Winamp v={mine ? live : idle(owner.amp)} k={k} md5={owner.amp.skin} before={before} win={win} /></div> : <div class="wa-wait" />}
+      {k ? <div style={{ zoom: z }}><Winamp v={mine ? live : idle(owner.amp)} k={k} md5={owner.amp.skin} before={before} win={win} /></div> : <div class="wa-wait" />}
     </div>
   )
 }
 const showing = new Set<number>()
 
 // pixels stay sharp at whole sizes, and a phone gets as much as fits
-function useFit(ref: { current: HTMLElement | null }) {
+// (a playlist made wider than the room shrinks the whole Winamp rather than spill out)
+function useFit(ref: { current: HTMLElement | null }, w: number) {
   const [z, setZ] = useState(1)
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const o = new ResizeObserver(() => setZ(Math.min(2, Math.max(1, Math.floor(el.clientWidth / 275 * 4) / 4))))
+    const o = new ResizeObserver(() => setZ(fit(el.clientWidth, w)))
     o.observe(el)
     return () => o.disconnect()
-  }, [])
+  }, [w, pf.dbl])
   return z
 }
-const fitWindow = () => (pf.dbl ? Math.min(2, Math.max(1, Math.floor((innerWidth - 32) / 275 * 4) / 4)) : 1)
+const fit = (room: number, w: number) => (room < w ? room / w : pf.dbl ? Math.min(2, Math.floor(room / w * 4) / 4) : 1)
+const fitWindow = () => fit(innerWidth - 32, size()[0])
 
 // the full Winamp over the app moves by its title bars, like the real one, and the bar at the bottom by itself;
 // a drag isn't a click, so the bar doesn't open when let go
@@ -842,8 +871,7 @@ function Shell() {
   const label = v && t("{name}'s Winamp", { name: v.name })
   let body = null
   if (v && k && pf.open) {
-    const h = (pf.shade ? 14 : 116) + (pf.eq ? (pf.eqShade ? 14 : 116) : 0) + (pf.pl ? (pf.plShade ? 14 : 174) : 0)
-    const [w, hh] = [275 * z, h * z]
+    const [w, hh] = size().map((n) => n * z)
     const x = Math.min(Math.max(0, pf.x ?? innerWidth - w - 16), innerWidth - w)
     const y = Math.min(Math.max(0, pf.y ?? innerHeight - hh - 90), innerHeight - 14 * z)
     body = (
@@ -855,7 +883,7 @@ function Shell() {
   } else if (v && k && !showing.has(v.fid)) {
     const it = v.list[v.i]
     const a = (f: () => void) => f
-    const [w, h] = [275 * z, 28 * z]
+    const [w, h] = [Math.max(275, plWidth()) * z, 28 * z]
     const col = document.querySelector('.col')?.getBoundingClientRect()
     const x = Math.min(Math.max(0, pf.bx ?? (col ? col.left + col.width / 2 - w / 2 : (innerWidth - w) / 2)), innerWidth - w)
     const at = pf.by === undefined ? {} : { top: `${Math.min(Math.max(0, pf.by), innerHeight - h)}px`, bottom: 'auto' }

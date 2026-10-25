@@ -1132,7 +1132,7 @@ body:has(.space-bar) .dock { bottom: 84px; }
 
 /* Winamp (src/amp.tsx): every part is a sprite from the skin's sheets (--s-<sheet>), at Webamp's places */
 .wa-yt { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; border: 0; opacity: 0; pointer-events: none; }
-.wa { position: relative; width: 275px; font-size: 0; line-height: 0; image-rendering: pixelated; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.wa { position: relative; width: max-content; min-width: 275px; font-size: 0; line-height: 0; image-rendering: pixelated; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .wa i { display: block; font-style: normal; }
 .wa button { all: unset; position: absolute; display: block; cursor: default; }
 .wa button:focus-visible { outline: 1px dotted #fff; }
@@ -1195,20 +1195,20 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa .wa-rep.on { background-position: 0 -30px; } .wa .wa-rep.on:active { background-position: 0 -45px; }
 /* the playlist: corners from PLEDIT.BMP, edges from the tiles cut out of it (src/skin.ts) */
 .wa-pl { position: relative; width: 275px; height: 174px; }
-.wa-pl > div { position: absolute; left: 0; width: 275px; }
+.wa-pl > div { position: absolute; left: 0; width: 100%; }
 .wa-pl i { position: absolute; }
 .wa-pl-top { top: 0; height: 20px; background: var(--s-top) repeat-x; touch-action: none; }
 .wa-pl-top .l { left: 0; width: 25px; height: 20px; background: var(--s-pledit) 0 0; }
-.wa-pl-top .t { left: 87px; width: 100px; height: 20px; background: var(--s-pledit) -26px 0; }
+.wa-pl-top .t { left: calc(50% - 50px); width: 100px; height: 20px; background: var(--s-pledit) -26px 0; }
 .wa-pl-top .r { right: 0; width: 25px; height: 20px; background: var(--s-pledit) -153px 0; }
 .wa .wa-pl-x { right: 2px; top: 3px; width: 9px; height: 9px; }
 .wa .wa-pl-sh { right: 12px; top: 3px; width: 9px; height: 9px; } .wa .wa-pl-sh:active { background: var(--s-pledit) -62px -42px; }
 .wa .wa-pl-x:active { background: var(--s-pledit) -52px -42px; }
 .wa-pl-mid { top: 20px; height: 116px; }
-.wa-pl-mid .l { left: 0; top: 0; width: 12px; height: 116px; background: var(--s-left) repeat-y; }
-.wa-pl-mid > .r { position: absolute; right: 0; top: 0; width: 20px; height: 116px; background: var(--s-right) repeat-y; touch-action: none; }
+.wa-pl-mid .l { left: 0; top: 0; width: 12px; height: 100%; background: var(--s-left) repeat-y; }
+.wa-pl-mid > .r { position: absolute; right: 0; top: 0; width: 20px; height: 100%; background: var(--s-right) repeat-y; touch-action: none; }
 .wa-pl-thumb { right: 7px; width: 8px; height: 18px; background: var(--s-pledit) -52px -53px; }
-.wa-rows { position: absolute; left: 12px; top: 0; width: 243px; height: 116px; box-sizing: border-box; padding: 3px 0; overflow-y: auto; scrollbar-width: none; background: var(--wa-bg); }
+.wa-rows { position: absolute; left: 12px; top: 0; width: calc(100% - 32px); height: 100%; box-sizing: border-box; padding: 3px 0; overflow-y: auto; scrollbar-width: none; background: var(--wa-bg); }
 .wa-rows::-webkit-scrollbar { display: none; }
 .wa .wa-row { position: static; display: flex; gap: 6px; width: 100%; box-sizing: border-box; padding: 0 3px; font: 9px/13px var(--wa-font); letter-spacing: 0.5px; color: var(--wa-fg); white-space: nowrap; }
 .wa .wa-row span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1219,14 +1219,18 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa-pl-bot .l { left: 0; width: 125px; height: 38px; background: var(--s-pledit) 0 -72px; }
 .wa-pl-bot .r { right: 0; width: 150px; height: 38px; background: var(--s-pledit) -126px -72px; }
 .wa .wa-plm { bottom: 12px; width: 22px; height: 18px; } .wa .m-add { left: 14px; } .wa .m-rem { left: 43px; } .wa .m-sel { left: 72px; } .wa .m-misc { left: 101px; } .wa .m-list { right: 22px; }
-.wa-pl-run { position: absolute; left: 132px; top: 10px; display: flex; }
-.wa .wa-pl-mini { left: 191px; top: 23px; display: flex; height: 6px; }
+.wa-pl-br { position: absolute; right: 0; top: 0; width: 150px; height: 38px; pointer-events: none; }
+.wa .wa-pl-br > * { pointer-events: auto; }
+.wa-pl-run { position: absolute; left: 7px; top: 10px; display: flex; }
+.wa .wa-pl-mini { left: 66px; top: 23px; display: flex; height: 6px; }
 .wa .wa-pl-tp { top: 22px; width: 10px; height: 10px; }
 .wa .wa-pl-up, .wa .wa-pl-down { right: 7px; width: 8px; height: 5px; } .wa .wa-pl-up { top: 2px; } .wa .wa-pl-down { top: 8px; }
 .wa-pl.shade { height: 14px; background: var(--s-plshade) repeat-x; touch-action: none; }
 .wa-pl.shade .l { left: 0; top: 0; width: 25px; height: 14px; background: var(--s-pledit) -72px -42px; }
 .wa-pl.shade .r { right: 0; top: 0; width: 50px; height: 14px; background: var(--s-pledit) -99px -42px; }
-.wa .wa-pls-title { position: absolute; left: 5px; top: 4px; width: 200px; height: 6px; overflow: hidden; }
+.wa .wa-pls-box { position: absolute; left: 5px; top: 4px; height: 6px; overflow: hidden; }
+.wa .wa-pls-title { overflow: hidden; height: 6px; }
+.wa .wa-pl-grip { position: absolute; left: auto; right: 0; bottom: 0; width: 20px; height: 20px; cursor: nwse-resize; touch-action: none; }
 .wa-pls-time { position: absolute; right: 30px; top: 4px; display: flex; }
 .wa-pl.shade .wa-pl-sh:active { background: var(--s-pledit) -150px -42px; }
 /* the equalizer (EQMAIN.BMP, and EQ_EX.BMP for its shade) */
