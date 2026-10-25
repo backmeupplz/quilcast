@@ -51,7 +51,9 @@ export async function translate(body, getCast, env) {
     const cast = await getCast(hash)
     const text = String(cast?.text || '').trim()
     if (!text) throw fail(404, 'That cast has no words to translate.')
-    const r = await model(() => ask(text.slice(0, 2000), TO[to], env))
+    // free models drop a request now and then, so a failed one is asked once more (after a moment) before giving up
+    const once = () => model(() => ask(text.slice(0, 2000), TO[to], env))
+    const r = await once().catch(() => new Promise((ok) => setTimeout(ok, 1500)).then(once))
     await writeFile(file(to, hash) + '.tmp', JSON.stringify(r))
     await rename(file(to, hash) + '.tmp', file(to, hash))
     kept.set(k, Promise.resolve(r))
@@ -79,7 +81,10 @@ async function ask(text, language, { key, models = DEFAULT_MODELS, url = 'https:
     }),
   }).catch(() => null)
   const j = await res?.json().catch(() => null)
-  if (!res?.ok) throw fail(502, res?.status === 429 ? 'The free translator is busy. Try again in a minute.' : "Couldn't translate that right now.")
+  if (!res?.ok) {
+    console.error('translate: openrouter', res?.status ?? 'unreachable', JSON.stringify(j?.error || '').slice(0, 200))
+    throw fail(502, res?.status === 429 ? 'The free translator is busy. Try again in a minute.' : "Couldn't translate that right now.")
+  }
   const out = String(j?.choices?.[0]?.message?.content || '')
   // models sometimes wrap the JSON in a code block or say something first
   let r = null
@@ -88,6 +93,9 @@ async function ask(text, language, { key, models = DEFAULT_MODELS, url = 'https:
   } catch {}
   const from = typeof r?.from === 'string' && /^[a-z]{2,3}(-[a-z]{2,4})?$/i.test(r.from.trim()) ? r.from.trim().toLowerCase() : 'und'
   const t = typeof r?.text === 'string' ? r.text.trim().slice(0, 4000) : ''
-  if (!t) throw fail(502, "Couldn't translate that right now.")
+  if (!t) {
+    console.error('translate: unreadable answer from', j?.model, JSON.stringify(out.slice(0, 200)))
+    throw fail(502, "Couldn't translate that right now.")
+  }
   return { from, text: t }
 }
