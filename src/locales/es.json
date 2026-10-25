@@ -946,5 +946,17 @@
   "YouTube link (a video or a playlist)": "Enlace de YouTube (un vídeo o una lista)",
   "{name}'s profile": "Perfil de {name}",
   "Customized profiles": "Perfiles personalizados",
-  "Resize the playlist": "Cambiar el tamaño de la lista"
+  "Resize the playlist": "Cambiar el tamaño de la lista",
+  "Auto-translated from {language}": "Traducido automáticamente del {language}",
+  "Bad request.": "Solicitud incorrecta.",
+  "Couldn't translate that right now.": "No se pudo traducir ahora mismo.",
+  "POST": "POST",
+  "That cast has no words to translate.": "Ese cast no tiene texto para traducir.",
+  "The free translator is busy. Try again in a minute.": "El traductor gratuito está ocupado. Inténtalo en un minuto.",
+  "Too many translations at once, try again in a few minutes.": "Demasiadas traducciones a la vez, inténtalo en unos minutos.",
+  "Translate from {language}": "Traducir del {language}",
+  "Translating…": "Traduciendo…",
+  "Translation isn't set up on this server yet.": "La traducción aún no está configurada en este servidor.",
+  "View original": "Ver original",
+  "View translation": "Ver traducción"
 }

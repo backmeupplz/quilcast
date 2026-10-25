@@ -946,5 +946,17 @@
   "YouTube link (a video or a playlist)": "YouTube 連結（影片或播放清單）",
   "{name}'s profile": "{name} 的個人檔案",
   "Customized profiles": "自訂過的個人檔案",
-  "Resize the playlist": "調整播放清單大小"
+  "Resize the playlist": "調整播放清單大小",
+  "Auto-translated from {language}": "自動翻譯自{language}",
+  "Bad request.": "請求有誤。",
+  "Couldn't translate that right now.": "暫時無法翻譯。",
+  "POST": "POST",
+  "That cast has no words to translate.": "這則 cast 沒有可翻譯的文字。",
+  "The free translator is busy. Try again in a minute.": "免費翻譯服務忙碌中，請一分鐘後再試。",
+  "Too many translations at once, try again in a few minutes.": "翻譯請求過多，請幾分鐘後再試。",
+  "Translate from {language}": "從{language}翻譯",
+  "Translating…": "翻譯中…",
+  "Translation isn't set up on this server yet.": "此伺服器尚未設定翻譯。",
+  "View original": "查看原文",
+  "View translation": "查看譯文"
 }

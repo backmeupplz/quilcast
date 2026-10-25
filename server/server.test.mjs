@@ -22,6 +22,7 @@ const key = secp256k1.utils.randomSecretKey()
 // fid 7's one Farcaster key, for profile looks
 const signer = ed25519.utils.randomSecretKey()
 const signerHex = '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex')
+const orAsked = []
 const node = createServer(async (q, r) => {
   const u = new URL(q.url, 'http://x')
   r.setHeader('content-type', 'application/json')
@@ -39,6 +40,13 @@ const node = createServer(async (q, r) => {
     let body = ''
     for await (const c of q) body += c
     return r.end(JSON.stringify({ path: u.pathname, method: q.method, auth: q.headers.authorization, query: u.search, idempotency: q.headers['idempotency-key'], body: body && JSON.parse(body) }))
+  }
+  // OpenRouter: answers like a chatty free model, and remembers what it was asked
+  if (u.pathname === '/or/chat') {
+    let body = ''
+    for await (const c of q) body += c
+    orAsked.push({ auth: q.headers.authorization, body: JSON.parse(body) })
+    return r.end(JSON.stringify({ choices: [{ message: { content: 'Sure!\n```json\n{"from": "ja", "text": "Hello from Japan"}\n```' } }] }))
   }
   // Quorum's skin gallery
   if (u.pathname === '/skins') return r.end(JSON.stringify({ has_more: true, total: 2, entries: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5, author_address: 'Qmx', manifest: 'big' }, { id: '../etc', name: 'bad' }] }))
@@ -68,7 +76,7 @@ const port = 40000 + Math.floor(Math.random() * 20000)
 const base = `http://127.0.0.1:${port}`
 let srv
 before(async () => {
-  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}` }, stdio: 'ignore' })
+  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat` }, stdio: 'ignore' })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -358,4 +366,26 @@ test('shared themes: cleaned, stored under a stable id, with their page and shar
   const png = await fetch(`${base}/og/theme/${id}.png`)
   assert.equal(png.headers.get('content-type'), 'image/png')
   assert.equal(Buffer.from(await png.arrayBuffer()).readUInt32BE(16), 1200)
+})
+
+test('translations: asked once per cast and language, from the node\'s words, from free models only, then kept', async () => {
+  const hash = 'ab'.repeat(20)
+  assert.deepEqual(await (await fetch(`${base}/api/translate`)).json(), { on: true })
+  const tr = (body, path = '/api/translate') => fetch(`${base}${path}`, { method: 'POST', body: JSON.stringify(body) })
+  assert.equal((await tr({ hash: 'nope', to: 'en' })).status, 400)
+  assert.equal((await tr({ hash, to: 'klingon' })).status, 400)
+  assert.deepEqual(await (await tr({ to: 'en', hashes: [hash] }, '/api/translations')).json(), {})
+  const [a, b] = await Promise.all([tr({ hash, to: 'en' }), tr({ hash: '0x' + hash, to: 'en' })])
+  assert.deepEqual(await a.json(), { from: 'ja', text: 'Hello from Japan' })
+  assert.deepEqual(await b.json(), { from: 'ja', text: 'Hello from Japan' })
+  assert.equal(orAsked.length, 1)
+  const { auth, body } = orAsked[0]
+  assert.equal(auth, 'Bearer test-key')
+  assert.ok(body.models.length && body.models.every((m) => m.endsWith(':free') || m === 'openrouter/free'))
+  assert.deepEqual(body.provider.max_price, { prompt: 0, completion: 0 })
+  // the words are the node's (the fake node's cast text), not anything the browser sent
+  assert.equal(body.messages[1].content, evil.trim())
+  assert.deepEqual(await (await tr({ hash, to: 'en' })).json(), { from: 'ja', text: 'Hello from Japan' })
+  assert.equal(orAsked.length, 1)
+  assert.deepEqual(await (await tr({ to: 'en', hashes: [hash, 'cd'.repeat(20)] }, '/api/translations')).json(), { [hash]: { from: 'ja', text: 'Hello from Japan' } })
 })

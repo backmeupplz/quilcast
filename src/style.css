@@ -1297,3 +1297,7 @@ body:has(.wa-bar) .space-bar { bottom: 64px; }
 .lk-skins img { display: block; width: 100%; height: auto; image-rendering: pixelated; border-radius: calc(4px * var(--rs, 1)); }
 .customized .apps-h { margin: 10px 16px 2px; font-size: 17px; }
 .customized .btn.wide { margin: 8px 16px; width: calc(100% - 32px); }
+/* under a cast in another language (ui.tsx Said) */
+.tr-note { margin-top: 4px; font-size: 13px; color: var(--muted); }
+.tr-note .link-btn { font-size: 13px; }
+.tr-note .link-btn:disabled { color: var(--muted); }

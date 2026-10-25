@@ -946,5 +946,17 @@
   "YouTube link (a video or a playlist)": "Посилання YouTube (відео або плейлист)",
   "{name}'s profile": "Профіль {name}",
   "Customized profiles": "Оформлені профілі",
-  "Resize the playlist": "Змінити розмір плейлиста"
+  "Resize the playlist": "Змінити розмір плейлиста",
+  "Auto-translated from {language}": "Автопереклад з мови: {language}",
+  "Bad request.": "Неправильний запит.",
+  "Couldn't translate that right now.": "Зараз не вдалося перекласти.",
+  "POST": "POST",
+  "That cast has no words to translate.": "У цьому касті немає тексту для перекладу.",
+  "The free translator is busy. Try again in a minute.": "Безкоштовний перекладач зайнятий. Спробуйте за хвилину.",
+  "Too many translations at once, try again in a few minutes.": "Забагато перекладів одночасно, спробуйте за кілька хвилин.",
+  "Translate from {language}": "Перекласти з мови: {language}",
+  "Translating…": "Перекладаємо…",
+  "Translation isn't set up on this server yet.": "Переклад на цьому сервері ще не налаштовано.",
+  "View original": "Показати оригінал",
+  "View translation": "Показати переклад"
 }

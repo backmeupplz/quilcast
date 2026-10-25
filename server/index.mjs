@@ -10,7 +10,8 @@ import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
 import { castText, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, sized, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
-import { fetchJson, gate, imageInfo, keep, safeGet } from './net.mjs'
+import { fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
+import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
 import { cached, unfurl } from './unfurl.mjs'
@@ -29,6 +30,9 @@ const DIST = new URL('../dist/', import.meta.url).pathname
 const DATA = process.env.DATA_DIR || MEDIA
 load(DATA)
 loadLooks(DATA)
+loadTranslations(DATA)
+// cast translations (server/translate.mjs): free OpenRouter models, set by OPENROUTER_API_KEY
+const TRANSLATOR = { key: process.env.OPENROUTER_API_KEY, url: process.env.OPENROUTER_URL, site: SITE, models: process.env.OPENROUTER_MODELS?.split(',').map((m) => m.trim()).filter(Boolean) }
 loadMutes(DATA)
 loadThemes(DATA)
 const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) => new URL(`fonts/${f}`, import.meta.url).pathname)
@@ -562,6 +566,17 @@ createServer(async (req, res) => {
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Upload failed' } : r)
     }
 
+    if (path === '/api/translate' || path === '/api/translations') {
+      // whether translating is set up here; browsers offer it only when it is
+      if (path === '/api/translate' && req.method === 'GET') return json(200, { on: !!TRANSLATOR.key }, 'public, max-age=300')
+      if (req.method !== 'POST') return json(405, { error: 'POST' })
+      const one = path === '/api/translate'
+      if (one ? limited(`tr:${ip}`, 30, 600e3) : limited(`look:${ip}`, 300)) return json(429, { error: 'Too many translations at once, try again in a few minutes.' })
+      const r = await readJson(req, 4e3).then((b) => (one ? translate(b, getCast, TRANSLATOR) : translations(b))).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('translate', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : "Couldn't translate that right now." } : r)
+    }
     // profile looks (server/looks.mjs) and their GIF search
     if (path === '/api/looks') return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await listLooks())
     const look = path.match(/^\/api\/look\/([1-9]\d{0,9})$/)

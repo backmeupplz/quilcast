@@ -946,5 +946,17 @@
   "YouTube link (a video or a playlist)": "YouTube リンク（動画またはプレイリスト）",
   "{name}'s profile": "{name} のプロフィール",
   "Customized profiles": "カスタマイズしたプロフィール",
-  "Resize the playlist": "プレイリストのサイズを変更"
+  "Resize the playlist": "プレイリストのサイズを変更",
+  "Auto-translated from {language}": "{language}から自動翻訳",
+  "Bad request.": "リクエストが正しくありません。",
+  "Couldn't translate that right now.": "今は翻訳できませんでした。",
+  "POST": "POST",
+  "That cast has no words to translate.": "このキャストには翻訳する文章がありません。",
+  "The free translator is busy. Try again in a minute.": "無料の翻訳サービスが混み合っています。1 分後にもう一度お試しください。",
+  "Too many translations at once, try again in a few minutes.": "翻訳のリクエストが多すぎます。数分後にもう一度お試しください。",
+  "Translate from {language}": "{language}から翻訳",
+  "Translating…": "翻訳中…",
+  "Translation isn't set up on this server yet.": "このサーバーでは翻訳がまだ設定されていません。",
+  "View original": "原文を表示",
+  "View translation": "翻訳を表示"
 }

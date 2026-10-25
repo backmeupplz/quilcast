@@ -5,6 +5,7 @@ import { castText, cleanDesign, cleanTheme, DEFAULTS, designId, FONTS, isImg, is
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, setMute } from './mutes.ts'
+import { base, detect } from './lang.ts'
 
 // keys and crypto load only when someone signs in or writes
 export const w = () => import('./write.ts')
@@ -185,6 +186,92 @@ function Folded({ text }: { text: string }) {
       <RichText text={text} class={open ? 'text' : 'text fold'} />
       {over && !open && <button class="show-more" onClick={(e) => (stop(e), setOpen(true))}>{t('Show more')}</button>}
     </div>
+  )
+}
+
+// --- translations (server/translate.mjs) ---
+// A cast in another language than Quilcast's offers a translation. Translations are made once per cast and language
+// on our server by a free model and kept there, so ones someone already asked for show up translated right away.
+type Tr = { from: string; text: string }
+const translated = new Map<string, Tr | null>()
+const waiting = new Map<string, ((r: Tr | null) => void)[]>()
+let flush = 0
+// the casts on screen are asked about together, in one request
+function known(hash: string): Promise<Tr | null> {
+  if (translated.has(hash)) return Promise.resolve(translated.get(hash)!)
+  return new Promise((done) => {
+    waiting.set(hash, [...(waiting.get(hash) || []), done])
+    flush ||= window.setTimeout(async () => {
+      flush = 0
+      const asked = new Map(waiting)
+      waiting.clear()
+      for (let i = 0, hs = [...asked.keys()]; i < hs.length; i += 50) {
+        const part = hs.slice(i, i + 50)
+        const r: Record<string, Tr> = await fetch('/api/translations', { method: 'POST', body: JSON.stringify({ to: lang, hashes: part }) }).then((x) => (x.ok ? x.json() : {}), () => ({}))
+        for (const h of part) asked.get(h)!.forEach((f) => f(r[h] || null))
+        for (const h of part) if (r[h]) translated.set(h, r[h])
+      }
+    }, 60)
+  })
+}
+// whether the server can translate at all (it needs an OpenRouter key), asked once
+let canTranslate: Promise<boolean> | undefined
+const translates = () => (canTranslate ||= fetch('/api/translate').then((r) => r.json()).then((j) => !!j.on, () => false))
+const langName = (code: string) => {
+  try {
+    return new Intl.DisplayNames([lang], { type: 'language' }).of(code) || code
+  } catch {
+    return code
+  }
+}
+
+/** A cast's words, translated when it's in another language and the reader asked (or someone did before). */
+function Said({ c, full }: { c: Cast; full?: boolean }) {
+  const text = castText(c)
+  const from = useMemo(() => {
+    const l = detect(text)
+    return l && l !== base(lang) ? l : null
+  }, [text])
+  const [tr, setTr] = useState<Tr | null>(translated.get(c.hash) || null)
+  const [orig, setOrig] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    let live = true
+    if (from && !tr) known(c.hash).then((r) => live && r && setTr(r))
+    if (from) translates().then((x) => live && setOn(x))
+    return () => void (live = false)
+  }, [c.hash, from])
+  const ask = async (e: Event) => {
+    stop(e)
+    setBusy(true)
+    try {
+      const r = await fetch('/api/translate', { method: 'POST', body: JSON.stringify({ hash: c.hash, to: lang }) })
+      const j = await r.json().catch(() => null)
+      if (!r.ok || !j?.text) throw new Error(j?.error || "Couldn't translate that right now.")
+      translated.set(c.hash, j)
+      setTr(j)
+      setOrig(false)
+    } catch (err: any) {
+      toast(err.message)
+    }
+    setBusy(false)
+  }
+  // the model can find it's in the reader's language after all
+  const same = tr && base(tr.from) === base(lang)
+  const words = tr && !orig && !same ? tr.text : text
+  const fromName = langName(tr && tr.from !== 'und' ? tr.from : from || 'und')
+  return (
+    <>
+      {full ? <RichText text={words} /> : <Folded text={words} />}
+      {from && !same && (tr || on) && (
+        <div class="tr-note" onClick={stop}>
+          {tr && !orig ? <>{t('Auto-translated from {language}', { language: fromName })} · <button class="link-btn" onClick={() => setOrig(true)}>{t('View original')}</button></>
+            : tr ? <button class="link-btn" onClick={() => setOrig(false)}>{t('View translation')}</button>
+              : <button class="link-btn" disabled={busy} onClick={ask}>{busy ? t('Translating…') : t('Translate from {language}', { language: fromName })}</button>}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -693,7 +780,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
     return (
       <article class="cast focus">
         <header><Avatar u={c.author} size={44} /><div class="who">{name}</div>{ch && <span class="chan">/{ch}</span>}</header>
-        <RichText text={castText(c)} />
+        <Said c={c} full />
         <Embeds c={c} />
         <div class="when">{sending ? <span class="posting"><span class="pulse" /> {t('Posting…')}</span> : new Date(c.timestamp).toLocaleString(lang, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' })}</div>
         {stats.length > 0 && <div class="stats">{stats.map(([k, x, word]) => <a href={`/c/${c.hash}/${k}`}><b>{n(x)}</b> {word}</a>)}</div>}
@@ -712,7 +799,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
           {ch && <span class="chan">/{ch}</span>}
         </header>
         {c.parent_hash && !inThread && <div class="replying">{parentUser ? <>{t('Replying to')} <a href={userPath(parentUser)} onClick={stop}>@{handle(parentUser)}</a></> : t('Replying to a cast')}</div>}
-        <Folded text={castText(c)} />
+        <Said c={c} />
         <Embeds c={c} />
         {actions}
       </div>

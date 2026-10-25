@@ -21,6 +21,8 @@ for (const s of server) all(s, new RegExp(String.raw`\b(?:fail\(\d+,|error:)\s*(
 
 // labels kept in English in module-level lists and translated where they're shown: t(label)
 const LABELS = [
+  // server/translate.mjs's messages, shown by toast()
+  'Too many translations at once, try again in a few minutes.', "Translation isn't set up on this server yet.", 'That cast has no words to translate.', 'The free translator is busy. Try again in a minute.',
   // the Winamp (amp.tsx): side buttons, visualizations, equalizer presets, playlist buttons
   'Options', 'Always on top', 'Track info on YouTube', 'Double size', 'Visualization', 'Spectrum analyzer', 'Oscilloscope', 'No visualization',
   'Flat', 'Classical', 'Club', 'Dance', 'Full bass', 'Full treble', 'Pop', 'Rock', 'Techno', 'Add', 'Remove', 'Select', 'Misc', 'List',
