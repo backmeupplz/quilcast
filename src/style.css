@@ -1139,7 +1139,7 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa-main, .wa-main > * { position: absolute; }
 .wa-main { position: relative; width: 275px; height: 116px; background: var(--s-main) 0 0; }
 .wa-tb { left: 0; top: 0; width: 275px; height: 14px; background: var(--s-titlebar) -27px 0; touch-action: none; }
-.wa-tb button, .wa-sh > .wa-opt, .wa-sh > .wa-min, .wa-sh > .wa-unshade, .wa-sh > .wa-close { top: 3px; width: 9px; height: 9px; background-image: var(--s-titlebar); }
+.wa-tb button, .wa-sh .wa-opt, .wa-sh .wa-min, .wa-sh .wa-unshade, .wa-sh .wa-close { top: 3px; width: 9px; height: 9px; background-image: var(--s-titlebar); }
 .wa .wa-opt { left: 6px; background: none; } .wa .wa-opt:active { background: var(--s-titlebar) 0 -9px; }
 .wa .wa-min { left: 244px; background-position: -9px 0; } .wa .wa-min:active { background-position: -9px -9px; }
 .wa .wa-shade { left: 254px; background-position: 0 -18px; } .wa .wa-shade:active { background-position: -9px -18px; }
@@ -1259,6 +1259,13 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa-menu hr { border: 0; border-top: 1px solid #c0c0c0; margin: 3px 2px; }
 /* windowshade mode: the bar at the bottom of the app */
 .wa-sh { position: relative; width: 275px; height: 14px; background: var(--s-titlebar) -27px -29px; touch-action: none; }
+/* the stretched bar (amp.tsx ShadeBar wide): the well's middle column, repeated, then the rest moved right */
+.wa-sh-fill { position: absolute; left: 98px; top: 0; width: 1px; height: 14px; background: var(--s-titlebar) -125px -29px; transform-origin: 0 0; }
+.wa-sh-r { position: absolute; top: 0; width: 275px; height: 14px; pointer-events: none; }
+.wa .wa-sh-r > * { pointer-events: auto; }
+.wa .wa-sh-r > .wa-sh-rest { position: absolute; left: 98px; top: 0; width: 177px; height: 14px; background: var(--s-titlebar) -125px -29px; pointer-events: none; }
+.wa .wa-sh-title { position: absolute; left: 81px; top: 4px; height: 6px; overflow: hidden; }
+.wa .wa-sh-mq { height: 6px; overflow: hidden; }
 .wa .wa-sh-time { left: 127px; top: 4px; display: flex; height: 6px; }
 .wa .wa-sp { top: 2px; height: 10px; }
 /* the bar is small on a phone, so its buttons take taps a little above and below themselves */

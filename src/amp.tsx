@@ -488,24 +488,34 @@ const idle = (a: Amp): View => ({ list: a.list, i: 0, sub: 0, at: 0, len: 0, st:
 type Win = { float: boolean; min: () => void; close: () => void; move?: (e: PointerEvent) => void }
 
 /** The windowshade bar: the main window folded to its title bar, with small controls. */
-function ShadeBar({ v, md5, a, win, unshade }: { v: View; md5?: string; a: (f: () => void) => () => void; win: Win; unshade: () => void }) {
+/** The windowshade bar: the main window folded to its title bar, with small controls. With `wide`, its little
+ *  display (the mini visualizer's well, x 79–117) is stretched by that many pixels, by repeating its middle column,
+ *  and the track's title goes round in it; everything right of the well moves over. */
+function ShadeBar({ v, md5, a, win, unshade, wide = 0 }: { v: View; md5?: string; a: (f: () => void) => () => void; win: Win; unshade: () => void; wide?: number }) {
   const frac = v.len ? Math.min(1, v.at / v.len) : 0
+  const it = v.list[v.i]
   return (
-    <div class="wa-sh" onPointerDown={win.move} onDblClick={(e) => !justMoved() && !(e.target as Element).closest('button, .wa-sh-pos') && unshade()}
-      onClick={(e) => !win.float && !justMoved() && e.target === e.currentTarget && unshade()} onContextMenu={(e) => openMenu(e, options(md5, win.float))}>
+    <div class="wa-sh" style={{ width: `${275 + wide}px` }} onPointerDown={win.move} onDblClick={(e) => !justMoved() && !(e.target as Element).closest('button, .wa-sh-pos') && unshade()}
+      onClick={(e) => !win.float && !justMoved() && (e.target as Element).closest('.wa-sh') === e.currentTarget && !(e.target as Element).closest('button, .wa-sh-pos') && unshade()}
+      onContextMenu={(e) => openMenu(e, options(md5, win.float))}>
       <button class="wa-opt" aria-label={t('Options')} aria-haspopup="menu" onClick={(e) => openMenu(e, options(md5, win.float))} />
-      <button class="wa-min" aria-label={t('Minimize')} onClick={win.min} />
-      <button class="wa-unshade" aria-label={t('Open Winamp')} onClick={unshade} />
-      <button class="wa-close" aria-label={win.float ? t('Close Winamp') : t('Close Winamp')} onClick={win.close} />
-      <button class="wa-sh-time" aria-label={t('Time remaining')} onClick={() => pref({ rem: !pf.rem })}>{v.st === 'stop' ? null : chars((pf.rem && v.len ? '-' : ' ') + mss(shown(v)).padStart(4, ' '))}</button>
-      <button class="wa-sp" style={{ left: '169px', width: '7px' }} aria-label={t('Previous')} onClick={a(prev)} />
-      <button class="wa-sp" style={{ left: '176px', width: '10px' }} aria-label={t('Play')} onClick={a(play)} />
-      <button class="wa-sp" style={{ left: '186px', width: '9px' }} aria-label={t('Pause')} onClick={a(pause)} />
-      <button class="wa-sp" style={{ left: '195px', width: '9px' }} aria-label={t('Stop')} onClick={a(stop)} />
-      <button class="wa-sp" style={{ left: '204px', width: '10px' }} aria-label={t('Next')} onClick={a(() => next())} />
-      <button class="wa-sp" style={{ left: '215px', width: '10px' }} aria-label={t('Play a YouTube link…')} onClick={a(() => addUrl())} />
-      <div class="wa-sh-pos" role="slider" aria-label={t('Position')} aria-valuenow={Math.round(v.at)} onPointerDown={v.st !== 'stop' && v.len ? drag(() => {}, seek) : undefined}>
-        {v.st !== 'stop' && <i style={{ left: `${Math.round(frac * 14)}px` }} />}
+      {wide > 0 && <i class="wa-sh-fill" style={{ transform: `scaleX(${wide})` }} />}
+      {wide >= 30 && <div class="wa-sh-title" style={{ width: `${36 + wide}px` }}><Marquee text={it ? `${v.i + 1}. ${(it.pl && v.title) || it.title || it.id}` : 'Winamp'} width={36 + wide} cls="wa-sh-mq" /></div>}
+      <div class="wa-sh-r" style={{ left: `${wide}px` }}>
+        {wide > 0 && <i class="wa-sh-rest" />}
+        <button class="wa-min" aria-label={t('Minimize')} onClick={win.min} />
+        <button class="wa-unshade" aria-label={t('Open Winamp')} onClick={unshade} />
+        <button class="wa-close" aria-label={t('Close Winamp')} onClick={win.close} />
+        <button class="wa-sh-time" aria-label={t('Time remaining')} onClick={() => pref({ rem: !pf.rem })}>{v.st === 'stop' ? null : chars((pf.rem && v.len ? '-' : ' ') + mss(shown(v)).padStart(4, ' '))}</button>
+        <button class="wa-sp" style={{ left: '169px', width: '7px' }} aria-label={t('Previous')} onClick={a(prev)} />
+        <button class="wa-sp" style={{ left: '176px', width: '10px' }} aria-label={t('Play')} onClick={a(play)} />
+        <button class="wa-sp" style={{ left: '186px', width: '9px' }} aria-label={t('Pause')} onClick={a(pause)} />
+        <button class="wa-sp" style={{ left: '195px', width: '9px' }} aria-label={t('Stop')} onClick={a(stop)} />
+        <button class="wa-sp" style={{ left: '204px', width: '10px' }} aria-label={t('Next')} onClick={a(() => next())} />
+        <button class="wa-sp" style={{ left: '215px', width: '10px' }} aria-label={t('Play a YouTube link…')} onClick={a(() => addUrl())} />
+        <div class="wa-sh-pos" role="slider" aria-label={t('Position')} aria-valuenow={Math.round(v.at)} onPointerDown={v.st !== 'stop' && v.len ? drag(() => {}, seek) : undefined}>
+          {v.st !== 'stop' && <i style={{ left: `${Math.round(frac * 14)}px` }} />}
+        </div>
       </div>
     </div>
   )
@@ -883,16 +893,18 @@ function Shell() {
   } else if (v && k && !showing.has(v.fid)) {
     const it = v.list[v.i]
     const a = (f: () => void) => f
-    const [w, h] = [Math.max(275, plWidth()) * z, 28 * z]
+    // the title's room in the bar: up to 125 px (as much as the main window's display), less on a narrow screen
+    const room = innerWidth - 32
+    const wide = Math.max(0, Math.min(125, Math.floor(room / (pf.dbl && room >= 800 ? 2 : 1)) - 275))
+    const bz = pf.dbl ? Math.min(2, Math.max(1, Math.floor(room / (275 + wide) * 4) / 4)) : 1
+    const [w, h] = [(275 + wide) * bz, 14 * bz]
     const col = document.querySelector('.col')?.getBoundingClientRect()
     const x = Math.min(Math.max(0, pf.bx ?? (col ? col.left + col.width / 2 - w / 2 : (innerWidth - w) / 2)), innerWidth - w)
     const at = pf.by === undefined ? {} : { top: `${Math.min(Math.max(0, pf.by), innerHeight - h)}px`, bottom: 'auto' }
     body = (
       <div class="wa-bar" style={{ left: `${Math.round(x)}px`, ...at }} role="region" aria-label={label!} title={(it?.pl && v.title) || it?.title}>
-        <div class="wa" data-st={v.st} style={{ ...vars(k), zoom: z }}>
-          <ShadeBar v={v} md5={v.skin} a={a} win={{ float: false, min: () => pref({ open: true }), close, move: moveWin }} unshade={() => pref({ open: true, shade: false })} />
-          {/* Winamp's windowshade has no room for the title, so the shaded playlist is docked under it, as people did */}
-          <PlStrip v={v} move={moveWin} open={() => pref({ open: true, pl: true, plShade: false })} close={close} />
+        <div class="wa" data-st={v.st} style={{ ...vars(k), zoom: bz }}>
+          <ShadeBar v={v} md5={v.skin} a={a} win={{ float: false, min: () => pref({ open: true }), close, move: moveWin }} unshade={() => pref({ open: true, shade: false })} wide={wide} />
         </div>
       </div>
     )
