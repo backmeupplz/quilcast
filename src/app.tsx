@@ -5,10 +5,11 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
+import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
 
 // views most visits never open load when first needed
@@ -22,6 +23,7 @@ const Messages = lazy<{ id?: string }>(() => import('./messages.tsx').then((m) =
 const Spaces = lazy<{}>(() => import('./spaces.tsx').then((m) => m.Spaces))
 const WalletPage = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletPage))
 const WalletSettings = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletSettings))
+const WalletPanel = lazy<{ close: () => void }>(() => import('./walletui.tsx').then((m) => m.WalletPanel))
 const SpaceRoom = lazy<{ id: string }>(() => import('./spaces.tsx').then((m) => m.SpaceRoom))
 const ThemeSettings = lazy<{}>(() => import('./themes.tsx').then((m) => m.ThemeSettings))
 const ThemeEditor = lazy<{ start: Theme | null; close: () => void }>(() => import('./themes.tsx').then((m) => m.Editor))
@@ -111,15 +113,21 @@ function HeaderMe({ me }: { me: User }) {
   )
 }
 
-function AccountMenu({ me }: { me: User }) {
+// Quorum mode's user card also leads to your profile, which has no place in its sidebar
+function AccountMenu({ me, quorum }: { me: User; quorum?: boolean }) {
   const [open, setOpen] = useState(false)
   return (
     <div class="me-wrap">
-      {open && <Menu class="up" close={() => setOpen(false)}><AccountList onDone={() => setOpen(false)} /></Menu>}
+      {open && (
+        <Menu class="up" close={() => setOpen(false)}>
+          {quorum && <a class="acct" href={userPath(me)} onClick={() => setOpen(false)}><Icon d={P.user} /><span><b>{t('Profile')}</b></span></a>}
+          <AccountList onDone={() => setOpen(false)} />
+        </Menu>
+      )}
       <button class="me" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
         <Avatar u={me} size={34} link={false} />
         <span><b>{nameOf(me)}</b><small>@{handle(me)}</small></span>
-        <Icon d={P.more} />
+        <Icon d={quorum ? 'M6 9l6 6 6-6' : P.more} />
       </button>
     </div>
   )
@@ -281,11 +289,23 @@ const trendy = (c: Cast) => !c.parent_hash && !isSpace(c)
 function Home() {
   const [tab, setTab] = useState<'following' | 'trending'>(account?.done ? 'following' : 'trending')
   const [round, reload] = useReload()
+  const pick = (t: typeof tab) => (t === tab ? reload() : setTab(t))
   return (
     <>
-      <Header title={t('Home')} back={false}>
-        {account?.done && <Tabs tabs={[['following', t('Following')], ['trending', t('Trending')]]} value={tab} set={(t) => (t === tab ? reload() : setTab(t))} />}
-      </Header>
+      {settings.quorum ? (
+        // Quorum's feed: Discover first, a refresh button, the composer, and a line saying what the feed holds
+        <>
+          <Header title={t('Home')} back={false} action={<button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={reload}><Icon d={P.refresh} /></button>}>
+            {account?.done && <Tabs tabs={[['trending', `${t('Discover')} 🌐`], ['following', t('Following')]]} value={tab} set={pick} />}
+          </Header>
+          <QuorumCompose />
+          <div class="q-sub">{tab === 'trending' ? <><span>🌐 {t('Public posts')}</span><span class="muted">{t('Trending on the network')}</span></> : <><span>{t('Following')}</span><span class="muted">{t('From people you follow')}</span></>}</div>
+        </>
+      ) : (
+        <Header title={t('Home')} back={false}>
+          {account?.done && <Tabs tabs={[['following', t('Following')], ['trending', t('Trending')]]} value={tab} set={pick} />}
+        </Header>
+      )}
       {!account?.done && (
         <div class="banner">
           <div><b>{t('Farcaster without the middlemen')}</b><p>{t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p></div>
@@ -790,10 +810,6 @@ function Customized() {
   )
 }
 
-type Listed = AppMeta & { tagline?: string; category?: string }
-// farcaster.xyz's top mini apps, through our server (cached there); loaded once per visit
-let listed: Promise<Listed[]> | undefined
-const loadListed = () => (listed ||= fetch('/api/apps').then((r) => r.json(), () => []).then((l) => (Array.isArray(l) && l.length ? l : ((listed = undefined), []))))
 const CATEGORY = (c: string) => c.replace(/-/g, ' & ').replace(/^./, (x) => x.toUpperCase())
 
 /** The directory: categories, a search over names and taglines, and a row per app that opens it. */
@@ -895,6 +911,8 @@ function Apps() {
       const next = read<AppMeta[]>('quilcast:apps', []).filter((x) => x.url !== a.url)
       save('quilcast:apps', next)
       setList(next)
+      // Quorum mode's Apps card lists these too
+      dispatchEvent(new Event('dock'))
     })
   const togglePush = async () => {
     const asked = !push && askPush()
@@ -1097,7 +1115,7 @@ function Settings() {
           </section>
         )}
         {account?.done && (
-          <section>
+          <section id="wallets">
             <h2>{t('Wallets')}</h2>
             <WalletSettings />
           </section>
@@ -1143,6 +1161,15 @@ function Settings() {
             </div>
           </div>
           <p class="hint">{t('Dense pages, glossy buttons, a news ticker and rankings, the way Japanese websites look.')}</p>
+        </section>
+        <section>
+          <div class="setting">
+            <h2>{t('Quorum mode')}</h2>
+            <div class="seg">
+              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.quorum === v ? 'on' : ''} onClick={() => ((settings.quorum = v as boolean), saveSettings(), applyTheme(), dispatchEvent(new Event('quorum')), force((x) => x + 1))}>{label}</button>)}
+            </div>
+          </div>
+          <p class="hint">{t("Quilcast laid out like Quilibrium's Quorum app: its sidebar, apps on the right, and the wallet docked beside an open mini app.")}</p>
         </section>
         <section>
           <div class="setting">
@@ -1204,8 +1231,9 @@ function applyTheme() {
   const d = document.documentElement.dataset
   // light or dark and everything else a theme sets (ui.tsx wear)
   wear(worn)
-  // Japanese mode is all CSS under :root[data-jp]
+  // Japanese mode is all CSS under :root[data-jp]; Quorum mode is CSS under :root[data-quorum] and its own shell (App)
   settings.jp ? (d.jp = '') : delete d.jp
+  settings.quorum ? (d.quorum = '') : delete d.quorum
 }
 
 addEventListener('click', follow)
@@ -1280,7 +1308,8 @@ function App() {
     const f = () => force((x) => x + 1)
     addEventListener('account', f)
     addEventListener('mutes', f)
-    return () => (removeEventListener('account', f), removeEventListener('mutes', f))
+    addEventListener('quorum', f)
+    return () => (removeEventListener('account', f), removeEventListener('mutes', f), removeEventListener('quorum', f))
   }, [])
   // accounts that opened messages listen for them from the start (dms.ts loads only for them)
   useEffect(() => void (account?.dm && import('./dms.ts').then((m) => m.start())), [account?.dm])
@@ -1310,20 +1339,45 @@ function App() {
   const href = (k: string) => (k === 'u' ? userPath(me!) : `/${k}`)
   const active = (k: string) => (k === 'u' ? r0 === 'u' && !!me && userPath(me) === `/u/${r1}` : r0 === k)
   const ico = (k: string, d: string) => <span class="ico"><Icon d={d} size={22} />{unread[k as keyof typeof unread] && <i class="badge" />}</span>
+  const quorum = !!settings.quorum
+  const wallet = useWalletOpen() && quorum && !!me
+  if (quorum) {
+    // Quorum's sidebar, in its order, with Quilcast's closest page for each. Channels (Hypersnap can't list a channel's
+    // casts yet), Governance, Saved posts and Status have none here, so they're left out; Spaces are Quilcast's audio
+    // rooms. Profile is in the user card, and Wallet opens the docked panel instead of a page.
+    nav.splice(0, nav.length, ['', t('Home'), P.home], ['search', t('Explore'), P.explore], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['spaces', t('Spaces'), P.mic], ['apps', t('Apps'), P.apps], ['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : []), ...(me ? [] : [['join', t('Join'), P.user]] as [string, string, string][]))
+  }
+  const toggleWallet = (e: Event) => (e.preventDefault(), setWalletOpen(!wallet))
+  const navProps = (k: string) => (quorum && k === 'wallet' ? { href: '/wallet', onClick: toggleWallet, 'aria-expanded': wallet } : { href: href(k) })
+  const on = (k: string) => (quorum && k === 'wallet' ? wallet : active(k))
+  const setMode = (mode: 'light' | 'dark') => ((settings.theme = mode), saveSettings(), applyTheme(), force((x) => x + 1))
   return (
     <>
     {/* outside .app, so a theme's size (zoom) leaves its background and stickers alone */}
     <ThemeLayers stickers={!editing} />
     {editing && <ThemeEditor start={editing.start} close={() => setEditing(null)} />}
     <div class="app">
-      <nav class="side" aria-label={t('Main')}>
-        <a class="brand" href="/"><Logo size={30} /><span>Quilcast</span></a>
-        {nav.filter(([k]) => k !== 'join').map(([k, label, d]) => <a class={`navlink${active(k) ? ' on' : ''}`} href={href(k)}>{ico(k, d)}<span>{label}</span></a>)}
-        {me ? <button class="btn cast-btn" onClick={() => setCompose({})}><Icon d={P.pen} /><span>{t('Cast')}</span></button> : <a class="btn cast-btn" href="/join" aria-label={t('Join')}><Icon d={P.user} /><span>{t('Join')}</span></a>}
-        {me && <AccountMenu me={me} />}
-      </nav>
+      {quorum ? (
+        <nav class="side q-side" aria-label={t('Main')}>
+          <a class="brand" href="/"><Logo size={28} /><span>Quilcast</span></a>
+          {nav.filter(([k]) => k !== 'join').map(([k, label, d]) => <a class={`navlink${on(k) ? ' on' : ''}`} {...navProps(k)}>{ico(k, d)}<span>{label}</span></a>)}
+          {me ? <button class="btn cast-btn" onClick={() => setCompose({})}><Icon d={P.plus} /><span>{t('Create a post')}</span></button> : <a class="btn cast-btn" href="/join" aria-label={t('Join')}><Icon d={P.user} /><span>{t('Join')}</span></a>}
+          <div class="q-bottom">
+            <a class={`navlink${active('settings') ? ' on' : ''}`} href="/settings">{ico('settings', P.gear)}<span>{t('Settings')}</span></a>
+            <LightDark set={setMode} />
+            {me && <AccountMenu me={me} quorum />}
+          </div>
+        </nav>
+      ) : (
+        <nav class="side" aria-label={t('Main')}>
+          <a class="brand" href="/"><Logo size={30} /><span>Quilcast</span></a>
+          {nav.filter(([k]) => k !== 'join').map(([k, label, d]) => <a class={`navlink${active(k) ? ' on' : ''}`} href={href(k)}>{ico(k, d)}<span>{label}</span></a>)}
+          {me ? <button class="btn cast-btn" onClick={() => setCompose({})}><Icon d={P.pen} /><span>{t('Cast')}</span></button> : <a class="btn cast-btn" href="/join" aria-label={t('Join')}><Icon d={P.user} /><span>{t('Join')}</span></a>}
+          {me && <AccountMenu me={me} />}
+        </nav>
+      )}
       <main class="col">{view}</main>
-      <aside class="extra">
+      {quorum ? (wallet ? <WalletPanel close={() => setWalletOpen(false)} /> : <QuorumAside search={r0 !== 'search'} />) : <aside class="extra">
         {r0 !== 'search' && <a class="searchbox" href="/search"><Icon d={P.search} size={16} /><span>{t('Search people and casts')}</span></a>}
         <div class="about">
           <b>{t('About Quilcast')}</b>
@@ -1331,9 +1385,11 @@ function App() {
           <p class="foot"><Version /></p>
           <p class="foot ogre-only"><a href="/shrek/credits.html" target="_blank">{t('Shrek credits')}</a></p>
         </div>
-      </aside>
+      </aside>}
       <nav class="tabbar" aria-label={t('Main')}>
-        {nav.map(([k, label, d]) => <a class={active(k) ? 'on' : ''} href={href(k)} aria-label={label}>{ico(k, d)}</a>)}
+        {nav.map(([k, label, d]) => <a class={on(k) ? 'on' : ''} {...navProps(k)} aria-label={label}>{ico(k, d)}</a>)}
+        {quorum && (me ? <a class={active('u') ? 'on' : ''} href={href('u')} aria-label={t('Profile')}>{ico('u', P.user)}</a> : null)}
+        {quorum && <a class={active('settings') ? 'on' : ''} href="/settings" aria-label={t('Settings')}>{ico('settings', P.gear)}</a>}
       </nav>
       {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={P.pen} size={22} /></button>}
       {me && <Dock />}

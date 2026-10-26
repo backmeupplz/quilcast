@@ -3,10 +3,11 @@
 // with them through src/miniapp.tsx. Balances and NFTs come from Blockscout's public explorers, read in the browser.
 import { useEffect, useState } from 'preact/hooks'
 import { read, save, safeUrl } from './api.ts'
+import { matches, newest, toActivity, type Activity } from './activity.ts'
 import { t } from './i18n.ts'
-import { Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
+import { ago, Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
 import { logoOf, tokensOn } from './tokens.ts'
-import { SendSheet, SwapSheet } from './walletmove.tsx'
+import { explorer, pending, SendSheet, SwapSheet } from './walletmove.tsx'
 import { activeWallet, addWallet, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, walletList, type WalletEntry } from './vault.ts'
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
@@ -125,11 +126,8 @@ const usd = (n: number) => n.toLocaleString(undefined, { style: 'currency', curr
 
 // --- /wallet ---
 
-export function WalletPage() {
-  const list = useWallets()
-  const w = activeWallet()
-  const [adding, setAdding] = useState(false)
-  const [tab, setTab] = useState<'tokens' | 'nfts'>(() => read('quilcast:walletTab', 'tokens'))
+/** Send and swap sheets over the wallet, and the reload of its balances after one. */
+function useMoves(w?: WalletEntry) {
   const [move, setMove] = useState<{ kind: 'send' | 'swap'; holdings: Holding[] } | null>(null)
   // after a send or swap the balances are read again
   const [round, setRound] = useState(0)
@@ -137,6 +135,21 @@ export function WalletPage() {
   const open = (kind: 'send' | 'swap') => (setOpening(kind), load(w!.address).then((holdings) => setMove({ kind, holdings }), () => toast("Balances couldn't be loaded. Try again in a bit.")).finally(() => setOpening('')))
   const refresh = () => (cache.delete(w!.address), setRound((r) => r + 1))
   const sent = () => setTimeout(refresh, 4000)
+  const sheets = w && (
+    <>
+      {move?.kind === 'send' && <SendSheet w={w} holdings={move.holdings} close={() => setMove(null)} sent={sent} />}
+      {move?.kind === 'swap' && <SwapSheet w={w} holdings={move.holdings} close={() => setMove(null)} sent={sent} />}
+    </>
+  )
+  return { open, opening, refresh, round, sheets }
+}
+
+export function WalletPage() {
+  const list = useWallets()
+  const w = activeWallet()
+  const [adding, setAdding] = useState(false)
+  const [tab, setTab] = useState<'tokens' | 'nfts'>(() => read('quilcast:walletTab', 'tokens'))
+  const { open, opening, refresh, round, sheets } = useMoves(w)
   return (
     <>
       <Header title={t('Wallet')} action={list.length > 0 && <Switcher list={list} w={w!} add={() => setAdding(true)} />} />
@@ -160,8 +173,7 @@ export function WalletPage() {
             <button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={refresh}><Icon d="M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5" /></button>
           </div>
           {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} /> : <Nfts key={w.address + round} address={w.address} />}
-          {move?.kind === 'send' && <SendSheet w={w} holdings={move.holdings} close={() => setMove(null)} sent={sent} />}
-          {move?.kind === 'swap' && <SwapSheet w={w} holdings={move.holdings} close={() => setMove(null)} sent={sent} />}
+          {sheets}
         </>
       )}
       {adding && <AddWallet close={() => setAdding(false)} />}
@@ -242,6 +254,181 @@ function Nfts({ address }: { address: string }) {
           <small>{n.collection} · {n.chain}</small>
         </button>
       ))}
+    </div>
+  )
+}
+
+// --- Quorum mode's wallet panel ---
+// The wallet as Quorum lays it out, docked beside the page (app.tsx): the primary wallet's total and address, sends and
+// swaps still on their way, the actions, the networks, and tokens, collectibles and recent activity.
+
+const PANEL_TAB = 'quilcast:walletPanelTab'
+// what activity.ts calls transactions the explorer couldn't name
+// (a Map: the explorer's decoded method names are anyone's, "__proto__" and "toString" too)
+const METHOD = new Map([['Deploy', () => t('Deploy')], ['Contract call', () => t('Contract call')], ['Transfer', () => t('Transfer')]])
+const methodOf = (a: Activity) => METHOD.get(a.method)?.() || a.method
+const STATUS = { ok: () => t('Confirmed'), failed: () => t('Failed'), pending: () => t('Pending') }
+
+export function WalletPanel({ close }: { close: () => void }) {
+  const list = useWallets()
+  const w = activeWallet()
+  const [adding, setAdding] = useState(false)
+  const [tab, setTab] = useState<'tokens' | 'nfts' | 'activity'>(() => read(PANEL_TAB, 'tokens'))
+  const [explorers, setExplorers] = useState(false)
+  const [nets, setNets] = useState(false)
+  const { open, opening, refresh, round, sheets } = useMoves(w)
+  const copy = () => navigator.clipboard.writeText(w!.address).then(() => toast('Address copied'))
+  return (
+    <aside class="q-wallet" aria-label={t('Wallet')}>
+      <div class="q-wallet-h">
+        <h2>{t('Wallet')}</h2>
+        <a class="icon-btn" href="/settings" aria-label={t('Wallet settings')} title={t('Wallet settings')} onClick={() => (matchMedia('(max-width: 1099px)').matches && close(), setTimeout(() => document.getElementById('wallets')?.scrollIntoView(), 100))}><Icon d={P.gear} /></a>
+        <button class="icon-btn" aria-label={t('Minimize')} title={t('Minimize')} onClick={close}><Icon d={P.min} /></button>
+      </div>
+      {!w ? (
+        <div class="wallet-empty">
+          <Icon d={P.wallet} size={40} />
+          <h2>{t('Your Quilcast wallet')}</h2>
+          <p>{t('Create a wallet or bring one in with its recovery phrase or private key. Mini apps can then use it alongside any wallet extension you have.')}</p>
+          <button class="btn" onClick={() => setAdding(true)}>{t('Add a wallet')}</button>
+        </div>
+      ) : (
+        <div class="q-wallet-body">
+          <section class="q-primary">
+            <div class="q-primary-top">
+              <span><small>{t('Primary Wallet')}</small><Switcher list={list} w={w} add={() => setAdding(true)} /></span>
+              <Total key={w.address + round} address={w.address} />
+            </div>
+            {/* one address for every chain the wallet covers */}
+            <div class="q-addr">
+              <span class="q-chains">{CHAINS.map((c) => <img src={c.logo} alt="" title={c.name} referrerpolicy="no-referrer" />)}</span>
+              <span class="q-addr-name">EVM</span>
+              <code>{short(w.address)}</code>
+              <button class="icon-btn" aria-label={t('Copy address')} title={t('Copy address')} onClick={copy}><Icon d={P.copy} size={15} /></button>
+            </div>
+          </section>
+          <PendingBanner address={w.address} />
+          <div class="q-tiles">
+            <button onClick={() => open('swap')} disabled={!!opening}><span><Icon d={P.swap} /></span><b>{opening === 'swap' ? t('Loading…') : t('Swap')}</b></button>
+            <button onClick={() => open('send')} disabled={!!opening}><span><Icon d={P.up} /></span><b>{opening === 'send' ? t('Loading…') : t('Send')}</b></button>
+            <button onClick={copy}><span><Icon d={P.down} /></span><b>{t('Receive')}</b></button>
+            <span class="wrap-menu">
+              <button aria-haspopup="menu" aria-expanded={explorers} title={t('Explorers')} onClick={() => setExplorers(!explorers)}><span><Icon d={P.globe} /></span><b>{t('Explorers')}</b></button>
+              {explorers && (
+                <Menu class="right" close={() => setExplorers(false)}>
+                  {CHAINS.map((c) => <a role="menuitem" href={`https://${c.host}/address/${w.address}`} target="_blank" rel="noopener noreferrer" onClick={() => setExplorers(false)}><img class="wallet-icon" src={c.logo} alt="" referrerpolicy="no-referrer" />{c.name}</a>)}
+                </Menu>
+              )}
+            </span>
+            {/* the token approvals this address gave, on every chain */}
+            <a href={`https://revoke.cash/address/${w.address}`} title={t('Permissions')} target="_blank" rel="noopener noreferrer"><span><Icon d={P.shield} /></span><b>{t('Permissions')}</b></a>
+          </div>
+          <div class="q-networks">
+            <button class="q-nets" aria-expanded={nets} onClick={() => setNets(!nets)}>
+              <span class="q-chains">{CHAINS.map((c) => <img src={c.logo} alt="" referrerpolicy="no-referrer" />)}</span>
+              {t('Networks')}<Icon d={P.chev} size={14} />
+            </button>
+            <button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={() => (recent.delete(w.address), refresh())}><Icon d={P.refresh} /></button>
+          </div>
+          {nets && <p class="hint pad">{CHAINS.map((c) => c.name).join(' · ')}</p>}
+          <Tabs tabs={[['tokens', t('Tokens')], ['nfts', t('Collectibles')], ['activity', t('Activity')]]} value={tab} set={(x) => (setTab(x), save(PANEL_TAB, x))} />
+          {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} /> : tab === 'nfts' ? <Nfts key={w.address + round} address={w.address} /> : <ActivityList key={w.address + round} address={w.address} />}
+          {sheets}
+        </div>
+      )}
+      {adding && <AddWallet close={() => setAdding(false)} />}
+    </aside>
+  )
+}
+
+/** Re-render when a send or swap moves on (walletmove.tsx). */
+function usePending() {
+  const [, force] = useState(0)
+  useEffect(() => {
+    const f = () => force((x) => x + 1)
+    addEventListener('pending', f)
+    return () => removeEventListener('pending', f)
+  }, [])
+  return pending
+}
+
+/** This wallet's sends and swaps still on their way, each linking to its transaction. */
+function PendingBanner({ address }: { address: string }) {
+  const list = usePending().filter((p) => !p.over && p.from === address)
+  return (
+    <>
+      {list.map((p) => (
+        <a class="q-pending" href={explorer(p.chain, p.hash)} target="_blank" rel="noopener noreferrer">
+          <span class="spinner small" />
+          <span class="q-pending-main"><b>{p.label}</b><small>{CHAINS.find((c) => c.id === p.chain)?.name} · {p.state}</small></span>
+          <Icon d={P.chev} size={16} />
+        </a>
+      ))}
+    </>
+  )
+}
+
+// one page of recent transactions per chain, from its explorer, once per visit; when no explorer answered it fails
+// (and is asked again next time) rather than reading as an empty history
+const recent = new Map<string, Promise<Activity[]>>()
+const activityOf = (address: string) => {
+  if (!recent.has(address)) {
+    const per = CHAINS.map((c) => getJson(`https://${c.host}/api/v2/addresses/${address}/transactions`).then((j) => toActivity(c.id, address, j), () => null))
+    const all = Promise.all(per).then((l) => {
+      if (l.every((x) => x === null)) throw new Error()
+      return newest(l.flatMap((x) => x || [])).slice(0, 50)
+    })
+    all.catch(() => recent.delete(address))
+    recent.set(address, all)
+  }
+  return recent.get(address)!
+}
+
+function ActivityList({ address }: { address: string }) {
+  const [list, setList] = useState<Activity[] | null>(null)
+  const [failed, setFailed] = useState(false)
+  const [tries, setTries] = useState(0)
+  const [q, setQ] = useState<string | null>(null)
+  usePending()
+  useEffect(() => {
+    setList(null)
+    setFailed(false)
+    let live = true
+    activityOf(address).then((l) => live && setList(l), () => live && (setFailed(true), setList([])))
+    return () => void (live = false)
+  }, [address, tries])
+  if (!list) return <div class="spinner" />
+  // sends and swaps from this page show before the explorer has them
+  const mine = pending.filter((p) => p.from === address && !list.some((a) => a.hash === p.hash.toLowerCase()))
+  const shown = list.filter((a) => matches(a, q || '', methodOf(a)))
+  return (
+    <div class="q-activity">
+      <div class="q-activity-h">
+        {q === null ? <span class="muted">{t('Recent transactions')}</span> : <input value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search activity')} aria-label={t('Search activity')} autoFocus />}
+        <button class="icon-btn" aria-label={t('Search activity')} aria-pressed={q !== null} onClick={() => setQ(q === null ? '' : null)}><Icon d={q === null ? P.search : P.x} size={16} /></button>
+      </div>
+      {!q && mine.map((p) => (
+        <a class="q-act" href={explorer(p.chain, p.hash)} target="_blank" rel="noopener noreferrer">
+          <span class={`q-act-st ${!p.over ? 'pending' : p.failed ? 'failed' : 'ok'}`}>{!p.over ? <span class="spinner small" /> : <Icon d={p.failed ? P.x : P.up} size={16} />}</span>
+          <span class="q-act-main"><b>{p.label}</b><small>{CHAINS.find((c) => c.id === p.chain)?.name} · {p.state}</small><code>{short(p.hash)}</code></span>
+        </a>
+      ))}
+      {shown.map((a) => {
+        const c = CHAINS.find((x) => x.id === a.chain)!
+        return (
+          <a class="q-act" href={explorer(a.chain, a.hash)} target="_blank" rel="noopener noreferrer">
+            <span class={`q-act-st ${a.status}`}>{a.status === 'pending' ? <span class="spinner small" /> : <Icon d={a.status === 'ok' ? (a.out ? P.up : P.down) : P.x} size={16} />}</span>
+            <span class="q-act-main">
+              <b>{methodOf(a)}{a.amount > 0 && <> · {a.out ? '−' : '+'}{fmt(a.amount, 6)} {c.symbol}</>}</b>
+              <small>{STATUS[a.status]()} · {c.name} · {short(a.from)} → {a.to ? short(a.to) : '—'}</small>
+              <span class="q-act-foot"><code>{short(a.hash)}</code>{a.at > 0 && <time>{ago(a.at)}</time>}</span>
+            </span>
+          </a>
+        )
+      })}
+      {failed && !q ? (
+        <div class="note">{t('Couldn\'t load: {error}', { error: t('Network error') })} <button class="link-btn" onClick={() => setTries((n) => n + 1)}>{t('Retry')}</button></div>
+      ) : !shown.length && (q || !mine.length) && <div class="note">{q ? t('Nothing matches.') : t('No transactions yet.')}</div>}
     </div>
   )
 }

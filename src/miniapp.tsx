@@ -8,7 +8,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { formatUnits, parseUnits } from 'viem'
 import { arbitrum, base, baseSepolia, celo, degen, mainnet, monad, optimism, polygon, unichain, zora } from 'viem/chains'
 import { lang, t } from './i18n.ts'
-import { account, getUser, go, myUser, read, safeUrl, save, setAccount, type Cast, type User } from './api.ts'
+import { account, getUser, go, myUser, read, safeUrl, save, setAccount, settings, type Cast, type User } from './api.ts'
 import { base58, hex } from './fc.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
 import { castText, LOGO } from './shared.ts'
@@ -928,14 +928,22 @@ function AskCard({ app }: { app: App }) {
 function Window({ app }: { app: App }) {
   const on = shown === app.id
   const b = app.button
+  // Quorum mode's window can grow to the page, and has Quorum's share button
+  const [big, setBig] = useState(false)
   return (
-    <section class={`mini${on ? '' : ' away'}`} aria-label={app.name} aria-hidden={!on}>
+    <section class={`mini${on ? '' : ' away'}${big && settings.quorum ? ' big' : ''}`} aria-label={app.name} aria-hidden={!on}>
       <header class="mini-top">
         {app.back ? <button class="icon-btn" aria-label={t('Back')} onClick={() => emit(app, { event: 'back_navigation_triggered' })}><Icon d={P.back} /></button> : <AppIcon app={app} />}
         <span class="mini-name"><b>{app.name}</b><small>{app.host}</small></span>
         <WalletMenu app={app} />
         <AppMenu app={app} />
         <button class="icon-btn" aria-label={t('Minimize')} onClick={() => show(null)}><Icon d={P.min} /></button>
+        {settings.quorum && (
+          <>
+            <button class="icon-btn only-wide" aria-label={big ? t('Make smaller') : t('Expand')} aria-pressed={big} onClick={() => setBig(!big)}><Icon d={P.expand} /></button>
+            <button class="icon-btn" aria-label={t('Share in a cast')} onClick={() => shell.compose({ embeds: [app.url] })}><Icon d={P.share} /></button>
+          </>
+        )}
         <button class="icon-btn" aria-label={t('Close')} onClick={() => close(app)}><Icon d={P.x} /></button>
       </header>
       <div class="mini-body">
@@ -959,6 +967,12 @@ function Host() {
   // the dock lives in the app shell (it also shows pinned apps before any is open); tell it what's open
   shell.dock = { apps: apps.map(({ id, url, name, icon }) => ({ id, url, name, icon })), shown, show: (id) => show(shown === id ? null : apps.find((a) => a.id === id) || null) }
   useEffect(() => void dispatchEvent(new Event('dock')))
+  // Quorum mode's title bar buttons come and go with the setting
+  useEffect(() => {
+    const f = () => update()
+    addEventListener('quorum', f)
+    return () => removeEventListener('quorum', f)
+  }, [])
   // the windows keep their order, so iframes never move in the DOM (moving one reloads it)
   return <>{apps.map((app) => <Window key={app.id} app={app} />)}</>
 }

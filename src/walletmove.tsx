@@ -20,7 +20,7 @@ const num = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 
 const usd = (n?: number) => (n === undefined ? '' : n > 0 && n < 0.01 ? '< $0.01' : n.toLocaleString(undefined, { style: 'currency', currency: 'USD' }))
 // a holding as the token helpers know it
 const tid = (h: Holding) => ({ chain: h.chainId, address: h.address })
-const explorer = (chain: number, hash: string) => `${VIEM[chain].blockExplorers!.default.url}/tx/${hash}`
+export const explorer = (chain: number, hash: string) => `${VIEM[chain].blockExplorers!.default.url}/tx/${hash}`
 
 async function send(w: WalletEntry, chain: number, tx: { to: string; data?: string; value?: string; gas?: string }) {
   const client = createWalletClient({ account: await signerOf(w.id), chain: VIEM[chain], transport: http(rpcOf(chain)) })
@@ -71,30 +71,45 @@ function Sheet({ title, close, back, children }: { title: string; close: () => v
   )
 }
 
-function Sent({ d, close }: { d: Done; close: () => void }) {
-  const [state, setState] = useState(t('Waiting for the network…'))
+/** Sends and swaps on their way, newest first, kept while the page is open, so they can still be followed once their
+ *  sheet is closed (Quorum mode's wallet panel shows them). 'pending' fires when one moves on. */
+export type Pending = Done & { from: string; label: string; state: string; over: boolean; failed?: boolean }
+export const pending: Pending[] = []
+
+function track(d: Done & { from: string; label: string }): Pending {
+  const p: Pending = { ...d, state: t('Waiting for the network…'), over: false }
+  pending.unshift(p)
+  pending.splice(10)
+  const set = (state: string, over = false, failed = false) => ((p.state = state), (p.over = over), (p.failed = failed), dispatchEvent(new Event('pending')))
+  set(p.state)
+  mined(d.chain, d.hash as `0x${string}`).then((r) => {
+    if (r.status !== 'success') return set(t('The transaction failed on chain.'), true, true)
+    if (!d.bridge) return set(t('Done.'), true)
+    const to = VIEM[d.bridge.to].name
+    set(t('Sent. Waiting for it to arrive on {chain}…', { chain: to }))
+    // a bridge finishes on the other chain; LI.FI knows when (asked for up to an hour)
+    const poll = async (left: number) => {
+      const s = await transferStatus(d.hash, d.chain, d.bridge!.to).catch(() => ({ status: 'PENDING' }))
+      if (s.status === 'DONE') set(t('Arrived on {chain}.', { chain: to }), true)
+      else if (s.status === 'FAILED') set(t('The bridge reported a problem. Check the transaction on the explorer.'), true, true)
+      else if (!left) set(t('Still waiting. Check the transaction on the explorer.'), true)
+      else setTimeout(() => poll(left - 1), 10e3)
+    }
+    poll(360)
+  }, () => set(t('Still waiting. Check the transaction on the explorer.'), true))
+  return p
+}
+
+function Sent({ d, close }: { d: Pending; close: () => void }) {
+  const [, force] = useState(0)
   useEffect(() => {
-    let live = true
-    mined(d.chain, d.hash as `0x${string}`).then((r) => {
-      if (!live) return
-      if (r.status !== 'success') return setState(t('The transaction failed on chain.'))
-      if (!d.bridge) return setState(t('Done.'))
-      setState(t('Sent. Waiting for it to arrive on {chain}…', { chain: VIEM[d.bridge.to].name }))
-      // a bridge finishes on the other chain; LI.FI knows when
-      const poll = async () => {
-        const s = await transferStatus(d.hash, d.chain, d.bridge!.to).catch(() => ({ status: 'PENDING' }))
-        if (!live) return
-        if (s.status === 'DONE') setState(t('Arrived on {chain}.', { chain: VIEM[d.bridge!.to].name }))
-        else if (s.status === 'FAILED') setState(t('The bridge reported a problem. Check the transaction on the explorer.'))
-        else setTimeout(poll, 10e3)
-      }
-      poll()
-    }, () => live && setState(t('Still waiting. Check the transaction on the explorer.')))
-    return () => void (live = false)
-  }, [d.hash])
+    const f = () => force((x) => x + 1)
+    addEventListener('pending', f)
+    return () => removeEventListener('pending', f)
+  }, [])
   return (
     <div class="move-done">
-      <p>{state}</p>
+      <p>{d.state}</p>
       <a class="btn ghost small" href={explorer(d.chain, d.hash)} target="_blank" rel="noopener noreferrer">{t('View on explorer')}</a>
       <button class="btn mv-go" onClick={close}>{t('Close')}</button>
     </div>
@@ -200,7 +215,7 @@ export function SendSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
   const [picking, setPicking] = useState(false)
   const [review, setReview] = useState<{ address: `0x${string}`; who: string; amount: bigint } | null>(null)
   const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState<Done | null>(null)
+  const [done, setDone] = useState<Pending | null>(null)
   const h = holdings[i]
   const check = async (e: Event) => {
     e.preventDefault()
@@ -216,7 +231,7 @@ export function SendSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
   const go = async () => {
     setBusy(true)
     try {
-      setDone({ chain: h.chainId, hash: await send(w, h.chainId, transferTx(tid(h), review!.address, review!.amount)) })
+      setDone(track({ chain: h.chainId, hash: await send(w, h.chainId, transferTx(tid(h), review!.address, review!.amount)), from: w.address, label: t('Send {amount} {symbol}', { amount: num(Number(formatUnits(review!.amount, h.decimals))), symbol: h.symbol }) }))
       sent()
     } catch (e: any) {
       toast(e.shortMessage || e.message)
@@ -273,7 +288,7 @@ export function SwapSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
   const [q, setQ] = useState<Quote | null>(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState('')
-  const [done, setDone] = useState<Done | null>(null)
+  const [done, setDone] = useState<Pending | null>(null)
   // something sensible to buy at first: USDC, or the chain's coin when selling USDC
   useEffect(() => {
     if (!h) return
@@ -317,7 +332,7 @@ export function SwapSheet({ w, holdings, close, sent }: { w: WalletEntry; holdin
       // quotes go stale in a minute or two, so the one sent is fetched now
       const fresh = await quote(tid(h), buy!, amount, w.address)
       const hash = await send(w, h.chainId, fresh.tx)
-      setDone({ chain: h.chainId, hash, ...(bridge && { bridge: { to: buy!.chain } }) })
+      setDone(track({ chain: h.chainId, hash, ...(bridge && { bridge: { to: buy!.chain } }), from: w.address, label: t('Swap {amount} {from} for ≈ {got} {to}', { amount: num(Number(formatUnits(amount, h.decimals))), from: h.symbol, got: num(Number(formatUnits(fresh.toAmount, buy!.decimals))), to: buy!.symbol }) }))
       sent()
     } catch (e: any) {
       toast(e.shortMessage || e.message)

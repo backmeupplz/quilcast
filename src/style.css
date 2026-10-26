@@ -1301,3 +1301,148 @@ body:has(.wa-bar) .space-bar { bottom: 64px; }
 .tr-note { margin-top: 4px; font-size: 13px; color: var(--muted); }
 .tr-note .link-btn { font-size: 13px; }
 .tr-note .link-btn:disabled { color: var(--muted); }
+
+/* ---------- Quorum mode (Settings): Quilibrium's Quorum app's layout (quorum-desktop's shell and its upcoming feed),
+   under :root[data-quorum]. A narrow sidebar with tinted pills, the feed centered, search and apps on the right, and
+   the wallet docked on the right edge, with an open mini app beside it rather than under it when there's room. With
+   no theme on, Quorum's own dark surfaces and purple accent; a theme's colors (set inline on <html>) win ---------- */
+/* (Japanese mode and Ogre mode keep their own colors when they're on too) */
+:root[data-quorum]:not([data-jp]):not([data-ogre]) {
+  --bg: light-dark(#ffffff, #161318);
+  --card: light-dark(#fafafd, #1d1a21);
+  --soft: light-dark(#f1f0f5, #241f27);
+  --line: light-dark(#e6e6eb, #312935);
+  --ink: light-dark(#1d1a21, #f4f1f6);
+  --muted: light-dark(#6e6575, #84788b);
+  --hover: light-dark(#f6f6f9, #241f27);
+  --accent: light-dark(#6233e8, #7c52ff);
+  --accent-soft: light-dark(#ece6ff, rgb(124 82 255 / 0.18));
+}
+:root[data-quorum] .app { justify-content: flex-start; }
+:root[data-quorum] .col { margin-inline: auto; max-width: 640px; }
+:root[data-quorum] .side.q-side { border-right: var(--bw, 1px) var(--bs, solid) var(--line); }
+.q-side .navlink { color: var(--ink); font-weight: 500; }
+.q-side .navlink .ico { color: var(--muted); }
+.q-side .navlink:hover { background: var(--hover); }
+.q-side .navlink.on { background: var(--accent-soft); font-weight: 700; }
+.q-side .navlink.on .ico { color: var(--accent); }
+/* the wallet isn't a page: open, only its icon lights up */
+.q-side .navlink.on[aria-expanded] { background: none; font-weight: 500; }
+.q-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+.q-side .me-wrap { margin-top: 0; }
+.q-side .me:hover { background: var(--hover); }
+.q-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 3px; border-radius: calc(9px * var(--rs, 1)); background: var(--soft); }
+.q-mode button { display: grid; place-items: center; height: 28px; border: 0; border-radius: calc(7px * var(--rs, 1)); background: none; color: var(--muted); }
+.q-mode button:disabled { opacity: 0.5; }
+.q-mode button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); }
+@media (min-width: 1100px) {
+  :root[data-quorum] .side.q-side { width: 188px; padding: 10px 10px 12px; gap: 2px; }
+  .q-side .brand { font-size: 17px; padding: 6px 10px 18px; gap: 9px; }
+  .q-side .navlink { width: 100%; gap: 12px; height: 40px; padding: 0 12px; font-size: 14px; border-radius: calc(8px * var(--rs, 1)); }
+  .q-side .navlink .ico svg { width: 19px; height: 19px; }
+  /* the dot at the end of the page you're on */
+  .q-side .navlink.on:not([aria-expanded])::after { content: ''; margin-left: auto; width: 6px; height: 6px; border-radius: 99px; background: var(--accent); flex: none; }
+  .q-side .cast-btn { margin-top: 12px; padding: 10px; font-size: 14px; border-radius: calc(8px * var(--rs, 1)); }
+  .q-side .me { padding: 8px; border-radius: calc(8px * var(--rs, 1)); }
+  .q-side .me > svg { color: var(--muted); }
+}
+@media (max-width: 1099px) {
+  .q-bottom { align-items: center; }
+  .q-mode { grid-template-columns: 1fr; }
+  .q-mode button { width: 36px; }
+  .only-wide { display: none !important; }
+}
+
+/* the feed's top: Discover / Following, the composer and what the feed holds */
+:root[data-quorum] .phead .tabs button.on { color: var(--accent); }
+:root[data-quorum] .phead .tabs button.on::after { width: 72px; }
+.q-compose { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+.q-compose-in { flex: 1; min-width: 0; text-align: left; border: 0; background: none; color: var(--muted); font-size: 16px; padding: 8px 0; }
+.q-sub { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 16px; font-size: 13px; font-weight: 650; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+.q-sub .muted { font-weight: 500; text-align: right; }
+
+/* the right column */
+.q-extra { width: 320px; padding: 12px 16px 0; }
+.q-search { margin: 0; border-radius: calc(9px * var(--rs, 1)); height: 40px; font-size: 14px; }
+.q-search kbd { margin-left: auto; padding: 1px 7px; font: 600 12px/1.4 ui-monospace, monospace; color: var(--muted); border: 1px solid var(--line); border-radius: calc(5px * var(--rs, 1)); background: var(--card); }
+.q-card { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); padding: 12px 14px 14px; background: var(--card); }
+.q-card-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.q-card-h a { font-size: 13px; font-weight: 600; }
+.q-card .hint { margin: 0; }
+.q-apps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 8px; }
+.q-apps button { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; padding: 0; border: 0; background: none; color: var(--ink); }
+.q-apps .app-icon { width: 52px; height: 52px; border-radius: calc(13px * var(--rs, 1)); font-size: 18px; }
+.q-apps small { max-width: 100%; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* the mini app and the dock under it float over the feed, left of the right column or the docked wallet (which a
+   theme's size zooms with the columns) */
+@media (min-width: 1100px) {
+  :root[data-quorum] { --q-right: calc(320px * var(--zoom, 1) + 24px); }
+  :root[data-quorum] body:has(.q-wallet) { --q-right: calc(380px * var(--zoom, 1) + 24px); }
+  :root[data-quorum] :is(.mini, .dock) { right: var(--q-right); }
+  /* a Space's bar is centred between the sidebar and the right column or docked wallet, never under them */
+  :root[data-quorum] .space-bar { left: calc((188px * var(--zoom, 1) + 100vw - var(--q-right)) / 2); width: min(420px, calc(100vw - var(--q-right) - 188px * var(--zoom, 1) - 32px)); }
+  :root[data-quorum] .mini.big { left: calc(188px * var(--zoom, 1) + 24px); top: 16px; width: auto; height: auto; }
+}
+:root[data-th-zoom] .q-wallet { zoom: var(--zoom); }
+/* (100vh inside a zoomed box is 100vh × zoom; phones size it by its edges instead) */
+@media (min-width: 700px) { :root[data-th-zoom] .q-wallet { height: calc(100vh / var(--zoom)); } }
+
+/* the docked wallet. Its sheets and menus are inside it, so it sits over the players and bars and under the composer
+   and toasts (beside the page it overlaps nothing) */
+.q-wallet { position: sticky; z-index: 30; top: 0; height: 100vh; width: 380px; flex: none; display: flex; flex-direction: column; background: var(--card); border-left: var(--bw, 1px) var(--bs, solid) var(--line); }
+/* the theme and profile-design editors (z-index 30, earlier on the page) stay on top of it */
+body:has(.lk-edit) .q-wallet { z-index: 29; }
+.q-wallet-h { display: flex; align-items: center; gap: 2px; padding: 8px 8px 8px 16px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); flex: none; }
+.q-wallet-h h2 { flex: 1; font-size: 16px; }
+.q-wallet-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 16px; }
+.q-primary { margin: 12px; padding: 14px; border-radius: calc(12px * var(--rs, 1)); background: var(--soft); }
+.q-primary-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.q-primary-top > span { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.q-primary-top small { color: var(--muted); font-size: 12px; font-weight: 600; }
+.q-primary .wallet-switch { margin-top: 4px; }
+.q-primary .wallet-total { font-size: 24px; }
+.q-addr { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+.q-addr code { margin-left: auto; color: var(--muted); font-weight: 400; }
+.q-addr .icon-btn { width: 28px; height: 28px; color: var(--muted); }
+.q-chains { display: inline-flex; }
+.q-chains img { width: 18px; height: 18px; border-radius: 99px; border: 2px solid var(--soft); background: var(--soft); }
+.q-chains img + img { margin-left: -6px; }
+.q-wallet .spinner.small { width: 18px; height: 18px; border-width: 2px; border-color: color-mix(in srgb, var(--accent) 30%, transparent); border-top-color: var(--accent); flex: none; }
+.q-pending { display: flex; align-items: center; gap: 10px; margin: 0 12px 12px; padding: 10px 12px; border-radius: calc(10px * var(--rs, 1)); background: var(--accent-soft); color: var(--ink); }
+.q-pending-main { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 14px; }
+.q-pending-main b, .q-pending-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-pending-main small, .q-pending > svg { color: var(--muted); font-size: 12px; }
+.q-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; padding: 0 12px; }
+.q-tiles > .wrap-menu { display: grid; }
+.q-tiles > button, .q-tiles > a, .q-tiles > .wrap-menu > button { width: 100%; height: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 2px; border: 0; border-radius: calc(10px * var(--rs, 1)); background: var(--soft); color: var(--ink); font-size: 11px; font-weight: 600; line-height: 1.2; }
+.q-tiles b { max-width: 100%; padding: 0 3px; font-weight: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
+.q-tiles > button:hover, .q-tiles > a:hover, .q-tiles > .wrap-menu > button:hover { background: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
+.q-tiles > * > span:first-child { color: var(--accent); display: grid; }
+.q-tiles .menu a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: calc(9px * var(--rs, 1)); color: var(--ink); font-weight: 600; }
+.q-tiles .menu a:hover { background: var(--soft); }
+.q-networks { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px 2px 12px; }
+.q-nets { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 0; color: var(--ink); font-weight: 650; font-size: 14px; }
+.q-nets .q-chains img { border-color: var(--card); }
+.q-nets[aria-expanded='true'] > svg { rotate: 90deg; }
+.q-activity-h { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 8px 4px 16px; font-size: 13px; }
+.q-activity-h .muted, .q-activity-h input { flex: 1; min-width: 0; }
+.q-activity-h input { border: 1px solid var(--line); border-radius: calc(8px * var(--rs, 1)); background: var(--bg); padding: 6px 10px; }
+.q-act { display: flex; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); color: var(--ink); }
+.q-act:hover { background: var(--hover); }
+.q-act-st { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 99px; background: var(--soft); color: var(--muted); }
+.q-act-st.ok { color: var(--recast); }
+.q-act-st.failed { color: var(--like); }
+.q-act-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.q-act-main b, .q-act-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-act-main small, .q-act-foot { color: var(--muted); font-size: 12px; }
+.q-act-foot { display: flex; justify-content: space-between; gap: 8px; }
+/* not enough room beside the page: the wallet slides over it, and over a mini app */
+@media (max-width: 1099px) {
+  .q-wallet { position: fixed; right: 0; top: 0; box-shadow: -16px 0 48px rgb(0 0 0 / 0.3); }
+}
+@media (max-width: 699px) {
+  .q-wallet { inset: 0; width: auto; height: auto; border: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  .q-tiles { gap: 4px; }
+}
+#wallets { scroll-margin-top: 64px; }
