@@ -154,6 +154,14 @@ export const go = (path: string) => {
 }
 // leave the app only if we arrived on this page from outside it
 export const back = () => (depth > 0 ? (depth--, history.back()) : go('/'))
+/** Same-origin links navigate in place instead of reloading the page: on window, and in `stop` (ui.tsx) for links
+ *  whose clicks never get there. */
+export function follow(e: MouseEvent) {
+  const a = (e.target as Element).closest?.('a')
+  if (!a || a.target || a.origin !== location.origin || e.metaKey || e.ctrlKey || e.shiftKey || e.button || e.defaultPrevented) return
+  e.preventDefault()
+  a.pathname + a.search !== location.pathname + location.search ? go(a.pathname + a.search) : dispatchEvent(new Event('refresh'))
+}
 
 // links as people write them: with a scheme, or a bare domain on a common TLD ("quilcast.com/x")
 const TLDS = 'com|org|net|xyz|io|app|dev|ai|co|me|gg|so|sh|fm|tv|art|fun|lol|wtf|info|page|site|tech|link|to|us|uk|de|fr|eu|ca|ly|cc|club|blog|news|social|world|live|studio|games|finance|money|cash|network|systems|build|tools'
@@ -173,11 +181,33 @@ export function safeUrl(u?: string | null) {
 
 export const USER_DATA = { PFP: 1, DISPLAY: 2, BIO: 3, URL: 5, USERNAME: 6 }
 
-export async function get<T = any>(path: string, q: Record<string, string | number | undefined> = {}): Promise<T> {
+// answers are kept for a few minutes, so going back or opening something prefetched (prefetch() in app.tsx) needs no
+// round trip; a write or reloading a list forgets them all, and `fresh` (polls, notifications) skips them
+const memo = new Map<string, { at: number; p: Promise<any> }>()
+const TTL = 300e3
+export const forget = (key?: string) => (key ? memo.delete(key) : memo.clear())
+export function once<T>(key: string, f: () => Promise<T>, fresh = false): Promise<T> {
+  const now = Date.now()
+  const hit = memo.get(key)
+  if (hit && !fresh && now - hit.at < TTL) return hit.p
+  const p = f()
+  if (fresh) return p
+  // oldest first, so expired entries sit at the front
+  for (const [k, v] of memo) if (now - v.at >= TTL) memo.delete(k); else break
+  memo.delete(key)
+  memo.set(key, { at: now, p })
+  p.catch(() => memo.get(key)?.p === p && memo.delete(key))
+  return p
+}
+
+export function get<T = any>(path: string, q: Record<string, string | number | undefined> = {}, fresh = false): Promise<T> {
   const qs = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined) as [string, string][])
-  const r = await fetch(`${settings.node}${path}?${qs}`)
-  if (!r.ok) throw new Error((await r.text().catch(() => '')) || `HTTP ${r.status}`)
-  return r.json()
+  const url = `${settings.node}${path}?${qs}`
+  return once(url, async () => {
+    const r = await fetch(url)
+    if (!r.ok) throw new Error((await r.text().catch(() => '')) || `HTTP ${r.status}`)
+    return r.json()
+  }, fresh)
 }
 
 // what the signed-in user recently liked/recast, so buttons render filled; `mineVersion` bumps when it loads

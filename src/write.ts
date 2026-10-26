@@ -1,6 +1,6 @@
 // Signed writes: everything here needs the account's keys.
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { account, accounts, askUser, byName, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, updateAccount, users, type Account, type Cast } from './api.ts'
+import { account, accounts, askUser, byName, forget, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, updateAccount, users, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
@@ -49,6 +49,7 @@ async function submit(m: { msg: Uint8Array; hash: string }) {
     } catch {}
     throw new Error(j.details || j.message || t || `HTTP ${r.status}`)
   }
+  forget()
   return m.hash
 }
 
@@ -69,7 +70,7 @@ export async function ensureSigner(a = account!, fresh = false) {
 }
 
 const signerListed = (a = account!) =>
-  signerOf(a).then((k) => get('/v1/signer', { fid: a.fid, signer: '0x' + hex(k.pub) })).then(() => true, () => false)
+  signerOf(a).then((k) => get('/v1/signer', { fid: a.fid, signer: '0x' + hex(k.pub) }, true)).then(() => true, () => false)
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** The node can stop knowing this browser's key (revoked, dropped, or its KEY_ADD never landed), while the
@@ -93,7 +94,7 @@ async function custodyTx(a: Account, to: string, data: (c: Custody) => Promise<s
 }
 
 const onChain = async (fid: number, key: Uint8Array) =>
-  ((await get('/v1/onChainSignersByFid', { fid }).catch(() => ({ events: [] }))).events as { signerEventBody?: { key?: string } }[])
+  ((await get('/v1/onChainSignersByFid', { fid }, true).catch(() => ({ events: [] }))).events as { signerEventBody?: { key?: string } }[])
     .some((e) => e.signerEventBody?.key?.toLowerCase() === '0x' + hex(key))
 
 /** The key mini app webhook events are signed with. Apps check it against Farcaster's KeyRegistry, which the

@@ -1,11 +1,11 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, accounts, amFollowing, askUser, findUsers, get, getUser, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, askUser, findUsers, follow, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -263,7 +263,7 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner }: { load: (cursor
 /** Tapping the tab or nav item you're already on reloads the list from the top. */
 function useReload(): [number, () => void] {
   const [round, setRound] = useState(0)
-  const reload = () => (scrollTo(0, 0), setRound((r) => r + 1))
+  const reload = () => (forget(), scrollTo(0, 0), setRound((r) => r + 1))
   useEffect(() => {
     addEventListener('refresh', reload)
     return () => removeEventListener('refresh', reload)
@@ -418,7 +418,7 @@ function Notifications() {
         id={(n) => `${n.type}:${n.cast?.hash}:${n.user.fid}:${n.timestamp}`}
         row={(ns) => group(ns.filter((n) => !silenced(n.user.fid) && !(n.cast && !ACT(n.type) && hides(n.cast)))).map((g) => <NoteRow key={g.key} g={g} />)}
         load={async (cursor) => {
-          const [r, qs] = await Promise.all([get('/v2/farcaster/notifications', { fid: account!.fid, limit: 50, cursor }), cursor ? held.current : extra])
+          const [r, qs] = await Promise.all([get('/v2/farcaster/notifications', { fid: account!.fid, limit: 50, cursor }, true), cursor ? held.current : extra])
           const notes = r.notifications as Note[]
           const next = notes.length ? r.next?.cursor || null : null
           // recasts slot in by time; ones older than this page wait for a later one
@@ -452,7 +452,7 @@ function useUnread() {
     // unchanged values keep the same object, so nothing re-renders
     const set = (k: keyof typeof unread, v: boolean) => setUnread((u) => (u[k] === v ? u : { ...u, [k]: v }))
     const check = () =>
-      Promise.all([get('/v2/farcaster/notifications', { fid: account!.fid, limit: 1 }).catch(() => null), appNotes()]).then(([r, notes]) => {
+      Promise.all([get('/v2/farcaster/notifications', { fid: account!.fid, limit: 1 }, true).catch(() => null), appNotes()]).then(([r, notes]) => {
         const t = Math.max((r?.notifications[0] && Date.parse(r.notifications[0].timestamp)) || 0, notes[0]?.at || 0)
         set('notifications', !!t && t > Number(localStorage.getItem(seenKey()) || 0))
       })
@@ -504,6 +504,37 @@ function Follows({ id, kind }: { id: string; kind: keyof typeof FOLLOWS }) {
   )
 }
 
+// what the cast and profile pages load first, shared with prefetch()
+const conversation = (hash: string) => get('/v2/farcaster/cast/conversation', { identifier: hash.replace(/^0x/, ''), type: 'hash', reply_depth: 2 })
+const userCasts = (fid: number, tab: 'casts' | 'replies', cursor?: string) =>
+  get(tab === 'casts' ? '/v2/farcaster/feed/user/casts' : '/v2/farcaster/feed/user/replies_and_recasts', { fid, limit: 25, cursor })
+const lookOf = (fid: number) => once<Look | null>(`/api/look/${fid}`, () => fetch(`/api/look/${fid}`).then((r) => (r.ok ? r.json() : null)).then(async (j) => j && (await looksMod()).clean(j)).catch(() => null))
+// a user we already have from a feed, so their profile draws before the node answers
+const known = (id: string) => (/^\d+$/.test(id) ? users.get(+id) : [...users.values()].find((u) => u.username?.toLowerCase() === id.toLowerCase())) || null
+
+/** Starts loading what a cast or profile link opens, when a pointer rests on it or a finger touches it. */
+function prefetch(path: string) {
+  const [, kind, id] = path.match(/^\/(c|u)\/([^/?#]+)$/) || []
+  if (kind === 'c') conversation(id).catch(() => {}), quotesOf(id).catch(() => {})
+  if (kind !== 'u') return
+  const more = (u: User) => {
+    userCasts(u.fid, 'casts').catch(() => {})
+    isFollowing(u.fid)
+    if (settings.looks !== false || account?.fid === u.fid) lookOf(u.fid).then((l) => l && looksMod())
+  }
+  // someone from a feed needs no lookup first
+  const u = known(decodeURIComponent(id))
+  u ? (more(u), getUser(u.fid).catch(() => {})) : getUser(decodeURIComponent(id)).then(more, () => {})
+}
+{
+  // a cast card is a link by data-href; hovering waits a beat so sweeping over a feed doesn't load every cast
+  let timer: ReturnType<typeof setTimeout>
+  const link = (e: Event) => (e.target as Element).closest?.('a[href^="/"], [data-href]')
+  const href = (el: Element) => el.getAttribute('data-href') || el.getAttribute('href')!
+  addEventListener('pointerdown', (e) => { const el = link(e); el && prefetch(href(el)) }, true)
+  addEventListener('pointerover', (e) => { clearTimeout(timer); const el = link(e); if (el) timer = setTimeout(() => prefetch(href(el)), 80) })
+}
+
 function Thread({ hash }: { hash: string }) {
   const [c, setC] = useState<Cast | null>(null)
   const [up, setUp] = useState<Cast[]>([])
@@ -531,10 +562,12 @@ function Thread({ hash }: { hash: string }) {
       }
     }
     // a cast we just posted shows right away and takes a moment to be indexed, so retry until it is
+    // so does one tapped in a feed, its replies following
     const sent = posting.get(hash)
-    if (sent) setC(sent), parents(sent)
+    const seen = sent || cards.get(hash)
+    if (seen) setC(seen), parents(seen)
     const load = (tries: number): unknown =>
-      get('/v2/farcaster/cast/conversation', { identifier: hash.replace(/^0x/, ''), type: 'hash', reply_depth: 2 }).then(
+      conversation(hash).then(
         async (r) => {
           const cast: Cast = r.conversation.cast
           await hydrateParents([cast, ...(cast.direct_replies || [])])
@@ -571,7 +604,7 @@ function Thread({ hash }: { hash: string }) {
               </div>
             )
           })}
-          {!c.direct_replies?.length && <div class="note">{t('No replies yet.')}</div>}
+          {!c.direct_replies ? c.replies?.count > 0 && <div class="spinner" /> : !c.direct_replies.length && <div class="note">{t('No replies yet.')}</div>}
         </>
       )}
     </>
@@ -582,7 +615,7 @@ type Looks = typeof import('./looks.tsx')
 const looksMod = () => import('./looks.tsx')
 
 function Profile({ id }: { id: string }) {
-  const [u, setU] = useState<User | null>(null)
+  const [u, setU] = useState<User | null>(() => known(id))
   const [err, setErr] = useState('')
   const [tab, setTab] = useState<'casts' | 'replies'>('casts')
   const [following, setFollowing] = useState<boolean | null>(null)
@@ -595,12 +628,13 @@ function Profile({ id }: { id: string }) {
   // the saved look once it has loaded, so the editor never opens on a blank one
   const loaded = useRef<Promise<Look | null>>(Promise.resolve(null))
   useEffect(() => {
-    setU(null)
+    const k = known(id)
+    setU(k)
     setErr('')
     setTab('casts')
     setLook(null)
     setDraft(null)
-    getUser(id).then((u) => (setU(u), isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))), () => setErr(t('No one goes by that name.')))
+    getUser(k?.fid ?? id).then((u) => (setU(u), isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))), () => setErr(t('No one goes by that name.')))
   }, [id])
   const self = account?.fid === u?.fid
   // a shared design (`design`, an id) is put on top of the look being edited
@@ -614,7 +648,7 @@ function Profile({ id }: { id: string }) {
     if (!u) return
     let live = true
     loaded.current = settings.looks !== false || self
-      ? fetch(`/api/look/${u.fid}`).then((r) => (r.ok ? r.json() : null)).then(async (j) => j && (await looksMod()).clean(j)).catch(() => null)
+      ? lookOf(u.fid)
       : Promise.resolve(null)
     loaded.current.then((l) => l && looksMod().then((m) => live && (setL(m), setLook(l))))
     if (!self) return () => void (live = false)
@@ -690,14 +724,14 @@ function Profile({ id }: { id: string }) {
                 <div class="note">{t('You blocked @{name}, so their casts are hidden.', { name: handle(u) })} <button class="link-btn" onClick={() => setMute('blocks', u.fid, false).catch((e) => toast(e.message))}>{t('Unblock')}</button></div>
               ) : (
                 <Feed k={`${u.fid}${tab}`} owner={u.fid} empty={tab === 'casts' ? t('No casts yet.') : t('No replies yet.')} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
-                  load={(cursor) => get(tab === 'casts' ? '/v2/farcaster/feed/user/casts' : '/v2/farcaster/feed/user/replies_and_recasts', { fid: u.fid, limit: 25, cursor })} />
+                  load={(cursor) => userCasts(u.fid, tab, cursor)} />
               )}
             </div>
           </>
         )}
       </div>
       {L && draft && self && (
-        <L.Editor draft={draft} set={editLook} close={() => setDraft(null)} saved={(l) => (setLook(l), setDraft(null))} />
+        <L.Editor draft={draft} set={editLook} close={() => setDraft(null)} saved={(l) => (forget(`/api/look/${u!.fid}`), setLook(l), setDraft(null))} />
       )}
     </>
   )
@@ -1174,13 +1208,7 @@ function applyTheme() {
   settings.jp ? (d.jp = '') : delete d.jp
 }
 
-// same-origin links navigate in place instead of reloading the page
-addEventListener('click', (e) => {
-  const a = (e.target as Element).closest?.('a')
-  if (!a || a.target || a.origin !== location.origin || e.metaKey || e.ctrlKey || e.shiftKey || e.button || e.defaultPrevented) return
-  e.preventDefault()
-  a.pathname + a.search !== location.pathname + location.search ? go(a.pathname + a.search) : dispatchEvent(new Event('refresh'))
-})
+addEventListener('click', follow)
 
 // at most once every 30 s, so whatever made it reload can't loop
 const reloadOnce = () => {

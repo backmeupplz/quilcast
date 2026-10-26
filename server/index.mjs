@@ -603,7 +603,12 @@ createServer(async (req, res) => {
     }
     const design = path.match(/^\/api\/design(?:\/([\w-]{10}))?$/)
     if (design) {
-      if (req.method === 'GET' && design[1]) return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await getDesign(design[1]))
+      if (req.method === 'GET' && design[1]) {
+        if (limited(`look:${ip}`, 300)) return json(429, null)
+        // the id is a hash of the content, so a design never changes once found
+        const found = await getDesign(design[1])
+        return json(200, found, found ? 'public, max-age=31536000, immutable' : 'no-store')
+      }
       if (req.method !== 'POST' || design[1]) return json(405, { error: 'POST /api/design or GET /api/design/<id>' })
       if (limited(`design:${ip}`, 30, 600e3)) return json(429, { error: 'Too many designs, try again in a few minutes.' })
       const r = await putDesign(req).catch((e) => e)
@@ -613,7 +618,12 @@ createServer(async (req, res) => {
     // app themes and Quorum's skins (server/themes.mjs)
     const theme = path.match(/^\/api\/theme(?:\/([\w-]{10}))?$/)
     if (theme) {
-      if (req.method === 'GET' && theme[1]) return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await getTheme(theme[1]))
+      if (req.method === 'GET' && theme[1]) {
+        if (limited(`look:${ip}`, 300)) return json(429, null)
+        // the id is a hash of the content, so a theme never changes once found
+        const found = await getTheme(theme[1])
+        return json(200, found, found ? 'public, max-age=31536000, immutable' : 'no-store')
+      }
       if (req.method !== 'POST' || theme[1]) return json(405, { error: 'POST /api/theme or GET /api/theme/<id>' })
       if (limited(`theme:${ip}`, 30, 600e3)) return json(429, { error: 'Too many themes, try again in a few minutes.' })
       const r = await putTheme(req).catch((e) => e)

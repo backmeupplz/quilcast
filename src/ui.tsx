@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, back, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
+import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
 import { castText, cleanDesign, cleanTheme, DEFAULTS, designId, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, sized, themeId, themeVars, X_LOGO, type Look, type Theme } from './shared.ts'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -104,7 +104,8 @@ export const nameOf = (u: User) => u.display_name || handle(u)
 export const userPath = (u: User) => `/u/${uname(u) || u.fid}`
 export const channelOf = (u?: string | null) => u?.match(/(?:warpcast\.com|farcaster\.xyz)\/~\/channel\/([^/?#]+)/)?.[1]
 export const channelUrl = (id: string) => `https://warpcast.com/~/channel/${id}`
-export const stop = (e: Event) => e.stopPropagation()
+// keeps a click inside a cast from opening the cast; a link it lands on still opens in place
+export const stop = (e: MouseEvent) => (e.stopPropagation(), follow(e))
 
 export const Header = ({ title, back: showBack = true, action, children }: { title?: ComponentChildren; back?: boolean; action?: ComponentChildren; children?: ComponentChildren }) => (
   <div class="phead">
@@ -243,7 +244,7 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
     return () => void (live = false)
   }, [c.hash, from])
   const ask = async (e: Event) => {
-    stop(e)
+    e.stopPropagation()
     setBusy(true)
     try {
       const r = await fetch('/api/translate', { method: 'POST', body: JSON.stringify({ hash: c.hash, to: lang }) })
@@ -547,7 +548,7 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const app = c && d?.app
   return (
     <a class={`linkcard${image ? ' big' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow"
-      onClick={(e) => (stop(e), app && !e.metaKey && !e.ctrlKey && !e.shiftKey && (e.preventDefault(), launchApp({ ...app, icon }, { cast: c, embed: u })))}>
+      onClick={(e) => (e.stopPropagation(), app && !e.metaKey && !e.ctrlKey && !e.shiftKey && (e.preventDefault(), launchApp({ ...app, icon }, { cast: c, embed: u })))}>
       {image && <Img class="lc-img" src={sized(image, 'w=1200')} />}
       <span class="lc-text">
         <span class="lc-site">{icon && <Img src={icon} />}{new URL(u).hostname.replace(/^www\./, '')}</span>
@@ -580,7 +581,7 @@ export function DesignCard({ id, by }: { id: string; by?: User }) {
   if (d === null) return <div class="quote muted">{t('This design is unavailable.')}</div>
   if (!d) return <div class="quote skeleton" />
   const use = (e: Event) => {
-    stop(e)
+    e.stopPropagation()
     const me = myUser()
     requireAccount() && go(`${me ? userPath(me) : `/u/${account!.fid}`}?design=${id}`)
   }
@@ -602,6 +603,8 @@ export function DesignCard({ id, by }: { id: string; by?: User }) {
   )
 }
 
+/** Casts last pressed in a list, so the cast page can draw one before the node answers. */
+export const cards = new Map<string, Cast>()
 const castCache = new Map<string, Promise<Cast | null>>()
 export const fetchCast = (hash: string) => {
   hash = hash.replace(/^0x/, '')
@@ -789,7 +792,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
     )
   }
   return (
-    <article class={`cast${line ? ' line' : ''}`} onClick={() => go(`/c/${c.hash}`)}>
+    <article class={`cast${line ? ' line' : ''}`} data-href={`/c/${c.hash}`} onPointerDown={() => cards.set(c.hash, c)} onClick={() => go(`/c/${c.hash}`)}>
       <div class="rail"><Avatar u={c.author} /></div>
       <div class="body">
         <header>
