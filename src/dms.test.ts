@@ -18,6 +18,20 @@ test('merge keeps messages in order, drops repeats, and hands back the same arra
   assert.deepEqual(merge([], [m('z', 9), m('y', 1)]).map((x) => x.messageId), ['y', 'z'])
 })
 
+test('Quorum mode groups a sender’s messages within 5 minutes on the same day, like quorum-shared', async () => {
+  const { compact, sameDay } = await import('./dms.ts')
+  const day = new Date(2026, 9, 26, 12).getTime()
+  assert.equal(compact(m('b', day + 60e3), m('a', day), false), true)
+  assert.equal(compact(m('b', day + 5 * 60e3), m('a', day), false), true)
+  assert.equal(compact(m('b', day + 5 * 60e3 + 1), m('a', day), false), false)
+  assert.equal(compact(m('b', day + 60e3, 'b', 2), m('a', day), false), false)
+  assert.equal(compact(m('b', day + 60e3), m('a', day), true), false)
+  assert.equal(compact(m('a', day), undefined, true), false)
+  assert.equal(compact({ ...m('b', day + 60e3), type: 'pin_message' }, m('a', day), false), false)
+  assert.equal(sameDay(day, day + 3600e3), true)
+  assert.equal(sameDay(day, day + 864e5), false)
+})
+
 test('older pages add only new conversations, a page with nothing new ends the list, and a refresh keeps older pages', async () => {
   const { page } = await import('./dms.ts')
   const list = { items: null, more: '', pages: 0, used: new Set() } as any

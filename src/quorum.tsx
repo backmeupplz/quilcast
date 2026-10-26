@@ -2,6 +2,8 @@
 // and its upcoming feed): a sidebar of sections, the feed in the middle, search and apps on the right, and the wallet
 // docked on the right beside an open mini app. app.tsx draws the sidebar and picks these; the look is CSS under
 // :root[data-quorum] (style.css), and themes still recolor all of it.
+// Quorum's font, Inter; its files only load once Quorum mode's CSS asks for it
+import '@fontsource-variable/inter'
 import { useEffect, useState } from 'preact/hooks'
 import { account, go, myUser, read, save, settings } from './api.ts'
 import { t } from './i18n.ts'

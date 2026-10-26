@@ -1448,3 +1448,316 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   .q-tiles { gap: 4px; }
 }
 #wallets { scroll-margin-top: 64px; }
+
+/* ---------- Quorum mode, everything inside the frame: Quorum's own components (quorum-desktop's primitives, chat and
+   Space styles, quorum-mobile's feed, mini apps and wallet) for every page. All of it is under :where(:root[data-quorum])
+   at the specificity of the rule it restyles, so a more specific Quilcast rule (an accent icon in a toolbar) still
+   wins. Quorum's surfaces are worked out from the page's colors, so a theme from #183 recolors all of this too ---------- */
+:root[data-quorum], :root[data-quorum] :is(.mini-ask, .wallet-form) {
+  /* quorum-desktop _colors.scss: surface-2, border-subtle/default/strong (surface-4/5/6), text-subtle, accent-400 */
+  --q-s2: color-mix(in srgb, var(--soft) 50%, var(--line));
+  --q-s4: color-mix(in srgb, var(--line) 85%, var(--muted));
+  --q-border: color-mix(in srgb, var(--line) 75%, var(--muted));
+  --q-strong: color-mix(in srgb, var(--line) 55%, var(--muted));
+  --q-subtle: color-mix(in srgb, var(--ink) 55%, var(--muted));
+  --q-accent-hi: color-mix(in srgb, var(--accent) 80%, #fff);
+  --q-ring: color-mix(in srgb, var(--accent) 10%, transparent);
+  --q-active: color-mix(in srgb, var(--accent) 25%, transparent);
+  --q-danger: light-dark(#e74a4a, #c73737);
+  --q-field: var(--soft);
+  /* rounded-md, rounded-lg, rounded-xl; a theme's corner scale still applies */
+  --q-rm: calc(6px * var(--rs, 1));
+  --q-r: calc(8px * var(--rs, 1));
+  --q-rl: calc(12px * var(--rs, 1));
+  --q-sh-sm: 0 1px 2px 0 light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.3));
+  --q-sh-md: 0 4px 8px 0 light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.5));
+  --q-sh-lg: 0 8px 16px 0 light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.6));
+  --q-sh-xl: 0 12px 24px 0 light-dark(rgb(0 0 0 / 0.15), rgb(0 0 0 / 0.7));
+  /* Quorum's font is Inter (bundled, @fontsource-variable/inter; it only loads in Quorum mode) */
+  --q-font: 'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+/* (a modal's fields sit on the modal's surface-2, so they take surface-0 like Quorum's) */
+:root[data-quorum] :is(.sheet, .wallet-form) { --q-field: var(--card); }
+:root[data-quorum] body { font-family: var(--th-font, var(--q-font)); font-size: 14px; line-height: 20px; }
+/* where money and signatures are approved a theme's font never applies (see :root above), Quorum's does */
+:root[data-quorum] :is(.mini-ask, .wallet-form, .mini-top small) { font-family: var(--q-font); }
+
+:where(:root[data-quorum]) {
+  /* headers: quorum-desktop .chat-header, a solid bar over a stronger line */
+  & .phead { background: var(--bar, var(--bg)); backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: var(--bw, 1px) var(--bs, solid) var(--q-border); }
+  & .phead-row { height: 56px; padding: 0 12px 0 16px; }
+  & .phead-row h1 { font-size: 16px; font-weight: 700; letter-spacing: 0; }
+  /* UserInitials: a face without a picture is its initial on a solid disc */
+  & .avatar { background: var(--q-strong); color: var(--ink); }
+  & .tabs button { padding: 14px 0 12px; font-size: 14px; font-weight: 500; }
+  & .tabs button.on { color: var(--accent); font-weight: 600; }
+  & .icon-btn { border-radius: var(--q-rm); color: var(--q-subtle); }
+
+  /* buttons: Button.scss btn-primary / btn-subtle-outline / btn-danger-outline / btn-small / btn-disabled */
+  & .btn { padding: 8px 16px; border: var(--bw, 1px) var(--bs, solid) var(--accent); border-radius: calc(9999px * var(--rs, 1)); font-size: 14px; font-weight: 500; line-height: 20px; box-shadow: var(--q-sh-sm); transition: background-color 0.3s, border-color 0.3s; }
+  & .btn.small { padding: 4px 12px; font-size: 12px; line-height: 16px; }
+  & .btn.ghost { background: transparent; border-color: var(--q-strong); color: var(--q-subtle); box-shadow: var(--q-sh-sm); }
+  & .btn.danger { background: transparent; border-color: var(--q-danger); color: var(--q-danger); box-shadow: var(--q-sh-sm); }
+  & .btn:disabled { background: color-mix(in srgb, var(--muted) 85%, var(--ink)); border-color: transparent; color: var(--q-s2); box-shadow: none; opacity: 1; }
+  & .link-btn { font-weight: 500; }
+  & .banner { border-radius: var(--q-r); background: var(--q-active); }
+
+  /* fields: Input.scss .quorum-input, filled, with an accent border and ring on focus */
+  /* (at the specificity of Quilcast's own field rule: the extra exclusions sit in :where()) */
+  & input:not([type='checkbox']):not([type='search']):where(:not([type='range'], [type='color'], .mv-amt)) { padding: 9px 16px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); font-size: 16px; font-weight: 400; line-height: 22px; transition: border-color 0.15s, box-shadow 0.15s; }
+  & textarea { padding: 9px 16px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); font-size: 16px; font-weight: 400; line-height: 22px; }
+  & label { font-size: 14px; font-weight: 500; }
+  & :is(input, textarea)::placeholder { color: var(--muted); }
+  & input:not([type='checkbox']):not([type='search']):where(:not([type='range'], [type='color'], .mv-amt)):focus, & textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--q-ring); }
+  & select { padding: 8px 12px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); color: var(--ink); }
+  & .field > span { font-size: 14px; font-weight: 500; color: var(--q-subtle); }
+  & .searchbox { height: 40px; padding: 0 12px; border: var(--bw, 1px) var(--bs, solid) var(--q-border); border-radius: var(--q-rm); background: var(--soft); color: var(--q-subtle); }
+  & .searchbox:focus-within { background: var(--bg); border-color: var(--accent); }
+  & .searchbox:focus-within > svg { color: var(--accent); }
+  /* RadioGroup.scss: each choice a filled field, the picked one ringed in the accent */
+  & .seg { gap: 6px; padding: 0; background: none; }
+  & .seg button { padding: 5px 14px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); color: var(--ink); font-weight: 500; transition: border-color 0.15s, box-shadow 0.15s; }
+  & .seg button.on { border-color: var(--accent); background: var(--q-field); box-shadow: 0 0 0 3px var(--q-ring); }
+  & .chip { border-color: var(--q-border); border-radius: calc(9999px * var(--rs, 1)); font-size: 12px; font-weight: 500; color: var(--q-subtle); }
+  & .chip.on { background: var(--q-active); border-color: var(--accent); color: var(--ink); }
+
+  /* modals: Modal.scss, surface-2 on a 60% black overlay, rounded-lg, opening with a slight zoom */
+  & .modal { background: rgb(0 0 0 / 0.6); }
+  & .sheet { background: var(--q-s2); border-radius: var(--q-r); padding: 16px 24px 12px; box-shadow: var(--q-sh-xl); animation: q-open 0.3s ease-out; }
+  & .toolbar { border-top-color: var(--q-border); }
+  & .toolbar .icon-btn { border-radius: var(--q-rm); }
+  /* context menus: _context-menu.scss */
+  & .menu { min-width: 180px; padding: 8px 0; background: var(--bg); border: var(--bw, 1px) var(--bs, solid) var(--q-s4); border-radius: var(--q-r); box-shadow: var(--q-sh-md); animation: q-open 0.15s ease-out; }
+  & .menu button, & .menu a { gap: 12px; padding: 6px 12px; border-radius: 0; font-size: 14px; font-weight: 400; line-height: 20px; color: var(--ink); }
+  & .menu .acct { padding: 8px 12px !important; border-radius: 0; }
+  & .menu-label { margin: 8px 12px 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--q-subtle); }
+  /* toasts: Quorum's info Callout in the bottom right (tinted with the accent, so a theme tints it too) */
+  & .toast { left: auto; right: 16px; bottom: 16px; transform: none; max-width: 360px; padding: 8px 12px; border: var(--bw, 1px) var(--bs, solid) color-mix(in srgb, var(--accent) 45%, var(--bg)); border-radius: var(--q-r); background: color-mix(in srgb, var(--accent) 16%, var(--bg)); color: color-mix(in srgb, var(--accent) 45%, var(--ink)); font-weight: 500; box-shadow: var(--q-sh-lg); }
+  & .spinner { border-color: var(--q-s2); border-top-color: var(--accent); }
+  & .note { color: var(--q-subtle); font-size: 14px; }
+  & .skel b, & .skel i { background: var(--q-s2); }
+  & .hint { color: var(--q-subtle); }
+  & .pill { background: var(--q-s2); color: var(--q-subtle); border-radius: calc(9999px * var(--rs, 1)); }
+
+  /* posts: quorum-mobile's feed card, 44 px faces, the name over "@handle · time", Like, Reply, Recast */
+  & .cast { gap: 12px; padding: 12px 16px 14px; }
+  & .cast .rail .avatar { width: 44px !important; height: 44px !important; }
+  & .cast.line .rail::after { left: 37px; top: 60px; }
+  & .cast header { gap: 6px; }
+  & .name { font-weight: 600; color: var(--ink); }
+  & .cast .text { font-size: 15px; line-height: 22px; }
+  & .cast.focus .text { font-size: 16px; line-height: 24px; }
+  & .cast footer { justify-content: flex-start; gap: 16px; max-width: none; margin: 6px 0 -6px -8px; }
+  & .cast footer > :last-child { margin-left: auto; }
+  & .cast.focus footer { justify-content: flex-start; }
+  & .act { gap: 6px; min-width: 0; border-radius: var(--q-rm); color: var(--muted); font-size: 13px; font-weight: 500; }
+  & .act span:not(:empty) { color: var(--ink); }
+  & .act.on span { color: inherit; }
+  & .act svg { width: 20px; height: 20px; }
+  & .reply-prompt { font-size: 15px; }
+  /* embeds: link cards and quotes on surface-2, rounded-xl; pictures and videos rounded-lg */
+  & .linkcard { border: 0; border-radius: var(--q-rl); background: var(--q-s2); }
+  & .lc-img { border-bottom: 0; }
+  & .lc-title { font-size: 15px; font-weight: 600; }
+  & .lc-desc { font-size: 13px; line-height: 18px; color: var(--q-subtle); }
+  & .lc-btn { border-radius: var(--q-r); background: var(--soft); }
+  & .quote, & .tweet { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: var(--q-rl); background: var(--q-s2); }
+  & .imgs, & .vid, & .tw-video, & .qimg { border-radius: var(--q-r); }
+  & .imgs.n1, & .vid { border: 0; }
+  & .stats, & .when { border-bottom-color: var(--line); }
+
+  /* notifications: NotificationItem.scss, a 36 px accent-tinted badge on each */
+  & .note-row { gap: 12px; padding: 16px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+  & .note-icon { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 99px; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  & .note-icon svg { width: 18px; height: 18px; }
+  & .note-cast { color: var(--q-subtle); }
+
+  /* lists (people, tokens, Spaces, conversations): Quorum's sidebar rows, no lines between them */
+  & .row { gap: 10px; padding: 12px 16px; border-bottom: 0; }
+  & .row-top b { font-weight: 600; }
+  & .row-sub { color: var(--muted); }
+  & .unread-count { min-width: 20px; height: 20px; border-radius: 10px; font-size: 11px; }
+
+  /* profile */
+  & .profile h2 { font-size: 20px; font-weight: 700; }
+  & .counts { font-size: 14px; }
+  & .profile + .tabs { border-bottom-color: var(--q-border); }
+
+  /* Settings: Quorum's settings sections, an uppercase heading over plain rows, a line between sections */
+  & .settings { padding: 12px 20px 24px; }
+  & .settings .chips { margin: 0 -20px; padding: 0 20px; }
+  & .settings section { padding: 16px 0; border: 0; border-radius: 0; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+  & .settings section:last-of-type { border-bottom: 0; }
+  & .settings section > h2:first-child, & .settings > h2:not(.apps-h), & .settings h3 { margin-bottom: 8px; font-size: 14px; font-weight: 700; line-height: 20px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); }
+  & .setting { min-height: 44px; }
+  & .setting h2 { font-size: 14px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+  & .setting + .setting { border-top-color: var(--line); }
+
+  /* Spaces (Quilcast's audio rooms): Quorum's Space list rows and a channel-style header */
+  & .space-row .avatar { border-radius: var(--q-rl); }
+  & .space-card { border: 0; border-radius: var(--q-rl); background: var(--q-s2); }
+  & .space-head h2 { font-size: 20px; font-weight: 700; }
+  & .space-h { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--q-subtle); }
+  & .space-invite { border-radius: var(--q-rl); background: var(--q-active); }
+  & .space-bar { border-radius: var(--q-rl); box-shadow: 0 2px 4px rgb(0 0 0 / 0.2); }
+
+  /* mini apps: a Quorum window (rounded-lg on surface-2, its title bar a surface-2 pill row) and the launcher */
+  & .mini { border-color: var(--q-s4); border-radius: var(--q-rl); background: var(--q-s2); box-shadow: var(--q-sh-xl); }
+  & .mini-top { gap: 4px; padding: 8px 8px 8px 12px; background: var(--q-s2); border-bottom: var(--bw, 1px) var(--bs, solid) var(--q-border); }
+  & .mini-top > .app-icon { width: 24px; height: 24px; border-radius: var(--q-rm); }
+  & .mini-name b { font-size: 14px; font-weight: 500; }
+  & .mini-name small { font-size: 11px; color: var(--muted); }
+  & .mini-top .icon-btn { width: 32px; height: 32px; }
+  & .mini-top .icon-btn svg { width: 20px; height: 20px; }
+  & .ask-card { background: var(--q-s2); border-radius: var(--q-rl) var(--q-rl) 0 0; }
+  & .dock { border-color: var(--q-s4); border-radius: var(--q-rl); background: var(--q-s2); box-shadow: 0 2px 4px rgb(0 0 0 / 0.2); }
+  & .app-icon { border-radius: calc(14px * var(--rs, 1)); }
+  & .dock .app-icon { border-radius: var(--q-rm); }
+  & .app-row { border: 0; border-radius: var(--q-rl); background: var(--q-s2); }
+  & .app-row .app-icon { width: 44px; height: 44px; border-radius: var(--q-rl); }
+  & .apps-h { margin: 16px 0 4px; font-size: 18px; font-weight: 700; }
+
+  /* the wallet's sheets (send, receive, swap, wallets): Quorum's SendModal / SwapModal */
+  & .wallet-form h2 { font-size: 20px; font-weight: 700; }
+  & .wallet-form label, & .mv-label { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--q-subtle); }
+  & .wallet-form .btn:not(.small):not(.ghost) { border-radius: var(--q-rl); padding: 12px 16px; font-size: 16px; font-weight: 700; }
+  & .mv-box { border-radius: calc(16px * var(--rs, 1)); background: var(--soft); }
+  & .mv-token { border-radius: calc(20px * var(--rs, 1)); background: var(--bg); }
+  & .mv-flip { border: 3px solid var(--q-s2); }
+  & .wallet-warning { border-radius: var(--q-rl); }
+  & .token-row { padding-block: 14px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+  & .token-row .token-icon { width: 44px; height: 44px; }
+  & .wallet-total { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
+}
+@keyframes q-open { from { opacity: 0; transform: scale(0.95); } }
+@media (hover: hover) {
+  :where(:root[data-quorum]) {
+    & .icon-btn:hover:not(:disabled) { background: var(--q-s2); color: var(--ink); }
+    & .btn:hover:not(:disabled) { background: var(--q-accent-hi); border-color: var(--q-accent-hi); filter: none; }
+    & .btn.ghost:hover:not(:disabled) { background: var(--q-border); border-color: var(--q-strong); color: var(--ink); }
+    & .btn.danger:hover:not(:disabled) { background: var(--q-danger); border-color: var(--q-danger); color: #fff; }
+    & input:not([type='checkbox']):not([type='search']):where(:not([type='range'], [type='color'], .mv-amt, :focus)):hover, & :where(textarea:not(:focus)):hover { background: color-mix(in srgb, var(--q-field) 50%, var(--q-s2)); }
+    & .seg button:not(.on):hover { background: var(--q-s2); }
+    & .menu button:hover, & .menu a:hover, & .acct:hover { background: var(--soft); text-decoration: none; }
+    & .note-row:hover { background: var(--q-s2); }
+    & .row:hover { background: var(--soft); }
+    & .act:hover { background: none; }
+    & .app-row:hover { background: color-mix(in srgb, var(--q-s2) 60%, var(--q-border)); }
+    & .linkcard:hover, & .quote:hover, & .tweet:hover { background: color-mix(in srgb, var(--q-s2) 60%, var(--q-border)); }
+  }
+}
+@media (max-width: 600px) {
+  :where(:root[data-quorum]) .sheet { border-radius: 0; padding: 12px 20px; animation: none; }
+}
+
+/* ---------- Quorum mode's messages: the conversations beside the open one (DirectMessages), Quorum's message rows,
+   day lines and its pill composer ---------- */
+@media (min-width: 700px) { :root[data-quorum] .col:has(.q-dms) { max-width: none; margin: 0; padding-bottom: 0; border-right: 0; } }
+.q-dms { display: flex; align-items: flex-start; min-height: 100vh; }
+.q-dm-list { position: sticky; top: 0; flex: none; width: 320px; height: 100vh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; background: var(--card); border-right: var(--bw, 1px) var(--bs, solid) var(--line); }
+.q-dm-list .phead { background: var(--card); }
+.q-dm-list .tabs button { font-size: 13px; }
+.q-dm-list .row { position: relative; align-items: center; padding: 12px 16px; }
+.q-dm-list .row .avatar { width: 44px !important; height: 44px !important; }
+.q-dm-list .row-top { justify-content: space-between; gap: 8px; }
+.q-dm-list .row-top .handle { margin-left: auto; padding-left: 8px; flex: none; font-size: 12px; }
+.q-dm-list .row-sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 18px; }
+/* the open conversation: the accent tint and Quorum's bar at the left edge (sidebar-row-chrome) */
+.q-dm-list .row.on { background: var(--q-active); }
+.q-dm-list .row.on::before { content: ''; position: absolute; left: 0; top: 50%; translate: 0 -50%; width: 3px; height: 38px; border-radius: 0 2px 2px 0; background: var(--accent); }
+.q-dm-main { flex: 1; min-width: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--soft); }
+.q-dm-main .phead { background: var(--soft); }
+.q-dm-main .dm { min-height: calc(100vh - 57px); min-height: calc(100dvh - 57px); }
+.q-dm-main .chat { gap: 0; padding: 8px 0 16px; }
+.q-chat-sub { color: var(--q-subtle); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* EmptyDirectMessage */
+.q-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 32px; text-align: center; }
+.q-empty svg { color: var(--accent); opacity: 0.6; }
+.q-empty p { margin: 0; max-width: 32rem; font-size: 24px; line-height: 32px; color: var(--q-subtle); }
+/* Message.tsx: a 44 px face beside the name and time, then compact rows with the time in the face's place on hover */
+.q-msg { display: flex; padding: 1px 16px; }
+.q-msg.head { margin-top: 12px; padding-top: 2px; }
+.q-msg .avatar { margin-top: 4px; }
+.q-msg-side { flex: none; width: 44px; padding: 2px 4px 0 0; text-align: right; font-size: 12px; line-height: 18px; color: var(--muted); white-space: nowrap; visibility: hidden; }
+.q-msg-body { flex: 1; min-width: 0; padding: 0 16px 0 10px; }
+.q-msg-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.q-msg-name { font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.q-msg-top time { flex: none; font-size: 12px; color: var(--muted); }
+.q-msg-text { margin-top: 2px; overflow-wrap: anywhere; }
+.q-msg:not(.head) .q-msg-text { margin-top: 0; }
+.q-msg-text .text { margin: 0; font-size: 14px; line-height: 20px; }
+.q-msg-text.sending, .q-msg-text.failed { opacity: 0.6; }
+.q-msg .dm-img { display: block; margin-top: 4px; border-radius: var(--q-r); }
+.q-msg .dm-img img { max-width: min(300px, 100%); }
+.q-msg small { margin: 2px 0 0; font-size: 12px; }
+.q-msg-note { margin: 10px 16px; text-align: center; font-size: 12px; color: var(--muted); }
+.q-day { display: flex; align-items: center; gap: 12px; margin: 20px 16px 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+@media (min-width: 700px) {
+  :root[data-th-zoom] :is(.q-dms, .q-dm-main) { min-height: calc(100vh / var(--zoom)); }
+  :root[data-th-zoom] .q-dm-list { height: calc(100vh / var(--zoom)); }
+  :root[data-th-zoom] .q-dm-main .dm { min-height: calc(100vh / var(--zoom) - 57px); }
+}
+.q-day::before, .q-day::after { content: ''; flex: 1; height: 1px; background: var(--q-border); }
+@media (hover: hover) {
+  .q-msg:hover { background: var(--q-s2); }
+  .q-msg:hover .q-msg-side { visibility: visible; }
+  .q-msg-name:hover { text-decoration: underline; }
+}
+/* MessageComposer: one pill on the page's darkest surface, the send arrow in a circle at its end */
+.dm-compose.q-compose-box { padding: 8px 16px 12px; background: var(--soft); border-top: 0; }
+.q-composer { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px 6px 14px; border-radius: calc(22px * var(--rs, 1)); background: var(--bg); border: var(--bw, 1px) var(--bs, solid) light-dark(var(--q-s4), transparent); }
+.q-composer textarea { flex: 1; min-width: 0; min-height: 0; max-height: 240px; padding: 4px; border: 0; border-radius: 0; background: none; box-shadow: none; resize: none; field-sizing: content; font-size: 16px; line-height: 24px; overflow-wrap: anywhere; }
+.q-composer textarea:focus, .q-composer textarea:hover { border: 0; background: none; box-shadow: none; }
+.q-composer:focus-within { border-color: var(--accent); }
+.q-send { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0 0 0 2px; border: 0; border-radius: 99px; background: var(--accent); color: #fff; transition: background-color 0.15s, opacity 0.15s; }
+.q-send:disabled { background: var(--q-strong); opacity: 0.6; }
+@media (hover: hover) { .q-send:hover:not(:disabled) { background: var(--q-accent-hi); } }
+@media (max-width: 699px) {
+  /* one pane at a time, like quorum-mobile: the list, or the open conversation */
+  .q-dms { display: block; min-height: 0; }
+  .q-dm-list { position: static; width: auto; height: auto; overflow: visible; border: 0; background: none; }
+  .q-dm-list .phead { background: var(--bg); }
+  .q-dms.open .q-dm-list, .q-dms:not(.open) .q-dm-main { display: none; }
+  .q-dm-main { min-height: 0; }
+  .q-dm-main .dm { min-height: calc(100dvh - 113px - env(safe-area-inset-bottom)); }
+}
+/* with no right column beside the conversations, the dock and a mini app go to the right edge, the dock clear of the
+   message box */
+@media (min-width: 1100px) { :root[data-quorum] body:has(.q-dms):not(:has(.q-wallet)) { --q-right: 16px; } }
+@media (min-width: 700px) { :root[data-quorum] body:has(.q-dm-main .dm-compose) .dock { bottom: 84px; } }
+/* beside the list, a conversation needs no way back to it */
+@media (min-width: 700px) { .q-dm-main .phead-row > .icon-btn:first-child { display: none; } }
+
+/* ---------- Quorum mode's mini app launcher on /apps: quorum-mobile's MiniAppsModal grid of square cards ---------- */
+.q-app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.q-app-grid .app-row { flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 2px; padding: 14px 10px 8px; }
+.q-app-grid .app-main { flex: 1 0 100%; flex-direction: column; justify-content: flex-start; gap: 10px; padding: 0; text-align: center; color: var(--ink); }
+.q-app-grid .app-main .app-icon { width: 56px; height: 56px; border-radius: calc(14px * var(--rs, 1)); font-size: 22px; }
+.q-app-grid .app-main > span:not(.app-icon) { align-items: center; max-width: 100%; gap: 2px; }
+.q-app-grid .app-main b { max-width: 100%; font-size: 15px; font-weight: 500; line-height: 20px; }
+.q-app-grid .app-main small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; max-width: 100%; white-space: normal; font-size: 13px; line-height: 17px; color: var(--q-subtle); }
+.q-app-grid .app-row .icon-btn { width: 32px; height: 32px; }
+.q-app-grid .app-row .icon-btn svg { width: 18px; height: 18px; }
+
+/* ---------- Quorum mode on phones: quorum-mobile's tab bar (a solid strip, ⋮ opens a labelled second row), its round
+   + button, and toasts above the bar ---------- */
+@media (max-width: 699px) {
+  .tabbar.q-tabbar { flex-direction: column; justify-content: flex-start; padding: 0 0 env(safe-area-inset-bottom); background: var(--bar, light-dark(#fff, #000)); backdrop-filter: none; -webkit-backdrop-filter: none; border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
+  .q-tab-row, .q-tab-more { display: flex; align-items: center; }
+  .q-tab-row { height: 53px; }
+  .q-tab-more { height: 62px; padding-bottom: 6px; animation: fade 0.15s; }
+  .q-tabbar :is(a, button) { flex: 1 1 0; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--muted); }
+  .q-tabbar :is(a, button).on { color: var(--accent); }
+  .q-tabbar small { margin: 0; font-size: 11px; font-weight: 500; color: inherit; }
+  .q-tab-more .ico svg { width: 22px; height: 22px; }
+  .q-tab-me .avatar { box-shadow: 0 0 0 2px transparent; }
+  .q-tab-me.on .avatar { box-shadow: 0 0 0 2px var(--accent); }
+  :root[data-quorum] .fab { width: 48px; height: 48px; right: 16px; box-shadow: 0 2px 4px rgb(0 0 0 / 0.2); }
+  /* the open ⋮ row and a message box keep the bar's neighbours (the + button, the dock) out of their way */
+  body:has(.q-tab-more) :is(.fab, .dock), :root[data-quorum] body:has(.dm-compose) .dock { display: none; }
+  .q-chat-sub { display: none; }
+  /* a mini app fills the screen: square corners, and its title bar clears the status bar, as Quilcast's own does */
+  :where(:root[data-quorum]) .mini { border-radius: 0; box-shadow: none; }
+  :where(:root[data-quorum]) .mini-top { padding-top: calc(8px + env(safe-area-inset-top)); }
+  :where(:root[data-quorum]) .toast { left: 16px; right: 16px; bottom: calc(68px + env(safe-area-inset-bottom)); max-width: none; }
+}

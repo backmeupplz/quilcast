@@ -51,6 +51,12 @@ function changed() {
   if (now !== dot) dispatchEvent(new CustomEvent('dms', { detail: (dot = now) }))
 }
 
+// Quorum mode groups messages the way quorum-shared's messageGrouping does: a day line between days, and a message
+// from the same sender within 5 minutes of the one before goes under it without its own face and name
+export const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
+export const compact = (m: Msg, prev: Msg | undefined, newDay: boolean) =>
+  !!prev && !newDay && m.type === 'text' && prev.type === 'text' && m.senderFid === prev.senderFid && m.serverTimestamp - prev.serverTimestamp <= 5 * 60e3
+
 /** `a` plus whatever in `b` is new or changed, oldest first; `a` itself when nothing is. */
 export function merge(a: Msg[], b: Msg[]) {
   const have = new Map(a.map((m) => [m.messageId, m]))

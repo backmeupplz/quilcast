@@ -942,6 +942,8 @@ function Window({ app }: { app: App }) {
           <>
             <button class="icon-btn only-wide" aria-label={big ? t('Make smaller') : t('Expand')} aria-pressed={big} onClick={() => setBig(!big)}><Icon d={P.expand} /></button>
             <button class="icon-btn" aria-label={t('Share in a cast')} onClick={() => shell.compose({ embeds: [app.url] })}><Icon d={P.share} /></button>
+            {/* Quorum's search: tucks this app into the dock and looks through the directory for another */}
+            <button class="icon-btn" aria-label={t('Search mini apps')} onClick={() => ((shell.findApp = true), show(null), location.pathname === '/apps' ? dispatchEvent(new Event('findapp')) : go('/apps'))}><Icon d={P.search} /></button>
           </>
         )}
         <button class="icon-btn" aria-label={t('Close')} onClick={() => close(app)}><Icon d={P.x} /></button>

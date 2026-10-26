@@ -22,6 +22,8 @@ export const shell = {
   dock: { apps: [] as { id: number; url: string; name: string; icon?: string }[], shown: null as number | null, show: (_id: number) => {} },
   // opens the theme editor (themes.tsx) on a theme, or on the one being worn
   editTheme: (_?: Theme | null) => {},
+  // set by a mini app window's search button (Quorum mode): /apps focuses its directory search, then clears it
+  findApp: false,
 }
 // errors thrown with English text (ours and the server's) are translated here too
 export const toast = (m: string) => shell.toast(t(m))
@@ -68,6 +70,7 @@ export const P = {
   x: 'M18 6 6 18M6 6l12 12',
   play: 'M7 4v16l13-8z',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
+  vmore: 'M12 5h.01M12 12h.01M12 19h.01',
   bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0',
   mail: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 7l9 6 9-6',
   plus: 'M12 5v14M5 12h14',
@@ -136,10 +139,16 @@ export const Header = ({ title, back: showBack = true, action, children }: { tit
   </div>
 )
 
+const top = (el: Element) => {
+  // (on phones that list is the page itself)
+  const pane = el.closest('.q-dm-list')
+  pane && getComputedStyle(pane).overflowY !== 'visible' ? pane.scrollTo(0, 0) : el.closest('.phead') && scrollTo(0, 0)
+}
 export const Tabs = <T extends string>({ tabs, value, set }: { tabs: [T, string][]; value: T; set: (t: T) => void }) => (
   <nav class="tabs" role="tablist">
-    {/* a list under tabs in the sticky header starts at its top, not wherever the previous one was scrolled to */}
-    {tabs.map(([k, label]) => <button type="button" role="tab" aria-selected={value === k} class={value === k ? 'on' : ''} onClick={(e) => (e.currentTarget.closest('.phead') && scrollTo(0, 0), set(k))}>{label}</button>)}
+    {/* a list under tabs in the sticky header starts at its top, not wherever the previous one was scrolled to (in
+        Quorum mode's Messages the list scrolls in its own pane, and the page beside it is the open conversation) */}
+    {tabs.map(([k, label]) => <button type="button" role="tab" aria-selected={value === k} class={value === k ? 'on' : ''} onClick={(e) => (top(e.currentTarget), set(k))}>{label}</button>)}
   </nav>
 )
 
@@ -769,8 +778,11 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
   const parentUser = c.parent_author?.fid ? users.get(c.parent_author.fid) : undefined
   const likes = c.reactions.likes_count + +liked - +was[0]
   const recasts = c.reactions.recasts_count + +recast - +was[1]
+  const like = <button class={`act lk${liked ? ' on' : ''}`} aria-label={t('Like')} onClick={() => toggle(1, !liked, setLiked, mine.likes)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
   const actions = (
     <footer onClick={stop}>
+      {/* Quorum mode's order is Like, Reply, Recast */}
+      {settings.quorum && like}
       <button class="act" aria-label={t('Reply')} onClick={() => requireAccount() && shell.compose({ parent: c })}><Icon d={P.reply} /><span>{c.replies.count ? n(c.replies.count) : ''}</span></button>
       <span class="wrap-menu">
         <button class={`act rc${recast ? ' on' : ''}`} aria-label={t('Recast or quote')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.recast} /><span>{recasts ? n(recasts) : ''}</span></button>
@@ -781,7 +793,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
           </Menu>
         )}
       </span>
-      <button class={`act lk${liked ? ' on' : ''}`} aria-label={t('Like')} onClick={() => toggle(1, !liked, setLiked, mine.likes)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
+      {!settings.quorum && like}
       <button class="act" aria-label={t('Share')} onClick={share}><Icon d={P.share} /></button>
       <span class="wrap-menu">
         <button class="act" aria-label={t('More')} aria-haspopup="menu" onClick={() => (setMore(!more), setSure(false))}><Icon d={P.more} /></button>

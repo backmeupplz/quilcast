@@ -1,11 +1,11 @@
 // Messages: farcaster.xyz's direct casts, drawn from the state in dms.ts, which the websocket keeps current.
 import { Fragment } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, safeUrl, type User } from './api.ts'
-import { autoDelete, details, load, loadChat, lookup, mute, read, send, store, subscribe, unread, type Box, type Convo, type Msg, type Person } from './dms.ts'
+import { account, myUser, safeUrl, settings, type User } from './api.ts'
+import { autoDelete, compact, details, load, loadChat, lookup, mute, read, sameDay, send, store, subscribe, unread, type Box, type Convo, type Msg, type Person } from './dms.ts'
 import { lang, t, tn } from './i18n.ts'
 import { isImg, sized } from './shared.ts'
-import { ago, Avatar, Header, Icon, Img, Menu, nameOf, P, RichText, shell, Tabs, toast, userPath, w } from './ui.tsx'
+import { ago, Avatar, handle, Header, Icon, Img, Menu, nameOf, P, RichText, shell, Tabs, toast, userPath, w } from './ui.tsx'
 
 const person = (p?: Person): User => ({ fid: p?.fid || 0, username: p?.username, display_name: p?.displayName, pfp_url: p?.pfp?.url })
 const who = (p?: Person) => (p?.fid && p.fid === account!.fid ? t('You') : p?.username ? `@${p.username}` : p?.displayName || t('Someone'))
@@ -59,6 +59,15 @@ function useStore() {
 export function Messages({ id }: { id?: string }) {
   if (!account?.done) return <><Header title={t('Messages')} /><div class="note">{t('Sign in to read your messages.')}</div></>
   if (!account.dm) return <Connect />
+  // Quorum mode: Quorum's two panes, the conversations beside the open one (one at a time on narrow screens)
+  if (settings.quorum) {
+    return (
+      <div class={`q-dms${id ? ' open' : ''}`}>
+        <div class="q-dm-list"><Inbox /></div>
+        <div class="q-dm-main">{id ? <Chat key={id} id={id} /> : <div class="q-empty"><Icon d={P.mail} size={56} /><p>{t("What's on your mind today?")}</p></div>}</div>
+      </div>
+    )
+  }
   return id ? <Chat key={id} id={id} /> : <Inbox />
 }
 
@@ -123,7 +132,8 @@ function Inbox() {
   })
   return (
     <>
-      <Header title={t('Messages')}>
+      {/* (in Quorum mode the list is a pane beside the conversation, with nowhere to go back to) */}
+      <Header title={t('Messages')} back={!settings.quorum}>
         <Tabs tabs={[['inbox', t('Inbox')], ['unread', unreadN ? t('Unread · {n}', { n: unreadN }) : t('Unread')], ['requests', store.requestsCount ? t('Requests · {n}', { n: store.requestsCount }) : t('Requests')], ['muted', t('Muted')]]} value={tab} set={setTab} />
       </Header>
       {err && <div class="note">{t("Couldn't load messages: {error}", { error: t(err) })} <button class="link-btn" onClick={() => (setErr(''), list.items || load(box).catch((e) => setErr(e.message)))}>{t('Retry')}</button></div>}
@@ -141,16 +151,46 @@ function Row({ c }: { c: Convo }) {
   const { name, user } = face(c)
   const n = c.viewerContext.unreadCount || 0
   const m = c.lastMessage
+  // Quorum's rows put the time at the far end and mark the open conversation
+  const q = settings.quorum
+  const on = q && location.pathname === `/messages/${c.conversationId}`
   return (
-    <a class={`row${n ? ' unread' : ''}`} href={`/messages/${c.conversationId}`}>
+    <a class={`row${n ? ' unread' : ''}${on ? ' on' : ''}`} href={`/messages/${c.conversationId}`} aria-current={on ? 'page' : undefined}>
       <Avatar u={user} link={false} />
       <span class="row-main">
-        <span class="row-top"><b>{name}</b>{c.viewerContext.muted && <Icon d={MUTED} size={14} />}{m && <span class="handle">· {ago(m.serverTimestamp)}</span>}</span>
+        <span class="row-top"><b>{name}</b>{c.viewerContext.muted && <Icon d={MUTED} size={14} />}{m && <span class="handle">{q ? ago(m.serverTimestamp) : `· ${ago(m.serverTimestamp)}`}</span>}</span>
         {m && <span class="row-sub">{preview(m, c.isGroup)}</span>}
       </span>
       {n > 0 && <span class={`unread-count${c.viewerContext.muted ? ' quiet' : ''}`}>{n}</span>}
     </a>
   )
+}
+
+// Quorum's message rows (quorum-desktop Message.tsx): a face, the name and the time over the first of a run, then
+// compact rows with the time in the face's place; days are split by a dated line
+const clock = (at: number) => new Date(at).toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' })
+function QRow({ m, head, mine }: { m: Msg; head: boolean; mine: boolean }) {
+  if (m.type !== 'text') return <div class="q-msg-note">{describe(m)}</div>
+  const { pics, text } = partsOf(m)
+  const u = (mine && myUser()) || person(m.senderContext)
+  return (
+    <div class={`q-msg${head ? ' head' : ''}`}>
+      {head ? <Avatar u={u} size={44} /> : <time class="q-msg-side" dateTime={new Date(m.serverTimestamp).toISOString()}>{clock(m.serverTimestamp)}</time>}
+      <div class="q-msg-body">
+        {head && <div class="q-msg-top"><a class="q-msg-name" href={userPath(u)}>{nameOf(u)}</a><time title={when(m.serverTimestamp)}>{clock(m.serverTimestamp)}</time></div>}
+        {pics.map((p, i) => <button class={`dm-img ${m.state || ''}`} onClick={() => shell.view(pics, i)}><Img src={sized(p, 'w=600')} /></button>)}
+        {(text || !pics.length) && <div class={`q-msg-text ${m.state || ''}`}>{m.isDeleted ? <i>{t('Message deleted')}</i> : <RichText text={text} />}</div>}
+        {m.state && <small class={m.state === 'failed' ? 'warn' : 'msg-state'}>{m.state === 'failed' ? t('Not sent') : t('Sending…')}</small>}
+      </div>
+    </div>
+  )
+}
+// "Today", "Yesterday", or the date, in the app's language
+const dayLabel = (at: number) => {
+  const back = sameDay(at, Date.now()) ? 0 : sameDay(at, Date.now() - 864e5) ? -1 : null
+  if (back === null) return new Date(at).toLocaleDateString(lang, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  const s = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' }).format(back, 'day')
+  return s[0].toLocaleUpperCase(lang) + s.slice(1)
 }
 
 // in groups, others' messages carry a name on the first of a run and a face on the last
@@ -218,6 +258,8 @@ function Chat({ id }: { id: string }) {
     <span class="chat-title">
       <Avatar u={f.user} size={28} link={f.one} />
       {f.one ? <a class="plain" href={userPath(f.user)}>{f.name}</a> : f.name}
+      {/* Quorum's header: the name | the address (here, the handle) */}
+      {settings.quorum && f.one && !handle(f.user).startsWith('!') && <span class="q-chat-sub">| @{handle(f.user)}</span>}
       {muted && <Icon d={MUTED} size={15} />}
     </span>
   )
@@ -246,7 +288,16 @@ function Chat({ id }: { id: string }) {
         {c?.viewerContext.category === 'request' && <div class="banner"><div><b>{t('Message request')}</b><p>{t('Replying moves this conversation to your inbox.')}</p></div></div>}
         <div class="chat">
           {chat?.older && <button class="link-btn earlier" onClick={earlier}>{t('Earlier messages')}</button>}
-          {msgs.map((m, i) => {
+          {settings.quorum ? msgs.map((m, i) => {
+            const prev = msgs[i - 1]
+            const day = !prev || !sameDay(prev.serverTimestamp, m.serverTimestamp)
+            return (
+              <Fragment key={m.messageId}>
+                {day && <div class="q-day"><span>{dayLabel(m.serverTimestamp)}</span></div>}
+                <QRow m={m} mine={m.senderFid === me} head={!compact(m, prev, day)} />
+              </Fragment>
+            )
+          }) : msgs.map((m, i) => {
             const prev = msgs[i - 1]
             const next = msgs[i + 1]
             const gap = (a?: Msg, b?: Msg) => !a || !b || b.serverTimestamp - a.serverTimestamp > 3600e3
@@ -266,13 +317,22 @@ function Chat({ id }: { id: string }) {
           {!chat && !err && <div class="spinner" />}
           {chat && !msgs.length && f && <div class="note">{f.one ? t('This is the start of your conversation with {name}.', { name: f.name }) : t('No messages yet.')}</div>}
         </div>
-        {!err && (
+        {!err && (settings.quorum ? (
+          // Quorum's composer: one rounded box with the send arrow inside it
+          <div class="dm-compose q-compose-box">
+            <div class="q-composer">
+              <textarea rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
+                onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit())} />
+              <button class="q-send" aria-label={t('Send')} title={t('Send')} disabled={!text.trim() || !c} onClick={submit}><svg width="18" height="14" viewBox="0 0 100 80" aria-hidden="true"><path d="M0 80L25 40.4L0 0l100 40.4z" fill="currentColor" /></svg></button>
+            </div>
+          </div>
+        ) : (
           <div class="dm-compose">
             <textarea rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
               onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit())} />
             <button class="btn small" disabled={!text.trim() || !c} onClick={submit}>{t('Send')}</button>
           </div>
-        )}
+        ))}
       </div>
     </>
   )

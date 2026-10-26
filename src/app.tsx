@@ -816,7 +816,14 @@ function Discover() {
   const [cat, setCat] = useState('')
   const [q, setQ] = useState('')
   useDock()
+  const box = useRef<HTMLInputElement>(null)
   useEffect(() => void loadListed().then(setList), [])
+  useEffect(() => {
+    const find = () => list && shell.findApp && ((shell.findApp = false), box.current?.focus())
+    find()
+    addEventListener('findapp', find)
+    return () => removeEventListener('findapp', find)
+  }, [list])
   if (!list) return <div class="spinner" />
   if (!list.length) return <p class="hint">{t('The directory couldn\'t be loaded. Try again in a bit.')}</p>
   const cats = [...new Set(list.flatMap((a) => a.category ?? []))]
@@ -826,12 +833,13 @@ function Discover() {
     <>
       <div class="searchbox">
         <Icon d={P.search} size={16} />
-        <input type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search mini apps')} aria-label={t('Search mini apps')} />
+        {/* a mini app window's search button (Quorum mode) lands here to find another app */}
+        <input type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search mini apps')} aria-label={t('Search mini apps')} ref={box} />
       </div>
       <div class="chips">
         {['', ...cats].map((c) => <button class={`chip${cat === c ? ' on' : ''}`} aria-pressed={cat === c} onClick={() => setCat(c)}>{c ? CATEGORY(c) : t('All')}</button>)}
       </div>
-      {shown.map((a) => (
+      {appGrid(shown.map((a) => (
         <div class="app-row listed">
           <button class="app-main" onClick={() => launchApp(a)}>
             <AppIcon src={a.icon} name={a.name} />
@@ -839,12 +847,15 @@ function Discover() {
           </button>
           {account?.done && <PinButton m={a} />}
         </div>
-      ))}
+      )))}
       {!shown.length && <p class="hint">{t('Nothing matches.')}</p>}
       <p class="hint">{t('The top mini apps on Farcaster, as farcaster.xyz ranks them. Quilcast doesn\'t review them, so treat them like any website.')}</p>
     </>
   )
 }
+
+/** Quorum mode lays mini apps out as quorum-mobile's launcher does, a grid of cards; elsewhere they're rows. */
+const appGrid = (rows: ComponentChildren[]) => (settings.quorum ? <div class="q-app-grid">{rows}</div> : rows)
 
 /** Re-render when pins change or mini apps open and close. */
 function useDock() {
@@ -936,7 +947,7 @@ function Apps() {
           <button class="btn small" onClick={openTyped} disabled={!url.trim()}>{t('Open')}</button>
         </div>
         {list.length > 0 && <h2 class="apps-h">{t('Your apps')}</h2>}
-        {[...list].sort((a, b) => +isPinned(b.url) - +isPinned(a.url)).map((a) => (
+        {appGrid([...list].sort((a, b) => +isPinned(b.url) - +isPinned(a.url)).map((a) => (
           <div class="app-row">
             <button class="app-main" onClick={() => launchApp(a)}>
               <AppIcon src={a.icon} name={a.name} />
@@ -946,7 +957,7 @@ function Apps() {
             <PinButton m={a} />
             <button class="icon-btn" disabled={!!busy} aria-label={t('Remove {app}', { app: String(a.name) })} onClick={() => remove(a)}><Icon d={P.trash} /></button>
           </div>
-        ))}
+        )))}
         {busy && busy !== 'push' && !list.some((x) => x.url === busy) && <p class="hint">{busy}</p>}
         <h2 class="apps-h">{t('Discover')}</h2>
         <Discover />
@@ -1294,6 +1305,18 @@ function App() {
   const [r0, r1, r2] = useRoute()
   const unread = useUnread()
   const [viewer, setViewer] = useState<{ urls: string[]; index: number } | null>(null)
+  // Quorum mode's ⋮ row on phones, folded again on every page change
+  const [more, setMore] = useState(false)
+  useEffect(() => setMore(false), [r0, r1])
+  // and on Escape or a tap anywhere outside the bar
+  useEffect(() => {
+    if (!more) return
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setMore(false)
+    const tap = (e: PointerEvent) => !(e.target as Element).closest?.('.q-tabbar') && setMore(false)
+    addEventListener('keydown', key)
+    addEventListener('pointerdown', tap)
+    return () => (removeEventListener('keydown', key), removeEventListener('pointerdown', tap))
+  }, [more])
   // a mini app can't replace a draft that's already open
   const composing = useRef(false)
   composing.current = !!compose
@@ -1348,6 +1371,11 @@ function App() {
   const toggleWallet = (e: Event) => (e.preventDefault(), setWalletOpen(!wallet))
   const navProps = (k: string) => (quorum && k === 'wallet' ? { href: '/wallet', onClick: toggleWallet, 'aria-expanded': wallet } : { href: href(k) })
   const on = (k: string) => (quorum && k === 'wallet' ? wallet : active(k))
+  // a tab in Quorum mode's phone bar (the ones in its ⋮ row carry their name under the icon)
+  const tab = (k: string, label: string, d: string, named?: boolean) => {
+    const p = navProps(k)
+    return <a class={on(k) ? 'on' : ''} {...p} aria-label={named ? undefined : label} onClick={(e) => (setMore(false), p.onClick?.(e))}>{ico(k, d)}{named && <small>{label}</small>}</a>
+  }
   const setMode = (mode: 'light' | 'dark') => ((settings.theme = mode), saveSettings(), applyTheme(), force((x) => x + 1))
   return (
     <>
@@ -1375,7 +1403,8 @@ function App() {
         </nav>
       )}
       <main class="col">{view}</main>
-      {quorum ? (wallet ? <WalletPanel close={() => setWalletOpen(false)} /> : <QuorumAside search={r0 !== 'search'} />) : <aside class="extra">
+      {/* Quorum's messages have no right column: the conversations and the open one take the room */}
+      {quorum ? (wallet ? <WalletPanel close={() => setWalletOpen(false)} /> : r0 !== 'messages' && <QuorumAside search={r0 !== 'search'} />) : <aside class="extra">
         {r0 !== 'search' && <a class="searchbox" href="/search"><Icon d={P.search} size={16} /><span>{t('Search people and casts')}</span></a>}
         <div class="about">
           <b>{t('About Quilcast')}</b>
@@ -1384,12 +1413,30 @@ function App() {
           <p class="foot ogre-only"><a href="/shrek/credits.html" target="_blank">{t('Shrek credits')}</a></p>
         </div>
       </aside>}
-      <nav class="tabbar" aria-label={t('Main')}>
-        {nav.map(([k, label, d]) => <a class={on(k) ? 'on' : ''} {...navProps(k)} aria-label={label}>{ico(k, d)}</a>)}
-        {quorum && (me ? <a class={active('u') ? 'on' : ''} href={href('u')} aria-label={t('Profile')}>{ico('u', P.user)}</a> : null)}
-        {quorum && <a class={active('settings') ? 'on' : ''} href="/settings" aria-label={t('Settings')}>{ico('settings', P.gear)}</a>}
-      </nav>
-      {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={P.pen} size={22} /></button>}
+      {quorum ? (
+        // quorum-mobile's AppTabBar: your face, Messages, Spaces, the feed and Notifications, and ⋮ for a second row
+        // with the rest
+        <nav class="tabbar q-tabbar" aria-label={t('Main')}>
+          <div class="q-tab-row">
+            {me ? <a class={`q-tab-me${active('u') ? ' on' : ''}`} href={href('u')} aria-label={t('Profile')} onClick={() => setMore(false)}><Avatar u={me} size={32} link={false} /></a> : tab('join', t('Join'), P.user)}
+            {(me ? ['messages', 'spaces', '', 'notifications'] : ['', 'search']).map((k) => {
+              const [, label, d] = nav.find((x) => x[0] === k)!
+              return tab(k, label, d)
+            })}
+            <button class={more ? 'on' : ''} aria-label={t('More')} aria-expanded={more} aria-controls={more ? 'q-more' : undefined} onClick={() => setMore(!more)}><Icon d={P.vmore} size={24} /></button>
+          </div>
+          {more && (
+            <div class="q-tab-more" id="q-more">
+              {[...nav.filter(([k]) => ['wallet', 'search', 'apps'].includes(k) && !(!me && k === 'search')), ['settings', t('Settings'), P.gear] as [string, string, string]].map(([k, label, d]) => tab(k, label, d, true))}
+            </div>
+          )}
+        </nav>
+      ) : (
+        <nav class="tabbar" aria-label={t('Main')}>
+          {nav.map(([k, label, d]) => <a class={on(k) ? 'on' : ''} {...navProps(k)} aria-label={label}>{ico(k, d)}</a>)}
+        </nav>
+      )}
+      {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={quorum ? P.plus : P.pen} size={22} /></button>}
       {me && <Dock />}
       {compose && <Composer {...compose} onClose={() => setCompose(null)} />}
       {viewer && <Lightbox {...viewer} close={() => setViewer(null)} />}
