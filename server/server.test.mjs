@@ -103,9 +103,9 @@ test('text goes out compressed when the client takes it', async () => {
 test('security headers on every page', async () => {
   const r = await fetch(base + '/')
   assert.match(r.headers.get('content-security-policy'), /script-src 'self'/)
-  // only Farcaster and Base clients may frame it, as a mini app
-  assert.match(r.headers.get('content-security-policy'), /frame-ancestors https:\/\/farcaster\.xyz /)
-  assert.doesNotMatch(r.headers.get('content-security-policy'), /frame-ancestors[^;]*(\*;|'self'|https:;)/)
+  // only Quilcast itself and Farcaster and Base clients may frame it, as a mini app
+  assert.match(r.headers.get('content-security-policy'), /frame-ancestors 'self' https:\/\/farcaster\.xyz /)
+  assert.doesNotMatch(r.headers.get('content-security-policy'), /frame-ancestors[^;]*(\*[; ]|https:[; ])/)
   assert.equal(r.headers.get('x-content-type-options'), 'nosniff')
 })
 

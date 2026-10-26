@@ -44,14 +44,15 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 // --- headers ---
 
-// The app keeps users' keys in localStorage, so scripts may only come from this origin, and only Farcaster and
-// Base clients may frame the page, as a mini app (their frame gets its own storage, apart from quilcast.com's). Mini apps are https pages framed by the app (src/miniapp.tsx sandboxes them). Images and video come from anywhere (avatars, embeds, CDNs); the node
+// The app keeps users' keys in localStorage, so scripts may only come from this origin, and only Quilcast itself and
+// Farcaster and Base clients may frame the page, as a mini app (their frame gets its own storage, apart from quilcast.com's;
+// Quilcast in Quilcast shares it, being the same app). Mini apps are https pages framed by the app (src/miniapp.tsx sandboxes them). Images and video come from anywhere (avatars, embeds, CDNs); the node
 // and RPC URLs are user settings, hence https: for connect-src; messages and Spaces update over farcaster.xyz's websocket, and Spaces audio comes from LiveKit.
 const CSP = [
   "default-src 'self'", "script-src 'self'", "style-src 'self'", 'img-src * data: blob:', 'media-src * data: blob:',
   "connect-src 'self' https: wss://ws.farcaster.xyz wss://*.livekit.cloud http://localhost:* http://127.0.0.1:*", "worker-src 'self' blob:", "font-src 'self'", "manifest-src 'self'",
   "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-src https:",
-  'frame-ancestors https://farcaster.xyz https://*.farcaster.xyz https://warpcast.com https://*.warpcast.com https://base.app https://*.base.app https://*.coinbase.com',
+  "frame-ancestors 'self' https://farcaster.xyz https://*.farcaster.xyz https://warpcast.com https://*.warpcast.com https://base.app https://*.base.app https://*.coinbase.com",
 ].join('; ')
 const SECURITY = {
   'content-security-policy': CSP,

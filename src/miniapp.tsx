@@ -113,8 +113,6 @@ export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; from?: st
   const url = safeUrl(m.url)
   if (!url?.startsWith('https://')) return toast("That mini app isn't on a secure (https) address.")
   const { origin, host } = new URL(url)
-  // our own pages (Quilcast's mini app embeds) just open here; framed with allow-same-origin they could read our keys
-  if (origin === location.origin || host === 'quilcast.com') return go(url.slice(origin.length) || '/')
   const open = apps.find((a) => a.url === url)
   if (open) return show(open)
   if (!root) render(<Host />, (root = document.body.appendChild(document.createElement('div'))))
