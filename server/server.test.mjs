@@ -129,6 +129,11 @@ test('casts are mini app embeds with a 3:2 card', async () => {
   assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 800])
 })
 
+test('any page opens itself as a mini app', async () => {
+  const meta = (await (await fetch(`${base}/search`)).text()).match(/<meta name="fc:miniapp" content="([^"]*)"/)[1]
+  assert.equal(JSON.parse(meta.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))).button.action.url, 'https://quilcast.test/search')
+})
+
 test('card images never reach private addresses', async () => {
   internalHits = 0
   const r = await fetch(`${base}/og/c/${'cd'.repeat(20)}.png`)

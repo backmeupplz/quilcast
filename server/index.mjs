@@ -496,13 +496,17 @@ refresh()
 setInterval(refresh, 6 * 3600e3).unref()
 // swap the default title/description/url/image in index.html for page-specific ones; replacements
 // are functions so `$` sequences in user text are never treated as replacement patterns
-function page({ title, desc, path, image, alt, embed = `${SITE}/embed.png` }) {
-  let h = index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`)
-  const set = (attr, keys, v) => keys.forEach((k) => (h = h.replace(new RegExp(`(<meta ${attr}="${k}" content=")[^"]*`), (_, p) => p + esc(v))))
-  // in Farcaster clients the link is a card that opens this page in Quilcast as a mini app; fc:frame is the older name
+const meta = (h, attr, k, v) => h.replace(new RegExp(`(<meta ${attr}="${k}" content=")[^"]*`), (_, p) => p + esc(v))
+// in Farcaster clients (and Quilcast) a link is a card that opens that same page as a mini app; fc:frame is the older name
+function launchAt(h, path, embed = `${SITE}/embed.png`) {
   for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
-    set('name', [k], JSON.stringify({ version: '1', imageUrl: embed, button: { title: 'Open in Quilcast', action: { type, name: 'Quilcast', url: SITE + path, splashImageUrl: `${SITE}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
+    h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: embed, button: { title: 'Open in Quilcast', action: { type, name: 'Quilcast', url: SITE + path, splashImageUrl: `${SITE}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
   }
+  return h
+}
+function page({ title, desc, path, image, alt, embed }) {
+  let h = launchAt(index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`), path, embed)
+  const set = (attr, keys, v) => keys.forEach((k) => (h = meta(h, attr, k, v)))
   set('name', ['description', 'twitter:description'], desc)
   set('property', ['og:description'], desc)
   set('property', ['og:title'], title)
@@ -537,7 +541,8 @@ createServer(async (req, res) => {
   // no-transform: Cloudflare leaves the page as we sent it (no analytics beacon or other rewriting)
   const html = (body, memo) => send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform' }, Buffer.from(body), memo)
   const json = (code, body, cache = 'no-store') => send(req, res, code, { 'content-type': 'application/json', 'cache-control': cache }, Buffer.from(JSON.stringify(body)))
-  const app = () => html(index, 'index.html')
+  // every other page is the app as is, its embed opening that page
+  const app = () => (path === '/' || !path ? html(index, 'index.html') : html(launchAt(index, path)))
   let url, path
   try {
     url = new URL(req.url, 'http://x')

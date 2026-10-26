@@ -138,7 +138,14 @@ function close(app: App) {
   if (shown === app.id) shown = null
   update()
 }
-const reload = (app: App) => app.frame && ((app.ready = false), (app.frame.src = app.url), update())
+// Chrome won't load a frame at the same address as its ancestors, so each Quilcast in Quilcast gets its own
+const src = (app: App) => {
+  if (app.origin !== location.origin) return app.url
+  const u = new URL(app.url)
+  u.searchParams.set('in', app.uuid.slice(0, 8))
+  return u.href
+}
+const reload = (app: App) => app.frame && ((app.ready = false), (app.frame.src = src(app)), update())
 
 const post = (app: App, m: unknown) => {
   try {
@@ -933,7 +940,7 @@ function Window({ app }: { app: App }) {
       </header>
       <div class="mini-body">
         {/* its own origin (never ours, see launch), no top navigation or location; camera and mic only once allowed */}
-        <iframe ref={(el) => void (el && (app.frame = el))} src={app.url} title={app.name} allow={`clipboard-write; web-share${app.media ? '; camera; microphone' : ''}`}
+        <iframe ref={(el) => void (el && (app.frame = el))} src={src(app)} title={app.name} allow={`clipboard-write; web-share${app.media ? '; camera; microphone' : ''}`}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
           // apps that never call ready() still show up after a while
           onLoad={() => setTimeout(() => void (app.ready || ((app.ready = true), update())), 5000)} />
