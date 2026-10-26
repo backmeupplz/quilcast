@@ -44,18 +44,18 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 // --- headers ---
 
-// The app keeps users' keys in localStorage, so scripts may only come from this origin, and the
-// page may not be framed. Mini apps are https pages framed by the app (src/miniapp.tsx sandboxes them). Images and video come from anywhere (avatars, embeds, CDNs); the node
+// The app keeps users' keys in localStorage, so scripts may only come from this origin, and only Farcaster and
+// Base clients may frame the page, as a mini app (their frame gets its own storage, apart from quilcast.com's). Mini apps are https pages framed by the app (src/miniapp.tsx sandboxes them). Images and video come from anywhere (avatars, embeds, CDNs); the node
 // and RPC URLs are user settings, hence https: for connect-src; messages and Spaces update over farcaster.xyz's websocket, and Spaces audio comes from LiveKit.
 const CSP = [
   "default-src 'self'", "script-src 'self'", "style-src 'self'", 'img-src * data: blob:', 'media-src * data: blob:',
   "connect-src 'self' https: wss://ws.farcaster.xyz wss://*.livekit.cloud http://localhost:* http://127.0.0.1:*", "worker-src 'self' blob:", "font-src 'self'", "manifest-src 'self'",
-  "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-src https:", "frame-ancestors 'none'",
+  "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-src https:",
+  'frame-ancestors https://farcaster.xyz https://*.farcaster.xyz https://warpcast.com https://*.warpcast.com https://base.app https://*.base.app https://*.coinbase.com',
 ].join('; ')
 const SECURITY = {
   'content-security-policy': CSP,
   'x-content-type-options': 'nosniff',
-  'x-frame-options': 'DENY',
   'strict-transport-security': 'max-age=31536000; includeSubDomains',
   'referrer-policy': 'no-referrer',
   'cross-origin-opener-policy': 'same-origin',
@@ -475,6 +475,8 @@ async function themeCard(id, raw) {
 const themePng = (id, th) => pngs.get(`theme:${id}`) || keep(pngs, 100, `theme:${id}`, themeCard(id, th).then(render))
 
 // rendering runs on libuv's pool, so it never blocks the event loop
+/** A 1200×630 cast card grown to 1200×800, its background carried into the new space above and below. */
+const tall = (svg) => svg.replace('height="630" viewBox="0 0 1200 630"', 'height="800" viewBox="0 -85 1200 800"').replace(/<rect width="1200" height="630" fill="(#0d0c11|url\(#g\))"\/>/g, '<rect y="-85" width="1200" height="800" fill="$1"/>')
 const render = (svg) => renderAsync(svg, { font: { fontFiles: FONTS, loadSystemFonts: false, defaultFontFamily: 'Inter' } }).then((img) => img.asPng())
 
 // small caches; failures drop out so they're retried. Rendered PNGs get their own, smaller one.
@@ -493,9 +495,13 @@ refresh()
 setInterval(refresh, 6 * 3600e3).unref()
 // swap the default title/description/url/image in index.html for page-specific ones; replacements
 // are functions so `$` sequences in user text are never treated as replacement patterns
-function page({ title, desc, path, image, alt }) {
+function page({ title, desc, path, image, alt, embed = `${SITE}/embed.png` }) {
   let h = index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`)
   const set = (attr, keys, v) => keys.forEach((k) => (h = h.replace(new RegExp(`(<meta ${attr}="${k}" content=")[^"]*`), (_, p) => p + esc(v))))
+  // in Farcaster clients the link is a card that opens this page in Quilcast as a mini app; fc:frame is the older name
+  for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
+    set('name', [k], JSON.stringify({ version: '1', imageUrl: embed, button: { title: 'Open in Quilcast', action: { type, name: 'Quilcast', url: SITE + path, splashImageUrl: `${SITE}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
+  }
   set('name', ['description', 'twitter:description'], desc)
   set('property', ['og:description'], desc)
   set('property', ['og:title'], title)
@@ -712,13 +718,15 @@ createServer(async (req, res) => {
       return createReadStream(file, { start: from, end: to }).on('error', () => res.destroy()).pipe(res)
     }
 
-    const og = path.match(/^\/og\/c\/(?:0x)?([0-9a-f]{40})\.png$/i)
+    // .3x2.png is the same card for mini app embeds, which Farcaster clients show at 3:2
+    const og = path.match(/^\/og\/c\/(?:0x)?([0-9a-f]{40})(\.3x2)?\.png$/i)
     if (og) {
       const hash = og[1].toLowerCase()
-      if (!pngs.has(hash) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
+      const k = hash + (og[2] || '')
+      if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
       const c = await getCast(hash)
       if (!c) return res.writeHead(404).end()
-      const png = await (pngs.get(hash) || keep(pngs, 100, hash, renders(() => card(c).then(render))))
+      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => card(c).then((svg) => render(og[2] ? tall(svg) : svg)))))
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600' }).end(png)
     }
 
@@ -729,7 +737,7 @@ createServer(async (req, res) => {
       const c = await getCast(hash)
       if (!c) return app()
       const desc = castText(c).slice(0, 280) || 'A cast on Farcaster'
-      return html(page({ title: `${c.author?.display_name || c.author?.username} (@${c.author?.username}) on Quilcast`, desc, path, image: `${SITE}/og/c/${hash}.png`, alt: desc }))
+      return html(page({ title: `${c.author?.display_name || c.author?.username} (@${c.author?.username}) on Quilcast`, desc, path, image: `${SITE}/og/c/${hash}.png`, alt: desc, embed: `${SITE}/og/c/${hash}.3x2.png` }))
     }
 
     const user = path.match(/^\/u\/([^/]{1,64})$/)

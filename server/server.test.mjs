@@ -103,9 +103,10 @@ test('text goes out compressed when the client takes it', async () => {
 test('security headers on every page', async () => {
   const r = await fetch(base + '/')
   assert.match(r.headers.get('content-security-policy'), /script-src 'self'/)
-  assert.match(r.headers.get('content-security-policy'), /frame-ancestors 'none'/)
+  // only Farcaster and Base clients may frame it, as a mini app
+  assert.match(r.headers.get('content-security-policy'), /frame-ancestors https:\/\/farcaster\.xyz /)
+  assert.doesNotMatch(r.headers.get('content-security-policy'), /frame-ancestors[^;]*(\*;|'self'|https:;)/)
   assert.equal(r.headers.get('x-content-type-options'), 'nosniff')
-  assert.equal(r.headers.get('x-frame-options'), 'DENY')
 })
 
 test('cast and profile meta tags escape user text, including $ replacement patterns', async () => {
@@ -117,6 +118,15 @@ test('cast and profile meta tags escape user text, including $ replacement patte
     assert.equal(html.match(/<meta property="og:title"/g).length, 1, path)
     assert.ok(!/canonical" href="[^"]*"[^ /]/.test(html), path)
   }
+})
+
+test('casts are mini app embeds with a 3:2 card', async () => {
+  const hash = 'cd'.repeat(20)
+  const meta = (await (await fetch(`${base}/c/${hash}`)).text()).match(/<meta name="fc:miniapp" content="([^"]*)"/)[1]
+  const e = JSON.parse(meta.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+  assert.equal(e.button.action.url, `https://quilcast.test/c/${hash}`)
+  const png = Buffer.from(await (await fetch(e.imageUrl.replace('https://quilcast.test', base))).arrayBuffer())
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 800])
 })
 
 test('card images never reach private addresses', async () => {

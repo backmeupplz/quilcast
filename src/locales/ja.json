@@ -316,7 +316,6 @@
   "Push notifications on this device": "このデバイスのプッシュ通知",
   "Quiet text": "控えめなテキスト",
   "Quilcast can send and swap tokens on EVM chains only.": "Quilcast でトークンの送金・スワップができるのは EVM チェーンのみです。",
-  "Quilcast can't open itself as a mini app.": "Quilcast 自身をミニアプリとして開くことはできません。",
   "Quilcast has no RPC for that chain.": "Quilcast にはそのチェーンの RPC がありません。",
   "Quilcast has no explorer for that chain.": "Quilcast にはそのチェーンのエクスプローラーがありません。",
   "Quilcast home": "Quilcast ホーム",

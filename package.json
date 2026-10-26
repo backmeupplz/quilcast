@@ -10,6 +10,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@farcaster/miniapp-sdk": "^0.3.0",
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
     "@resvg/resvg-js": "2.6.2"
@@ -24,5 +25,5 @@
     "viem": "2.57.3",
     "vite": "8.3.4"
   },
-  "version": "0.27.2"
+  "version": "0.28.0"
 }

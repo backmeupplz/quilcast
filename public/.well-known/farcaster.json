@@ -1,0 +1,33 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMzNTYzMTYsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhhRDI4MDQxNTMxNzJDYTE0MTA1NTA2Mzg2YzkwNzg1Mzc1ODhEZDVkIn0",
+    "payload": "eyJkb21haW4iOiJxdWlsY2FzdC5jb20ifQ",
+    "signature": "gfjKSJ8GjoG78lyowmbqMEabb61zgsZ2_bAT6Ph9iR54LbnP2cqI_kOP6EZ2aGoCS8cJRj3xSb8yylrJFIFFOxw"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Quilcast",
+    "iconUrl": "https://quilcast.com/icon.png",
+    "homeUrl": "https://quilcast.com/",
+    "imageUrl": "https://quilcast.com/embed.png",
+    "buttonTitle": "Open in Quilcast",
+    "splashImageUrl": "https://quilcast.com/splash.png",
+    "splashBackgroundColor": "#0d0c11",
+    "subtitle": "Farcaster on Hypersnap",
+    "tagline": "Farcaster on Hypersnap",
+    "description": "A small, open Farcaster client that reads from and posts to Quilibrium’s Hypersnap network, with your keys kept on your device.",
+    "primaryCategory": "social",
+    "tags": [
+      "farcaster",
+      "client",
+      "hypersnap",
+      "social",
+      "quilibrium"
+    ],
+    "heroImageUrl": "https://quilcast.com/og.png",
+    "ogTitle": "Quilcast",
+    "ogDescription": "Read, cast and reply on Farcaster through the Hypersnap network.",
+    "ogImageUrl": "https://quilcast.com/og.png",
+    "canonicalDomain": "quilcast.com"
+  }
+}

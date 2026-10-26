@@ -316,7 +316,6 @@
   "Push notifications on this device": "Push-уведомления на этом устройстве",
   "Quiet text": "Приглушённый текст",
   "Quilcast can send and swap tokens on EVM chains only.": "Quilcast умеет отправлять и обменивать токены только в EVM-сетях.",
-  "Quilcast can't open itself as a mini app.": "Quilcast не может открыть сам себя как мини-приложение.",
   "Quilcast has no RPC for that chain.": "У Quilcast нет RPC для этой сети.",
   "Quilcast has no explorer for that chain.": "У Quilcast нет обозревателя блоков для этой сети.",
   "Quilcast home": "Главная Quilcast",

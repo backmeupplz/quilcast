@@ -316,7 +316,6 @@
   "Push notifications on this device": "這台裝置的推播通知",
   "Quiet text": "次要文字",
   "Quilcast can send and swap tokens on EVM chains only.": "Quilcast 只能在 EVM 鏈上傳送和兌換代幣。",
-  "Quilcast can't open itself as a mini app.": "Quilcast 無法把自己當成小程式開啟。",
   "Quilcast has no RPC for that chain.": "Quilcast 沒有這條鏈的 RPC。",
   "Quilcast has no explorer for that chain.": "Quilcast 沒有這條鏈的區塊瀏覽器。",
   "Quilcast home": "Quilcast 首頁",

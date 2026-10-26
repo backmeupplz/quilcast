@@ -1349,6 +1349,8 @@ function App() {
 applyTheme()
 loadLang().then(() => {
   render(<App />, document.getElementById('app')!)
+  // in a Farcaster client's frame or webview, as a mini app (src/inapp.ts)
+  if (window.parent !== window || 'ReactNativeWebView' in window) import('./inapp.ts')
   // a Winamp left open (src/amp.tsx) comes back, paused, until it's closed
   try {
     if (localStorage.getItem('quilcast:amp')) import('./amp.tsx')
