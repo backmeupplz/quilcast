@@ -992,5 +992,7 @@
   "Contract call": "Вызов контракта",
   "Transfer": "Перевод",
   "Send {amount} {symbol}": "Отправить {amount} {symbol}",
-  "Swap {amount} {from} for ≈ {got} {to}": "Обменять {amount} {from} на ≈ {got} {to}"
+  "Swap {amount} {from} for ≈ {got} {to}": "Обменять {amount} {from} на ≈ {got} {to}",
+  "Report @{name}": "Пожаловаться на @{name}",
+  "Report this cast": "Пожаловаться на каст"
 }

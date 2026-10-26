@@ -722,12 +722,10 @@ function Profile({ id }: { id: string }) {
                     {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
                     {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
                     <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? t('Following') : t('Follow')}</button>
-                    {account?.done && (
-                      <span class="wrap-menu">
-                        <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
-                        {menu && <Menu class="right" close={() => setMenu(false)}><SilenceItems u={u} done={() => setMenu(false)} /></Menu>}
-                      </span>
-                    )}
+                    <span class="wrap-menu">
+                      <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
+                      {menu && <Menu class="right" close={() => setMenu(false)}><SilenceItems u={u} done={() => setMenu(false)} /></Menu>}
+                    </span>
                   </span>
                 )}
               </div>

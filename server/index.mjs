@@ -518,6 +518,9 @@ function page({ title, desc, path, image, alt, embed }) {
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.txt': 'text/plain', '.json': 'application/json', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' }
 
+// static files under a path without their extension: the legal pages the stores link to, and Apple's universal links file
+const PAGES = { '/terms': 'terms.html', '/privacy': 'privacy.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
+
 // dist/ never changes while we run: its files are read once, and compressed once per encoding
 const files = new Map()
 const packed = new Map()
@@ -787,7 +790,7 @@ createServer(async (req, res) => {
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
     }
 
-    const file = normalize(join(DIST, path))
+    const file = normalize(join(DIST, PAGES[path] || path))
     if (file.startsWith(DIST) && extname(file)) {
       const body = await (files.get(file) || keep(files, 300, file, readFile(file))).catch(() => null)
       if (!body) return res.writeHead(404).end()

@@ -1,0 +1,59 @@
+name: Android
+# The Android app and the shared release scripts; web changes skip it (ci.yml checks those). Store builds happen in release.yml.
+on:
+  pull_request:
+    paths: ['android/**', '.github/scripts/**', '.forgejo/workflows/android.yml']
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/scripts/**', '.forgejo/workflows/android.yml']
+permissions:
+  contents: read
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  android:
+    # Our own pushes and PRs run on the Mac runners, where the JDK, the SDK, Gradle's caches and the build directory
+    # persist between runs. Outsiders' PRs (bridged from GitHub by the `github` user) never touch the Mac: they run
+    # on Linux, which downloads everything each time (rare, so not worth caching).
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["backmeupplz","renovate","claude"]'), github.event.pull_request.user.login)) && 'macos-latest' || 'ubuntu-24.04' }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            android
+            .github/scripts
+      - run: python3 -m unittest discover -s .github/scripts # the shared release scripts
+      # A pinned, checked Temurin and an SDK directory holding only the license (Gradle installs the platform and build
+      # tools it needs), kept per runner on the Mac. Same as ABS+'s android.yml.
+      - name: Toolchain
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            base="${PWD%%/work/*}" jdk=aarch64_mac home=Contents/Home sum=bf036b35b071bfb2f54f2c0af8ee8d88afa95ee6eb3dce02c0f94cfc2524d04a
+          else
+            base="$HOME" jdk=x64_linux home=. sum=d7f5d5cf865a2902b70ff549b97586a7d3f234e016f041ab447ea740c7d66d1c
+          fi
+          dir="$base/temurin-21.0.13+9"
+          if [ ! -x "$dir/$home/bin/java" ]; then
+            rm -rf "$dir.tmp" && mkdir -p "$dir.tmp"
+            curl -fsSL -o "$dir.tmp/jdk.tgz" "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/OpenJDK21U-jdk_${jdk}_hotspot_21.0.13_9.tar.gz"
+            echo "$sum  $dir.tmp/jdk.tgz" | shasum -a 256 -c
+            tar -xzf "$dir.tmp/jdk.tgz" -C "$dir.tmp" --strip-components 1 && rm "$dir.tmp/jdk.tgz" && mv "$dir.tmp" "$dir"
+          fi
+          echo "JAVA_HOME=$dir/$home" >> "$GITHUB_ENV"
+          mkdir -p "$base/android-sdk/licenses"
+          printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee' > "$base/android-sdk/licenses/android-sdk-license"
+          echo "ANDROID_HOME=$base/android-sdk" >> "$GITHUB_ENV"
+      # The Mac builds in a fixed per-runner copy of the sources (the checkout path changes every run), so Gradle's
+      # configuration cache and the previous run's outputs stay valid and only what changed is rebuilt.
+      - name: Build
+        run: |
+          cd android
+          if [ "$RUNNER_OS" = macOS ]; then
+            src="${PWD%%/work/*}/ci/quilcast-android"
+            mkdir -p "$src"
+            rsync -rlc --delete --exclude /.gradle --exclude /.kotlin --exclude /build --exclude /app/build ./ "$src/"
+            cd "$src"
+          fi
+          ./gradlew --no-daemon --build-cache --configuration-cache assembleDebug

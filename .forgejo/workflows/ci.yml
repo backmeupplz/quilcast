@@ -1,9 +1,13 @@
 name: CI
 
+# The web app and its server. Changes only to the native apps, their store texts or the release scripts skip it
+# (android.yml and ios.yml check those).
 on:
   pull_request:
+    paths-ignore: ['android/**', 'ios/**', 'fastlane/**', 'appstore/**', '.github/scripts/**', '.forgejo/workflows/android.yml', '.forgejo/workflows/ios.yml', '.forgejo/workflows/release.yml', '*.md']
   push:
     branches: [main]
+    paths-ignore: ['android/**', 'ios/**', 'fastlane/**', 'appstore/**', '.github/scripts/**', '.forgejo/workflows/android.yml', '.forgejo/workflows/ios.yml', '.forgejo/workflows/release.yml', '*.md']
 
 concurrency:
   group: ci-${{ github.ref }}

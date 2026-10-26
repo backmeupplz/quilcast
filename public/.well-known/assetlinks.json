@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.borodutch.quilcast",
+      "sha256_cert_fingerprints": ["5F:76:3B:E6:E1:E3:D5:3C:1F:86:F6:CA:FB:A5:66:96:E4:AF:6A:63:F4:EC:54:87:E7:E4:37:A2:CF:23:5C:DF"]
+    }
+  }
+]

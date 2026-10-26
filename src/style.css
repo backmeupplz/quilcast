@@ -94,7 +94,8 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 
 /* ---------- page header ---------- */
 .phead {
-  position: sticky; top: 0; z-index: 5;
+  /* the Quilcast app draws under the status bar; the header's color fills it */
+  position: sticky; top: 0; z-index: 5; padding-top: env(safe-area-inset-top);
   background: color-mix(in srgb, var(--bar, var(--bg)) 85%, transparent);
   backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px);
   border-bottom: var(--bw, 1px) var(--bs, solid) var(--line);
@@ -233,7 +234,8 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 /* menus */
 .wrap-menu { position: relative; display: inline-flex; }
 .menu { position: absolute; z-index: 8; top: 100%; left: 0; min-width: 180px; padding: 6px; background: var(--card); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); box-shadow: 0 12px 32px rgb(0 0 0 / 0.16); animation: fade 0.12s; }
-.menu button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; background: none; border-radius: calc(9px * var(--rs, 1)); font-weight: 600; text-align: left; }
+.menu button, .menu a { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; background: none; border-radius: calc(9px * var(--rs, 1)); font-weight: 600; text-align: left; }
+.menu a { color: inherit; text-decoration: none; }
 .menu small { margin-left: auto; color: var(--muted); font-weight: 400; }
 .menu.up { top: auto; bottom: calc(100% + 6px); width: 260px; }
 .menu.right { left: auto; right: 0; }
@@ -543,7 +545,7 @@ small.warn { color: var(--warn); }
   .linkcard:hover { background: var(--hover); text-decoration: none; }
   .tweet:hover { background: var(--hover); }
   .quote:hover { background: var(--hover); text-decoration: none; }
-  .menu button:hover { background: var(--soft); }
+  .menu button:hover, .menu a:hover { background: var(--soft); }
   .acct:hover { background: var(--soft); }
   .note-row:hover { background: var(--hover); text-decoration: none; }
   .row:hover { background: var(--hover); text-decoration: none; }
@@ -950,7 +952,7 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wallet-index input { width: 80px; }
 .wallet-warning { padding: 12px 14px; border-radius: calc(12px * var(--rs, 1)); background: color-mix(in srgb, var(--like) 10%, transparent); border: 1px solid color-mix(in srgb, var(--like) 35%, transparent); font-size: 13px; line-height: 1.45; }
 .wallet-warning p { margin: 6px 0 0; color: var(--ink); }
-.menu button.danger { color: var(--like); }
+.menu .danger { color: var(--like); }
 .sign-preview { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: calc(10px * var(--rs, 1)); background: var(--soft); font-size: 13px; max-height: 40vh; overflow: auto; }
 .sign-row { display: flex; justify-content: space-between; gap: 12px; }
 .sign-row span { color: var(--muted); }

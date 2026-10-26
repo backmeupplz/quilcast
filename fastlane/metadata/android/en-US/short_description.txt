@@ -1,0 +1,1 @@
+A small, open Farcaster client where your keys stay on your device

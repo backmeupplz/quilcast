@@ -1,0 +1,36 @@
+name: iOS
+# Compile check of the iPhone app on PRs and main, like ABS+: no simulator tests. Store builds happen in release.yml.
+on:
+  pull_request:
+    paths: ['ios/**', '.forgejo/workflows/ios.yml']
+  push:
+    branches: [main]
+    paths: ['ios/**', '.forgejo/workflows/ios.yml']
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  ios:
+    name: iOS
+    runs-on: macos-26
+    # Mac only, and only for our own PRs: outsiders' PRs (bridged from GitHub by the `github` user) never run on it.
+    if: github.event_name != 'pull_request' || contains(fromJSON('["backmeupplz","renovate","claude"]'), github.event.pull_request.user.login)
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: ios
+      # Each runner instance builds its own copy of the sources: the checkout path changes with every run, and Xcode
+      # only rebuilds what changed while the path stays the same. xcodebuild runs with a clean environment because it
+      # reads every variable as a build setting. The generic simulator destination needs no booted device.
+      - name: Build
+        run: |
+          runner="${PWD%%/work/*}"
+          stage="$runner/ci/quilcast"
+          mkdir -p "$stage"
+          rsync -rlc --delete ios/ "$stage/ios/"
+          env -i HOME="$HOME" PATH="$PATH" TMPDIR="${TMPDIR:-/tmp}" \
+            xcodebuild -quiet -project "$stage/ios/Quilcast.xcodeproj" -scheme Quilcast -derivedDataPath "$stage/DerivedData" \
+            -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build

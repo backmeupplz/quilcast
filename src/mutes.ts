@@ -3,6 +3,7 @@
 // for the first paint. A change fires 'mutes', which re-renders the app.
 import { account, read, save, type Cast } from './api.ts'
 import { castText, cleanMutes, wordsRe, type Mutes, type Timed } from './shared.ts'
+import removedList from './removed.json' with { type: 'json' }
 
 const key = `quilcast:mutes:${account?.fid}`
 export let mutes: Mutes = cleanMutes(read(key, null))
@@ -38,10 +39,14 @@ export const muteOf = (fid?: number) => on(mutes.users, fid)
 let re: { re: RegExp | null; at: number } | undefined
 const words = () => (re && re.at > Date.now() - 60e3 ? re : (re = { re: wordsRe(mutes.words.filter((x) => !x.until || x.until > Date.now()).map((x) => x.v)), at: Date.now() })).re
 
-/** Whether a cast stays out of sight: someone muted or blocked wrote it, or it has a muted word. The account's own
+// casts and accounts taken down for everyone after a report (see /terms): add them here and deploy
+const removed: { fids: number[]; casts: string[] } = removedList
+
+/** Whether a cast stays out of sight: taken down for everyone (removed.json), someone muted or blocked wrote it, or it has a muted word. The account's own
  *  casts never do. `owner` is the profile being looked at, where a muted person's casts still show. */
 export function hides(c: Cast, owner?: number) {
   const fid = c.author?.fid
+  if (removed.fids.includes(fid) || removed.casts.includes(c.hash)) return true
   if (fid === account?.fid) return false
   if (blockOf(fid)) return true
   if (fid === owner) return false

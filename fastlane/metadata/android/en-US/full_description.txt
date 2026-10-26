@@ -1,0 +1,13 @@
+Quilcast is a small, open source client for Farcaster, the open social network that no company owns. It talks straight to the Hypersnap network, signs everything you post on your own device, and keeps your keys there too.
+
+Read your following feed and what's trending, open threads with their whole context, and look people up by name or search cast text. Post, reply, quote, like, recast and follow, attach photos and videos, and post into channels. Notifications group your likes, recasts and follows, and show replies, mentions and quotes as they come in.
+
+Direct messages and live audio Spaces from farcaster.xyz work here too: chat one to one or in groups, listen to what's live, raise your hand, or host your own room.
+
+Farcaster mini apps open right inside Quilcast, with a Discover list of the most popular ones. They can sign you in with your Farcaster account and use the built-in wallet, which holds as many Ethereum wallets as you like, shows balances, tokens and NFTs across Base, Ethereum, Optimism, Arbitrum and Polygon, and sends or swaps between them. Every signature and transaction is shown to you before anything is signed.
+
+Make it yours with MySpace-style profile looks (backgrounds, fonts, a profile song, a Top 8, stickers and moving effects) and whole-app themes, including every theme from Quorum's gallery. Casts in other languages can be translated in a tap.
+
+Create a new Farcaster account in the app, or sign in with the recovery phrase you already use elsewhere. Mute, block or report anyone from the ⋯ menu on their casts and profile.
+
+Quilcast is free, has no ads and no tracking, and its code is MIT licensed at https://git.borodutch.com/backmeupplz/quilcast.

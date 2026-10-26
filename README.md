@@ -2,13 +2,13 @@
 
 A small Farcaster client that runs in the browser and talks straight to the [Hypersnap](https://hypersnap.org) network that Quilibrium runs. Reads hit the public node's HTTP API, writes are protobuf messages signed in the browser and posted to `/v1/submitMessage`, and keys live in the browser's IndexedDB, never in `localStorage`. The only server is a tiny static host that also gives shared links proper previews.
 
-Live at **[quilcast.com](https://quilcast.com)**.
+Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App Store) and Android (Google Play, F-Droid, or the APK from the [latest release](https://github.com/backmeupplz/quilcast/releases/latest/download/quilcast.apk)).
 
 ## What it does
 
 - Following and trending feeds (top-level casts), threads with their parent casts, profiles with separate casts and replies tabs
 - On a cast's page, the like, recast and quote counts open lists of who liked, recast or quoted it
-- Notifications: grouped likes, recasts and follows plus replies, mentions and quotes, with an unread dot. Hypersnap leaves recasts and quotes out, so those are looked up for your 25 newest casts while the page is open
+- Notifications: grouped likes, recasts and follows plus replies and mentions, with an unread dot. Hypersnap leaves recasts out, so those are looked up for your 25 newest casts while the page is open
 - Several accounts per browser, switched from the account menu (bottom left) or Settings
 - Rich link previews (Open Graph and Farcaster mini app images) through `/api/unfurl`, and @mention autocomplete in the composer
 - Search for people and for cast text
@@ -27,6 +27,10 @@ Live at **[quilcast.com](https://quilcast.com)**.
 - Profile looks, MySpace style: your profile page can get a background (color, or a tiled or full-screen GIF), text, link and box colors, borders, corners, a font, a name effect (rainbow, glow, glitter…), a banner, a mood, a profile song (a YouTube video visitors press play on), About me and Who I'd like to meet, interests, a Top 8 of friends, a GIF wall, stickers you drag anywhere on the page (resize and turn them by the corner dot; each one sits on a box at a share of its size, so it lands on the same spot on a phone and a computer), and one of 27 moving effects (snow, rain, confetti, fireflies, fireworks, Matrix code, a sparkle cursor…, drawn by `src/fx.ts` on one canvas and skipped for visitors who ask for less motion). Six ready-made layouts get you started. GIFs come from Tenor's search through `/api/gifs`, or you upload your own. Looks are stored on our server (`/api/look/<fid>`), only change profile pages, and anyone can turn them off in Settings
 - App themes: restyle all of Quilcast for yourself. A theme sets the colors (background, cards, lines, text, accent, likes, recasts…), a background picture or GIF (tiled, full screen or centered, with a scrim and a see-through column), pictures on the bars and buttons, corners from square to pill, border width and style, a glow, a font, the size of everything, a name effect on everyone's names, one of the 27 moving effects and stickers you drag anywhere on the screen. The editor previews the draft on the real app while you browse. Ten built-in themes, plus every theme in Quorum's gallery (`/api/quorum/skins`, relayed since it has no CORS). Share one as quilcast.com/theme/<id>: in a cast it shows a small Quilcast wearing it with an Apply theme button, and the link's share image draws the app in it. Themes move to and from Quorum: Quorum skin JSON (pasted or as a file) imports here, and "Copy for Quorum" / "Save for Quorum" make a skin Quorum's Skins > Import accepts (pictures become JPEGs inside the 2 MB budget; GIF motion, stickers, effects and name effects stay behind)
 - Quorum mode (Settings, off by default): Quilcast laid out like Quilibrium's Quorum app. A narrow sidebar in Quorum's order (Home, Explore, Notifications, Messages, Spaces, Apps, Wallet, a "Create a post" button, then Settings, a sun and moon switch and your account card, which also opens your profile); Quorum's Channels, Governance, Saved posts and Status have nothing to open in Quilcast, so they're left out. Home gets Discover and Following tabs, a refresh button, a "What's on your mind?" composer and a line saying what the feed holds; the right column has "Search the network" (press `/`) and your apps. The wallet opens as a panel docked on the right: the primary wallet's total and address, sends and swaps still on their way, Swap, Send, Receive, Explorers and Permissions (revoke.cash), the networks, and Tokens, Collectibles and Activity (each chain's recent transactions from its explorer). A mini app floats over the feed beside the wallet rather than under it, and can grow to the page or be shared in a cast; below 1100 px the wallet slides over the page instead, and phones get the usual tab bar. With no theme on it wears Quorum's dark surfaces and purple accent, and themes recolor it like the rest
+- A profile Winamp: put YouTube videos and playlists on your profile and visitors play them in a Winamp drawn from any classic skin in the Winamp Skin Museum (our own renderer, about 7 KB), with the playlist, equalizer and shade modes
+- Translations: casts in another language get a Translate button (the language is guessed in the browser; translations come from free models through OpenRouter and are kept per cast)
+- Mute or block people for a day, a week, a month or for good, and mute words. Farcaster has neither, so they're Quilcast's own, kept private on our server (signed with your key) so every device gets them. Report a cast or a person from the same ⋯ menu; casts and accounts taken down after a report go in `src/removed.json`
+- Quilcast is a Farcaster mini app itself: open quilcast.com links inside farcaster.xyz, the Base app or Quilcast
 - Settings: profile (with photo upload), theme, light or dark, profile looks on or off, recovery phrase and key export, removing the recovery phrase from this browser, node and Optimism RPC URLs, version
 
 Channel pages aren't there because Hypersnap (and upstream Snapchain) can't list a channel's casts newest-first yet.
@@ -50,6 +54,9 @@ Channel pages aren't there because Hypersnap (and upstream Snapchain) can't list
 | `src/looks.tsx`, `server/looks.mjs` | Profile looks: showing and editing them, and storing them (one JSON file per FID on the data volume) |
 | `src/quorum.tsx`, `src/activity.ts` | Quorum mode: the right column, the composer row, the light/dark switch and the wallet panel's open state (the sidebar is in `src/app.tsx`, the panel in `src/walletui.tsx`, the look under `:root[data-quorum]` in `src/style.css`); explorer transactions as the panel's Activity |
 | `src/fx.ts` | Profile effects: one small particle engine and the presets it draws |
+| `src/amp.tsx`, `src/skin.ts` | The profile Winamp and its skin reader |
+| `src/mutes.ts`, `server/mutes.mjs` | Mutes and blocks |
+| `android/`, `ios/` | The apps (see Apps) |
 
 The message encoders are checked byte for byte against `@farcaster/core`, `viem` and Quilibrium's `quorum-shared`.
 
@@ -67,7 +74,7 @@ Your recovery phrase is kept in this browser, encrypted under a key the browser 
 
 ## Security
 
-- Keys never leave the browser. Pages are served with a strict CSP (`script-src 'self'`, no inline styles, Quilcast itself can't be framed) and `Referrer-Policy: no-referrer`.
+- Keys never leave the browser. Pages are served with a strict CSP (`script-src 'self'`, no inline styles, and only Farcaster clients may frame Quilcast) and `Referrer-Policy: no-referrer`.
 - Links in casts and previews are untrusted, because the network only checks their length. Only public http(s) URLs get rendered.
 - The server's own fetches (link previews, card images, video posters) only reach public hosts on ports 80 and 443. Every address is checked at connect time and again on each redirect, and size, time and pixel limits apply.
 - Messages use a token farcaster.xyz scopes to direct casts. The relay passes it to a fixed list of direct-cast endpoints and never stores or logs it, or the messages. Besides the relay, the page only connects to `wss://ws.farcaster.xyz` for live updates.
@@ -79,4 +86,17 @@ Your recovery phrase is kept in this browser, encrypted under a key the browser 
 - A profile look is settings, never CSS or HTML. `cleanLook` (`src/shared.ts`) keeps only known fields: colors as `#rrggbb`, numbers in range, fonts, effects and layouts from fixed lists, text with length limits that's shown as text, and images only from Tenor, Farcaster's image CDN and our uploads. The server runs it before storing a look and the app again before showing one. Saving needs a signature from one of the account's Farcaster keys, as listed by the node. Every image is fetched once and refused over 6 MB for the background, 4 MB otherwise, or 25 megapixels. A song has to be a YouTube video that may be embedded, and it only plays when the visitor presses play
 - Before upload, photos are re-encoded and MP4/MOV metadata (location, device) is wiped. Uploads stored on the server are checked against their claimed type and served inert (`sandbox` CSP). Each signed upload request works only once.
 
-Production runs from the `Dockerfile` on Easypanel.
+## Apps
+
+The iPhone and Android apps are windows onto quilcast.com: a WKWebView (`ios/`, Swift, no dependencies) and an Android WebView (`android/`, Java, no dependencies, a ~30 KB APK). Web changes reach them the moment they're deployed, so a release is only needed when the apps themselves change. They open quilcast.com links (universal links and Android app links, from `public/.well-known/`), send every other link to the browser, ask for the microphone and camera only when Spaces or a mini app you allowed needs them, and tint the status bar to the page. The iPhone app asks people to accept the [Terms of Use](https://quilcast.com/terms) first.
+
+```sh
+cd android && ./gradlew assembleDebug        # app/build/outputs/apk/debug
+open ios/Quilcast.xcodeproj                   # or ios/release.sh <version> <build> --no-upload
+```
+
+One release ships everything: bump `versionName`/`versionCode` in `android/app/build.gradle.kts`, add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, and publish a release `vX.Y.Z` on git.borodutch.com. `.forgejo/workflows/release.yml` then uploads the bundle to Google Play, the iPhone app to App Review, attaches `quilcast-X.Y.Z.apk` and `quilcast.apk` to the release (here and on GitHub), and moves the F-Droid merge request to the new version. F-Droid builds the tag itself and ships our APK only when its build matches. Store texts live in `fastlane/metadata/android/en-US` and `appstore/`. CI builds the apps only when `android/` or `ios/` change.
+
+## Hosting
+
+Production runs from the `Dockerfile` on Tugport; a push to `main` deploys it. Legal pages are `public/terms.html` and `public/privacy.html` (served at `/terms` and `/privacy`).

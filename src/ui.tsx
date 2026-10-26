@@ -78,6 +78,7 @@ export const P = {
   mic: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3',
   micOff: 'M2 2l20 20M19 10v2a7 7 0 0 1-.1 1M5 10v2a7 7 0 0 0 12 5M15 9.3V5a3 3 0 0 0-5.7-1.3M9 9v3a3 3 0 0 0 5.1 2.1M12 19v3',
   mute: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0M3 3l18 18',
+  flag: 'M4 22V4s1-1 4-1 5 2 8 2 4-1 4-1v11s-1 1-4 1-5-2-8-2-4 1-4 1',
   block: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8',
   explore: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3z',
   refresh: 'M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5',
@@ -694,8 +695,15 @@ export const spans = (): [string, number | undefined][] => [[t('For a day'), 864
 export const untilText = (until?: number) =>
   until ? t('until {date}', { date: new Date(until).toLocaleString(lang, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }) : ''
 
-/** Menu items that mute or block someone, or lift it; picking one asks how long, in the same menu. */
-export function SilenceItems({ u, done }: { u: User; done: () => void }) {
+const report = (u: User, c?: Cast) => {
+  const link = c ? `https://quilcast.com/c/${c.hash}` : `https://quilcast.com${userPath(u)}`
+  const what = c ? `cast ${c.hash} by @${handle(u)} (fid ${u.fid})` : `@${handle(u)} (fid ${u.fid})`
+  return `mailto:support@borodutch.com?subject=${encodeURIComponent(`Quilcast report: ${what}`)}&body=${encodeURIComponent(`${link}\n\nWhat's wrong with it:\n`)}`
+}
+
+/** Menu items that mute or block someone, or lift it; picking one asks how long, in the same menu. Report emails us
+ *  the person (or cast `c`), for everyone, signed in or not (App Store guideline 1.2). */
+export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => void }) {
   const [kind, setKind] = useState<'users' | 'blocks' | null>(null)
   const set = (k: 'users' | 'blocks', until?: number | false) => {
     done()
@@ -720,6 +728,7 @@ export function SilenceItems({ u, done }: { u: User; done: () => void }) {
     <>
       <button role="menuitem" onClick={() => ask('users', m)}><Icon d={P.mute} />{m ? t('Unmute @{name}', { name: handle(u) }) : t('Mute @{name}', { name: handle(u) })}</button>
       <button role="menuitem" class="danger" onClick={() => ask('blocks', b)}><Icon d={P.block} />{b ? t('Unblock @{name}', { name: handle(u) }) : t('Block @{name}', { name: handle(u) })}</button>
+      <a role="menuitem" class="danger" href={report(u, c)} onClick={done}><Icon d={P.flag} />{c ? t('Report this cast') : t('Report @{name}', { name: handle(u) })}</a>
     </>
   )
 }
@@ -774,18 +783,16 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
       </span>
       <button class={`act lk${liked ? ' on' : ''}`} aria-label={t('Like')} onClick={() => toggle(1, !liked, setLiked, mine.likes)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
       <button class="act" aria-label={t('Share')} onClick={share}><Icon d={P.share} /></button>
-      {account?.done && (
-        <span class="wrap-menu">
-          <button class="act" aria-label={t('More')} aria-haspopup="menu" onClick={() => (setMore(!more), setSure(false))}><Icon d={P.more} /></button>
-          {more && (
-            <Menu class="right" close={() => setMore(false)}>
-              {account.fid === c.author.fid
-                ? <button role="menuitem" class="danger" onClick={del}><Icon d={P.trash} />{sure ? t('Delete this cast?') : t('Delete')}</button>
-                : <SilenceItems u={c.author} done={() => setMore(false)} />}
-            </Menu>
-          )}
-        </span>
-      )}
+      <span class="wrap-menu">
+        <button class="act" aria-label={t('More')} aria-haspopup="menu" onClick={() => (setMore(!more), setSure(false))}><Icon d={P.more} /></button>
+        {more && (
+          <Menu class="right" close={() => setMore(false)}>
+            {account?.done && account.fid === c.author.fid
+              ? <button role="menuitem" class="danger" onClick={del}><Icon d={P.trash} />{sure ? t('Delete this cast?') : t('Delete')}</button>
+              : <SilenceItems u={c.author} c={c} done={() => setMore(false)} />}
+          </Menu>
+        )}
+      </span>
     </footer>
   )
   const name = (

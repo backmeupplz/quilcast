@@ -992,5 +992,7 @@
   "Contract call": "コントラクト呼び出し",
   "Transfer": "送金",
   "Send {amount} {symbol}": "{amount} {symbol} を送信",
-  "Swap {amount} {from} for ≈ {got} {to}": "{amount} {from} を ≈ {got} {to} にスワップ"
+  "Swap {amount} {from} for ≈ {got} {to}": "{amount} {from} を ≈ {got} {to} にスワップ",
+  "Report @{name}": "@{name}を報告",
+  "Report this cast": "このキャストを報告"
 }

@@ -992,5 +992,7 @@
   "Contract call": "合约调用",
   "Transfer": "转账",
   "Send {amount} {symbol}": "发送 {amount} {symbol}",
-  "Swap {amount} {from} for ≈ {got} {to}": "将 {amount} {from} 兑换为 ≈ {got} {to}"
+  "Swap {amount} {from} for ≈ {got} {to}": "将 {amount} {from} 兑换为 ≈ {got} {to}",
+  "Report @{name}": "举报 @{name}",
+  "Report this cast": "举报此 cast"
 }

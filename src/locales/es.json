@@ -992,5 +992,7 @@
   "Contract call": "Llamada a contrato",
   "Transfer": "Transferencia",
   "Send {amount} {symbol}": "Enviar {amount} {symbol}",
-  "Swap {amount} {from} for ≈ {got} {to}": "Cambiar {amount} {from} por ≈ {got} {to}"
+  "Swap {amount} {from} for ≈ {got} {to}": "Cambiar {amount} {from} por ≈ {got} {to}",
+  "Report @{name}": "Denunciar a @{name}",
+  "Report this cast": "Denunciar este cast"
 }

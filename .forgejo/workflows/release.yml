@@ -1,0 +1,161 @@
+# One release vX.Y.Z published on git.borodutch.com ships everything: the bundle to Google Play, the iPhone app to the App Store,
+# the signed APK as quilcast-X.Y.Z.apk and quilcast.apk on the release and on the same release on the GitHub mirror (created there
+# when missing; downloads link to GitHub), and the new version to the F-Droid merge request while it's open
+# (once merged, F-Droid follows new tags itself and builds them; it ships our APK only if its own build matches it).
+# A previous version still waiting for review or in review is replaced on both stores.
+# The apps are windows onto quilcast.com, so web changes reach them without a release: release when the apps change.
+# Before releasing: bump versionName/versionCode in android/app/build.gradle.kts and add
+# fastlane/metadata/android/en-US/changelogs/<versionCode>.txt, the notes Play, the App Store and F-Droid all show.
+# Run by hand (Actions → Release → Run workflow): dry-run builds everything and publishes nothing,
+# testflight-only uploads the iPhone build without submitting it, full is what a published release does.
+# Secrets: KEYSTORE_PROPERTIES, UPLOAD_JKS, PLAY_SERVICE_ACCOUNT_JSON, ASC_KEY_P8 (the .p8 key), GITLAB_TOKEN
+# (write_repository on the fdroiddata fork), GH_MIRROR_TOKEN (GitHub token with repo scope, for the GitHub release).
+# A step whose secret is missing is skipped with a warning.
+# .github/scripts is shared with ABS+, Mesh+ and Todorant: keep it identical there; this repo's values are the env below.
+name: Release
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, e.g. v1.2.1 (a dry run also takes a branch)
+        required: true
+      mode:
+        description: What to publish
+        type: choice
+        options: [dry-run, testflight-only, full]
+        default: dry-run
+permissions:
+  contents: write # attach the APK
+# Each store holds one pending submission, so releases go one at a time
+concurrency:
+  group: release
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  MODE: ${{ inputs.mode || 'full' }}
+  NOTES_DIR: fastlane/metadata/android/en-US/changelogs
+  PLAY_PACKAGE: com.borodutch.quilcast
+  APP_STORE_APP_ID: 'TODO'
+  ASC_KEY_ID: 3FT23S9NSM
+  ASC_ISSUER_ID: a18f42ff-6c44-410c-badf-50b11de8dbb8
+  FDROID_MR: 'TODO'
+  FDROID_APP_ID: com.borodutch.quilcast
+  FDROID_FORK: backmeupplz/fdroiddata
+  FDROID_BRANCH: com.borodutch.quilcast
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.version.outputs.name }}
+      code: ${{ steps.version.outputs.code }}
+      commit: ${{ steps.version.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - id: version
+        name: The tag matches the app's version, which has release notes
+        run: |
+          python3 -m unittest discover -s .github/scripts
+          name=$(sed -nE 's/^ *versionName = "(.+)"/\1/p' android/app/build.gradle.kts)
+          code=$(sed -nE 's/^ *versionCode = ([0-9_]+)/\1/p' android/app/build.gradle.kts | tr -d _)
+          if [ "$TAG" != "v$name" ]; then
+            [ "$MODE" = dry-run ] || { echo "::error::$TAG doesn't match versionName $name in android/app/build.gradle.kts"; exit 1; }
+            echo "::warning::$TAG doesn't match versionName $name (fine for a dry run)"
+          fi
+          test -s "$NOTES_DIR/$code.txt" || { echo "::error::No release notes in $NOTES_DIR/$code.txt"; exit 1; }
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.name }}
+      CODE: ${{ needs.version.outputs.code }}
+      DRY: ${{ inputs.mode == 'dry-run' && '--dry-run' || '' }}
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+      GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      # GitHub-hosted runners ship the Android SDK; the Forgejo job image does not
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Restore upload key
+        env:
+          KEYSTORE_PROPERTIES: ${{ secrets.KEYSTORE_PROPERTIES }}
+          UPLOAD_JKS: ${{ secrets.UPLOAD_JKS }}
+        run: |
+          [ -n "$UPLOAD_JKS" ] || { echo "::error::No UPLOAD_JKS secret: release builds would come out unsigned"; exit 1; }
+          printf '%s' "$KEYSTORE_PROPERTIES" > android/keystore.properties
+          printf '%s' "$UPLOAD_JKS" | base64 -d > android/upload.jks
+      - id: build
+        working-directory: android
+        run: ./gradlew bundleRelease assembleRelease
+      # F-Droid compares its own build of the tag with quilcast-X.Y.Z.apk, so it has to come from this clean CI build.
+      # quilcast.apk is the same file under a stable name for releases/latest/download/quilcast.apk links.
+      - id: attach
+        name: Attach the APK
+        if: env.MODE == 'full'
+        env:
+          FORGEJO_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GH_MIRROR_TOKEN }}
+          RELEASE_TITLE: ${{ github.event.release.name }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk "quilcast-$VERSION.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk quilcast.apk
+          .github/scripts/attach.sh "$TAG" "quilcast-$VERSION.apk" quilcast.apk
+      # Play and F-Droid don't wait on each other: one failing still lets the other ship
+      - name: Google Play
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && env.MODE != 'testflight-only' }}
+        run: |
+          [ -n "$PLAY_SERVICE_ACCOUNT_JSON" ] || { echo "::warning::No PLAY_SERVICE_ACCOUNT_JSON secret: skipping Google Play"; exit 0; }
+          python3 .github/scripts/play.py android/app/build/outputs/bundle/release/app-release.aab "$VERSION" "$NOTES_DIR/$CODE.txt" $DRY
+      - name: F-Droid merge request
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.attach.outcome != 'failure' && env.MODE != 'testflight-only' }}
+        run: python3 .github/scripts/fdroid.py "$VERSION" "$CODE" "${{ needs.version.outputs.commit }}" $DRY
+
+  ios:
+    needs: version
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ needs.version.outputs.name }}
+      CODE: ${{ needs.version.outputs.code }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      # The Mac runner is shared, so the key stays in this job's temp folder (ios/release.sh, altool and appstore.py read
+      # API_PRIVATE_KEYS_DIR) and is removed at the end. The build uses the Mac's selected Xcode.
+      - name: App Store Connect key
+        run: |
+          [ -n "$ASC_KEY_P8" ] || { echo "::warning::No ASC_KEY_P8 secret: skipping the iPhone app"; exit 0; }
+          keys=$(mktemp -d "$RUNNER_TEMP/asc.XXXXXX")
+          printf '%s\n' "$ASC_KEY_P8" > "$keys/AuthKey_$ASC_KEY_ID.p8"
+          echo "API_PRIVATE_KEYS_DIR=$keys" >> "$GITHUB_ENV"
+          echo "IOS=1" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v7
+        if: env.IOS
+        with:
+          ref: ${{ env.TAG }}
+      # The build number is the Android versionCode, so both stores count the same way
+      - name: Archive, sign and upload
+        if: env.IOS
+        run: ios/release.sh "$VERSION" "$CODE" ${{ env.MODE == 'dry-run' && '--no-upload' || '' }}
+      - name: App Review
+        if: env.IOS && env.MODE != 'testflight-only'
+        run: python3 .github/scripts/appstore.py "$VERSION" "$CODE" "$NOTES_DIR/$CODE.txt" ${{ env.MODE == 'dry-run' && '--dry-run' || '' }}
+      - name: Remove the key
+        if: always() && env.API_PRIVATE_KEYS_DIR
+        run: rm -rf "$API_PRIVATE_KEYS_DIR"
