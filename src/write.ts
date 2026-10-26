@@ -6,6 +6,7 @@ import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
 import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, rawEd, reactionBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, newEd, type Ed } from './keys.ts'
+import { MAX_EMBEDS } from './shared.ts'
 
 /** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
  *  can remove it), from one the person types in for this one action, which isn't kept, not even in memory. */
@@ -160,17 +161,17 @@ const send = async (type: number, body: Uint8Array, as = account!) => {
 
 const fidByName = (name: string) => byName(name).then((u) => u.fid, () => undefined)
 
-/** A cast can carry two embeds: uploads and a quoted cast first, then links from the text. */
+/** A cast can carry MAX_EMBEDS embeds: uploads and a quoted cast first, then links from the text. */
 export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: string[]; as?: Account } = {}) {
   const m = await mentions(text, fidByName)
   const embeds: (string | CastRef)[] = [...(o.media || []), ...(o.quote ? [o.quote] : [])]
-  for (const u of new Set((m.text.match(LINK_RE) || []).map(toUrl))) embeds.length < 2 && embeds.push(u)
+  for (const u of new Set((m.text.match(LINK_RE) || []).map(toUrl))) embeds.length < MAX_EMBEDS && embeds.push(u)
   const as = o.as || account!
-  const hash = await send(MT.CAST_ADD, castBody({ ...m, parent: o.parent || o.channel, embeds: embeds.slice(0, 2) }), as)
+  const hash = await send(MT.CAST_ADD, castBody({ ...m, parent: o.parent || o.channel, embeds: embeds.slice(0, MAX_EMBEDS) }), as)
   const c: Cast = {
     hash, text, timestamp: new Date().toISOString(), author: idOf(as) === idOf(account!) ? myUser()! : users.get(as.fid!) || { fid: as.fid!, username: as.username },
     parent_hash: o.parent?.hash ?? null, parent_url: o.channel ?? null, parent_author: { fid: o.parent?.fid ?? null },
-    embeds: embeds.slice(0, 2).map((e) => (typeof e === 'string' ? { url: e } : { cast_id: e })),
+    embeds: embeds.slice(0, MAX_EMBEDS).map((e) => (typeof e === 'string' ? { url: e } : { cast_id: e })),
     reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 },
   }
   posting.set(hash, c)

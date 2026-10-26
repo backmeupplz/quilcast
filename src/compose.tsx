@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, LINK_RE, loadUsers, myUser, toUrl, users, type Account, type Cast, type User } from './api.ts'
 import { t } from './i18n.ts'
-import { castText, isImg, isVid } from './shared.ts'
+import { castText, isImg, isVid, MAX_EMBEDS } from './shared.ts'
 import { Avatar, channelUrl, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, toast, w } from './ui.tsx'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
@@ -112,7 +112,7 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
   }
   const grow = (el: HTMLTextAreaElement) => ((el.style.height = 'auto'), (el.style.height = el.scrollHeight + 'px'))
   useEffect(() => void (ref.current && grow(ref.current)), [part.text])
-  const slots = Math.max(0, 2 - part.files.length - (first ? +!!quote + embeds.length : 0))
+  const slots = Math.max(0, MAX_EMBEDS - part.files.length - (first ? +!!quote + embeds.length : 0))
   return (
     <div class={`part${last ? '' : ' threaded'}`} onClick={onFocus}>
       <div class="editor">
@@ -178,7 +178,7 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
 
   const attach = (list: FileList | null) => {
     const part = cur
-    const room = 2 - part.files.length - fixed(active)
+    const room = MAX_EMBEDS - part.files.length - fixed(active)
     for (const file of [...(list || [])].slice(0, room)) {
       const a: Attachment = { id: Math.random(), preview: URL.createObjectURL(file), video: file.type.startsWith('video/') }
       const patch = (p: Partial<Attachment>) => update(part.id, (x) => ({ files: x.files.map((f) => (f.id === a.id ? { ...f, ...p } : f)) }))

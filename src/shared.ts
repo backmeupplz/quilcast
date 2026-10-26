@@ -1,6 +1,8 @@
 // Pure helpers that the app and the server (which imports this file as TypeScript) both use.
 
 export const isImg = (u: string) => /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u) || /imagedelivery\.net|i\.imgur\.com/.test(u)
+// Hypersnap V20 (Aug 2026) raised the cap from 2 to 4 for every fid
+export const MAX_EMBEDS = 4
 export const isVid = (u: string) => /\.(m3u8|mp4|webm|mov)(\?|$)/i.test(u)
 
 /** Farcaster's image CDN resizes on request (`w=96`, `anim=false,w=144`…), so nothing needs the full original. */
