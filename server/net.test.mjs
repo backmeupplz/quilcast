@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { test } from 'node:test'
-import { blocked, imageInfo, safeGet } from './net.mjs'
+import { blocked, clientIp, imageInfo, safeGet } from './net.mjs'
 import { scan } from './unfurl.mjs'
 import { looksLike } from './upload.mjs'
 
@@ -45,4 +45,14 @@ test('the head scanner is linear on hostile HTML', () => {
   assert.equal(meta['og:image'], undefined)
   assert.equal(title, 'Hi & bye')
   assert.equal(icon, '/f.ico')
+})
+
+test('the visitor is the last forwarded hop, or CF-Connecting-IP when that hop is Cloudflare', () => {
+  const ip = (headers) => clientIp({ headers, socket: { remoteAddress: '10.0.0.1' } })
+  assert.equal(ip({ 'x-forwarded-for': '1.2.3.4, 5.6.7.8' }), '5.6.7.8')
+  assert.equal(ip({ 'x-forwarded-for': '5.6.7.8', 'cf-connecting-ip': '9.9.9.9' }), '5.6.7.8', 'only Cloudflare may name the visitor')
+  assert.equal(ip({ 'x-forwarded-for': '162.158.1.2', 'cf-connecting-ip': '9.9.9.9' }), '9.9.9.9')
+  assert.equal(ip({ 'x-forwarded-for': '2606:4700::1', 'cf-connecting-ip': '2001:db8::5' }), '2001:db8::5')
+  assert.equal(ip({ 'x-forwarded-for': '162.158.1.2', 'cf-connecting-ip': 'junk' }), '162.158.1.2')
+  assert.equal(ip({}), '10.0.0.1')
 })

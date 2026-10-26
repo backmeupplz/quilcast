@@ -10,7 +10,7 @@ import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
 import { castText, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, sized, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
-import { fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
+import { clientIp, fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
@@ -65,9 +65,6 @@ const SECURITY = {
 
 // --- abuse limits ---
 
-// Traefik runs with forwardedHeaders.insecure, so it keeps whatever X-Forwarded-For the client sent
-// and appends the address it actually saw: only the last entry can be trusted.
-const clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',').pop().trim() || req.socket.remoteAddress || ''
 const hits = new Map()
 const limited = (key, max, ms = 60e3) => {
   const now = Date.now()
