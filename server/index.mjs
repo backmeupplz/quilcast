@@ -527,7 +527,8 @@ async function send(req, res, code, headers, body, memo) {
 
 createServer(async (req, res) => {
   for (const [k, v] of Object.entries(SECURITY)) res.setHeader(k, v)
-  const html = (body, memo) => send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' }, Buffer.from(body), memo)
+  // no-transform: Cloudflare leaves the page as we sent it (no analytics beacon or other rewriting)
+  const html = (body, memo) => send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform' }, Buffer.from(body), memo)
   const json = (code, body, cache = 'no-store') => send(req, res, code, { 'content-type': 'application/json', 'cache-control': cache }, Buffer.from(JSON.stringify(body)))
   const app = () => html(index, 'index.html')
   let url, path
