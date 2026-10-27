@@ -39,7 +39,7 @@ env:
   APP_STORE_APP_ID: '6827321089'
   ASC_KEY_ID: 3FT23S9NSM
   ASC_ISSUER_ID: a18f42ff-6c44-410c-badf-50b11de8dbb8
-  FDROID_MR: 'TODO'
+  FDROID_MR: '54399'
   FDROID_APP_ID: com.borodutch.quilcast
   FDROID_FORK: backmeupplz/fdroiddata
   FDROID_BRANCH: com.borodutch.quilcast
