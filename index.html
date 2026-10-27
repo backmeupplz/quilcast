@@ -30,6 +30,32 @@
     <!-- in Farcaster clients a link is a card that opens Quilcast as a mini app (server/index.mjs fills in each page) -->
     <meta name="fc:miniapp" content="{&quot;version&quot;:&quot;1&quot;,&quot;imageUrl&quot;:&quot;https://quilcast.com/embed.png&quot;,&quot;button&quot;:{&quot;title&quot;:&quot;Open in Quilcast&quot;,&quot;action&quot;:{&quot;type&quot;:&quot;launch_miniapp&quot;,&quot;name&quot;:&quot;Quilcast&quot;,&quot;url&quot;:&quot;https://quilcast.com/&quot;,&quot;splashImageUrl&quot;:&quot;https://quilcast.com/splash.png&quot;,&quot;splashBackgroundColor&quot;:&quot;#0d0c11&quot;}}}" />
     <meta name="fc:frame" content="{&quot;version&quot;:&quot;1&quot;,&quot;imageUrl&quot;:&quot;https://quilcast.com/embed.png&quot;,&quot;button&quot;:{&quot;title&quot;:&quot;Open in Quilcast&quot;,&quot;action&quot;:{&quot;type&quot;:&quot;launch_frame&quot;,&quot;name&quot;:&quot;Quilcast&quot;,&quot;url&quot;:&quot;https://quilcast.com/&quot;,&quot;splashImageUrl&quot;:&quot;https://quilcast.com/splash.png&quot;,&quot;splashBackgroundColor&quot;:&quot;#0d0c11&quot;}}}" />
+    <script type="application/ld+json">
+    {
+     "@context": "https://schema.org",
+     "@type": "WebApplication",
+     "name": "Quilcast",
+     "url": "https://quilcast.com/",
+     "description": "Quilcast is a tiny, open Farcaster client that talks straight to the Hypersnap network run by Quilibrium, with your keys kept in your own browser.",
+     "applicationCategory": "SocialNetworkingApplication",
+     "operatingSystem": "Web, Android",
+     "browserRequirements": "Requires JavaScript",
+     "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+     },
+     "image": "https://quilcast.com/og.png",
+     "author": {
+      "@type": "Person",
+      "name": "Nikita Kolmogorov",
+      "url": "https://borodutch.com"
+     },
+     "sameAs": [
+      "https://github.com/backmeupplz/quilcast"
+     ]
+    }
+    </script>
   </head>
   <body>
     <div id="app"></div>

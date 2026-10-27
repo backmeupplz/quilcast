@@ -1,0 +1,14 @@
+# Quilcast
+
+> Quilcast is a small, open-source Farcaster client that runs in the browser at quilcast.com and talks straight to the Hypersnap network that Quilibrium runs. Reads go to a public Hypersnap node, writes are messages signed in the browser, and keys stay in the browser's own storage. It has no accounts of its own, no ads, no analytics and no tracking.
+
+What it does: following and trending feeds, threads, profiles, notifications, search, casting, replies, quotes, likes, recasts, follows and channel posts, with up to two photos or videos per cast. It also has Farcaster direct messages (farcaster.xyz direct casts, live), Spaces (live audio rooms), a multi-chain wallet (Base, Ethereum, Optimism, Arbitrum, Polygon), Farcaster and Base mini apps, translations, and private mutes and blocks synced across devices. You can sign in with an existing Farcaster recovery phrase or an external wallet, or create a new Farcaster account for about $0.20 of ETH on Optimism. For fun, profiles can get MySpace-style looks (backgrounds, fonts, a Top 8, a profile song), the whole app can be re-themed, a profile Winamp plays YouTube playlists in any classic skin, and Quorum mode lays Quilcast out like Quilibrium's Quorum app.
+
+## Links
+
+- [Open Quilcast](https://quilcast.com)
+- [Android APK (latest release)](https://github.com/backmeupplz/quilcast/releases/latest/download/quilcast.apk)
+- [Source code and README](https://github.com/backmeupplz/quilcast)
+- [Privacy policy](https://quilcast.com/privacy)
+- [Terms](https://quilcast.com/terms)
+- [Safety](https://quilcast.com/safety)
