@@ -64,6 +64,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .about { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(16px * var(--rs, 1)); padding: 14px 16px; font-size: 14px; }
 .about p { color: var(--muted); margin: 6px 0 0; line-height: 1.45; }
 .foot { color: var(--muted); font-size: 13px; }
+.foot a { text-decoration: underline; } /* a link in a line of text must stand out by more than its color */
 
 @media (max-width: 1099px) {
   .extra { display: none; }

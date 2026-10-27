@@ -2,7 +2,8 @@
 // and /u/<name>, renders a 1200×630 card per cast at /og/c/<hash>.png, serves uploads from /m/,
 // and fronts the upload, link-preview and video-poster APIs.
 import { renderAsync } from '@resvg/resvg-js'
-import { createReadStream } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { createReadStream, readFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
@@ -26,6 +27,10 @@ import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
 const DIST = new URL('../dist/', import.meta.url).pathname
+// The standalone pages (About, the legal pages) carry their small stylesheet inline, so they paint without waiting
+// for a second request; the CSP allows exactly that stylesheet by its hash
+const LEGAL_CSS = (() => { try { return readFileSync(join(DIST, 'legal.css'), 'utf8') } catch { return '' } })()
+const LEGAL_LINK = '<link rel="stylesheet" href="/legal.css" />'
 // notification tokens and the push key live in the data volume with the uploads (/m/ only serves media names)
 const DATA = process.env.DATA_DIR || MEDIA
 load(DATA)
@@ -49,7 +54,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 // Quilcast in Quilcast shares it, being the same app). Mini apps are https pages framed by the app (src/miniapp.tsx sandboxes them). Images and video come from anywhere (avatars, embeds, CDNs); the node
 // and RPC URLs are user settings, hence https: for connect-src; messages and Spaces update over farcaster.xyz's websocket, and Spaces audio comes from LiveKit.
 const CSP = [
-  "default-src 'self'", "script-src 'self'", "style-src 'self'", 'img-src * data: blob:', 'media-src * data: blob:',
+  "default-src 'self'", "script-src 'self'", `style-src 'self'${LEGAL_CSS && ` 'sha256-${createHash('sha256').update(LEGAL_CSS).digest('base64')}'`}`, 'img-src * data: blob:', 'media-src * data: blob:',
   "connect-src 'self' https: wss://ws.farcaster.xyz wss://*.livekit.cloud http://localhost:* http://127.0.0.1:*", "worker-src 'self' blob:", "font-src 'self'", "manifest-src 'self'",
   "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-src https:",
   "frame-ancestors 'self' https://farcaster.xyz https://*.farcaster.xyz https://warpcast.com https://*.warpcast.com https://base.app https://*.base.app https://*.coinbase.com",
@@ -147,6 +152,13 @@ async function imageData(url, max = 4e6) {
   }
 }
 const dataUri = (url) => imageData(url).then((i) => i?.uri ?? null)
+// An image's pixel size from its first 64 KB (the formats imageInfo reads keep it in the header), or null
+const shapes = new Map()
+async function shapeOf(url) {
+  const r = await safeGet(url, { max: 65536, timeout: 4000 })
+  const info = r.status === 200 && imageInfo(r.body)
+  return info ? [info.w, info.h] : null
+}
 
 // Farcaster's videos live on Cloudflare Stream; the signed playlist path also serves a thumbnail
 const posters = new Map()
@@ -699,6 +711,15 @@ createServer(async (req, res) => {
       return json(200, await previews(() => unfurl(target)), 'public, max-age=86400')
     }
 
+    // up to 8 images' sizes: the feed draws a lone image at its final size before it loads, so nothing below it
+    // jumps when it arrives (src/ui.tsx warm)
+    if (path === '/api/shapes') {
+      const urls = url.searchParams.getAll('u').filter((u) => /^https:\/\//i.test(u) && u.length <= 2048).slice(0, 8)
+      if (limited(`shapes:${ip}`, 120)) return json(429, {})
+      const sizes = await Promise.all(urls.map((u) => shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOf(u)).catch(() => null))))
+      return json(200, Object.fromEntries(urls.map((u, i) => [u, sizes[i]])), 'public, max-age=86400')
+    }
+
     if (path === '/api/poster') {
       if (limited(`poster:${ip}`, 240)) return res.writeHead(429).end()
       const p = await previews(() => posterOf(url.searchParams.get('url') || '')).catch(() => null)
@@ -792,9 +813,13 @@ createServer(async (req, res) => {
 
     const file = normalize(join(DIST, PAGES[path] || path))
     if (file.startsWith(DIST) && extname(file)) {
-      const body = await (files.get(file) || keep(files, 300, file, readFile(file))).catch(() => null)
+      const page = extname(file) === '.html'
+      const read = page ? readFile(file).then((b) => Buffer.from(String(b).replace(LEGAL_LINK, `<style>${LEGAL_CSS}</style>`))) : readFile(file)
+      const body = await (files.get(file) || keep(files, 300, file, read)).catch(() => null)
       if (!body) return res.writeHead(404).end()
-      return send(req, res, 200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600' }, body, file)
+      // no-transform on pages: Cloudflare leaves them as we sent them (no analytics beacon, which the CSP would block anyway)
+      const cache = path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : page ? 'public, max-age=3600, no-transform' : 'public, max-age=3600'
+      return send(req, res, 200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': cache }, body, file)
     }
     return app()
   } catch (e) {

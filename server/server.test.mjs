@@ -3,6 +3,7 @@
 // Needs a build (dist/index.html): npm run build && npm test
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -407,4 +408,14 @@ test('translations: asked once per cast and language, from the node\'s words, fr
   assert.deepEqual(await (await tr({ hash, to: 'en' })).json(), { from: 'ja', text: 'Hello from Japan' })
   assert.equal(orAsked.length, 1)
   assert.deepEqual(await (await tr({ to: 'en', hashes: [hash, 'cd'.repeat(20)] }, '/api/translations')).json(), { [hash]: { from: 'ja', text: 'Hello from Japan' } })
+})
+
+test('standalone pages inline their stylesheet, allowed by its hash, and ask Cloudflare not to rewrite them', async () => {
+  const r = await fetch(base + '/about')
+  const html = await r.text()
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1]
+  assert.ok(css && !html.includes('href="/legal.css"'))
+  assert.match(r.headers.get('cache-control'), /no-transform/)
+  const hash = createHash('sha256').update(css).digest('base64')
+  assert.ok(r.headers.get('content-security-policy').includes(`'sha256-${hash}'`))
 })

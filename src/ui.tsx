@@ -153,7 +153,7 @@ export const Tabs = <T extends string>({ tabs, value, set }: { tabs: [T, string]
 )
 
 /** Someone else's image: lazy, sent without a referrer, and hidden rather than broken when it fails. */
-export const Img = (p: { src?: string; class?: string }) => (
+export const Img = (p: { src?: string; class?: string; style?: string }) => (
   <img alt="" loading="lazy" referrerpolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} {...p} />
 )
 
@@ -329,7 +329,8 @@ export function Video({ src }: { src: string }) {
   }
   return (
     <div class="vid" onClick={stop}>
-      <video ref={ref} src={hls ? undefined : src} poster={poster(src)} controls={ready} preload="metadata" playsInline />
+      {/* nothing loads from the video's host until it's played (no data spent, no third-party cookies) */}
+      <video ref={ref} src={hls ? undefined : src} poster={poster(src)} controls={ready} preload="none" playsInline />
       {!ready && <button class="play" aria-label={t('Play video')} onClick={start}><Icon d={P.play} fill size={26} /></button>}
     </div>
   )
@@ -341,13 +342,16 @@ export function Media({ urls: given, images }: { urls: string[]; images?: boolea
   const urls = given.flatMap((u) => safeUrl(u) ?? [])
   const imgs = images ? urls : urls.filter(isImg)
   const shown = imgs.slice(0, 4)
+  // a lone image keeps its own shape; when warm() learned its size, its box has that shape before it loads
+  const one = shown.length === 1 ? shapes.get(sized(shown[0], 'w=1200')) : null
+  const box = one && one[0] > 0 && one[1] > 0 ? `width:min(100%,${one[0]}px,${Math.round((510 * one[0]) / one[1])}px);aspect-ratio:${one[0]}/${one[1]}` : undefined
   return (
     <>
       {imgs.length > 0 && (
         <div class={`imgs n${shown.length}`} onClick={stop}>
           {shown.map((u, i) => (
             <button class="img" aria-label={t('Open image {n} of {total}', { n: i + 1, total: imgs.length })} onClick={() => shell.view(imgs, i)}>
-              <Img src={sized(u, 'w=1200')} />
+              <Img src={sized(u, 'w=1200')} style={box} />
               {i === 3 && imgs.length > 4 && <span class="more-imgs">+{imgs.length - 4}</span>}
             </button>
           ))}
@@ -415,8 +419,39 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
 }
 const unfurls = new Map<string, Promise<Unfurl>>()
 export const unfurl = (u: string) => {
-  if (!unfurls.has(u)) unfurls.set(u, fetch(`/api/unfurl?url=${encodeURIComponent(u)}`).then((r) => r.json(), () => null))
+  if (!unfurls.has(u)) unfurls.set(u, fetch(`/api/unfurl?url=${encodeURIComponent(u)}`).then((r) => r.json(), () => null).then((d) => (got.set(`u:${u}`, d), d)))
   return unfurls.get(u)!
+}
+
+// What arrived already (link previews `u:`, casts `c:`) and image sizes the server read: a card drawn after warm()
+// starts from them, at its final size
+const got = new Map<string, unknown>()
+const shapes = new Map<string, [number, number] | null>()
+
+/** Before a feed's first page shows: the link previews, quoted casts and lone images' sizes its first casts would load
+ * anyway, so each is drawn at its final size instead of growing (and pushing the posts below) when it arrives. Waits
+ * at most `ms`; whatever is late loads as before. */
+export function warm(casts: Cast[], ms = 800) {
+  const jobs: Promise<unknown>[] = []
+  const lone: string[] = []
+  for (const c of casts) {
+    const urls = urlsOf(c)
+    const imgs = urls.filter(isImg)
+    if (imgs.length === 1) lone.push(sized(imgs[0], 'w=1200'))
+    for (const u of urls) {
+      const path = ownPath(safeUrl(u))
+      const q = castOf(path)
+      if (q) jobs.push(fetchCast(q))
+      else if (!isImg(u) && !isVid(u) && !spaceOf(u) && !/^\/(design|theme)\//.test(path)) jobs.push(unfurl(u))
+    }
+    for (const e of c.embeds) if (/^(0x)?[0-9a-f]{40}$/i.test(e.cast_id?.hash || '')) jobs.push(fetchCast(e.cast_id!.hash))
+  }
+  const todo = [...new Set(lone)].filter((u) => !shapes.has(u)).slice(0, 8)
+  if (todo.length)
+    jobs.push(fetch(`/api/shapes?${todo.map((u) => `u=${encodeURIComponent(u)}`).join('&')}`).then((r) => r.json()).then((d) => {
+      for (const u of todo) shapes.set(u, d?.[u] ?? null)
+    }, () => {}))
+  return Promise.race([Promise.allSettled(jobs), new Promise((ok) => setTimeout(ok, ms))])
 }
 
 // --- the app's theme (themes.tsx makes and picks them) ---
@@ -561,8 +596,8 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const design = /^\/design\//.test(path) ? designId(path) : undefined
   const themeLink = /^\/theme\//.test(path) ? themeId(path) : undefined
   const cast = castOf(path)
-  const [d, setD] = useState<Unfurl>()
-  useEffect(() => void (u && !design && !themeLink && !cast && unfurl(u).then(setD)), [u])
+  const [d, setD] = useState<Unfurl | undefined>(() => (u ? (got.get(`u:${u}`) as Unfurl) : undefined))
+  useEffect(() => void (u && !d && !design && !themeLink && !cast && unfurl(u).then(setD)), [u])
   if (!u) return null
   if (design) return <DesignCard id={design} by={c?.author} />
   if (themeLink) return <ThemeCard id={themeLink} by={c?.author} />
@@ -634,14 +669,14 @@ export function DesignCard({ id, by }: { id: string; by?: User }) {
 export const cards = new Map<string, Cast>()
 const castCache = new Map<string, Promise<Cast | null>>()
 export const fetchCast = (hash: string) => {
-  hash = hash.replace(/^0x/, '')
-  if (!castCache.has(hash)) castCache.set(hash, get('/v2/farcaster/cast', { identifier: hash, type: 'hash', viewer_fid: account?.fid }).then((r) => r.cast, () => null))
+  hash = hash.replace(/^0x/, '').toLowerCase()
+  if (!castCache.has(hash)) castCache.set(hash, get('/v2/farcaster/cast', { identifier: hash, type: 'hash', viewer_fid: account?.fid }).then((r) => r.cast, () => null).then((c) => (got.set(`c:${hash}`, c), c)))
   return castCache.get(hash)!
 }
 
 export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
-  const [c, setC] = useState<Cast | null | undefined>(given)
-  useEffect(() => void (hash && !given && fetchCast(hash).then(setC)), [hash])
+  const [c, setC] = useState<Cast | null | undefined>(() => given ?? (hash ? (got.get(`c:${hash.replace(/^0x/, '').toLowerCase()}`) as Cast | null | undefined) : undefined))
+  useEffect(() => void (hash && c === undefined && fetchCast(hash).then(setC)), [hash])
   if (c === null) return <div class="quote muted">{t('This cast is unavailable.')}</div>
   if (!c) return <div class="quote skeleton" />
   if (hides(c)) return <div class="quote muted">{t('Hidden by your mutes.')}</div>

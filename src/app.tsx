@@ -5,7 +5,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -262,6 +262,7 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner }: { load: (cursor
       if (!cursor) shown.current = new Set()
       const casts = thread ? await threads(r.casts, shown.current) : keep ? r.casts.filter(keep) : r.casts
       await hydrateParents(casts)
+      if (!cursor) await warm(casts.slice(0, 6))
       if (!cursor && cacheKey) {
         try {
           save(`quilcast:feed:${cacheKey}`, casts.slice(0, 20))
