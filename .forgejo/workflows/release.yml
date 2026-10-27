@@ -6,7 +6,8 @@
 # A previous version still waiting for review or in review is replaced on both stores.
 # The apps are windows onto quilcast.com, so web changes reach them without a release: release when the apps change.
 # Before releasing: bump versionName/versionCode in android/app/build.gradle.kts and add
-# fastlane/metadata/android/en-US/changelogs/<versionCode>.txt, the notes Play, the App Store and F-Droid all show.
+# fastlane/metadata/android/en-US/changelogs/<versionCode>.txt, the notes Play, the App Store and F-Droid all show, and the same
+# file in each language's folder (fastlane/metadata/android/<language>/changelogs/, see .github/scripts/notes.py) for its own notes.
 # Run by hand (Actions → Release → Run workflow): dry-run builds everything and publishes nothing,
 # testflight-only uploads the iPhone build without submitting it, full is what a published release does.
 # Secrets: KEYSTORE_PROPERTIES, UPLOAD_JKS, PLAY_SERVICE_ACCOUNT_JSON, ASC_KEY_P8 (the .p8 key), GITLAB_TOKEN

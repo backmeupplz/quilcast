@@ -5,6 +5,7 @@ A release still in review is withdrawn for this one (changesInReviewBehavior=CAN
   play.py <bundle.aab> <version name> <notes file> [--dry-run]   (--dry-run validates the edit, then discards it)
   env: PLAY_PACKAGE, PLAY_SERVICE_ACCOUNT_JSON (key of a service account with release rights on the app in Play Console)"""
 import base64, json, os, subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
+import notes
 
 ROOT = "https://androidpublisher.googleapis.com/"
 
@@ -31,7 +32,6 @@ def access_token():
 def main():
     bundle, name, notes_file = sys.argv[1:4]
     dry = "--dry-run" in sys.argv
-    notes = open(notes_file).read().strip()[:500]
     token = access_token()
     edits = ROOT + f"androidpublisher/v3/applications/{os.environ['PLAY_PACKAGE']}/edits"
 
@@ -46,9 +46,13 @@ def main():
     edit = call("POST", edits, b"{}")["id"]
     code = call("POST", edits.replace(ROOT, ROOT + "upload/") + f"/{edit}/bundles?uploadType=media",
                 open(bundle, "rb").read(), "application/octet-stream")["versionCode"]
+    # Notes in every language the listing has: its own (notes.py), or the English ones
+    languages = [listing["language"] for listing in call("GET", f"{edits}/{edit}/listings").get("listings", [])] or ["en-US"]
+    for language in languages:
+        print(f"{language} release notes: {notes.path(notes_file, language)}")
     call("PUT", f"{edits}/{edit}/tracks/production", json.dumps({"track": "production", "releases": [{
         "name": name, "versionCodes": [str(code)], "status": "completed",
-        "releaseNotes": [{"language": "en-US", "text": notes}]}]}).encode())
+        "releaseNotes": [{"language": language, "text": notes.read(notes_file, language, 500)} for language in languages]}]}).encode())
     if dry:
         call("POST", f"{edits}/{edit}:validate")
         call("DELETE", f"{edits}/{edit}", None)

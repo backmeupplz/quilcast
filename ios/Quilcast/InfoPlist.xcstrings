@@ -1,0 +1,417 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast uses the camera to take photos and videos for your casts, or when a mini app you allowed asks for it."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم Quilcast الكاميرا لالتقاط الصور ومقاطع الفيديو لمنشوراتك، أو عندما يطلبها تطبيق مصغّر سمحت له بذلك."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast verwendet die Kamera, um Fotos und Videos für deine Casts aufzunehmen, oder wenn eine Mini-App, der du es erlaubt hast, darauf zugreifen möchte."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast usa la cámara para tomar fotos y videos para tus casts, o cuando una mini app a la que diste permiso la solicita."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast utilise l’appareil photo pour prendre des photos et des vidéos pour vos casts, ou lorsqu’une mini-app que vous avez autorisée le demande."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast आपकी कास्ट के लिए फ़ोटो और वीडियो लेने के लिए कैमरे का उपयोग करता है, या तब जब आपके अनुमति दिए गए किसी मिनी ऐप को इसकी ज़रूरत होती है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast menggunakan kamera untuk mengambil foto dan video untuk cast Anda, atau saat mini app yang Anda izinkan memintanya."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast usa la fotocamera per scattare foto e registrare video per i tuoi cast, o quando una mini app che hai autorizzato la richiede."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャストに載せる写真やビデオを撮影するときや、許可したミニアプリから求められたときに、Quilcastはカメラを使用します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캐스트에 올릴 사진과 동영상을 촬영하거나 허용한 미니 앱이 요청할 때 Quilcast가 카메라를 사용해요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast gebruikt de camera om foto's en video's te maken voor je casts, of als een mini-app die je toegang hebt gegeven erom vraagt."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast używa aparatu do robienia zdjęć i nagrywania filmów do Twoich castów albo gdy poprosi o niego dozwolona przez Ciebie mini aplikacja."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Quilcast usa a câmera para tirar fotos e gravar vídeos para seus casts ou quando um mini app que você autorizou solicita o acesso."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Quilcast utiliza a câmara para tirar fotografias e gravar vídeos para os teus casts ou quando uma mini app que autorizaste a pede."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast использует камеру, чтобы снимать фото и видео для ваших кастов, или когда её запрашивает мини-приложение, которому вы это разрешили."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast använder kameran för att ta bilder och spela in videor till dina casts, eller när en miniapp som du har gett tillåtelse ber om det."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast ใช้กล้องเพื่อถ่ายรูปและวิดีโอสำหรับแคสต์ของคุณ หรือเมื่อมินิแอปที่คุณอนุญาตขอใช้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast, cast'leriniz için fotoğraf ve video çekmek amacıyla ya da izin verdiğiniz bir mini uygulama istediğinde kamerayı kullanır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast використовує камеру, щоб знімати фото й відео для ваших кастів, або коли її запитує мінізастосунок, якому ви це дозволили."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast sử dụng camera để chụp ảnh và quay video cho cast của bạn, hoặc khi một mini app bạn đã cho phép yêu cầu quyền này."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当你为 cast 拍摄照片和视频，或你已授权的小程序请求使用时，Quilcast 会使用相机。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "當你為 cast 拍攝相片和影片，或你允許的小程式要求使用時，Quilcast 會使用相機。"
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast uses the microphone when you speak in a Space, or when a mini app you allowed asks for it."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم Quilcast الميكروفون عندما تتحدث في مساحة صوتية، أو عندما يطلبه تطبيق مصغّر سمحت له بذلك."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast verwendet das Mikrofon, wenn du in einem Space sprichst oder eine Mini-App, der du es erlaubt hast, darauf zugreifen möchte."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast usa el micrófono cuando hablas en un Espacio o cuando una mini app a la que diste permiso lo solicita."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast utilise le micro lorsque vous parlez dans un Space, ou lorsqu’une mini-app que vous avez autorisée le demande."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जब आप किसी स्पेस में बोलते हैं, या जब आपके अनुमति दिए गए किसी मिनी ऐप को इसकी ज़रूरत होती है, तब Quilcast माइक्रोफ़ोन का उपयोग करता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast menggunakan mikrofon saat Anda berbicara di Space, atau saat mini app yang Anda izinkan memintanya."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast usa il microfono quando parli in uno Space o quando una mini app che hai autorizzato lo richiede."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スペースで話すときや、許可したミニアプリから求められたときに、Quilcastはマイクを使用します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "스페이스에서 말하거나 허용한 미니 앱이 요청할 때 Quilcast가 마이크를 사용해요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast gebruikt de microfoon als je spreekt in een Space, of als een mini-app die je toegang hebt gegeven erom vraagt."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast używa mikrofonu, gdy mówisz w Space albo gdy poprosi o niego dozwolona przez Ciebie mini aplikacja."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Quilcast usa o microfone quando você fala em um Space ou quando um mini app que você autorizou solicita o acesso."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Quilcast utiliza o microfone quando falas num Space ou quando uma mini app que autorizaste o pede."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast использует микрофон, когда вы говорите в голосовой комнате или когда его запрашивает мини-приложение, которому вы это разрешили."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast använder mikrofonen när du pratar i ett Space eller när en miniapp som du har gett tillåtelse ber om det."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast ใช้ไมโครโฟนเมื่อคุณพูดใน Space หรือเมื่อมินิแอปที่คุณอนุญาตขอใช้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast, bir Space'te konuştuğunuzda veya izin verdiğiniz bir mini uygulama istediğinde mikrofonu kullanır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast використовує мікрофон, коли ви говорите в голосовій кімнаті або коли його запитує мінізастосунок, якому ви це дозволили."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast sử dụng micrô khi bạn nói trong một Space, hoặc khi một mini app bạn đã cho phép yêu cầu quyền này."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当你在语音空间中发言，或你已授权的小程序请求使用时，Quilcast 会使用麦克风。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "當你在語音空間中發言，或你允許的小程式要求使用時，Quilcast 會使用麥克風。"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast saves images you choose to keep to your photo library."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يحفظ Quilcast الصور التي تختار الاحتفاظ بها في مكتبة الصور لديك."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast speichert Bilder, die du behalten möchtest, in deiner Fotomediathek."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast guarda en tu fototeca las imágenes que decidas conservar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast enregistre dans votre photothèque les images que vous choisissez de conserver."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आप जिन इमेज को रखना चुनते हैं, Quilcast उन्हें आपकी फ़ोटो लाइब्रेरी में सेव करता है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast menyimpan gambar pilihan Anda ke perpustakaan foto."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast salva nella tua libreria foto le immagini che scegli di conservare."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "残しておきたい画像を、Quilcastが写真ライブラリに保存します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "보관하기로 선택한 이미지를 Quilcast가 사진 보관함에 저장해요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast bewaart afbeeldingen die je wilt houden in je fotobibliotheek."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast zapisuje w Twojej bibliotece zdjęć obrazy, które chcesz zachować."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Quilcast salva na sua fototeca as imagens que você escolher guardar."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Quilcast guarda na tua fototeca as imagens que escolheres manter."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast сохраняет в вашу медиатеку изображения, которые вы решили оставить."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast sparar bilder som du väljer att behålla i ditt bildbibliotek."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast บันทึกภาพที่คุณเลือกเก็บไว้ลงในคลังรูปภาพของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast, saklamayı seçtiğiniz görselleri fotoğraf arşivinize kaydeder."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast зберігає у вашу медіатеку зображення, які ви вирішили залишити."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast lưu những hình ảnh bạn chọn giữ lại vào thư viện ảnh của bạn."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast 会将你选择保留的图片存入你的照片图库。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast 會將你選擇保留的圖片儲存到你的照片圖庫。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

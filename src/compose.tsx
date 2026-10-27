@@ -127,7 +127,7 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
     <div class={`part${last ? '' : ' threaded'}`} onClick={onFocus}>
       <div class="editor">
         {account && <Avatar u={myUser()!} size={36} link={false} />}
-        <textarea ref={ref} value={part.text} rows={1} placeholder={placeholder}
+        <textarea ref={ref} dir="auto" value={part.text} rows={1} placeholder={placeholder}
           onInput={(e) => (set({ text: e.currentTarget.value }), findToken(e.currentTarget))}
           onKeyDown={keys} onClick={(e) => findToken(e.currentTarget)} onFocus={onFocus}
           onPaste={(e) => e.clipboardData?.files.length && (e.preventDefault(), attach(e.clipboardData.files))} />

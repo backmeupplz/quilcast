@@ -98,7 +98,7 @@ export const P = {
   pin: 'M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2v.8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z',
 }
 export const Icon = ({ d, fill, size = 18 }: { d: string; fill?: boolean; size?: number }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill={fill ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <svg class={d === P.back || d === P.chev ? 'flip' : undefined} viewBox="0 0 24 24" width={size} height={size} fill={fill ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d={d} />
   </svg>
 )
@@ -186,8 +186,9 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
 const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@[a-z0-9][a-z0-9.-]*[a-z0-9]|(?<![\\w/:])\\/[a-z0-9-]{2,}(?![\\w/]))`, 'gi')
 const shortUrl = (s: string) => ((s = s.replace(/^https?:\/\/(www\.)?/, '')), s.length > 40 ? s.slice(0, 40) + '…' : s)
 export function RichText({ text, class: cls = 'text' }: { text: string; class?: string }) {
+  // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round
   return (
-    <p class={cls}>
+    <p class={cls} dir="auto">
       {text.split(TOKENS).map((p, i) => {
         if (i % 2 === 0) return p
         if (p[0] === '@') return <a href={`/u/${p.slice(1)}`} onClick={stop}>{p}</a>

@@ -1,0 +1,656 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "I agree" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أوافق"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ich stimme zu"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acepto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "J'accepte"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मैं सहमत हूँ"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saya setuju"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accetto"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同意する"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "동의해요"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ik ga akkoord"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akceptuję"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concordo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concordo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Принимаю"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jag godkänner"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยอมรับ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kabul ediyorum"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Погоджуюся"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tôi đồng ý"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我同意"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我同意"
+          }
+        }
+      }
+    },
+    "Mute or block anyone from the ⋯ menu on their casts or profile, and report a cast or a person from the same menu. We look at every report within 24 hours." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يمكنك كتم أي شخص أو حظره من قائمة ⋯ في منشوراته أو ملفه الشخصي، والإبلاغ عن منشور أو شخص من القائمة نفسها. نراجع كل بلاغ خلال 24 ساعة."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über das ⋯-Menü an den Casts oder im Profil einer Person kannst du sie stummschalten oder blockieren und über dasselbe Menü einen Cast oder eine Person melden. Wir prüfen jede Meldung innerhalb von 24 Stunden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silencia o bloquea a quien quieras desde el menú ⋯ de sus casts o de su perfil, y denuncia un cast o a una persona desde ese mismo menú. Revisamos cada denuncia en un plazo de 24 horas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mettez en sourdine ou bloquez n’importe qui depuis le menu ⋯ de ses casts ou de son profil, et signalez un cast ou une personne depuis ce même menu. Nous examinons chaque signalement sous 24 heures."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "किसी की कास्ट या प्रोफ़ाइल पर ⋯ मेन्यू से उसे म्यूट या ब्लॉक करें, और उसी मेन्यू से किसी कास्ट या व्यक्ति की रिपोर्ट करें। हम हर रिपोर्ट को 24 घंटे के अंदर देखते हैं।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bisukan atau blokir siapa pun dari menu ⋯ di cast atau profil mereka, lalu laporkan cast atau seseorang dari menu yang sama. Kami meninjau setiap laporan dalam 24 jam."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dal menu ⋯ sui cast o sul profilo di qualcuno puoi silenziarlo o bloccarlo, e dallo stesso menu puoi segnalare un cast o una persona. Esaminiamo ogni segnalazione entro 24 ore."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "キャストやプロフィールの「⋯」メニューから相手をミュート・ブロックでき、同じメニューからキャストやユーザーを報告できます。すべての報告は24時間以内に確認します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "캐스트나 프로필의 ⋯ 메뉴에서 누구든 뮤트하거나 차단할 수 있고, 같은 메뉴에서 캐스트나 사용자를 신고할 수 있어요. 모든 신고는 24시간 이내에 검토해요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Negeer of blokkeer iedereen via het ⋯-menu bij hun casts of op hun profiel, en meld via hetzelfde menu een cast of een persoon. We bekijken elke melding binnen 24 uur."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wycisz lub zablokuj dowolną osobę z menu ⋯ przy jej castach lub na jej profilu, a z tego samego menu zgłoś cast lub osobę. Każde zgłoszenie sprawdzamy w ciągu 24 godzin."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silencie ou bloqueie qualquer pessoa pelo menu ⋯ nos casts ou no perfil dela, e denuncie um cast ou uma pessoa pelo mesmo menu. Analisamos todas as denúncias em até 24 horas."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silencia ou bloqueia qualquer pessoa através do menu ⋯ nos casts ou no perfil dessa pessoa, e denuncia um cast ou uma pessoa a partir do mesmo menu. Analisamos todas as denúncias no prazo de 24 horas."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть или заблокировать любого можно через меню ⋯ в его кастах или профиле, а в том же меню — пожаловаться на каст или человека. Мы рассматриваем каждую жалобу в течение 24 часов."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorera eller blockera vem som helst via ⋯-menyn på deras casts eller profil, och anmäl en cast eller en person från samma meny. Vi går igenom varje anmälan inom 24 timmar."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปิดเสียงหรือบล็อกใครก็ได้จากเมนู ⋯ บนแคสต์หรือโปรไฟล์ของคนนั้น และรายงานแคสต์หรือบุคคลได้จากเมนูเดียวกัน เราตรวจสอบทุกรายงานภายใน 24 ชั่วโมง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herhangi birini cast'lerindeki veya profilindeki ⋯ menüsünden sessize alabilir ya da engelleyebilir, aynı menüden bir cast'i veya kişiyi şikâyet edebilirsiniz. Her şikâyeti 24 saat içinde inceliyoruz."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приховати чи заблокувати будь-кого можна через меню ⋯ у його кастах або профілі, а в тому ж меню — поскаржитися на каст чи людину. Ми розглядаємо кожну скаргу протягом 24 годин."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tắt tiếng hoặc chặn bất kỳ ai từ menu ⋯ trên cast hoặc trang cá nhân của họ, và báo cáo một cast hoặc một người từ cùng menu đó. Chúng tôi xem xét mọi báo cáo trong vòng 24 giờ."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在对方的 cast 或个人主页上，通过 ⋯ 菜单即可将其静音或屏蔽，也可以在同一菜单中举报某条 cast 或某个人。我们会在 24 小时内审核每一条举报。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在對方的 cast 或個人檔案上，透過 ⋯ 選單即可將其靜音或封鎖，也能從同一選單檢舉某則 cast 或某個人。我們會在 24 小時內審核每一則檢舉。"
+          }
+        }
+      }
+    },
+    "Quilcast shows posts from Farcaster, an open social network. By continuing you agree to the Terms of Use: no objectionable content, no harassment, no spam, and nothing illegal. There's zero tolerance for abusive users or content." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يعرض Quilcast منشورات من Farcaster، وهي شبكة اجتماعية مفتوحة. بالمتابعة، فإنك توافق على شروط الاستخدام: لا محتوى غير لائق، ولا تحرش، ولا رسائل مزعجة، ولا أي شيء مخالف للقانون. لا تهاون إطلاقًا مع المستخدمين المسيئين أو المحتوى المسيء."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast zeigt Beiträge aus Farcaster, einem offenen sozialen Netzwerk. Wenn du fortfährst, stimmst du den Nutzungsbedingungen zu: keine anstößigen Inhalte, keine Belästigung, kein Spam und nichts Illegales. Für missbräuchliche Nutzer oder Inhalte gilt null Toleranz."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast muestra publicaciones de Farcaster, una red social abierta. Al continuar, aceptas las Condiciones de uso: nada de contenido ofensivo, acoso ni spam, y nada ilegal. Hay tolerancia cero con los usuarios o el contenido abusivos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast affiche les publications de Farcaster, un réseau social ouvert. En continuant, vous acceptez les Conditions d’utilisation : pas de contenu choquant, pas de harcèlement, pas de spam et rien d’illégal. Tolérance zéro pour les utilisateurs et les contenus abusifs."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast, Farcaster की पोस्ट दिखाता है, जो एक ओपन सोशल नेटवर्क है। आगे बढ़कर आप उपयोग की शर्तों से सहमत होते हैं: कोई आपत्तिजनक कंटेंट नहीं, कोई उत्पीड़न नहीं, कोई स्पैम नहीं और कुछ भी गैर-कानूनी नहीं। दुर्व्यवहार करने वाले यूज़र्स और अपमानजनक कंटेंट के लिए ज़ीरो टॉलरेंस है।"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast menampilkan postingan dari Farcaster, jejaring sosial terbuka. Dengan melanjutkan, Anda menyetujui Ketentuan Penggunaan: tanpa konten yang tidak pantas, tanpa pelecehan, tanpa spam, dan tanpa hal ilegal. Kami sama sekali tidak menoleransi pengguna atau konten yang kasar dan menyerang."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast mostra i post di Farcaster, un social network aperto. Continuando, accetti le Condizioni d’uso: niente contenuti inappropriati, molestie, spam o attività illegali. Tolleranza zero verso utenti o contenuti offensivi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcastは、オープンなソーシャルネットワークであるFarcasterの投稿を表示します。続けると、利用規約（不快なコンテンツ、嫌がらせ、スパム、違法行為の禁止）に同意したことになります。悪質なユーザーやコンテンツは一切容認しません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast는 오픈 소셜 네트워크인 Farcaster의 게시물을 보여줘요. 계속하면 이용약관에 동의하게 돼요. 불쾌한 콘텐츠, 괴롭힘, 스팸, 불법적인 내용은 금지되며, 악의적인 사용자나 콘텐츠는 절대 용납하지 않아요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast toont berichten van Farcaster, een open sociaal netwerk. Door verder te gaan, ga je akkoord met de Gebruiksvoorwaarden: geen aanstootgevende content, geen intimidatie, geen spam en niets illegaals. Voor kwaadwillende gebruikers en kwetsende content geldt een nultolerantie."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast wyświetla posty z Farcaster – otwartej sieci społecznościowej. Kontynuując, akceptujesz Warunki korzystania: żadnych niestosownych treści, nękania, spamu ani niczego nielegalnego. Wobec agresywnych użytkowników i obraźliwych treści obowiązuje zasada zero tolerancji."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Quilcast mostra publicações do Farcaster, uma rede social aberta. Ao continuar, você concorda com os Termos de Uso: nada de conteúdo ofensivo, assédio, spam ou qualquer coisa ilegal. Temos tolerância zero com usuários ou conteúdos abusivos."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Quilcast mostra publicações do Farcaster, uma rede social aberta. Ao continuar, aceitas os Termos de Utilização: nada de conteúdo ofensivo, assédio, spam ou algo ilegal. Há tolerância zero para utilizadores ou conteúdos abusivos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast показывает публикации из Farcaster — открытой социальной сети. Продолжая, вы принимаете Условия использования: никакого недопустимого контента, травли, спама и ничего незаконного. К оскорбительному поведению и контенту — нулевая терпимость."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast visar inlägg från Farcaster, ett öppet socialt nätverk. Genom att fortsätta godkänner du användarvillkoren: inget stötande innehåll, inga trakasserier, ingen spam och inget olagligt. Vi har nolltolerans mot kränkande användare och innehåll."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast แสดงโพสต์จาก Farcaster ซึ่งเป็นเครือข่ายสังคมแบบเปิด เมื่อดำเนินการต่อ แสดงว่าคุณยอมรับข้อกำหนดการใช้งาน ได้แก่ ห้ามเนื้อหาที่ไม่เหมาะสม ห้ามการคุกคาม ห้ามสแปม และห้ามสิ่งผิดกฎหมาย เราไม่ยอมให้มีผู้ใช้หรือเนื้อหาที่ก้าวร้าวหรือล่วงละเมิดผู้อื่นโดยเด็ดขาด"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast, açık bir sosyal ağ olan Farcaster'daki gönderileri gösterir. Devam ederek Kullanım Koşulları'nı kabul etmiş olursunuz: Uygunsuz içerik, taciz, spam ve yasa dışı paylaşımlar yasaktır. Kötü niyetli kullanıcılara ve içeriklere kesinlikle tahammül edilmez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast показує дописи з Farcaster — відкритої соціальної мережі. Продовжуючи, ви приймаєте Умови використання: жодного неприйнятного контенту, цькування, спаму й нічого незаконного. До образливої поведінки й контенту — нульова толерантність."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast hiển thị bài đăng từ Farcaster, một mạng xã hội mở. Khi tiếp tục, bạn đồng ý với Điều khoản sử dụng: không có nội dung phản cảm, không quấy rối, không spam và không có hành vi vi phạm pháp luật. Chúng tôi tuyệt đối không dung thứ cho người dùng hay nội dung mang tính xúc phạm, lạm dụng."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast 显示来自开放社交网络 Farcaster 的帖子。继续即表示你同意《使用条款》：不得发布令人反感的内容，不得骚扰他人，不得发送垃圾信息，不得从事任何违法行为。我们对恶意用户和不良内容零容忍。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast 會顯示來自開放社群網路 Farcaster 的貼文。繼續即表示你同意《使用條款》：不得發布令人反感的內容、不得騷擾他人、不得發送垃圾訊息，也不得從事任何違法行為。我們對惡意使用者和不當內容採取零容忍。"
+          }
+        }
+      }
+    },
+    "Read the Terms of Use" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اقرأ شروط الاستخدام"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nutzungsbedingungen lesen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leer las Condiciones de uso"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lire les Conditions d’utilisation"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "उपयोग की शर्तें पढ़ें"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baca Ketentuan Penggunaan"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leggi le Condizioni d’uso"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "利用規約を読む"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이용약관 읽기"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lees de Gebruiksvoorwaarden"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przeczytaj Warunki korzystania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ler os Termos de Uso"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ler os Termos de Utilização"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прочитать Условия использования"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Läs användarvillkoren"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "อ่านข้อกำหนดการใช้งาน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kullanım Koşulları'nı okuyun"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прочитати Умови використання"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đọc Điều khoản sử dụng"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阅读《使用条款》"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "閱讀《使用條款》"
+          }
+        }
+      }
+    },
+    "Welcome to Quilcast" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مرحبًا بك في Quilcast"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Willkommen bei Quilcast"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Te damos la bienvenida a Quilcast"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bienvenue sur Quilcast"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast में आपका स्वागत है"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selamat datang di Quilcast"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ti diamo il benvenuto su Quilcast"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcastへようこそ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast에 오신 것을 환영해요"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welkom bij Quilcast"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Witamy w Quilcast"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boas-vindas ao Quilcast"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bem-vindo ao Quilcast"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добро пожаловать в Quilcast"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Välkommen till Quilcast"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยินดีต้อนรับสู่ Quilcast"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quilcast'e hoş geldiniz"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вітаємо в Quilcast"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chào mừng bạn đến với Quilcast"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "欢迎使用 Quilcast"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歡迎使用 Quilcast"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

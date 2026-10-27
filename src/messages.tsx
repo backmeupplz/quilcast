@@ -9,6 +9,8 @@ import { ago, Avatar, handle, Header, Icon, Img, Menu, nameOf, P, RichText, shel
 
 const person = (p?: Person): User => ({ fid: p?.fid || 0, username: p?.username, display_name: p?.displayName, pfp_url: p?.pfp?.url })
 const who = (p?: Person) => (p?.fid && p.fid === account!.fid ? t('You') : p?.username ? `@${p.username}` : p?.displayName || t('Someone'))
+// only the first letter: German nouns keep their capitals ("nach einem Tag")
+const lower = (s: string) => s.charAt(0).toLocaleLowerCase(lang) + s.slice(1)
 const when = (t: number) => new Date(t).toLocaleString(lang, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 const MUTED = `${P.bell}M3 3l18 18`
 const TTL: [number | 'Infinity', string][] = [['Infinity', 'Never'], [1, 'After a day'], [7, 'After a week'], [30, 'After 30 days'], [365, 'After a year']]
@@ -33,7 +35,7 @@ function describe(m: Msg) {
     case 'message_ttl_change': {
       if (m.message === 'Infinity') return t('{by} turned off auto-delete', { by })
       const label = TTL.find(([d]) => String(d) === m.message)?.[1]
-      return t('{by} set messages to auto-delete {when}', { by, when: label ? t(label).toLowerCase() : tn(Number(m.message), 'after {n} day', 'after {n} days') })
+      return t('{by} set messages to auto-delete {when}', { by, when: label ? lower(t(label)) : tn(Number(m.message), 'after {n} day', 'after {n} days') })
     }
     default: return m.message || m.type.replace(/_/g, ' ')
   }
@@ -321,14 +323,14 @@ function Chat({ id }: { id: string }) {
           // Quorum's composer: one rounded box with the send arrow inside it
           <div class="dm-compose q-compose-box">
             <div class="q-composer">
-              <textarea rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
+              <textarea dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
                 onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit())} />
               <button class="q-send" aria-label={t('Send')} title={t('Send')} disabled={!text.trim() || !c} onClick={submit}><svg width="18" height="14" viewBox="0 0 100 80" aria-hidden="true"><path d="M0 80L25 40.4L0 0l100 40.4z" fill="currentColor" /></svg></button>
             </div>
           </div>
         ) : (
           <div class="dm-compose">
-            <textarea rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
+            <textarea dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
               onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit())} />
             <button class="btn small" disabled={!text.trim() || !c} onClick={submit}>{t('Send')}</button>
           </div>

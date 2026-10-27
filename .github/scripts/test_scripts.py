@@ -1,11 +1,11 @@
 """Checks for the shared release scripts: python3 -m unittest discover -s .github/scripts"""
-import os, sys, unittest
+import os, sys, tempfile, unittest
 
 os.environ.setdefault("APP_STORE_APP_ID", "1")
 os.environ.setdefault("ASC_KEY_ID", "KEY")
 os.environ.setdefault("ASC_ISSUER_ID", "issuer")
 sys.path.insert(0, os.path.dirname(__file__))
-import appstore, fdroid
+import appstore, fdroid, notes
 
 METADATA = """AutoName: Mesh+
 
@@ -97,6 +97,25 @@ class Scripts(unittest.TestCase):
     def test_fdroid_same_values_change_nothing(self):
         self.assertEqual(fdroid.rewrite(METADATA, "0.4.3", "7", "793ee7cd8fe0103fb4857c13a73bc0c4af1a8926", "Tags",
                                         "https://github.com/backmeupplz/meshtastic-plus/releases/download/v%v/meshplus.apk"), METADATA)
+
+    def test_notes_per_language_fall_back_to_english(self):
+        with tempfile.TemporaryDirectory() as root:
+            def write(folder, text):
+                os.makedirs(os.path.join(root, folder, "changelogs"), exist_ok=True)
+                with open(os.path.join(root, folder, "changelogs", "7.txt"), "w") as f: f.write(text)
+            write("en-US", "Faster sync.\n")
+            write("de-DE", "Schnellere Synchronisierung.\n")
+            write("zh-CN", "同步更快。")
+            write("es-419", "Sincronización más rápida.")
+            write("fr-FR", "  \n")  # empty: the English
+            english = os.path.join(root, "en-US", "changelogs", "7.txt")
+            self.assertEqual(notes.read(english, "de-DE", 500), "Schnellere Synchronisierung.")
+            self.assertEqual(notes.read(english, "zh-Hans", 4000), "同步更快。")  # App Store locale -> Play folder
+            self.assertEqual(notes.read(english, "es-MX", 4000), "Sincronización más rápida.")
+            self.assertEqual(notes.read(english, "fr-FR", 500), "Faster sync.")
+            self.assertEqual(notes.read(english, "ja", 4000), "Faster sync.")  # no folder
+            self.assertEqual(notes.read(english, "de-DE", 10), "Schnellere")
+            self.assertEqual(notes.path(english, "en-US"), english)
 
     def test_es256_signature_from_der(self):
         r, s = b"\x00" + b"\x80" * 32, b"\x01" * 31  # a padded r and a short s

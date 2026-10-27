@@ -6,6 +6,7 @@ A submission still waiting or in review is cancelled, and its version takes the 
   env: APP_STORE_APP_ID, ASC_KEY_ID, ASC_ISSUER_ID; the key is AuthKey_<ASC_KEY_ID>.p8 in API_PRIVATE_KEYS_DIR
        (default ~/.appstoreconnect/private_keys), the folder altool reads too"""
 import base64, json, os, subprocess, sys, time, urllib.error, urllib.request
+import notes
 from urllib.parse import urlencode
 
 APP, KEY_ID, ISSUER = os.environ["APP_STORE_APP_ID"], os.environ["ASC_KEY_ID"], os.environ["ASC_ISSUER_ID"]
@@ -71,7 +72,6 @@ def versions():
 def main():
     version, build_number, notes_file = sys.argv[1:4]
     dry = "--dry-run" in sys.argv
-    notes = open(notes_file).read().strip()[:4000]
     say = (lambda text: print("Would " + text[0].lower() + text[1:])) if dry else print
 
     # Processing takes a few minutes to half an hour after the upload
@@ -121,15 +121,18 @@ def main():
                 "appStoreVersions", attributes={"platform": "IOS", "versionString": version, "releaseType": "AFTER_APPROVAL"},
                 app={"type": "apps", "id": APP}, build=build))
 
-    # ponytail: the same notes for every language; per-language notes need a notes file per locale
+    # Each language gets its own notes (notes.py), or the English ones
     if first:
         print("First version of the app: no What's New")
-    elif dry or not current:
-        print("Would set What's New in every language to:\n" + notes)
+    elif not current:
+        print("Would set What's New in every language, the English being:\n" + notes.read(notes_file, "en-US", 4000))
     else:
         for localization in data("GET", f"/v1/appStoreVersions/{current['id']}/appStoreVersionLocalizations"):
-            data("PATCH", f"/v1/appStoreVersionLocalizations/{localization['id']}",
-                 body=resource("appStoreVersionLocalizations", localization["id"], {"whatsNew": notes}))
+            locale = localization["attributes"]["locale"]
+            say(f"Set What's New in {locale} from {notes.path(notes_file, locale)}")
+            if not dry:
+                data("PATCH", f"/v1/appStoreVersionLocalizations/{localization['id']}",
+                     body=resource("appStoreVersionLocalizations", localization["id"], {"whatsNew": notes.read(notes_file, locale, 4000)}))
 
     say(f"Submit {version} ({build_number}) for review, released automatically once approved")
     if dry:

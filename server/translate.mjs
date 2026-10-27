@@ -10,7 +10,12 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fail, gate, keep } from './net.mjs'
 
-const TO = { en: 'English', es: 'Spanish', ja: 'Japanese', ru: 'Russian', uk: 'Ukrainian', 'zh-Hans': 'Simplified Chinese', 'zh-Hant': 'Traditional Chinese' }
+// the app's languages (src/i18n.ts)
+const TO = {
+  en: 'English', ar: 'Arabic', de: 'German', es: 'Spanish', fr: 'French', hi: 'Hindi', id: 'Indonesian', it: 'Italian', ja: 'Japanese', ko: 'Korean',
+  nl: 'Dutch', pl: 'Polish', 'pt-BR': 'Brazilian Portuguese', 'pt-PT': 'European Portuguese', ru: 'Russian', sv: 'Swedish', th: 'Thai', tr: 'Turkish',
+  uk: 'Ukrainian', vi: 'Vietnamese', 'zh-Hans': 'Simplified Chinese', 'zh-Hant': 'Traditional Chinese',
+}
 const DEFAULT_MODELS = ['google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free', 'openrouter/free']
 const hashOk = (h) => typeof h === 'string' && /^(0x)?[0-9a-f]{40}$/.test(h)
 const norm = (h) => h.replace(/^0x/, '')
