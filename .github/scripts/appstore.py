@@ -45,9 +45,11 @@ def api(method, path, query=None, body=None, ok=()):
         with urllib.request.urlopen(request) as response:
             return json.loads(response.read() or b"{}")
     except urllib.error.HTTPError as e:
-        if e.code in ok:
+        body = e.read().decode()
+        if e.code in ok:  # expected (e.g. the item is already in the submission), but it can also hide the real reason
+            print(f"{method} {path}: {e.code}, carrying on: {body[:3000]}")
             return {}
-        sys.exit(f"{method} {path}: {e.code} {e.read().decode()}")
+        sys.exit(f"{method} {path}: {e.code} {body}")
 
 
 def data(method, path, query=None, **kw):
