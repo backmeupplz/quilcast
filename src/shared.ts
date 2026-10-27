@@ -87,7 +87,7 @@ export type Look = {
   wall?: string[]; wallTitle?: string
   song?: { id: string; start?: number; title?: string }
   amp?: Amp
-  fx?: Fx
+  fx?: Fx; fxAlpha?: number
   stickers?: Sticker[]
 }
 export const LIMITS = { about: 1500, meet: 600, interest: 300, mood: 60, title: 40, top: 8, wall: 12, songTitle: 100, stickers: 16, amp: 50 }
@@ -159,7 +159,7 @@ export function cleanLook(x: unknown): Look {
     topTitle: text(o.topTitle, LIMITS.title),
     wall: Array.isArray(o.wall) ? [...new Set(o.wall.filter(isLookImg))].slice(0, LIMITS.wall) as string[] : undefined,
     wallTitle: text(o.wallTitle, LIMITS.title),
-    song, amp: cleanAmp(o.amp), fx: pick(o.fx, FX),
+    song, amp: cleanAmp(o.amp), fx: pick(o.fx, FX), fxAlpha: int(o.fxAlpha, 0, 100),
     stickers: Array.isArray(o.stickers) ? o.stickers.flatMap((x: any): Sticker[] => {
       const [px, py, w, r] = [num(x?.x, 0, 100), num(x?.y, 0, 100), num(x?.w, 4, 80), num(x?.r, -180, 180)]
       if (!isLookImg(x?.src) || !STICKER_AT.includes(x.at) || px === undefined || py === undefined || w === undefined) return []
@@ -169,6 +169,8 @@ export function cleanLook(x: unknown): Look {
   if (!l.top?.length) delete l.top
   if (!l.stickers?.length) delete l.stickers
   if (!l.wall?.length) delete l.wall
+  // an effect's opacity goes with the effect
+  if (!l.fx) delete l.fxAlpha
   for (const k of Object.keys(l) as (keyof Look)[]) if (l[k] === undefined) delete l[k]
   if (l.song && !l.song.start) delete l.song.start
   if (l.song && !l.song.title) delete l.song.title
@@ -184,6 +186,9 @@ export function lookVars(l: Look) {
   if (l.muted) v['--muted'] = l.muted
   if (l.link) (v['--accent'] = l.link), (v['--accent-soft'] = `rgb(${rgb(l.link)} / 0.16)`)
   if (l.box) (v['--lk-box'] = `rgb(${rgb(l.box)} / ${(l.boxAlpha ?? 90) / 100})`), (v['--bg'] = l.box), (v['--card'] = l.box)
+  // without a box color the boxes are the page's background color, as see-through as the owner says
+  if (l.boxAlpha !== undefined) v['--lk-box-a'] = `${l.boxAlpha}%`
+  if (l.fxAlpha !== undefined) v['--lk-fx-a'] = String(l.fxAlpha / 100)
   if (l.border) v['--line'] = l.border
   if (l.borderStyle) v['--lk-bs'] = l.borderStyle
   if (l.borderWidth !== undefined) v['--lk-bw'] = `${l.borderWidth}px`
@@ -195,7 +200,7 @@ export function lookVars(l: Look) {
 }
 
 /** A look's design: its style and effect, without the words, friends, GIF wall, stickers and song. Shared as quilcast.com/design/<id>. */
-export const DESIGN_KEYS = ['bg', 'bgImg', 'bgMode', 'bgDim', 'text', 'muted', 'link', 'box', 'boxAlpha', 'border', 'borderStyle', 'borderWidth', 'radius', 'font', 'size', 'nameFx', 'nameColor', 'banner', 'fx'] as const
+export const DESIGN_KEYS = ['bg', 'bgImg', 'bgMode', 'bgDim', 'text', 'muted', 'link', 'box', 'boxAlpha', 'border', 'borderStyle', 'borderWidth', 'radius', 'font', 'size', 'nameFx', 'nameColor', 'banner', 'fx', 'fxAlpha'] as const
 export const cleanDesign = (x: unknown): Look => {
   const l = cleanLook(x)
   return Object.fromEntries(DESIGN_KEYS.filter((k) => l[k] !== undefined).map((k) => [k, l[k]]))
@@ -223,11 +228,12 @@ type ThemeColor = (typeof THEME_COLORS)[number]
 export type ScreenSticker = Omit<Sticker, 'at'>
 export type Theme = Partial<Record<ThemeColor, string>> & {
   name?: string; base?: 'light' | 'dark'
+  // `sheer` is how solid the content (the column, sidebars, header) is over a picture or an effect, in %
   bgImg?: string; bgMode?: (typeof BG_MODES)[number]; scrim?: number; sheer?: number
   barImg?: string; btnImg?: string
   round?: number; borderWidth?: number; borderStyle?: (typeof BORDERS)[number]; glow?: boolean
   font?: keyof typeof FONTS; fontUrl?: string; size?: number
-  nameFx?: (typeof NAME_FX)[number]; fx?: Fx
+  nameFx?: (typeof NAME_FX)[number]; fx?: Fx; fxAlpha?: number
   stickers?: ScreenSticker[]
 }
 /** The app's own colors, for anything a theme leaves out (style.css :root has the same). */
@@ -250,7 +256,7 @@ export function cleanTheme(x: unknown): Theme {
     barImg: img(o.barImg), btnImg: img(o.btnImg),
     round: num(o.round, 0, 3), borderWidth: int(o.borderWidth, 0, 6), borderStyle: pick(o.borderStyle, BORDERS), glow: o.glow === true || undefined,
     font: Object.hasOwn(FONTS, o.font) ? o.font : undefined, fontUrl: isThemeFont(o.fontUrl) ? o.fontUrl : undefined, size: num(o.size, 0.8, 1.4),
-    nameFx: pick(o.nameFx, NAME_FX), fx: pick(o.fx, FX),
+    nameFx: pick(o.nameFx, NAME_FX), fx: pick(o.fx, FX), fxAlpha: int(o.fxAlpha, 0, 100),
     stickers: Array.isArray(o.stickers) ? o.stickers.flatMap((x: any): ScreenSticker[] => {
       const [px, py, w, r] = [num(x?.x, 0, 100), num(x?.y, 0, 100), num(x?.w, 4, 80), num(x?.r, -180, 180)]
       return isLookImg(x?.src) && px !== undefined && py !== undefined && w !== undefined ? [{ src: x.src, x: px, y: py, w, ...(r ? { r } : {}) }] : []
@@ -259,6 +265,7 @@ export function cleanTheme(x: unknown): Theme {
   if (th.size === 1) delete th.size
   if (th.nameFx === 'none') delete th.nameFx
   if (!th.stickers?.length) delete th.stickers
+  if (!th.fx) delete th.fxAlpha
   for (const k of Object.keys(th) as (keyof Theme)[]) if (th[k] === undefined) delete th[k]
   return th
 }
@@ -281,6 +288,7 @@ export function themeVars(th: Theme) {
   // Quorum's scrim: white over a light theme's wallpaper, black over a dark one
   if (th.scrim) v['--th-scrim'] = `rgb(${th.base === 'light' ? '255 255 255' : '0 0 0'} / ${th.scrim / 100})`
   if (th.sheer !== undefined) v['--th-sheer'] = `${th.sheer}%`
+  if (th.fxAlpha !== undefined) v['--th-fx-a'] = String(th.fxAlpha / 100)
   if (th.round !== undefined) v['--rs'] = String(th.round)
   if (th.borderWidth !== undefined) v['--bw'] = `${th.borderWidth}px`
   if (th.borderStyle) v['--bs'] = th.borderStyle

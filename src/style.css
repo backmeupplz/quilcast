@@ -652,7 +652,7 @@ small.warn { color: var(--warn); }
 .lk-bg.center { background-repeat: no-repeat; background-position: center; }
 .lk-bg::after { content: ''; position: absolute; inset: 0; background: rgb(0 0 0 / var(--lk-dim, 0)); }
 .look.on .lk-box {
-  margin: 12px; background: var(--lk-box, color-mix(in srgb, var(--bg) 90%, transparent));
+  margin: 12px; background: var(--lk-box, color-mix(in srgb, var(--bg) var(--lk-box-a, 90%), transparent));
   border: var(--lk-bw, 1px) var(--lk-bs, solid) var(--line); border-radius: var(--lk-r, 14px);
 }
 .look.on .profile { overflow: hidden; }
@@ -695,8 +695,9 @@ small.warn { color: var(--warn); }
 .lk-stk:focus-within .lk-x, .lk-stk:focus-within .lk-turn { display: grid; }
 .lk-stk .lk-x { top: -13px; right: -13px; background: var(--card); }
 .lk-turn { right: -11px; bottom: -11px; width: 22px; height: 22px; border-radius: calc(99px * var(--rs, 1)); background: var(--accent); border: 2px solid #fff; cursor: nwse-resize; touch-action: none; }
-/* the look's effect (fx.ts) falls over the boxes but under the page header and menus */
-.lk-fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; }
+/* the look's effect (fx.ts) moves over the page background but behind the boxes, the header and menus, which are
+   only as see-through as the owner makes them; a theme's effect (.th-fx) sits the same way, over the theme's picture */
+.lk-fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: var(--lk-fx-a, 1); }
 /* name effects; `--lk-name` is the owner's effect color */
 .lk-name.rainbow, .lk-name.glitter { -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 100%; animation: lk-slide 4s linear infinite; }
 .lk-name.rainbow { background-image: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #2bd44a, #00a2ff, #8a2be2, #ff004c); }
@@ -1026,7 +1027,8 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .note-avatars .avatar { cursor: pointer; }
 
 /* ---------- app themes (themes.tsx; the variables come from themeVars in shared.ts, set on <html>) ---------- */
-/* the background sits under everything; over a picture the column, sidebars and menus turn into glass */
+/* the background sits under everything, and the effect over it; over a picture the column, sidebars and header turn
+   into glass, over an effect alone they're as solid as the theme's content opacity (--th-sheer) */
 .th-bg { position: fixed; inset: 0; z-index: -2; pointer-events: none; background: var(--bg) var(--th-img) center top / auto repeat; }
 .th-bg.cover { background-size: cover; background-repeat: no-repeat; background-position: center; }
 .th-bg.center { background-repeat: no-repeat; background-position: center; }
@@ -1034,6 +1036,9 @@ body:has(.space-bar) .dock { bottom: 84px; }
 :root[data-th-img]:not([data-look]) .col { background: color-mix(in srgb, var(--bg) var(--th-sheer, 88%), transparent); }
 :root[data-th-img]:not([data-look]) .side, :root[data-th-img]:not([data-look]) .extra { background: color-mix(in srgb, var(--bg) calc(var(--th-sheer, 88%) * 0.6), transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 :root[data-th-img] .phead { background-color: color-mix(in srgb, var(--bar, var(--bg)) var(--th-sheer, 88%), transparent); }
+:root[data-th-fx]:not([data-th-img], [data-look]) :is(.col, .side, .extra) { background: color-mix(in srgb, var(--bg) var(--th-sheer, 88%), transparent); }
+:root[data-th-fx]:not([data-th-img], [data-look], [data-quorum]) .phead { background-color: color-mix(in srgb, var(--bar, var(--bg)) var(--th-sheer, 88%), transparent); }
+.th-fx { opacity: var(--th-fx-a, 1); }
 /* pictures on the bars and the filled buttons */
 :root[data-th-bar] .phead, :root[data-th-bar] .tabbar { background-image: var(--th-bar); background-size: cover; background-position: center; }
 :root[data-th-btn] .btn:not(.ghost, .danger), :root[data-th-btn] .fab { background-image: var(--th-btn); background-size: cover; background-position: center; color: #fff; text-shadow: 0 0 2px #000, 0 1px 4px rgb(0 0 0 / 0.8); }
@@ -1041,7 +1046,7 @@ body:has(.space-bar) .dock { bottom: 84px; }
 :root[data-th-glow] .col { box-shadow: 0 0 48px color-mix(in srgb, var(--accent) 35%, transparent); }
 :root[data-th-glow] .btn:not(.ghost, .danger), :root[data-th-glow] .fab { box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 65%, transparent); }
 :root[data-th-glow] .about, :root[data-th-glow] .quote, :root[data-th-glow] .linkcard, :root[data-th-glow] .menu { box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 30%, transparent); }
-/* a theme's stickers sit on the screen and never take a click (except while editing); its effect is .lk-fx */
+/* a theme's stickers sit on the screen, over the app, and never take a click (except while editing) */
 .th-stk { position: fixed; z-index: 4; }
 .th-stk:not(.edit) { pointer-events: none; }
 /* everyone's names in the theme's name effect; a profile's own effect (.lk-name) wins on its page */

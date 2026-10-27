@@ -1,7 +1,7 @@
 // cleanLook is the only thing between a stored look and the page's CSS, so hostile input has to come out inert.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ampItem, cleanLook, isLookImg, lookImages } from './shared.ts'
+import { ampItem, cleanDesign, cleanLook, isLookImg, lookImages, lookVars } from './shared.ts'
 
 test('cleanLook keeps valid settings and drops everything else', () => {
   const l = cleanLook({
@@ -47,6 +47,19 @@ test('stickers keep a known box, an allowed image and in-range numbers; effects 
   assert.equal(cleanLook({ fx: 'alert(1)' }).fx, undefined)
   assert.deepEqual(cleanLook({ stickers: [{ src: 'x' }] }), {})
   assert.deepEqual(lookImages({ stickers: [{ src, at: 'head', x: 1, y: 1, w: 9 }, { src, at: 'top', x: 1, y: 1, w: 9 }] }), [[src, 4e6]])
+})
+
+test('box and effect opacity: whole percents from 0 to 100; box opacity works without a box color', () => {
+  assert.deepEqual(cleanLook({ fx: 'matrix', fxAlpha: 300, boxAlpha: -1 }), { fx: 'matrix', fxAlpha: 100, boxAlpha: 0 })
+  for (const bad of [12.5, '40', NaN, {}]) assert.deepEqual(cleanLook({ fxAlpha: bad, boxAlpha: bad, fx: 'snow' }), { fx: 'snow' }, String(bad))
+  assert.deepEqual(cleanLook({ fxAlpha: 40, boxAlpha: 50 }), { boxAlpha: 50 })
+  const v = lookVars(cleanLook({ boxAlpha: 40, fx: 'snow', fxAlpha: 25 }))
+  assert.deepEqual([v['--lk-box-a'], v['--lk-fx-a'], v['--lk-box']], ['40%', '0.25', undefined])
+  // a box color still wins, at the same opacity
+  assert.equal(lookVars(cleanLook({ box: '#000000', boxAlpha: 40 }))['--lk-box'], 'rgb(0 0 0 / 0.4)')
+  assert.deepEqual(lookVars(cleanLook({ fx: 'snow' })), {})
+  // a shared design carries the effect's opacity with the effect
+  assert.deepEqual(cleanDesign({ fx: 'snow', fxAlpha: 30, about: 'x' }), { fx: 'snow', fxAlpha: 30 })
 })
 
 test('a Winamp list keeps real YouTube ids, once each, and a skin only as an md5', () => {

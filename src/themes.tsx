@@ -28,7 +28,7 @@ export const BUILT_IN: Theme[] = [
   },
   {
     name: 'Matrix', base: 'dark', bg: '#000000', card: '#020b02', soft: '#061a06', line: '#0f3f0f', ink: '#b6ffb6', muted: '#3fae3f', accent: '#3cff6e', onAccent: '#001a00', like: '#3cff6e', recast: '#3cff6e', warn: '#d4ff3c',
-    round: 0, font: 'courier', nameFx: 'glow', nameColor: '#3cff6e', fx: 'matrix',
+    sheer: 92, round: 0, font: 'courier', nameFx: 'glow', nameColor: '#3cff6e', fx: 'matrix',
   },
   {
     name: 'Winter night', base: 'dark', bg: '#0b1426', card: '#101c33', soft: '#16264a', line: '#22365e', ink: '#eaf3ff', muted: '#9db4d8', accent: '#7cc4ff', onAccent: '#08111f', like: '#ff8fb3', recast: '#6ff0d2',
@@ -40,7 +40,7 @@ export const BUILT_IN: Theme[] = [
   },
   {
     name: 'Spooky', base: 'dark', bg: '#120b05', card: '#1c1209', soft: '#2a1b0d', line: '#4a2c10', ink: '#ffe8cc', muted: '#c08a55', accent: '#ff7a1a', onAccent: '#120b05', like: '#ff4d2e', recast: '#a3e635',
-    round: 0.8, font: 'impact', nameFx: 'shadow', nameColor: '#ff7a1a', fx: 'bats', stickers: [{ src: tenor('NarRX0m-o1I', 'halloween-ghost', true), x: 94, y: 16, w: 16, r: 12 }],
+    sheer: 90, round: 0.8, font: 'impact', nameFx: 'shadow', nameColor: '#ff7a1a', fx: 'bats', stickers: [{ src: tenor('NarRX0m-o1I', 'halloween-ghost', true), x: 94, y: 16, w: 16, r: 12 }],
   },
   {
     name: 'Glitter', base: 'light', bg: '#ffe0f0', card: '#fff0f8', soft: '#ffd6ec', line: '#ff8ac6', ink: '#5a0838', muted: '#a0507c', accent: '#ff2e9a', like: '#ff2e9a', recast: '#7a5cff',
@@ -372,7 +372,7 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
   const clear = (k: keyof Theme, label: string) => d[k] !== undefined && <button type="button" class="lk-x" aria-label={t('Reset {name}', { name: label })} onClick={(e) => (e.preventDefault(), up({ [k]: undefined }))}>×</button>
   const color = (k: 'bg' | 'card' | 'ink' | 'muted' | 'line' | 'soft' | 'accent' | 'onAccent' | 'like' | 'recast' | 'warn' | 'bar' | 'nameColor', label: string) =>
     row(label, <><input type="color" value={d[k] || def[k] || def.accent} onInput={(e) => up({ [k]: e.currentTarget.value })} />{clear(k, label)}</>)
-  const range = (k: 'scrim' | 'sheer' | 'round' | 'borderWidth' | 'size', label: string, min: number, max: number, fallback: number, step = 1, show = (v: number) => String(v)) =>
+  const range = (k: 'scrim' | 'sheer' | 'fxAlpha' | 'round' | 'borderWidth' | 'size', label: string, min: number, max: number, fallback: number, step = 1, show = (v: number) => String(v)) =>
     row(label, <><input type="range" min={min} max={max} step={step} value={d[k] ?? fallback} onInput={(e) => up({ [k]: Number(e.currentTarget.value) })} /><output>{show(d[k] ?? fallback)}</output></>)
   const select = (k: 'bgMode' | 'borderStyle' | 'font' | 'nameFx' | 'fx', label: string, options: readonly string[], names: Record<string, string> = {}) =>
     row(label, <select value={d[k] || ''} onChange={(e) => up({ [k]: e.currentTarget.value || undefined })}><option value="">{t('Default')}</option>{options.map((o) => <option value={o}>{t(names[o] || cap(o))}</option>)}</select>)
@@ -425,12 +425,12 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
             {color('like', t('Likes'))}
             {color('recast', t('Recasts'))}
             {color('warn', t('Warnings'))}
+            {range('sheer', t('Content opacity'), 0, 100, 88, 1, (v) => `${v}%`)}
           </>)}
           {group(t('Background'), <>
             {image('bgImg', t('Picture'))}
             {select('bgMode', t('Picture fit'), BG_MODES, { tile: 'Tiled', cover: 'Fill the screen', center: 'Centered once' })}
             {range('scrim', base === 'light' ? t('Lighten') : t('Darken'), 0, 90, 0, 1, (v) => `${v}%`)}
-            {range('sheer', t('Column opacity'), 0, 100, 88, 1, (v) => `${v}%`)}
           </>)}
           {group(t('Bars and buttons'), <>
             {color('bar', t('Bar color'))}
@@ -454,7 +454,8 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
           </>)}
           {group(t('Effect'), <>
             {select('fx', t('Effect'), FX, Object.fromEntries(FX.map((k) => [k, EFFECTS[k].name])))}
-            <p class="hint">{t("Snow, confetti, fireflies and more, moving over the whole app. It stops for people who ask their device for less motion.")}</p>
+            {d.fx && range('fxAlpha', t('Effect opacity'), 0, 100, 100, 1, (v) => `${v}%`)}
+            <p class="hint">{t('Snow, confetti, fireflies and more, moving across the whole app behind its columns and cards, which Content opacity makes more or less solid. It stops for people who ask their device for less motion.')}</p>
           </>)}
           {group(t('Stickers ({n}/{max})', { n: d.stickers?.length || 0, max: LIMITS.stickers }), <>
             <div class="lk-wall edit">

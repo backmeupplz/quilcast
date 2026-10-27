@@ -438,7 +438,7 @@ export function wear(th: Theme | null, keep = false) {
   vars = Object.keys(v)
   const d = root.dataset
   const flag = (k: string, on: unknown, val = '') => (on ? (d[k] = val) : delete d[k])
-  flag('th', th), flag('thImg', th?.bgImg), flag('thBar', th?.barImg), flag('thBtn', th?.btnImg), flag('thGlow', th?.glow), flag('thName', th?.nameFx, th?.nameFx), flag('thZoom', th?.size)
+  flag('th', th), flag('thImg', th?.bgImg), flag('thFx', th?.fx), flag('thBar', th?.barImg), flag('thBtn', th?.btnImg), flag('thGlow', th?.glow), flag('thName', th?.nameFx, th?.nameFx), flag('thZoom', th?.size)
   // light or dark: a theme brings its own, else Settings decides
   th?.base ? (d.theme = th.base) : settings.theme === 'system' ? delete d.theme : (d.theme = settings.theme)
   // a Quorum theme's own font, from our media

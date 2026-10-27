@@ -33,3 +33,14 @@ test('themeVars only writes checked values into CSS, and our media loads from wh
   assert.equal(themeId('AbC-_12345'), 'AbC-_12345')
   assert.equal(themeId('https://quilcast.com/design/AbC-_12345'), undefined)
 })
+
+test('content and effect opacity: whole percents from 0 to 100, unset keeps today\'s look', () => {
+  assert.deepEqual(cleanTheme({ sheer: 140, fxAlpha: -3, fx: 'matrix' }), { sheer: 100, fxAlpha: 0, fx: 'matrix' })
+  assert.deepEqual(cleanTheme({ sheer: 0, fxAlpha: 100, fx: 'snow' }), { sheer: 0, fxAlpha: 100, fx: 'snow' })
+  // an effect's opacity goes with the effect
+  assert.deepEqual(cleanTheme({ sheer: 50, fxAlpha: 40 }), { sheer: 50 })
+  for (const bad of [50.5, '50', NaN, null, true]) assert.deepEqual(cleanTheme({ sheer: bad, fxAlpha: bad, fx: 'snow' }), { fx: 'snow' }, String(bad))
+  const v = themeVars(cleanTheme({ fx: 'matrix', sheer: 64, fxAlpha: 35 }))
+  assert.deepEqual([v['--th-sheer'], v['--th-fx-a']], ['64%', '0.35'])
+  assert.equal(themeVars(cleanTheme({ fx: 'matrix' }))['--th-fx-a'], undefined)
+})

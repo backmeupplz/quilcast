@@ -330,12 +330,12 @@ test('profile looks: saved only with a key the node lists for that FID, cleaned,
 
 test('shared designs: only the style is kept, under a stable id', async () => {
   const share = (look) => fetch(`${base}/api/design`, { method: 'POST', body: JSON.stringify(look) })
-  const r = await share({ bg: '#FF00FF', font: 'impact', about: 'mine', top: [1], text: 'red;x' })
+  const r = await share({ bg: '#FF00FF', font: 'impact', about: 'mine', top: [1], text: 'red;x', fx: 'snow', fxAlpha: 140, boxAlpha: 30 })
   assert.equal(r.status, 200)
   const { id } = await r.json()
   assert.match(id, /^[\w-]{10}$/)
-  assert.deepEqual(await (await share({ font: 'impact', bg: '#ff00ff' })).json(), { id })
-  assert.deepEqual(await (await fetch(`${base}/api/design/${id}`)).json(), { bg: '#ff00ff', font: 'impact' })
+  assert.deepEqual(await (await share({ font: 'impact', bg: '#ff00ff', fx: 'snow', fxAlpha: 100, boxAlpha: 30 })).json(), { id })
+  assert.deepEqual(await (await fetch(`${base}/api/design/${id}`)).json(), { bg: '#ff00ff', boxAlpha: 30, font: 'impact', fx: 'snow', fxAlpha: 100 })
   assert.equal(await (await fetch(`${base}/api/design/aaaaaaaaaa`)).json(), null)
   assert.equal((await share({ about: 'only words' })).status, 400)
   const page = await (await fetch(`${base}/design/${id}`)).text()
@@ -371,11 +371,15 @@ test('Quorum skins: the gallery is trimmed, a skin becomes a theme, and only rea
 
 test('shared themes: cleaned, stored under a stable id, with their page and share card', async () => {
   const put = (b) => fetch(base + '/api/theme', { method: 'POST', body: JSON.stringify(b) }).then(async (r) => [r.status, await r.json()])
-  const [code, { id }] = await put({ name: evil, base: 'dark', accent: '#ff00aa', round: 0, fx: 'stars', nameFx: 'rainbow', evil: 1 })
+  const [code, { id }] = await put({ name: evil, base: 'dark', accent: '#ff00aa', round: 0, fx: 'stars', fxAlpha: 45.5, sheer: 101, nameFx: 'rainbow', evil: 1 })
   assert.equal(code, 200)
-  assert.deepEqual((await put({ evil: 2, fx: 'stars', round: 0, accent: '#ff00aa', base: 'dark', name: evil, nameFx: 'rainbow' }))[1].id, id)
+  assert.deepEqual((await put({ evil: 2, fx: 'stars', sheer: 100, round: 0, accent: '#ff00aa', base: 'dark', name: evil, nameFx: 'rainbow' }))[1].id, id)
   assert.equal((await put({ nope: 1 }))[0], 400)
-  assert.deepEqual(await (await fetch(`${base}/api/theme/${id}`)).json(), { name: evil.slice(0, 60).trim(), base: 'dark', accent: '#ff00aa', round: 0, nameFx: 'rainbow', fx: 'stars' })
+  assert.deepEqual(await (await fetch(`${base}/api/theme/${id}`)).json(), { name: evil.slice(0, 60).trim(), base: 'dark', accent: '#ff00aa', sheer: 100, round: 0, nameFx: 'rainbow', fx: 'stars' })
+  // the effect's opacity is kept, and the share card draws with it
+  const [, { id: id2 }] = await put({ base: 'dark', fx: 'matrix', fxAlpha: 40, sheer: 70 })
+  assert.deepEqual(await (await fetch(`${base}/api/theme/${id2}`)).json(), { base: 'dark', sheer: 70, fx: 'matrix', fxAlpha: 40 })
+  assert.equal((await fetch(`${base}/og/theme/${id2}.png`)).headers.get('content-type'), 'image/png')
   const page = await (await fetch(`${base}/theme/${id}`)).text()
   assert.ok(page.includes(`/og/theme/${id}.png`) && !page.includes('<script>alert'))
   const png = await fetch(`${base}/og/theme/${id}.png`)

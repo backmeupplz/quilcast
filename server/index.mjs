@@ -334,8 +334,9 @@ async function themeCard(id, raw) {
   const R = (px) => Math.min(px * rs, 999)
   const [img, bar, btn] = await Promise.all([th.bgImg && themeImage(th.bgImg), th.barImg && themeImage(th.barImg, 4e6), th.btnImg && themeImage(th.btnImg, 4e6)])
   const stickers = (await Promise.all((th.stickers || []).slice(0, 16).map(async (s) => ({ s, i: await themeImage(s.src, 4e6, true) })))).filter((x) => x.i)
-  // over a picture the column turns see-through, as it does in the app
-  const sheer = img ? (th.sheer ?? 88) / 100 : 1
+  // over a picture or an effect the column turns see-through, as it does in the app
+  const p = th.fx && EFFECTS[th.fx]
+  const sheer = img || p ? (th.sheer ?? 88) / 100 : 1
   const rnd = seeded(id)
   const defs = []
   const fill = (k, im, w, h) => {
@@ -355,7 +356,6 @@ async function themeCard(id, raw) {
     if (th.scrim) bg += `<rect width="1200" height="630" fill="${base === 'light' ? '#fff' : '#000'}" fill-opacity="${th.scrim / 100}"/>`
   }
   // the effect, frozen: a scatter of its particles in its own colors
-  const p = th.fx && EFFECTS[th.fx]
   let fx = ''
   if (p) {
     const count = Math.max(8, Math.min(46, Math.round(p.n / 3)))
@@ -450,7 +450,7 @@ async function themeCard(id, raw) {
     ${defs.join('')}
   </defs>
   <rect width="1200" height="630" fill="${c.bg}"/>${bg}
-  ${fx}
+  ${fx && th.fxAlpha !== undefined ? `<g opacity="${th.fxAlpha / 100}">${fx}</g>` : fx}
   <g transform="translate(64 40)"><rect width="34" height="34" rx="${R(10)}" fill="${c.accent}"/><g transform="translate(1 1)"><path d="${LOGO}" fill="${c.onAccent}"/></g></g>
   <text x="110" y="66" font-family="Inter" font-weight="800" font-size="25" fill="${c.ink}">Quilcast</text>
   ${nav}

@@ -28,7 +28,7 @@ export const Bg = ({ l }: { l: Look }) =>
       style={{ backgroundColor: l.bg, backgroundImage: l.bgImg ? `url("${l.bgImg}")` : undefined, '--lk-dim': l.bgDim ? String(l.bgDim / 100) : undefined }} />
   ) : null
 
-/** The look's effect (src/fx.ts), on a canvas over the page that never takes a click. */
+/** The look's effect (src/fx.ts), on a canvas over the page background and behind the boxes, that never takes a click. */
 export function Fx({ fx }: { fx?: Look['fx'] }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => (fx && ref.current ? start(ref.current, fx) : undefined), [fx])
@@ -287,7 +287,7 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
   const clear = (k: keyof Look, label: string) => d[k] !== undefined && <button type="button" class="lk-x" aria-label={t('Reset {name}', { name: label })} onClick={(e) => (e.preventDefault(), up({ [k]: undefined }))}>×</button>
   const color = (k: 'bg' | 'text' | 'muted' | 'link' | 'box' | 'border' | 'nameColor', label: string, fallback: string) =>
     row(label, <><input type="color" value={d[k] || fallback} onInput={(e) => up({ [k]: e.currentTarget.value })} />{clear(k, label)}</>)
-  const range = (k: 'bgDim' | 'boxAlpha' | 'borderWidth' | 'radius', label: string, min: number, max: number, fallback: number, unit = '') =>
+  const range = (k: 'bgDim' | 'boxAlpha' | 'fxAlpha' | 'borderWidth' | 'radius', label: string, min: number, max: number, fallback: number, unit = '') =>
     row(label, <><input type="range" min={min} max={max} value={d[k] ?? fallback} onInput={(e) => up({ [k]: Number(e.currentTarget.value) })} /><output>{d[k] ?? fallback}{unit}</output></>)
   const select = (k: 'bgMode' | 'borderStyle' | 'font' | 'size' | 'nameFx' | 'fx', label: string, options: readonly string[], names: Record<string, string> = {}) =>
     row(label, <select value={d[k] || ''} onChange={(e) => up({ [k]: e.currentTarget.value || undefined })}><option value="">{t('Default')}</option>{options.map((o) => <option value={o}>{t(names[o] || cap(o))}</option>)}</select>)
@@ -349,7 +349,8 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
         </>)}
         {group(t('Effect'), <>
           {select('fx', t('Effect'), FX, Object.fromEntries(FX.map((k) => [k, EFFECTS[k].name])))}
-          <p class="hint">{t('Snow, confetti, fireflies and more, moving over your whole profile. Visitors who ask their device for less motion don\'t see it.')}</p>
+          {d.fx && range('fxAlpha', t('Effect opacity'), 0, 100, 100, '%')}
+          <p class="hint">{t('Snow, confetti, fireflies and more, moving across your whole profile behind its boxes, which Box opacity makes more or less solid. Visitors who ask their device for less motion don\'t see it.')}</p>
         </>)}
         {group(t('Stickers ({n}/{max})', { n: d.stickers?.length || 0, max: LIMITS.stickers }), <>
           <div class="lk-wall edit">
