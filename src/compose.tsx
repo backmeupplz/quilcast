@@ -62,6 +62,16 @@ function ChannelPicker({ value, set }: { value?: string; set: (v?: string) => vo
 type Part = { id: number; text: string; files: Attachment[] }
 const LIMIT = 1024 // casts over 320 bytes go out as long casts, which allow up to 1024
 const newPart = (): Part => ({ id: Math.random(), text: '', files: [] })
+
+// The iOS and Android apps may ask for a store rating once a few casts and replies went out: they count them and decide
+// (ios/Quilcast/RatingPrompt.swift, android/app/src/play/…/RatingPrompt.java). A browser or a Farcaster client has no
+// such bridge. Not after a send failed this session, and only once the cast's page is up.
+let failed = false
+const sent = () => {
+  if (failed || !navigator.userAgent.includes('QuilcastApp/')) return
+  const g = window as unknown as { webkit?: { messageHandlers?: { requestReview?: { postMessage(m: null): void } } }; QuilcastApp?: { requestReview(): void } }
+  setTimeout(() => (g.webkit?.messageHandlers?.requestReview?.postMessage(null), g.QuilcastApp?.requestReview()), 2000)
+}
 const linksIn = (text: string) => [...new Set((text.match(LINK_RE) || []).map(toUrl))]
 const fmtLeft = (s?: number) => (s === undefined || !isFinite(s) ? '' : ' · ' + (s < 60 ? t('{n}s left', { n: Math.max(1, Math.round(s)) }) : t('{n} min left', { n: Math.round(s / 60) })))
 
@@ -213,9 +223,10 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
       onClose(first)
       toast(parts.length > 1 ? 'Thread posted' : parent ? 'Reply sent' : 'Cast sent')
       // a mini app that asked for the cast stays on screen
-      onDone || go(`/c/${first}`)
+      onDone || (go(`/c/${first}`), sent())
     } catch (e: any) {
       // whatever already went out is removed from the composer, so a retry continues the thread
+      failed = true
       toast(e.message)
       setBusy(false)
     }

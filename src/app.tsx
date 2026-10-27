@@ -71,6 +71,9 @@ function PhraseAsk() {
 }
 
 const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a></>
+// the iOS and Android apps put their own version in the user agent
+const app = navigator.userAgent.match(/QuilcastApp\/(\S+) \((\w+)\)/)
+const feedback = `mailto:support@borodutch.com?subject=${encodeURIComponent('Quilcast feedback')}&body=${encodeURIComponent(`\n\nQuilcast v${__VERSION__}${app ? `, ${app[2]} app ${app[1]}` : ''}`)}`
 
 /** A translated sentence with one {key} placeholder filled by an element, so translators can move it. */
 const With = ({ s, k, children }: { s: string; k: string; children: ComponentChildren }) => {
@@ -1236,7 +1239,7 @@ function Settings() {
           {url('node', t('Hypersnap node'))}
           {url('rpc', t('Optimism RPC'))}
         </section>
-        <p class="foot">Quilcast <Version /></p>
+        <p class="foot">Quilcast <Version /> · <a href={feedback}>{t('Send feedback')}</a></p>
       </div>
     </>
   )

@@ -367,6 +367,7 @@
   "Search stickers": "Искать стикеры",
   "Sell {sell} and get about {buy} (at least {min}), routed by LI.FI. {host} asked for this swap; your wallet asks you to confirm.": "Продать {sell} и получить около {buy} (не меньше {min}), маршрут через LI.FI. Это обмен по запросу {host}; кошелёк попросит вас подтвердить.",
   "Send": "Отправить",
+  "Send feedback": "Отправить отзыв",
   "Send {symbol}?": "Отправить {symbol}?",
   "Sending…": "Отправляем…",
   "Setting up": "Настраиваем",

@@ -367,6 +367,7 @@
   "Search stickers": "Шукати стікери",
   "Sell {sell} and get about {buy} (at least {min}), routed by LI.FI. {host} asked for this swap; your wallet asks you to confirm.": "Продати {sell} й отримати близько {buy} (щонайменше {min}) через LI.FI. Цей обмін запитує {host}; гаманець попросить вас підтвердити.",
   "Send": "Надіслати",
+  "Send feedback": "Надіслати відгук",
   "Send {symbol}?": "Надіслати {symbol}?",
   "Sending…": "Надсилаємо…",
   "Setting up": "Налаштовуємо",

@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 import WebKit
 
@@ -41,11 +42,17 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, continue activity: NSUserActivity) {
         if let url = activity.webpageURL, ours(url) { web.open(url) }
     }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        RatingPrompt.used()
+    }
 }
 
 class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     var web: WKWebView!
     var dark = false
+    // no rating prompt after the page crashed this session
+    var crashed = false
 
     override func loadView() {
         let config = WKWebViewConfiguration()
@@ -55,6 +62,7 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
         config.applicationNameForUserAgent = "Mobile/15E148 QuilcastApp/\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "") (iOS)"
         config.userContentController.addUserScript(WKUserScript(source: bar, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         config.userContentController.add(self, name: "bar")
+        config.userContentController.add(self, name: "requestReview")
         web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = self
         web.uiDelegate = self
@@ -86,7 +94,13 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
     override var preferredStatusBarStyle: UIStatusBarStyle { dark ? .lightContent : .darkContent }
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.frameInfo.isMainFrame, let hex = message.body as? String, hex.count == 7, let rgb = Int(hex.dropFirst(), radix: 16) else { return }
+        guard message.frameInfo.isMainFrame else { return }
+        // the page reports each cast or reply sent; RatingPrompt decides whether that's the moment to ask for a rating
+        if message.name == "requestReview" {
+            if !crashed, RatingPrompt.cast(), let scene = view.window?.windowScene { AppStore.requestReview(in: scene) }
+            return
+        }
+        guard let hex = message.body as? String, hex.count == 7, let rgb = Int(hex.dropFirst(), radix: 16) else { return }
         let luminance = 0.2126 * Double(rgb >> 16) + 0.7152 * Double(rgb >> 8 & 0xff) + 0.0722 * Double(rgb & 0xff)
         dark = luminance < 128
         setNeedsStatusBarAppearanceUpdate()
@@ -110,6 +124,7 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
 
     // a crashed web content process leaves a blank page; load it again
     func webViewWebContentProcessDidTerminate(_ web: WKWebView) {
+        crashed = true
         web.reload()
     }
 }

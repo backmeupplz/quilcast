@@ -367,6 +367,7 @@
   "Search stickers": "Buscar stickers",
   "Sell {sell} and get about {buy} (at least {min}), routed by LI.FI. {host} asked for this swap; your wallet asks you to confirm.": "Vende {sell} y recibe unos {buy} (al menos {min}), con ruta de LI.FI. {host} pidió este intercambio; tu billetera te pedirá confirmarlo.",
   "Send": "Enviar",
+  "Send feedback": "Enviar comentarios",
   "Send {symbol}?": "¿Enviar {symbol}?",
   "Sending…": "Enviando…",
   "Setting up": "Configurando",

@@ -367,6 +367,7 @@
   "Search stickers": "ステッカーを検索",
   "Sell {sell} and get about {buy} (at least {min}), routed by LI.FI. {host} asked for this swap; your wallet asks you to confirm.": "{sell} を売って約 {buy}（最低 {min}）を受け取ります。ルーティングは LI.FI です。{host} がこのスワップをリクエストしました。ウォレットで確認を求められます。",
   "Send": "送信",
+  "Send feedback": "フィードバックを送る",
   "Send {symbol}?": "{symbol} を送りますか？",
   "Sending…": "送信中…",
   "Setting up": "セットアップ中",

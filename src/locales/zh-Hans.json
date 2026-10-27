@@ -367,6 +367,7 @@
   "Search stickers": "搜索贴纸",
   "Sell {sell} and get about {buy} (at least {min}), routed by LI.FI. {host} asked for this swap; your wallet asks you to confirm.": "卖出 {sell}，约可获得 {buy}（至少 {min}），由 LI.FI 提供路由。{host} 请求了这次兑换，你的钱包会请你确认。",
   "Send": "发送",
+  "Send feedback": "发送反馈",
   "Send {symbol}?": "要发送 {symbol} 吗？",
   "Sending…": "发送中…",
   "Setting up": "正在设置",

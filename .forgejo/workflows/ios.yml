@@ -1,5 +1,5 @@
 name: iOS
-# Compile check of the iPhone app on PRs and main, like ABS+: no simulator tests. Store builds happen in release.yml.
+# Compile check of the iPhone app on PRs and main, like ABS+, plus RatingPrompt's rule: no simulator tests. Store builds happen in release.yml.
 on:
   pull_request:
     paths: ['ios/**', '.forgejo/workflows/ios.yml']
@@ -22,6 +22,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           sparse-checkout: ios
+      # RatingPrompt's rule (Foundation only), on the Mac itself
+      - run: swiftc ios/Quilcast/RatingPrompt.swift ios/Tests/main.swift -o "$RUNNER_TEMP/rating" && "$RUNNER_TEMP/rating"
       # Each runner instance builds its own copy of the sources: the checkout path changes with every run, and Xcode
       # only rebuilds what changed while the path stays the same. xcodebuild runs with a clean environment because it
       # reads every variable as a build setting. The generic simulator destination needs no booted device.

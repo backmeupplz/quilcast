@@ -25,6 +25,13 @@ android {
         }
     }
     buildFeatures { buildConfig = true }
+    // play: Google's in-app review card. fdroid: no Google code, so F-Droid builds it (gradle: fdroid) and gets the
+    // same APK as the release's quilcast-X.Y.Z.apk. See src/<flavor>/java/com/borodutch/quilcast/RatingPrompt.java.
+    flavorDimensions += "store"
+    productFlavors {
+        create("play") { dimension = "store" }
+        create("fdroid") { dimension = "store" }
+    }
     // F-Droid rejects APKs carrying Google's encrypted dependency block. Play still gets it from the bundle.
     dependenciesInfo { includeInApk = false }
     buildTypes {
@@ -35,4 +42,9 @@ android {
             signingConfig = signingConfigs.findByName("upload")
         }
     }
+}
+
+dependencies {
+    "playImplementation"("com.google.android.play:review:2.0.2")
+    testImplementation("junit:junit:4.13.2")
 }

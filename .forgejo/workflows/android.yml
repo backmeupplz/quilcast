@@ -56,4 +56,4 @@ jobs:
             rsync -rlc --delete --exclude /.gradle --exclude /.kotlin --exclude /build --exclude /app/build ./ "$src/"
             cd "$src"
           fi
-          ./gradlew --no-daemon --build-cache --configuration-cache assembleDebug
+          ./gradlew --no-daemon --build-cache --configuration-cache assembleDebug testPlayDebugUnitTest

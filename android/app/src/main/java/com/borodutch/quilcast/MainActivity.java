@@ -79,6 +79,13 @@ public class MainActivity extends Activity {
                 if (hex.matches("#[0-9a-f]{6}")) runOnUiThread(() -> bars(Color.parseColor(hex)));
             }
         }, "QuilcastBar");
+        // the page reports each cast or reply sent; RatingPrompt decides whether that's the moment to ask for a rating
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void requestReview() {
+                runOnUiThread(() -> RatingPrompt.cast(MainActivity.this));
+            }
+        }, "QuilcastApp");
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
@@ -172,6 +179,12 @@ public class MainActivity extends Activity {
         if (fullscreen != null) web.getWebChromeClient().onHideCustomView();
         else if (web.canGoBack()) web.goBack();
         else super.onBackPressed();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        RatingPrompt.used(this);
     }
 
     @Override

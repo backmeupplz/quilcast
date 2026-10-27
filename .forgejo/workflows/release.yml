@@ -1,7 +1,8 @@
-# One release vX.Y.Z published on git.borodutch.com ships everything: the bundle to Google Play, the iPhone app to the App Store,
-# the signed APK as quilcast-X.Y.Z.apk and quilcast.apk on the release and on the same release on the GitHub mirror (created there
+# One release vX.Y.Z published on git.borodutch.com ships everything: the play bundle to Google Play, the iPhone app to the App Store,
+# the signed fdroid APK as quilcast-X.Y.Z.apk and quilcast.apk on the release and on the same release on the GitHub mirror (created there
 # when missing; downloads link to GitHub), and the new version to the F-Droid merge request while it's open
 # (once merged, F-Droid follows new tags itself and builds them; it ships our APK only if its own build matches it).
+# Its build entry must say `gradle: [fdroid]` (1.0.0 had no flavors and says `yes`); fdroid.py doesn't change that line.
 # A previous version still waiting for review or in review is replaced on both stores.
 # The apps are windows onto quilcast.com, so web changes reach them without a release: release when the apps change.
 # Before releasing: bump versionName/versionCode in android/app/build.gradle.kts and add
@@ -101,8 +102,9 @@ jobs:
           printf '%s' "$UPLOAD_JKS" | base64 -d > android/upload.jks
       - id: build
         working-directory: android
-        run: ./gradlew bundleRelease assembleRelease
-      # F-Droid compares its own build of the tag with quilcast-X.Y.Z.apk, so it has to come from this clean CI build.
+        run: ./gradlew bundlePlayRelease assembleFdroidRelease
+      # F-Droid compares its own build of the tag (the fdroid flavor: no Google code) with quilcast-X.Y.Z.apk, so it
+      # has to come from this clean CI build.
       # quilcast.apk is the same file under a stable name for releases/latest/download/quilcast.apk links.
       - id: attach
         name: Attach the APK
@@ -114,15 +116,15 @@ jobs:
           RELEASE_NOTES: ${{ github.event.release.body }}
           RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk "quilcast-$VERSION.apk"
-          cp android/app/build/outputs/apk/release/app-release.apk quilcast.apk
+          cp android/app/build/outputs/apk/fdroid/release/app-fdroid-release.apk "quilcast-$VERSION.apk"
+          cp android/app/build/outputs/apk/fdroid/release/app-fdroid-release.apk quilcast.apk
           .github/scripts/attach.sh "$TAG" "quilcast-$VERSION.apk" quilcast.apk
       # Play and F-Droid don't wait on each other: one failing still lets the other ship
       - name: Google Play
         if: ${{ !cancelled() && steps.build.outcome == 'success' && env.MODE != 'testflight-only' }}
         run: |
           [ -n "$PLAY_SERVICE_ACCOUNT_JSON" ] || { echo "::warning::No PLAY_SERVICE_ACCOUNT_JSON secret: skipping Google Play"; exit 0; }
-          python3 .github/scripts/play.py android/app/build/outputs/bundle/release/app-release.aab "$VERSION" "$NOTES_DIR/$CODE.txt" $DRY
+          python3 .github/scripts/play.py android/app/build/outputs/bundle/playRelease/app-play-release.aab "$VERSION" "$NOTES_DIR/$CODE.txt" $DRY
       - name: F-Droid merge request
         if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.attach.outcome != 'failure' && env.MODE != 'testflight-only' }}
         run: python3 .github/scripts/fdroid.py "$VERSION" "$CODE" "${{ needs.version.outputs.commit }}" $DRY
