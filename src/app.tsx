@@ -558,12 +558,15 @@ function prefetch(path: string) {
 function Thread({ hash }: { hash: string }) {
   const [c, setC] = useState<Cast | null>(null)
   const [up, setUp] = useState<Cast[]>([])
+  // the top parent was deleted (or the node lost it), so the reply doesn't pose as a root cast
+  const [lost, setLost] = useState(false)
   const [err, setErr] = useState('')
   const [quotes, setQuotes] = useState(0)
   useEffect(() => {
     let live = true
     setC(null)
     setUp([])
+    setLost(false)
     setErr('')
     setQuotes(0)
     quotesOf(hash).then((q) => live && setQuotes(q.length), () => {})
@@ -575,7 +578,11 @@ function Thread({ hash }: { hash: string }) {
       const chain: Cast[] = []
       for (let p = cast.parent_hash; p && chain.length < 5; ) {
         const pc = await fetchCast(p)
-        if (!pc || !live) break
+        if (!live) break
+        if (!pc) {
+          setLost(true)
+          break
+        }
         chain.unshift(pc)
         setUp([...chain])
         p = pc.parent_hash
@@ -608,6 +615,7 @@ function Thread({ hash }: { hash: string }) {
       {!c && !err && <div class="spinner" />}
       {c && (
         <>
+          {lost && <div class="note">{t('This cast is unavailable.')}</div>}
           {up.map((p) => <CastCard key={p.hash} c={p} line inThread />)}
           <CastCard c={c} focus quotes={quotes} />
           <button class="reply-prompt" onClick={() => (account?.done ? shell.compose({ parent: c }) : go('/join'))}>
