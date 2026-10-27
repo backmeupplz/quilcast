@@ -1,0 +1,15 @@
+Quilcast, hiçbir şirketin sahibi olmadığı açık sosyal ağ Farcaster için küçük ve açık kaynaklı bir istemcidir. Doğrudan Hypersnap ağına bağlanır, paylaştığınız her şeyi kendi cihazınızda imzalar ve anahtarlarınızı da orada tutar.
+
+Takip ettiklerinizin akışını ve gündemi okuyun, konuları tüm bağlamıyla açın, kişileri adlarıyla, cast'leri de metinleriyle arayın. Cast paylaşın, yanıtlayın, alıntılayın, beğenin, recast yapın ve insanları takip edin; fotoğraf ve video ekleyip kanallarda paylaşım yapın. Bildirimler beğenileri, recast'leri ve yeni takipçileri gruplar; yanıtları, bahsetmeleri ve alıntıları geldikçe gösterir.
+
+farcaster.xyz'in doğrudan mesajları ve Sohbet Odaları da burada çalışır: birebir ya da gruplar halinde yazışabilir, o anda canlı olan odaları dinleyebilir, söz almak için el kaldırabilir veya kendi odanızı açabilirsiniz.
+
+Farcaster mini uygulamaları doğrudan Quilcast'in içinde açılır ve en popüler olanlar Keşfet listesinde bir arada durur. Bu uygulamalar Farcaster hesabınızla oturum açabilir ve yerleşik cüzdanı kullanabilir. Cüzdanda istediğiniz kadar Ethereum cüzdanı tutabilir, Base, Ethereum, Optimism, Arbitrum ve Polygon ağlarındaki bakiyeleri, token'ları ve NFT'leri görebilir, token gönderebilir veya bu ağlar arasında takas yapabilirsiniz. Bir mini uygulamanın istediği her imza ve her işlem, imzalanmadan önce size gösterilir.
+
+MySpace tarzı profil görünümleriyle (arka planlar, yazı tipleri, profil şarkısı, Top 8, çıkartmalar ve hareketli efektler), ziyaretçilerinize YouTube videolarınızı ve oynatma listelerinizi oynatan bir profil Winamp'ıyla ve Quorum galerisindeki tüm temalar dahil, uygulamanın tamamına uygulanan temalarla Quilcast'i kendinize göre şekillendirin. Başka dillerdeki cast'leri tek dokunuşla çevirebilirsiniz.
+
+Uygulamada yeni bir Farcaster hesabı oluşturun ya da başka bir yerde zaten kullandığınız kurtarma ifadesiyle giriş yapın. Herhangi birini, cast'lerindeki ve profilindeki ⋯ menüsünden sessize alabilir, engelleyebilir veya şikâyet edebilirsiniz.
+
+Quilcast, quilcast.com adresinde tarayıcıda da çalışır.
+
+Quilcast ücretsizdir, reklam ve takip içermez; kodu MIT lisansıyla https://git.borodutch.com/backmeupplz/quilcast adresinde açıktır.

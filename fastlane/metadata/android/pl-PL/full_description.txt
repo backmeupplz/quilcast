@@ -1,0 +1,15 @@
+Quilcast to niewielki klient z otwartym kodem źródłowym dla Farcastera, otwartej sieci społecznościowej, której nie posiada żadna firma. Łączy się bezpośrednio z siecią Hypersnap, podpisuje wszystko, co publikujesz, na Twoim urządzeniu i tam też przechowuje Twoje klucze.
+
+Przeglądaj wpisy obserwowanych osób i to, co jest na czasie, otwieraj wątki z całym kontekstem, wyszukuj ludzi po nazwie, a casty po treści. Publikuj casty, odpowiadaj i cytuj, dawaj polubienia, rób recasty i obserwuj innych, dodawaj zdjęcia i filmy oraz pisz na kanałach. Powiadomienia grupują polubienia, recasty i nowych obserwujących, a odpowiedzi, wzmianki i cytaty pokazują na bieżąco.
+
+Wiadomości prywatne i pokoje audio z farcaster.xyz również tu działają: pisz z jedną osobą albo w grupie, słuchaj pokoi, które trwają na żywo, podnieś rękę, żeby zabrać głos, albo poprowadź własny pokój.
+
+Miniaplikacje Farcastera otwierają się bezpośrednio w Quilcast, a w zakładce Odkryj znajdziesz te najpopularniejsze. Mogą Cię zalogować przez konto Farcaster i korzystać z wbudowanego portfela, w którym trzymasz dowolnie wiele portfeli Ethereum, widzisz salda, tokeny i NFT w sieciach Base, Ethereum, Optimism, Arbitrum i Polygon oraz wysyłasz tokeny lub wymieniasz je między tymi sieciami. Każdy podpis i każdą transakcję, o które prosi miniaplikacja, widzisz, zanim zostaną podpisane.
+
+Urządź wszystko po swojemu: nadaj profilowi wygląd w stylu MySpace (tła, czcionki, piosenka profilu, Top 8, naklejki i ruchome efekty), dodaj Winampa, który odtwarza odwiedzającym Twoje filmy i playlisty z YouTube, i wybierz motyw dla całej aplikacji, w tym dowolny z galerii Quorum. Casty w innych językach przetłumaczysz jednym dotknięciem.
+
+Załóż nowe konto Farcaster w aplikacji albo zaloguj się frazą odzyskiwania, której używasz już gdzie indziej. Każdego możesz wyciszyć, zablokować lub zgłosić z menu ⋯ przy jego castach i na jego profilu.
+
+Quilcast działa też w przeglądarce pod adresem quilcast.com.
+
+Quilcast jest darmowy, nie ma reklam ani śledzenia, a jego kod jest dostępny na licencji MIT pod adresem https://git.borodutch.com/backmeupplz/quilcast.

@@ -1,0 +1,30 @@
+name: Store texts
+# The App Store and Play listings in every language against the stores' limits (scripts/store-copy.mjs); nothing else runs here.
+on:
+  pull_request:
+    paths: ['appstore/**', 'fastlane/**', 'scripts/store-copy.mjs', '.forgejo/workflows/store.yml']
+  push:
+    branches: [main]
+    paths: ['appstore/**', 'fastlane/**', 'scripts/store-copy.mjs', '.forgejo/workflows/store.yml']
+permissions:
+  contents: read
+concurrency:
+  group: store-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  check:
+    # Our own PRs and pushes run on the Mac runners; outsiders' PRs (AGit via the github bot) on Linux
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["backmeupplz","renovate","claude"]'), github.event.pull_request.user.login)) && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            appstore
+            fastlane
+            scripts
+      - if: runner.os == 'Linux'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/store-copy.mjs

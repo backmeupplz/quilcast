@@ -1,0 +1,1 @@
+Anahtarlarınızın cihazınızda kaldığı küçük ve açık bir Farcaster istemcisi

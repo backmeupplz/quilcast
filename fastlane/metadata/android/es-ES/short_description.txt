@@ -1,0 +1,1 @@
+Un cliente de Farcaster pequeño y abierto, con tus claves en tu dispositivo

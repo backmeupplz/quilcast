@@ -4,10 +4,10 @@ name: CI
 # (android.yml and ios.yml check those).
 on:
   pull_request:
-    paths-ignore: ['android/**', 'ios/**', 'fastlane/**', 'appstore/**', '.github/scripts/**', '.forgejo/workflows/android.yml', '.forgejo/workflows/ios.yml', '.forgejo/workflows/release.yml', '*.md']
+    paths-ignore: ['android/**', 'ios/**', 'fastlane/**', 'appstore/**', '.github/scripts/**', '.forgejo/workflows/android.yml', '.forgejo/workflows/ios.yml', '.forgejo/workflows/release.yml', '.forgejo/workflows/store.yml', 'scripts/store-copy.mjs', '*.md']
   push:
     branches: [main]
-    paths-ignore: ['android/**', 'ios/**', 'fastlane/**', 'appstore/**', '.github/scripts/**', '.forgejo/workflows/android.yml', '.forgejo/workflows/ios.yml', '.forgejo/workflows/release.yml', '*.md']
+    paths-ignore: ['android/**', 'ios/**', 'fastlane/**', 'appstore/**', '.github/scripts/**', '.forgejo/workflows/android.yml', '.forgejo/workflows/ios.yml', '.forgejo/workflows/release.yml', '.forgejo/workflows/store.yml', 'scripts/store-copy.mjs', '*.md']
 
 concurrency:
   group: ci-${{ github.ref }}

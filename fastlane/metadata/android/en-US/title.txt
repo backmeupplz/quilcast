@@ -1,1 +1,1 @@
-Quilcast
+Quilcast: Farcaster Client

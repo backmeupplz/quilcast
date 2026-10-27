@@ -1,0 +1,1 @@
+Mały, otwarty klient Farcastera, w którym klucze zostają na Twoim urządzeniu

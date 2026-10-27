@@ -1,0 +1,38 @@
+# App Store listing (it)
+
+## Name (max 30)
+Quilcast: client Farcaster
+
+## Subtitle (max 30)
+Social network decentralizzato
+
+## Promotional text (max 170)
+Un piccolo client Farcaster aperto che parla direttamente con la rete. Le tue chiavi restano sul tuo dispositivo, e mini app, messaggi e Spazi sono tutti qui.
+
+## Keywords (max 100)
+criptovalute,portafoglio,messaggi,chat,cast,dapps,token,temi,profilo,comunità,eth,spazi,audio,swap
+
+## Description (max 4000)
+Quilcast è un piccolo client open source per Farcaster, il social network aperto che non appartiene a nessuna azienda. Comunica direttamente con la rete Hypersnap, firma tutto ciò che pubblichi sul tuo dispositivo e custodisce lì anche le tue chiavi.
+
+Leggi il feed delle persone che segui e i contenuti di tendenza, apri le discussioni con tutto il loro contesto e cerca le persone per nome o i cast per testo. Puoi pubblicare, rispondere, citare, mettere Mi piace, fare recast e seguire, allegare foto e video e pubblicare nei canali. Le notifiche raggruppano Mi piace, recast e nuovi follower, e mostrano risposte, menzioni e citazioni non appena arrivano.
+
+Funzionano anche i messaggi diretti e gli Spazi audio in diretta di farcaster.xyz: puoi chattare a due o in gruppo, ascoltare ciò che è in diretta, alzare la mano o ospitare una stanza tutta tua.
+
+Le mini app di Farcaster si aprono direttamente in Quilcast, e la sezione Scopri raccoglie le più popolari. Possono farti accedere con il tuo account Farcaster e usare il wallet integrato, che contiene tutti i wallet Ethereum che vuoi. Il wallet mostra saldi, token e NFT su Base, Ethereum, Optimism, Arbitrum e Polygon, e ti permette di inviare token o di scambiarli tra queste reti. Prima di firmare, Quilcast ti mostra ogni firma e ogni transazione richiesta da una mini app.
+
+Personalizza il tuo profilo con uno stile alla MySpace (sfondi, caratteri, una canzone del profilo, una Top 8, sticker ed effetti animati) e un Winamp che riproduce i tuoi video e le tue playlist di YouTube per chi ti visita, e tutta l’app con i temi, compresi tutti quelli della galleria di Quorum. I cast in altre lingue si traducono con un tocco.
+
+Crea un nuovo account Farcaster direttamente nell’app oppure accedi con la frase di recupero che usi già altrove. Dal menu ⋯ sui cast e sul profilo di chiunque puoi silenziarlo, bloccarlo o segnalarlo.
+
+Quilcast è gratuito, senza pubblicità e senza tracciamento, e il suo codice è disponibile con licenza MIT su https://git.borodutch.com/backmeupplz/quilcast.
+
+## Screenshot captions
+1. Farcaster, direttamente dalla rete
+2. Profili da personalizzare a modo tuo
+3. Mini app e wallet integrati
+4. Cambia stile a tutta l’app con i temi
+5. Le chiavi restano sul tuo dispositivo
+
+## Feature graphic tagline (max 60)
+Un piccolo client Farcaster, aperto e senza pubblicità

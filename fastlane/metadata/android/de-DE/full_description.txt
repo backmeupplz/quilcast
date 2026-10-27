@@ -1,0 +1,15 @@
+Quilcast ist ein kleiner Open-Source-Client für Farcaster, das offene soziale Netzwerk, das keinem Unternehmen gehört. Die App spricht direkt mit dem Hypersnap-Netzwerk, signiert alles, was du postest, auf deinem eigenen Gerät und bewahrt dort auch deine Schlüssel auf.
+
+Lies den Feed der Leute, denen du folgst, und schau dir an, was gerade im Trend liegt. Öffne Threads mit ihrem ganzen Kontext und finde Leute über ihren Namen oder Casts über ihren Text. Du kannst posten, antworten, zitieren, liken, recasten und folgen, Fotos und Videos anhängen und in Kanälen posten. Die Benachrichtigungen fassen Likes, Recasts und neue Follower zusammen und zeigen dir Antworten, Erwähnungen und Zitate, sobald sie eintreffen.
+
+Auch die Direktnachrichten und Live-Audio-Spaces von farcaster.xyz funktionieren hier: Du chattest zu zweit oder in Gruppen, hörst dir an, was gerade live läuft, hebst die Hand oder eröffnest deinen eigenen Raum.
+
+Farcaster-Mini-Apps öffnen sich direkt in Quilcast, und unter „Entdecken“ findest du die beliebtesten. Sie können dich mit deinem Farcaster-Account anmelden und die eingebaute Wallet nutzen, die so viele Ethereum-Wallets aufnimmt, wie du möchtest. Die Wallet zeigt Guthaben, Tokens und NFTs auf Base, Ethereum, Optimism, Arbitrum und Polygon, und du kannst Tokens senden oder zwischen diesen Chains tauschen. Jede Signatur und jede Transaktion, die eine Mini-App anfordert, wird dir gezeigt, bevor sie signiert wird.
+
+Gestalte dein Profil mit Looks im MySpace-Stil (Hintergründe, Schriften, ein Profilsong, eine Top 8, Sticker und bewegte Effekte) sowie einem Winamp, der Besuchern deine YouTube-Videos und Playlists vorspielt, und die ganze App mit Themes, darunter jedes Theme aus der Galerie von Quorum. Casts in anderen Sprachen übersetzt du mit einem Tippen.
+
+Erstelle direkt in der App einen neuen Farcaster-Account oder melde dich mit der Wiederherstellungsphrase an, die du schon anderswo nutzt. Über das ⋯-Menü an Casts und Profilen kannst du jeden stummschalten, blockieren oder melden.
+
+Quilcast gibt es auch im Web unter quilcast.com.
+
+Quilcast ist kostenlos, zeigt keine Werbung und trackt dich nicht. Der Code steht unter der MIT-Lizenz auf https://git.borodutch.com/backmeupplz/quilcast.

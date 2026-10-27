@@ -1,0 +1,38 @@
+# App Store listing (id)
+
+## Name (max 30)
+Quilcast: Media Sosial Web3
+
+## Subtitle (max 30)
+Farcaster dengan dompet kripto
+
+## Promotional text (max 170)
+Klien Farcaster yang kecil dan terbuka ini terhubung langsung ke jaringan. Kuncimu tetap di perangkatmu, dan aplikasi mini, pesan, serta Ruang Audio ada di sini.
+
+## Keywords (max 100)
+sosmed,jejaring,terdesentralisasi,cast,ruang audio,tema,pesan,obrolan,komunitas,profil,terjemahan
+
+## Description (max 4000)
+Quilcast adalah klien Farcaster yang kecil dan open source. Farcaster sendiri adalah jejaring sosial terbuka yang tidak dimiliki perusahaan mana pun. Quilcast terhubung langsung ke jaringan Hypersnap, menandatangani semua yang kamu posting di perangkatmu sendiri, dan menyimpan kuncimu di sana juga.
+
+Baca feed dari orang yang kamu ikuti dan apa yang sedang trending, buka thread lengkap dengan konteksnya, lalu cari orang lewat namanya atau cari teks di dalam cast. Kamu bisa posting, membalas, mengutip, menyukai, me-recast, dan mengikuti orang, melampirkan foto dan video, serta posting ke saluran. Notifikasi mengelompokkan suka, recast, dan pengikut baru, lalu menampilkan balasan, mention, dan kutipan begitu masuk.
+
+Pesan langsung dan Ruang Audio live dari farcaster.xyz juga bisa dipakai di sini. Kamu bisa mengobrol berdua atau dalam grup, mendengarkan siaran yang sedang live, angkat tangan untuk ikut bicara, atau membuka ruanganmu sendiri.
+
+Aplikasi mini Farcaster terbuka langsung di dalam Quilcast, dan daftar Temukan berisi aplikasi mini yang paling populer. Aplikasi mini bisa membuatmu masuk dengan akun Farcaster dan memakai dompet bawaan, yang bisa menampung dompet Ethereum sebanyak yang kamu mau, menampilkan saldo, token, dan NFT di Base, Ethereum, Optimism, Arbitrum, dan Polygon, serta mengirim atau menukar token di jaringan-jaringan itu. Setiap tanda tangan dan transaksi yang diminta aplikasi mini selalu ditunjukkan kepadamu sebelum ditandatangani.
+
+Buat Quilcast terasa milikmu dengan tampilan profil ala MySpace (latar, font, lagu profil, Top 8, stiker, dan efek bergerak), Winamp di profilmu yang memutar video dan playlist YouTube-mu untuk pengunjung, serta tema untuk seluruh aplikasi, termasuk semua tema dari galeri Quorum. Cast dalam bahasa lain bisa diterjemahkan dengan sekali ketuk.
+
+Buat akun Farcaster baru langsung di aplikasi, atau masuk dengan frasa pemulihan yang sudah kamu pakai di aplikasi lain. Kamu bisa membisukan, memblokir, atau melaporkan siapa pun lewat menu ⋯ di cast dan profilnya.
+
+Quilcast gratis, tanpa iklan dan tanpa pelacakan, dan kodenya berlisensi MIT di https://git.borodutch.com/backmeupplz/quilcast.
+
+## Screenshot captions
+1. Farcaster langsung dari jaringannya
+2. Profil yang bisa kamu atur sesukamu
+3. Sudah ada aplikasi mini dan dompet
+4. Ganti gaya seluruh aplikasi lewat tema
+5. Kuncimu tetap ada di perangkatmu
+
+## Feature graphic tagline (max 60)
+Farcaster tanpa perantara, dengan kunci di perangkatmu
