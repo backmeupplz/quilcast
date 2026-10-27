@@ -1,7 +1,7 @@
 // cleanTheme is the only thing between a stored or shared theme and the page's CSS, so hostile input has to come out inert.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cleanTheme, ownMedia, themeId, themeVars } from './shared.ts'
+import { cleanTheme, ownMedia, readableOn, themeId, themeVars } from './shared.ts'
 
 test('cleanTheme keeps valid settings and drops everything else', () => {
   const th = cleanTheme({
@@ -43,4 +43,12 @@ test('content and effect opacity: whole percents from 0 to 100, unset keeps toda
   const v = themeVars(cleanTheme({ fx: 'matrix', sheer: 64, fxAlpha: 35 }))
   assert.deepEqual([v['--th-sheer'], v['--th-fx-a']], ['64%', '0.35'])
   assert.equal(themeVars(cleanTheme({ fx: 'matrix' }))['--th-fx-a'], undefined)
+})
+
+test('text on a theme\'s accent stays readable when the theme leaves it out', () => {
+  assert.equal(readableOn('#8f7bff'), '#0b0b0f') // the app's dark-mode purple: white on it is 3.3:1
+  assert.equal(readableOn('#6447f5'), '#ffffff')
+  assert.equal(themeVars({ accent: '#7cc4ff' })['--on-accent'], '#0b0b0f')
+  assert.equal(themeVars({ accent: '#7cc4ff', onAccent: '#ffffff' })['--on-accent'], '#ffffff')
+  assert.equal(themeVars({})['--on-accent'], undefined)
 })

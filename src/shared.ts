@@ -178,6 +178,11 @@ export function cleanLook(x: unknown): Look {
 }
 
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(' ')
+/** White or near-black, whichever reads better on `bg` (WCAG relative luminance; they tie at about 0.19). */
+export function readableOn(bg: string) {
+  const [r, g, b] = rgb(bg).split(' ').map((v) => { const c = +v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.187 ? '#0b0b0f' : '#ffffff'
+}
 
 /** The look's colors and font as CSS variables on the profile's wrapper; the app's styles take them from there. */
 export function lookVars(l: Look) {
@@ -238,8 +243,8 @@ export type Theme = Partial<Record<ThemeColor, string>> & {
 }
 /** The app's own colors, for anything a theme leaves out (style.css :root has the same). */
 export const DEFAULTS = {
-  light: { bg: '#ffffff', card: '#ffffff', ink: '#0f1419', muted: '#64676f', line: '#e8e8ec', soft: '#f4f4f6', accent: '#6447f5', onAccent: '#ffffff', like: '#e0245e', recast: '#00a67d', warn: '#c2410c' },
-  dark: { bg: '#0b0b0f', card: '#131319', ink: '#ececf1', muted: '#8b8b98', line: '#23232b', soft: '#1a1a21', accent: '#8f7bff', onAccent: '#ffffff', like: '#f9518e', recast: '#2fd08c', warn: '#fb923c' },
+  light: { bg: '#ffffff', card: '#ffffff', ink: '#0f1419', muted: '#64676f', line: '#e8e8ec', soft: '#f4f4f6', accent: '#6447f5', onAccent: '#ffffff', like: '#d41f57', recast: '#007f5f', warn: '#c2410c' },
+  dark: { bg: '#0b0b0f', card: '#131319', ink: '#ececf1', muted: '#8b8b98', line: '#23232b', soft: '#1a1a21', accent: '#8f7bff', onAccent: '#0b0b0f', like: '#f9518e', recast: '#2fd08c', warn: '#fb923c' },
 }
 // a font a Quorum skin brought along, kept on our server
 export const isThemeFont = (u: unknown): u is string => typeof u === 'string' && /^https:\/\/quilcast\.com\/m\/[0-9a-f]{24}\.(ttf|otf)$/.test(u)
@@ -278,7 +283,7 @@ export function themeVars(th: Theme) {
   const v: Record<string, string> = {}
   const set = (k: string, val?: string) => val !== undefined && (v[k] = val)
   set('--bg', th.bg), set('--card', th.card), set('--ink', th.ink), set('--muted', th.muted), set('--line', th.line), set('--soft', th.soft)
-  set('--accent', th.accent), set('--on-accent', th.onAccent), set('--like', th.like), set('--recast', th.recast), set('--warn', th.warn)
+  set('--accent', th.accent), set('--on-accent', th.onAccent ?? (th.accent ? readableOn(th.accent) : undefined)), set('--like', th.like), set('--recast', th.recast), set('--warn', th.warn)
   set('--bar', th.bar), set('--lk-name', th.nameColor)
   if (th.ink) v['--hover'] = `rgb(${rgb(th.ink)} / 0.04)`
   if (th.accent) v['--accent-soft'] = `color-mix(in srgb, ${th.accent} 16%, ${th.bg || 'var(--bg)'})`

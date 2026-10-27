@@ -11,16 +11,18 @@
   --soft: light-dark(#f4f4f6, #1a1a21);
   --hover: light-dark(rgb(15 20 25 / 0.035), rgb(255 255 255 / 0.03));
   --accent: light-dark(#6447f5, #8f7bff);
+  /* text on the accent: dark on dark mode's light purple, since white on it reads at 3.3:1 */
+  --on-accent: light-dark(#fff, #0b0b0f);
   --accent-soft: light-dark(#efecff, #221d3d);
-  --like: light-dark(#e0245e, #f9518e);
-  --recast: light-dark(#00a67d, #2fd08c);
+  --like: light-dark(#d41f57, #f9518e);
+  --recast: light-dark(#007f5f, #2fd08c);
   --warn: light-dark(#c2410c, #fb923c);
 }
 :root[data-theme='light'] { color-scheme: light; }
 :root[data-theme='dark'] { color-scheme: dark; }
 /* (color is inherited already worked out from the page's, so it's set here again) */
 .mini-ask, .wallet-form { color: var(--ink); }
-.mini-ask, .wallet-form, .mini-top small { --th-font: initial; --th-btn: initial; --on-accent: initial; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+.mini-ask, .wallet-form, .mini-top small { --th-font: initial; --th-btn: initial; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -866,7 +868,7 @@ small.warn { color: var(--warn); }
 @media (prefers-reduced-motion: reduce) { :root[data-jp] .col::before { animation: none; text-indent: 0; } }
 
 /* Spaces (src/spaces.tsx) */
-.live-pill { display: inline-block; font-style: normal; font-size: 11px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; background: var(--like); padding: 2px 7px; border-radius: calc(99px * var(--rs, 1)); }
+.live-pill { display: inline-block; font-style: normal; font-size: 11px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; color: var(--bg); background: var(--like); padding: 2px 7px; border-radius: calc(99px * var(--rs, 1)); }
 .rec-pill { font-style: normal; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--like); margin-left: 6px; }
 .space-row .row-meta { align-items: flex-end; gap: 3px; }
 .space-row .row-meta small { color: var(--muted); font-weight: 500; font-size: 12px; }
@@ -1315,6 +1317,7 @@ body:has(.wa-bar) .space-bar { bottom: 64px; }
    no theme on, Quorum's own dark surfaces and purple accent; a theme's colors (set inline on <html>) win ---------- */
 /* (Japanese mode and Ogre mode keep their own colors when they're on too) */
 :root[data-quorum]:not([data-jp]):not([data-ogre]) {
+  --on-accent: #fff;
   --bg: light-dark(#ffffff, #161318);
   --card: light-dark(#fafafd, #1d1a21);
   --soft: light-dark(#f1f0f5, #241f27);
@@ -1714,7 +1717,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 .q-composer textarea { flex: 1; min-width: 0; min-height: 0; max-height: 240px; padding: 4px; border: 0; border-radius: 0; background: none; box-shadow: none; resize: none; field-sizing: content; font-size: 16px; line-height: 24px; overflow-wrap: anywhere; }
 .q-composer textarea:focus, .q-composer textarea:hover { border: 0; background: none; box-shadow: none; }
 .q-composer:focus-within { border-color: var(--accent); }
-.q-send { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0 0 0 2px; border: 0; border-radius: 99px; background: var(--accent); color: #fff; transition: background-color 0.15s, opacity 0.15s; }
+.q-send { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0 0 0 2px; border: 0; border-radius: 99px; background: var(--accent); color: var(--on-accent); transition: background-color 0.15s, opacity 0.15s; }
 .q-send:disabled { background: var(--q-strong); opacity: 0.6; }
 @media (hover: hover) { .q-send:hover:not(:disabled) { background: var(--q-accent-hi); } }
 @media (max-width: 699px) {
