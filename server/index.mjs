@@ -587,12 +587,12 @@ async function drawHome() {
     ...w.lone.map((u) => (shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOf(u)).catch(() => null))).then((x) => (sizes[u] = x))),
   ]), new Promise((ok) => setTimeout(ok, 3000))])
   const data = { casts, got: { ...got }, shapes: { ...sizes } }
-  const { html: app, css, lead } = homeBody(data, VERSION)
+  const { html: app, css, lead, meta } = homeBody(data, VERSION)
   if (lead) leads.add(lead), (data.lead = lead), leads.size > 20 && leads.delete(leads.values().next().value)
   // the app's stylesheet comes inline too: the page paints without a second round trip
   const style = APP_CSS + css
   // the page is drawn without the app, so its scripts come after the page's own pictures
-  const page = index.replace(APP_CSS_LINK, () => `<style>${style}</style>`)
+  const page = index.replace('<script>', () => `${meta}<script>`).replace(APP_CSS_LINK, () => `<style>${style}</style>`)
     .replace(/<(script type="module"|link rel="modulepreload") crossorigin /g, '<$1 crossorigin fetchpriority="low" ')
     .replace('<div id="app"></div>', () => `<div id="app">${app}<script type="application/json" id="boot">${JSON.stringify(data).replace(/</g, '\\u003c')}</script></div>`)
   return { at: Date.now(), page, csp: CSP.replace("style-src 'self'", () => `style-src 'self' ${sha(style)}`) }

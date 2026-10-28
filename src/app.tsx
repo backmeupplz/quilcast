@@ -1480,8 +1480,9 @@ loadLang().then(async () => {
   const root = document.getElementById('app')!
   // the server's page shows its first picture (server/home.mjs) before the app draws it again, so a phone's largest
   // paint doesn't wait for the app. The browser counts a picture as painted a frame or two after drawing it, and not
-  // at all if it's gone by then, so the app waits for that (or 200 ms where the browser doesn't say)
-  const lead = root.querySelector<HTMLImageElement>('img[fetchpriority="high"]')
+  // at all if it's gone by then, so the app waits for that (or 200 ms where the browser doesn't say). A browser with its
+  // own account never shows that page (index.html data-own), nor loads the picture, so it doesn't wait
+  const lead = !document.documentElement.hasAttribute('data-own') && root.querySelector<HTMLImageElement>('img[fetchpriority="high"]')
   if (lead) await new Promise((ok) => {
     setTimeout(ok, 3000)
     const shown = () => {

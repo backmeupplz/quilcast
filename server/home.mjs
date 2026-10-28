@@ -71,14 +71,15 @@ export function body(d, version, now = Date.now()) {
   const logo = (size) => `<svg viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"></rect><path d="${LOGO}" fill="#fff"></path></svg>`
   // `set`: the picture's srcset (ui.tsx Media). The page's first picture, the largest thing on a phone's first screen
   // (when it's in the first two casts, else it's further down), comes ahead of the rest and through quilcast.com
-  // (shared.ts viaUs), over the page's own connection; `lead` tells the app to ask for it the same way. Still lazy:
-  // a browser with its own account never shows this page. `low`: a link preview's pictures (other sites', often huge
+  // (shared.ts viaUs), over the page's own connection; `lead` tells the app to ask for it the same way, `meta` the
+  // head's script to ask for it first (index.html). Still lazy: a browser with its own account never shows this page. `low`: a link preview's pictures (other sites', often huge
   // for their box) come after the casts' own (ui.tsx Img)
   let first = true
   let lead = null
+  let meta = ''
   const img = (src, k = '', set, low) => {
     const top = set && first && (first = false, true)
-    if (top) (lead = src), (src = viaUs(src)), (set = viaUs(set))
+    if (top) (lead = src), (src = viaUs(src)), (set = viaUs(set)), (meta = `<meta name="quilcast:lead" content="${esc(set)}" data-sizes="${IMG_SIZES}">`)
     return `<img${k ? ` class="${k}"` : ''} alt="" loading="lazy"${top ? ' fetchpriority="high"' : low ? ' fetchpriority="low"' : ''} referrerpolicy="no-referrer" src="${esc(src.replace(/^http:\/\//i, 'https://'))}"` +
       `${set ? ` srcset="${esc(set)}" sizes="${IMG_SIZES}"` : ''}>`
   }
@@ -176,5 +177,5 @@ export function body(d, version, now = Date.now()) {
     `<main class="col"><div class="phead"><div class="phead-row"><a class="brand only-mobile" href="/" aria-label="Quilcast home">${logo(26)}</a><h1>Home</h1></div></div>` +
     `<div class="banner"><div><b>Farcaster without the middlemen</b><p>Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.</p></div><a class="btn small" href="/join">Join</a></div>` +
     `${cards}<div></div></main></div>`
-  return { html, css: [...rules].map(([decl, k]) => `#app .${k}{${decl}}`).join(''), lead }
+  return { html, css: [...rules].map(([decl, k]) => `#app .${k}{${decl}}`).join(''), lead, meta }
 }
