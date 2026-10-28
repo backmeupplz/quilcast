@@ -14,7 +14,7 @@ COPY . .
 # needs into /out, so the image gets one layer for it instead of one per COPY.
 # The server imports the helpers it shares with the app as TypeScript (Node strips the types).
 RUN npm run build && npm test \
-  && mkdir -p /out/src && cp -r dist server package.json /out/ && cp src/shared.ts src/fx.ts /out/src/
+  && mkdir -p /out/src && cp -r dist server package.json /out/ && cp src/shared.ts src/fx.ts src/removed.json /out/src/
 
 # the runtime's own install, built alongside: browser-only packages (viem, hls.js, preact…) are devDependencies, so
 # this keeps just what server/ imports. Pruning the full install instead took ~4 minutes on the Easypanel host
