@@ -5,6 +5,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 
 // App Store locales whose Play folder has another name (.github/scripts/notes.py maps the same codes, plus languages without a listing yet)
 const PLAY = { 'es-MX': 'es-419', it: 'it-IT', ru: 'ru-RU', pl: 'pl-PL', tr: 'tr-TR', ja: 'ja-JP', ko: 'ko-KR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW', 'ar-SA': 'ar', hi: 'hi-IN', sv: 'sv-SE' }
+// Every limit counts characters. For keywords App Store Connect's reference says "up to 100 bytes", but App Store Connect
+// counts characters: it holds Todorant's ru and uk keywords at 91 and 92 characters, which are 169 and 171 UTF-8 bytes, on
+// every version from 2.2.0 to 2.2.11 (read through its API on 2026-10-28, #238)
 const LIMITS = { Name: 30, Subtitle: 30, 'Promotional text': 170, Keywords: 100, Description: 4000, 'Feature graphic tagline': 60 }
 // in Latin letters and the usual spellings in the listings' own scripts
 const PLATFORMS = /android|\bgoogle\b|google ?play|f-droid|fdroid|\bapk\b|play store|安卓|アンドロイド|안드로이드|андроид|андроїд|أندرويد|एंड्रॉइड|एंड्रॉयड|اندرويد|แอนดรอยด์|구글|グーグル|谷歌|гугл|плей ?маркет|play ?(?:market|маркет|ストア|스토어|商店)|متجر ?play|गूगल|جوجل|غوغل|กูเกิล/i
@@ -108,9 +111,13 @@ function play(locale, dir) {
   }
 }
 
-const locales = ['en-US', ...readdirSync('appstore', { withFileTypes: true }).filter((d) => d.isDirectory() && existsSync(`appstore/${d.name}/listing.md`)).map((d) => d.name)]
+const file = (locale) => (locale === 'en-US' ? 'appstore/listing.md' : `appstore/${locale}/listing.md`)
+const locales = ['en-US', ...readdirSync('appstore', { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name)].filter((l) => existsSync(file(l)))
+// every localization STOREFRONTS names has a listing, so deleting one fails here instead of passing with fewer languages
+// (and the keyword check below skipping it)
+for (const locale of new Set(Object.values(STOREFRONTS).flat())) if (!locales.includes(locale)) fail(locale, `no ${file(locale)}`)
 for (const locale of locales) {
-  listing(locale, locale === 'en-US' ? 'appstore/listing.md' : `appstore/${locale}/listing.md`)
+  listing(locale, file(locale))
   play(locale, `fastlane/metadata/android/${PLAY[locale] ?? locale}`)
 }
 // a keyword that other localizations already carry in every storefront indexing this one takes up space for nothing;
