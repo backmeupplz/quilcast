@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
-import { castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, P, shortUrl, sized, spaceOf, themeId, themeVars, TOKENS, X_LOGO, type Look, type Theme } from './shared.ts'
+import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, P, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, viaUs, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -110,9 +110,10 @@ export const Tabs = <T extends string>({ tabs, value, set }: { tabs: [T, string]
 )
 
 /** Someone else's image: lazy, sent without a referrer, and hidden rather than broken when it fails. An http:// one is
- * asked for over https://, as Chrome would anyway, so the page never loads mixed content. */
-export const Img = (p: { src?: string; class?: string; style?: string }) => (
-  <img alt="" loading="lazy" referrerpolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} {...p} src={p.src?.replace(/^http:\/\//i, 'https://')} />
+ * asked for over https://, as Chrome would anyway, so the page never loads mixed content. `low`: a link preview's
+ * pictures (other sites', often huge for their box) come after the casts' own (server/home.mjs too). */
+export const Img = ({ low, ...p }: { src?: string; class?: string; style?: string; srcset?: string; sizes?: string; low?: boolean }) => (
+  <img alt="" loading="lazy" fetchpriority={low ? 'low' : undefined} referrerpolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} {...p} src={p.src?.replace(/^http:\/\//i, 'https://')} />
 )
 
 /** A mini app's icon, or the first letter of its name when there's none or it won't load. */
@@ -298,15 +299,14 @@ export function Media({ urls: given, images }: { urls: string[]; images?: boolea
   const imgs = images ? urls : urls.filter(isImg)
   const shown = imgs.slice(0, 4)
   // a lone image keeps its own shape; when warm() learned its size, its box has that shape before it loads
-  const one = shown.length === 1 ? shapes.get(sized(shown[0], 'w=1200')) : null
-  const box = one && one[0] > 0 && one[1] > 0 ? `width:min(100%,${one[0]}px,${Math.round((510 * one[0]) / one[1])}px);aspect-ratio:${one[0]}/${one[1]}` : undefined
+  const box = boxOf(shown.length === 1 ? shapes.get(sized(shown[0], 'w=1200')) : null)
   return (
     <>
       {imgs.length > 0 && (
         <div class={`imgs n${shown.length}`} onClick={stop}>
           {shown.map((u, i) => (
             <button class="img" aria-label={t('Open image {n} of {total}', { n: i + 1, total: imgs.length })} onClick={() => shell.view(imgs, i)}>
-              <Img src={sized(u, 'w=1200')} style={box} />
+              <Img src={our(sized(u, 'w=1200'))} style={box} {...((box || shown.length > 1) && srcsetOf(u) ? { srcset: our(srcsetOf(u)!), sizes: `auto, ${IMG_SIZES}` } : {})} />
               {i === 3 && imgs.length > 4 && <span class="more-imgs">+{imgs.length - 4}</span>}
             </button>
           ))}
@@ -359,7 +359,7 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
   return (
     <div class="tweet" onClick={(e) => (stop(e), open(u, '_blank', 'noopener,noreferrer'))} role="link" tabIndex={0}>
       <div class="tw-head">
-        {safeUrl(t.author.avatar) && <Img class="tw-av" src={safeUrl(t.author.avatar)} />}
+        {safeUrl(t.author.avatar) && <Img class="tw-av" src={safeUrl(t.author.avatar)} low />}
         {/* the X logo by the name: alone in the corner it looked like a close button */}
         <b>{t.author.name}</b><svg class="tw-x" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d={X_LOGO} fill="currentColor" /></svg>
         <span class="handle">@{t.author.handle}</span>
@@ -367,7 +367,7 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
       </div>
       {t.text && <RichText text={t.text.replace(/\s*https:\/\/t\.co\/\S+$/, '')} class="text tw-text" />}
       {t.photos.length > 0 && <Media urls={t.photos} />}
-      {!t.photos.length && video && <div class="tw-video"><Img src={video} /><span class="play"><Icon d={P.play} fill size={24} /></span></div>}
+      {!t.photos.length && video && <div class="tw-video"><Img src={video} low /><span class="play"><Icon d={P.play} fill size={24} /></span></div>}
       {t.quote && <div class="tw-quote"><b>{t.quote.name}</b> <span class="handle">@{t.quote.handle}</span><p>{t.quote.text}</p></div>}
       <div class="tw-stats"><span>{tn(t.replies || 0, '{n} reply', '{n} replies', { n: n(t.replies) })}</span><span>{tn(t.reposts || 0, '{n} repost', '{n} reposts', { n: n(t.reposts) })}</span><span>{tn(t.likes || 0, '{n} like', '{n} likes', { n: n(t.likes) })}</span></div>
     </div>
@@ -383,9 +383,14 @@ export const unfurl = (u: string) => {
 // starts from them, at its final size
 const got = new Map<string, unknown>()
 const shapes = new Map<string, [number, number] | null>()
+// the home page's first picture comes through quilcast.com (server/home.mjs `lead`); the app asks for it the same way,
+// so it's the picture already there rather than another download
+let lead = ''
+const our = (s: string) => (lead && s.includes(lead.replace(/w=1200$/, '')) ? viaUs(s) : s)
 
 /** What the server drew its home page with (server/home.mjs): with them the app's first frame is that page. */
-export function seed(d: { got: Record<string, unknown>; shapes: Record<string, [number, number] | null> }) {
+export function seed(d: { got: Record<string, unknown>; shapes: Record<string, [number, number] | null>; lead?: string }) {
+  lead = d.lead || ''
   for (const [k, v] of Object.entries(d.got)) {
     got.set(k, v)
     if (k.startsWith('u:')) unfurls.set(k.slice(2), Promise.resolve(v as Unfurl))
@@ -577,9 +582,9 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   return (
     <a class={`linkcard${image ? ' big' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow"
       onClick={(e) => (e.stopPropagation(), app && !e.metaKey && !e.ctrlKey && !e.shiftKey && (e.preventDefault(), launchApp({ ...app, icon }, { cast: c, embed: u })))}>
-      {image && <Img class="lc-img" src={sized(image, 'w=1200')} />}
+      {image && <Img class="lc-img" src={sized(image, 'w=1200')} low />}
       <span class="lc-text">
-        <span class="lc-site">{icon && <Img src={icon} />}{new URL(u).hostname.replace(/^www\./, '')}</span>
+        <span class="lc-site">{icon && <Img src={icon} low />}{new URL(u).hostname.replace(/^www\./, '')}</span>
         {d?.title && <b class="lc-title">{d.title}</b>}
         {d?.description && <span class="lc-desc">{d.description}</span>}
       </span>

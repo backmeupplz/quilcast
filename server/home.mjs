@@ -2,7 +2,7 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { castOf, castText, designId, embedLayout, isImg, isVid, LOGO, n, P, safeUrl, shortUrl, sized, spaceOf, themeId, TOKENS, toUrl, X_LOGO } from '../src/shared.ts'
+import { boxOf, castOf, castText, designId, embedLayout, isImg, isVid, LOGO, n, P, safeUrl, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, TOKENS, toUrl, viaUs, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -69,7 +69,19 @@ export function body(d, version, now = Date.now()) {
   }
   const icon = (d, size = 18, fill = false) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="${fill ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"></path></svg>`
   const logo = (size) => `<svg viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"></rect><path d="${LOGO}" fill="#fff"></path></svg>`
-  const img = (src, k = '') => `<img${k ? ` class="${k}"` : ''} alt="" loading="lazy" referrerpolicy="no-referrer" src="${esc(src.replace(/^http:\/\//i, 'https://'))}">`
+  // `set`: the picture's srcset (ui.tsx Media). The page's first picture, the largest thing on a phone's first screen
+  // (when it's in the first two casts, else it's further down), comes ahead of the rest and through quilcast.com
+  // (shared.ts viaUs), over the page's own connection; `lead` tells the app to ask for it the same way. Still lazy:
+  // a browser with its own account never shows this page. `low`: a link preview's pictures (other sites', often huge
+  // for their box) come after the casts' own (ui.tsx Img)
+  let first = true
+  let lead = null
+  const img = (src, k = '', set, low) => {
+    const top = set && first && (first = false, true)
+    if (top) (lead = src), (src = viaUs(src)), (set = viaUs(set))
+    return `<img${k ? ` class="${k}"` : ''} alt="" loading="lazy"${top ? ' fetchpriority="high"' : low ? ' fetchpriority="low"' : ''} referrerpolicy="no-referrer" src="${esc(src.replace(/^http:\/\//i, 'https://'))}"` +
+      `${set ? ` srcset="${esc(set)}" sizes="auto, ${IMG_SIZES}"` : ''}>`
+  }
   const rich = (text, k = 'text') => `<p class="${k}" dir="auto">${text.split(TOKENS).map((p, i) => {
     if (i % 2 === 0) return esc(p)
     if (p[0] === '@') return `<a href="/u/${esc(p.slice(1))}">${esc(p)}</a>`
@@ -87,9 +99,9 @@ export function body(d, version, now = Date.now()) {
     const urls = given.flatMap((u) => safeUrl(u) ?? [])
     const imgs = images ? urls : urls.filter(isImg)
     const shown = imgs.slice(0, 4)
-    const one = shown.length === 1 ? d.shapes[sized(shown[0], 'w=1200')] : null
-    const box = one && one[0] > 0 && one[1] > 0 ? cls(`width:min(100%,${one[0]}px,${Math.round((510 * one[0]) / one[1])}px);aspect-ratio:${one[0]}/${one[1]}`) : ''
-    return (imgs.length ? `<div class="imgs n${shown.length}">${shown.map((u, i) => `<button class="img" aria-label="Open image ${i + 1} of ${imgs.length}">${img(sized(u, 'w=1200'), box)}${i === 3 && imgs.length > 4 ? `<span class="more-imgs">+${imgs.length - 4}</span>` : ''}</button>`).join('')}</div>` : '') +
+    const shape = boxOf(shown.length === 1 ? d.shapes[sized(shown[0], 'w=1200')] : null)
+    const box = shape ? cls(shape) : ''
+    return (imgs.length ? `<div class="imgs n${shown.length}">${shown.map((u, i) => `<button class="img" aria-label="Open image ${i + 1} of ${imgs.length}">${img(sized(u, 'w=1200'), box, (shape || shown.length > 1) && srcsetOf(u))}${i === 3 && imgs.length > 4 ? `<span class="more-imgs">+${imgs.length - 4}</span>` : ''}</button>`).join('')}</div>` : '') +
       // as Chrome and Safari draw it (they play HLS themselves); Firefox's app swaps in its play button
       urls.filter(isVid).map((u) => `<div class="vid"><video src="${esc(u)}"${poster(u) ? ` poster="${esc(poster(u))}"` : ''} controls="" preload="none" playsinline=""></video></div>`).join('')
   }
@@ -106,11 +118,11 @@ export function body(d, version, now = Date.now()) {
   const tweet = (t) => {
     const video = safeUrl(t.video)
     const av = safeUrl(t.author?.avatar)
-    return `<div class="tweet" role="link" tabindex="0"><div class="tw-head">${av ? img(av, 'tw-av') : ''}<b>${esc(t.author?.name)}</b>` +
+    return `<div class="tweet" role="link" tabindex="0"><div class="tw-head">${av ? img(av, 'tw-av', '', true) : ''}<b>${esc(t.author?.name)}</b>` +
       `<svg class="tw-x" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="${X_LOGO}" fill="currentColor"></path></svg><span class="handle">@${esc(t.author?.handle)}</span>` +
       `${t.at ? `<span class="handle tw-at">· ${ago(t.at * 1000)}</span>` : ''}</div>` +
       (t.text ? rich(t.text.replace(/\s*https:\/\/t\.co\/\S+$/, ''), 'text tw-text') : '') + (t.photos?.length ? media(t.photos) : '') +
-      (!t.photos?.length && video ? `<div class="tw-video">${img(video)}<span class="play">${icon(P.play, 24, true)}</span></div>` : '') +
+      (!t.photos?.length && video ? `<div class="tw-video">${img(video, '', '', true)}<span class="play">${icon(P.play, 24, true)}</span></div>` : '') +
       (t.quote ? `<div class="tw-quote"><b>${esc(t.quote.name)}</b> <span class="handle">@${esc(t.quote.handle)}</span><p>${esc(t.quote.text)}</p></div>` : '') +
       `<div class="tw-stats"><span>${plural(t.replies || 0, 'reply', 'replies')}</span><span>${plural(t.reposts || 0, 'repost', 'reposts')}</span><span>${plural(t.likes || 0, 'like', 'likes')}</span></div></div>`
   }
@@ -123,8 +135,8 @@ export function body(d, version, now = Date.now()) {
     const image = safeUrl(p?.image)
     if (image && p.image === p.url) return media([image], true)
     const ico = safeUrl(p?.icon)
-    return `<a class="linkcard${image ? ' big' : ''}" href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${image ? img(sized(image, 'w=1200'), 'lc-img') : ''}` +
-      `<span class="lc-text"><span class="lc-site">${ico ? img(ico) : ''}${esc(new URL(u).hostname.replace(/^www\./, ''))}</span>` +
+    return `<a class="linkcard${image ? ' big' : ''}" href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${image ? img(sized(image, 'w=1200'), 'lc-img', '', true) : ''}` +
+      `<span class="lc-text"><span class="lc-site">${ico ? img(ico, '', '', true) : ''}${esc(new URL(u).hostname.replace(/^www\./, ''))}</span>` +
       `${p?.title ? `<b class="lc-title">${esc(p.title)}</b>` : ''}${p?.description ? `<span class="lc-desc">${esc(p.description)}</span>` : ''}</span>${p?.button ? `<span class="lc-btn">${esc(p.button)}</span>` : ''}</a>`
   }
   const space = (id) => `<a class="space-card" href="/spaces/${esc(id)}"><span class="space-card-top">${icon(P.mic)}<small>Space</small></span><b>Live audio Space</b><small>Listen on Quilcast</small></a>`
@@ -148,7 +160,7 @@ export function body(d, version, now = Date.now()) {
       `<button class="act lk" aria-label="Like">${icon(P.like)}${count(c.reactions?.likes_count)}</button><button class="act" aria-label="Share">${icon(P.share)}</button>` +
       `<span class="wrap-menu"><button class="act" aria-label="More" aria-haspopup="menu">${icon(P.more)}</button></span></footer></div></article>`
   }
-  const cards = d.casts.map(cast).join('')
+  const cards = d.casts.map((c, i) => ((first &&= i < 2), cast(c))).join('')
   const nav = [['/', 'Home', P.home], ['/search', 'Search', P.search], ['/join', 'Join', P.user], ['/settings', 'Settings', P.gear]]
   const ico = (p) => `<span class="ico">${icon(p, 22)}</span>`
   // the page can paint before it has all arrived, so whatever sits beside or over the column comes before it, and the
@@ -163,5 +175,5 @@ export function body(d, version, now = Date.now()) {
     `<main class="col"><div class="phead"><div class="phead-row"><a class="brand only-mobile" href="/" aria-label="Quilcast home">${logo(26)}</a><h1>Home</h1></div></div>` +
     `<div class="banner"><div><b>Farcaster without the middlemen</b><p>Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.</p></div><a class="btn small" href="/join">Join</a></div>` +
     `${cards}<div></div></main></div>`
-  return { html, css: [...rules].map(([decl, k]) => `#app .${k}{${decl}}`).join('') }
+  return { html, css: [...rules].map(([decl, k]) => `#app .${k}{${decl}}`).join(''), lead }
 }

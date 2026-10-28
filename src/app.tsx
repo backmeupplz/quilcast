@@ -1476,8 +1476,23 @@ function App() {
 }
 
 applyTheme()
-loadLang().then(() => {
+loadLang().then(async () => {
   const root = document.getElementById('app')!
+  // the server's page shows its first picture (server/home.mjs) before the app draws it again, so a phone's largest
+  // paint doesn't wait for the app. The browser counts a picture as painted a frame or two after drawing it, and not
+  // at all if it's gone by then, so the app waits for that (or 200 ms where the browser doesn't say)
+  const lead = root.querySelector<HTMLImageElement>('img[fetchpriority="high"]')
+  if (lead) await new Promise((ok) => {
+    setTimeout(ok, 3000)
+    const shown = () => {
+      setTimeout(ok, 200)
+      try {
+        new PerformanceObserver((l, o) => l.getEntries().some((e) => (e as PerformanceEntry & { element?: Element }).element === lead) && (o.disconnect(), ok(0))).observe({ type: 'largest-contentful-paint', buffered: true })
+      } catch {}
+    }
+    if (lead.complete) shown()
+    else lead.addEventListener('load', shown), lead.addEventListener('error', ok)
+  })
   // the home page's feed as the server drew it, so the app's first frame draws the same
   try {
     const d = JSON.parse(document.getElementById('boot')?.textContent || 'null')

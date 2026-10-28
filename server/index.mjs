@@ -566,6 +566,18 @@ const APP_CSS_LINK = index.match(/<link rel="stylesheet" crossorigin href="\/ass
 const APP_CSS = APP_CSS_LINK ? readFileSync(join(DIST, APP_CSS_LINK.match(/href="\/([^"]+)"/)[1]), 'utf8') : ''
 let home = null
 let homeAt = 0
+// the pictures the home page has led with lately (home.mjs `lead`), the only ones /i/ passes on
+const leads = new Set()
+const leadImgs = new Map()
+/** A lead picture from Farcaster's CDN in the format the browser asked for (it answers AVIF, WebP or JPEG by Accept). */
+const leadImg = (u, accept) => {
+  const as = /image\/avif/.test(accept) ? 'image/avif' : /image\/webp/.test(accept) ? 'image/webp' : 'image/jpeg'
+  const k = `${as} ${u}`
+  return leadImgs.get(k) || keep(leadImgs, 40, k, safeGet(u, { max: 4e6, headers: { accept: as } }).then((r) => {
+    if (r.status !== 200 || r.truncated || !/^image\//.test(r.type)) throw new Error(`lead ${r.status}`)
+    return r
+  }))
+}
 let homeNext = null
 async function drawHome() {
   const casts = trending((await nodeJson('/v2/farcaster/feed/trending?limit=50'))?.casts || []).slice(0, 20).map(lean)
@@ -579,10 +591,13 @@ async function drawHome() {
     ...w.lone.map((u) => (shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOf(u)).catch(() => null))).then((x) => (sizes[u] = x))),
   ]), new Promise((ok) => setTimeout(ok, 3000))])
   const data = { casts, got: { ...got }, shapes: { ...sizes } }
-  const { html: app, css } = homeBody(data, VERSION)
+  const { html: app, css, lead } = homeBody(data, VERSION)
+  if (lead) leads.add(lead), (data.lead = lead), leads.size > 20 && leads.delete(leads.values().next().value)
   // the app's stylesheet comes inline too: the page paints without a second round trip
   const style = APP_CSS + css
+  // the page is drawn without the app, so its scripts come after the page's own pictures
   const page = index.replace(APP_CSS_LINK, () => `<style>${style}</style>`)
+    .replace(/<(script type="module"|link rel="modulepreload") crossorigin /g, '<$1 crossorigin fetchpriority="low" ')
     .replace('<div id="app"></div>', () => `<div id="app">${app}<script type="application/json" id="boot">${JSON.stringify(data).replace(/</g, '\\u003c')}</script></div>`)
   return { at: Date.now(), page, csp: CSP.replace("style-src 'self'", () => `style-src 'self' ${sha(style)}`) }
 }
@@ -821,6 +836,17 @@ createServer(async (req, res) => {
       if (limited(`shapes:${ip}`, 120)) return json(429, {})
       const sizes = await Promise.all(urls.map((u) => shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOf(u)).catch(() => null))))
       return json(200, Object.fromEntries(urls.map((u, i) => [u, sizes[i]])), 'public, max-age=86400')
+    }
+
+    // the home page's first picture, from quilcast.com itself (server/home.mjs, shared.ts viaUs)
+    const via = path.match(/^\/i\/([\w-]+\/[\w-]+)\/(w=600|w=1200)$/)
+    if (via) {
+      const u = `https://imagedelivery.net/${via[1]}/${via[2]}`
+      if (!leads.has(`https://imagedelivery.net/${via[1]}/w=1200`)) return res.writeHead(404).end()
+      if (limited(`i:${ip}`, 120)) return res.writeHead(302, { location: u }).end()
+      const r = await leadImg(u, req.headers.accept || '').catch(() => null)
+      if (!r) return res.writeHead(302, { location: u }).end()
+      return res.writeHead(200, { 'content-type': r.type, 'content-length': r.body.length, 'cache-control': 'public, max-age=31536000, immutable', vary: 'accept' }).end(r.body)
     }
 
     if (path === '/api/poster') {

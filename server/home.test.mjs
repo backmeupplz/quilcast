@@ -35,3 +35,16 @@ test('a lone card is drawn as before', () => {
   const html = page([link])
   assert.ok(!html.includes('class="cards"') && !html.includes('class="strip"') && html.includes('<a class="linkcard big"'))
 })
+
+test('the first picture comes through quilcast.com at its final size; a link preview\'s pictures come last', () => {
+  const pic = 'https://imagedelivery.net/a/b/original'
+  const d = { casts: [cast('a'.repeat(40), [pic]), cast('b'.repeat(40), [pic.replace('/b/', '/c/'), link])], got, shapes: { 'https://imagedelivery.net/a/b/w=1200': [1200, 800] } }
+  const { html, css, lead } = body(d, '0.0.0')
+  assert.equal(lead, 'https://imagedelivery.net/a/b/w=1200')
+  assert.match(html, /<img class="s\d+" alt="" loading="lazy" fetchpriority="high" referrerpolicy="no-referrer" src="\/i\/a\/b\/w=1200" srcset="\/i\/a\/b\/w=600 600w, \/i\/a\/b\/w=1200 1200w"/)
+  // the next one is the CDN's, and without a known size it takes the picture's own (so no srcset, which would change it)
+  assert.match(html, /<img alt="" loading="lazy" referrerpolicy="no-referrer" src="https:\/\/imagedelivery\.net\/a\/c\/w=1200">/)
+  // a known size holds the box before the picture arrives (without it `.imgs` fit to an empty picture: 120 px wide)
+  assert.match(css, /aspect-ratio:1200\/800;contain:size;contain-intrinsic-size:1200px 800px/)
+  assert.match(html, /<img class="lc-img" alt="" loading="lazy" fetchpriority="low"/)
+})

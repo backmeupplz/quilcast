@@ -15,6 +15,18 @@ export const embedLayout = (urls: string[], cards: number) => {
 
 /** Farcaster's image CDN resizes on request (`w=96`, `anim=false,w=144`…), so nothing needs the full original. */
 export const sized = (u: string, variant: string) => u.replace(/^(https:\/\/imagedelivery\.net\/[\w-]+\/[\w-]+)\/original$/, `$1/${variant}`)
+/** A feed picture's widths for the browser to pick from by its box (a phone's 326 px box needn't load 1200 px); only for
+ *  boxes that don't take their size from the picture (ui.tsx Media), as a srcset changes a picture's natural size. */
+export const srcsetOf = (u: string) => (sized(u, 'w=600') === u ? undefined : `${sized(u, 'w=600')} 600w, ${sized(u, 'w=1200')} 1200w`)
+/** The home page's first picture through quilcast.com itself (server/index.mjs /i/), so a phone gets it over the
+ *  page's own connection instead of opening one to the CDN first. */
+export const viaUs = (u: string) => u.replaceAll('https://imagedelivery.net/', '/i/')
+// the box's width (the column less the avatar rail and the cast's padding) when lazy loading can't measure it
+export const IMG_SIZES = '(max-width: 600px) calc(100vw - 86px), 512px'
+/** A lone picture's box, from its size (ui.tsx Media, server/home.mjs): its own shape, at most 510 px tall, and that
+ *  size even before it loads, as the `.imgs` around it fits its content (without it the box starts 120 px wide). */
+export const boxOf = (one?: [number, number] | null) =>
+  one && one[0] > 0 && one[1] > 0 ? `width:min(100%,${one[0]}px,${Math.round((510 * one[0]) / one[1])}px);aspect-ratio:${one[0]}/${one[1]};contain:size;contain-intrinsic-size:${one[0]}px ${one[1]}px` : undefined
 
 export const n = (x = 0) => (x >= 1e6 ? (x / 1e6).toFixed(1) + 'M' : x >= 1e4 ? Math.round(x / 1e3) + 'K' : x >= 1e3 ? (x / 1e3).toFixed(1) + 'K' : String(x))
 
