@@ -44,11 +44,16 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .muted { color: var(--muted); }
 .warn { color: var(--warn); }
 
-/* ---------- layout ---------- */
+/* ---------- layout ----------
+   Phones get one column and the tab bar. From 560px wide (an unfolded iPhone Duo: 669 points, or 585 beside a strip
+   down its edge such as its cover display has; tablets; a foldable's inner screen) the sidebar's icon rail is beside the column,
+   unless the screen is under 600px tall and under 700px wide (a phone on its side), where the rail wouldn't fit. From 1100px
+   the sidebar has its names and the right column shows. The layout changes with CSS alone, so a fold or a resized window keeps everything on the page as it was. */
 .app { display: flex; justify-content: center; min-height: 100vh; }
 .col { width: 100%; max-width: 600px; min-width: 0; border-inline: var(--bw, 1px) var(--bs, solid) var(--line); min-height: 100vh; padding-bottom: 80px; }
-.side { position: sticky; z-index: 7; top: 0; height: 100vh; width: 250px; padding: 8px 12px 16px; display: flex; flex-direction: column; gap: 2px; flex: none; }
-.extra { position: sticky; top: 0; height: 100vh; width: 320px; padding: 10px 0 0; padding-inline-start: 24px; flex: none; display: flex; flex-direction: column; gap: 14px; }
+/* the Quilcast app draws under the status bar and the home indicator, beside the sidebar too (an unfolded iPhone Duo) */
+.side { position: sticky; z-index: 7; top: 0; height: 100vh; width: 250px; padding: calc(8px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 2px; flex: none; }
+.extra { position: sticky; top: 0; height: 100vh; width: 320px; padding: calc(10px + env(safe-area-inset-top)) 0 0; padding-inline-start: 24px; flex: none; display: flex; flex-direction: column; gap: 14px; }
 .tabbar, .fab, .only-mobile { display: none !important; }
 
 .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 750; font-size: 19px; letter-spacing: -0.02em; padding: 10px 12px 14px; }
@@ -76,7 +81,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
   .me > svg { display: none; }
   .menu.up { inset-inline-start: 0; }
 }
-@media (max-width: 699px) {
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   .side { display: none; }
   .col { border: 0; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
   .only-mobile { display: inline-flex !important; }
@@ -327,13 +332,13 @@ a.searchbox { margin: 0; }
 .mine .bubble { background: var(--accent); color: var(--on-accent, #fff); }
 .mine .bubble a { color: inherit; text-decoration: underline; }
 .bubble.sending, .bubble.failed, .dm-img.sending { opacity: 0.6; }
-.dm-compose { position: sticky; bottom: 0; z-index: 4; display: flex; align-items: flex-end; gap: 8px; padding: 10px 16px; background: var(--bg); border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
+.dm-compose { position: sticky; bottom: 0; z-index: 4; display: flex; align-items: flex-end; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--bg); border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
 .dm-compose textarea { flex: 1; resize: none; field-sizing: content; min-height: 40px; max-height: 40vh; border-radius: calc(20px * var(--rs, 1)); padding: 9px 14px; }
 .dm-compose .btn { height: 40px; }
 .col:has(.dm-compose) { padding-bottom: 0; }
-@media (max-width: 699px) {
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   /* on phones the message box sits on the tab bar (these come after the rules above, so they win) */
-  .dm-compose { bottom: calc(53px + env(safe-area-inset-bottom)); }
+  .dm-compose { bottom: calc(53px + env(safe-area-inset-bottom)); padding-bottom: 10px; }
   .col:has(.dm-compose) { padding-bottom: calc(53px + env(safe-area-inset-bottom)); }
   .dm { min-height: calc(100dvh - 106px - env(safe-area-inset-bottom)); }
 }
@@ -482,7 +487,7 @@ small.warn { color: var(--warn); }
 .wallet-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: calc(99px * var(--rs, 1)); border: var(--bw, 1px) var(--bs, solid) var(--line); background: none; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .menu .wname { flex: 1; }
 .wallet-icon { width: 18px; height: 18px; border-radius: calc(4px * var(--rs, 1)); flex: none; }
-.dock { position: fixed; z-index: 9; inset-inline-end: 16px; bottom: 16px; max-width: calc(100vw - 32px); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; display: flex; gap: 6px; padding: 6px; background: var(--card); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); box-shadow: 0 8px 24px rgb(0 0 0 / 0.16); }
+.dock { position: fixed; z-index: 9; inset-inline-end: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); max-width: calc(100vw - 32px); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; display: flex; gap: 6px; padding: 6px; background: var(--card); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); box-shadow: 0 8px 24px rgb(0 0 0 / 0.16); }
 .dock button { flex: none; padding: 2px; border: 2px solid transparent; border-radius: calc(12px * var(--rs, 1)); background: none; display: grid; }
 .dock button.on { border-color: var(--accent); }
 /* open apps get a dot under them; pinned ones that aren't open don't */
@@ -508,7 +513,7 @@ small.warn { color: var(--warn); }
 .app-main > span:not(.app-icon) { display: flex; flex-direction: column; min-width: 0; }
 .app-main b, .app-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-main small { color: var(--muted); font-size: 13px; }
-@media (max-width: 699px) {
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   .mini { inset: 0; width: auto; height: auto; border: 0; border-radius: 0; padding-bottom: env(safe-area-inset-bottom); }
   .mini-top { padding-top: calc(6px + env(safe-area-inset-top)); }
   /* above the tab bar, clear of the cast button */
@@ -604,7 +609,7 @@ small.warn { color: var(--warn); }
   background: var(--shrek-face) 0 0 / 96px 96px; mask: radial-gradient(circle, #000 36px, transparent 37px) 0 0 / 96px 96px;
 }
 .dj {
-  position: fixed; z-index: 5; inset-inline-end: 12px; bottom: 12px; width: 150px; height: 140px;
+  position: fixed; z-index: 5; inset-inline-end: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); width: 150px; height: 140px;
   background: var(--shrek-dance) center / cover; border-radius: calc(16px * var(--rs, 1)); box-shadow: 0 6px 24px rgb(0 0 0 / 0.35); transform: rotate(-4deg);
 }
 /* the song's player is there only for its sound */
@@ -614,7 +619,7 @@ small.warn { color: var(--warn); }
   border: 2px solid var(--bg); background: var(--accent); color: var(--on-accent, #fff); font: inherit; font-size: 13px; font-weight: 700; line-height: 1.2; cursor: pointer;
 }
 /* phones: the cast button owns the bottom-right corner and the tab bar the bottom edge */
-@media (max-width: 699px) {
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   .dj { inset-inline-end: auto; inset-inline-start: 10px; bottom: calc(76px + env(safe-area-inset-bottom)); width: 96px; height: 90px; }
   .dj button { font-size: 12px; padding: 3px 9px; }
 }
@@ -917,14 +922,14 @@ small.warn { color: var(--warn); }
 .space-card > small { color: var(--muted); }
 .space-card .btn { align-self: flex-start; margin-top: 6px; }
 .space-card .on-air { color: var(--accent); font-weight: 600; }
-.space-bar { position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: 16px; width: min(420px, calc(100vw - 32px)); display: flex; align-items: center; gap: 4px; padding: 8px 8px 8px 12px; background: var(--card); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); box-shadow: 0 8px 24px rgb(0 0 0 / 0.18); }
+.space-bar { position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); width: min(420px, calc(100vw - 184px)); display: flex; align-items: center; gap: 4px; padding: 8px 8px 8px 12px; background: var(--card); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); box-shadow: 0 8px 24px rgb(0 0 0 / 0.18); }
 .space-bar-main { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; color: var(--ink); }
 .space-bar-main span { display: flex; flex-direction: column; min-width: 0; }
 .space-bar-main b, .space-bar-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .space-bar-main small { color: var(--muted); font-size: 12px; }
 /* the mini app dock moves up over the Space bar */
-body:has(.space-bar) .dock { bottom: 84px; }
-@media (max-width: 699px) {
+body:has(.space-bar) .dock { bottom: calc(84px + env(safe-area-inset-bottom)); }
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   /* above the tab bar, clear of the cast button */
   .space-bar { inset-inline-start: 16px; inset-inline-end: 86px; width: auto; transform: none; bottom: calc(72px + env(safe-area-inset-bottom)); }
   body:has(.space-bar) .dock { bottom: calc(136px + env(safe-area-inset-bottom)); }
@@ -1292,14 +1297,14 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .wa-sh button::after { content: ""; position: absolute; inset: -5px 0; }
 .wa-sh-pos { position: absolute; left: 226px; top: 4px; width: 17px; height: 7px; background: var(--s-titlebar) 0 -36px; touch-action: none; }
 .wa-sh-pos i { position: absolute; top: 0; width: 3px; height: 7px; background: var(--s-titlebar) -20px -36px; }
-.wa-bar { position: fixed; z-index: 11; bottom: 16px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.35); }
+.wa-bar { position: fixed; z-index: 11; bottom: calc(16px + env(safe-area-inset-bottom)); box-shadow: 0 6px 20px rgb(0 0 0 / 0.35); }
 .wa-float.top { z-index: 45; }
 .wa-float { position: fixed; z-index: 29; box-shadow: 0 10px 40px rgb(0 0 0 / 0.4); }
-body:has(.wa-bar) .dock { bottom: 64px; }
-body:has(.wa-bar) .space-bar { bottom: 64px; }
+body:has(.wa-bar) .dock { bottom: calc(64px + env(safe-area-inset-bottom)); }
+body:has(.wa-bar) .space-bar { bottom: calc(64px + env(safe-area-inset-bottom)); }
 .wa-in { display: flex; justify-content: center; }
 .wa-wait { height: 290px; }
-@media (max-width: 699px) {
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   .wa-bar { bottom: calc(72px + env(safe-area-inset-bottom)); }
   body:has(.wa-bar) .dock { bottom: calc(108px + env(safe-area-inset-bottom)); }
   body:has(.wa-bar) .space-bar { bottom: calc(108px + env(safe-area-inset-bottom)); }
@@ -1357,7 +1362,7 @@ body:has(.wa-bar) .space-bar { bottom: 64px; }
 .q-mode button:disabled { opacity: 0.5; }
 .q-mode button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / 0.2); }
 @media (min-width: 1100px) {
-  :root[data-quorum] .side.q-side { width: 188px; padding: 10px 10px 12px; gap: 2px; }
+  :root[data-quorum] .side.q-side { width: 188px; padding: calc(10px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom)); gap: 2px; }
   .q-side .brand { font-size: 17px; padding: 6px 10px 18px; gap: 9px; }
   .q-side .navlink { width: 100%; gap: 12px; height: 40px; padding: 0 12px; font-size: 14px; border-radius: calc(8px * var(--rs, 1)); }
   .q-side .navlink .ico svg { width: 19px; height: 19px; }
@@ -1407,7 +1412,7 @@ body:has(.wa-bar) .space-bar { bottom: 64px; }
 }
 :root[data-th-zoom] .q-wallet { zoom: var(--zoom); }
 /* (100vh inside a zoomed box is 100vh × zoom; phones size it by its edges instead) */
-@media (min-width: 700px) { :root[data-th-zoom] .q-wallet { height: calc(100vh / var(--zoom)); } }
+@media (min-width: 700px), (min-width: 560px) and (min-height: 600px) { :root[data-th-zoom] .q-wallet { height: calc(100vh / var(--zoom)); } }
 
 /* the docked wallet. Its sheets and menus are inside it, so it sits over the players and bars and under the composer
    and toasts (beside the page it overlaps nothing) */
@@ -1462,9 +1467,9 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 .q-act-foot { display: flex; justify-content: space-between; gap: 8px; }
 /* not enough room beside the page: the wallet slides over it, and over a mini app */
 @media (max-width: 1099px) {
-  .q-wallet { position: fixed; inset-inline-end: 0; top: 0; box-shadow: -16px 0 48px rgb(0 0 0 / 0.3); }
+  .q-wallet { position: fixed; inset-inline-end: 0; top: 0; box-shadow: -16px 0 48px rgb(0 0 0 / 0.3); padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
 }
-@media (max-width: 699px) {
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   .q-wallet { inset: 0; width: auto; height: auto; border: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
   .q-tiles { gap: 4px; }
 }
@@ -1673,9 +1678,10 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 
 /* ---------- Quorum mode's messages: the conversations beside the open one (DirectMessages), Quorum's message rows,
    day lines and its pill composer ---------- */
-@media (min-width: 700px) { :root[data-quorum] .col:has(.q-dms) { max-width: none; margin: 0; padding-bottom: 0; border-inline-end: 0; } }
+@media (min-width: 700px), (min-width: 560px) and (min-height: 600px) { :root[data-quorum] .col:has(.q-dms) { max-width: none; margin: 0; padding-bottom: 0; border-inline-end: 0; } }
 .q-dms { display: flex; align-items: flex-start; min-height: 100vh; }
-.q-dm-list { position: sticky; top: 0; flex: none; width: 320px; height: 100vh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; background: var(--card); border-inline-end: var(--bw, 1px) var(--bs, solid) var(--line); }
+/* narrower beside a short conversation (an unfolded iPhone Duo is 585-669 points wide, with the sidebar's rail beside it) */
+.q-dm-list { position: sticky; top: 0; flex: none; width: clamp(240px, 40%, 320px); height: 100vh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; background: var(--card); border-inline-end: var(--bw, 1px) var(--bs, solid) var(--line); }
 .q-dm-list .phead { background: var(--card); }
 .q-dm-list .tabs button { font-size: 13px; }
 .q-dm-list .row { position: relative; align-items: center; padding: 12px 16px; }
@@ -1713,7 +1719,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 .q-msg small { margin: 2px 0 0; font-size: 12px; }
 .q-msg-note { margin: 10px 16px; text-align: center; font-size: 12px; color: var(--muted); }
 .q-day { display: flex; align-items: center; gap: 12px; margin: 20px 16px 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
-@media (min-width: 700px) {
+@media (min-width: 700px), (min-width: 560px) and (min-height: 600px) {
   :root[data-th-zoom] :is(.q-dms, .q-dm-main) { min-height: calc(100vh / var(--zoom)); }
   :root[data-th-zoom] .q-dm-list { height: calc(100vh / var(--zoom)); }
   :root[data-th-zoom] .q-dm-main .dm { min-height: calc(100vh / var(--zoom) - 57px); }
@@ -1725,7 +1731,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   .q-msg-name:hover { text-decoration: underline; }
 }
 /* MessageComposer: one pill on the page's darkest surface, the send arrow in a circle at its end */
-.dm-compose.q-compose-box { padding: 8px 16px 12px; background: var(--soft); border-top: 0; }
+.dm-compose.q-compose-box { padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--soft); border-top: 0; }
 .q-composer { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px 6px 14px; border-radius: calc(22px * var(--rs, 1)); background: var(--bg); border: var(--bw, 1px) var(--bs, solid) light-dark(var(--q-s4), transparent); }
 .q-composer textarea { flex: 1; min-width: 0; min-height: 0; max-height: 240px; padding: 4px; border: 0; border-radius: 0; background: none; box-shadow: none; resize: none; field-sizing: content; font-size: 16px; line-height: 24px; overflow-wrap: anywhere; }
 .q-composer textarea:focus, .q-composer textarea:hover { border: 0; background: none; box-shadow: none; }
@@ -1733,7 +1739,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 .q-send { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0 0 0 2px; border: 0; border-radius: 99px; background: var(--accent); color: var(--on-accent); transition: background-color 0.15s, opacity 0.15s; }
 .q-send:disabled { background: var(--q-strong); opacity: 0.6; }
 @media (hover: hover) { .q-send:hover:not(:disabled) { background: var(--q-accent-hi); } }
-@media (max-width: 699px) {
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   /* one pane at a time, like quorum-mobile: the list, or the open conversation */
   .q-dms { display: block; min-height: 0; }
   .q-dm-list { position: static; width: auto; height: auto; overflow: visible; border: 0; background: none; }
@@ -1741,13 +1747,14 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   .q-dms.open .q-dm-list, .q-dms:not(.open) .q-dm-main { display: none; }
   .q-dm-main { min-height: 0; }
   .q-dm-main .dm { min-height: calc(100dvh - 113px - env(safe-area-inset-bottom)); }
+  .dm-compose.q-compose-box { padding-bottom: 12px; }
 }
 /* with no right column beside the conversations, the dock and a mini app go to the right edge, the dock clear of the
    message box */
 @media (min-width: 1100px) { :root[data-quorum] body:has(.q-dms):not(:has(.q-wallet)) { --q-right: 16px; } }
-@media (min-width: 700px) { :root[data-quorum] body:has(.q-dm-main .dm-compose) .dock { bottom: 84px; } }
+@media (min-width: 700px), (min-width: 560px) and (min-height: 600px) { :root[data-quorum] body:has(.q-dm-main .dm-compose) .dock { bottom: calc(84px + env(safe-area-inset-bottom)); } }
 /* beside the list, a conversation needs no way back to it */
-@media (min-width: 700px) { .q-dm-main .phead-row > .icon-btn:first-child { display: none; } }
+@media (min-width: 700px), (min-width: 560px) and (min-height: 600px) { .q-dm-main .phead-row > .icon-btn:first-child { display: none; } }
 
 /* ---------- Quorum mode's mini app launcher on /apps: quorum-mobile's MiniAppsModal grid of square cards ---------- */
 .q-app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -1762,7 +1769,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 
 /* ---------- Quorum mode on phones: quorum-mobile's tab bar (a solid strip, ⋮ opens a labelled second row), its round
    + button, and toasts above the bar ---------- */
-@media (max-width: 699px) {
+@media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   .tabbar.q-tabbar { flex-direction: column; justify-content: flex-start; padding: 0 0 env(safe-area-inset-bottom); background: var(--bar, light-dark(#fff, #000)); -webkit-backdrop-filter: none; backdrop-filter: none; border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
   .q-tab-row, .q-tab-more { display: flex; align-items: center; }
   .q-tab-row { height: 53px; }

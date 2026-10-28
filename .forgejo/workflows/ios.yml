@@ -1,5 +1,6 @@
 name: iOS
-# Compile check of the iPhone app on PRs and main, like ABS+, plus RatingPrompt's rule: no simulator tests. Store builds happen in release.yml.
+# Compile check of the iPhone app and its fold tests (ios/QuilcastTests, run on a simulator by hand) on PRs and main, like ABS+,
+# plus RatingPrompt's rule: no simulator tests in CI. Store builds happen in release.yml.
 on:
   pull_request:
     paths: ['ios/**', '.forgejo/workflows/ios.yml']
@@ -35,4 +36,4 @@ jobs:
           rsync -rlc --delete ios/ "$stage/ios/"
           env -i HOME="$HOME" PATH="$PATH" TMPDIR="${TMPDIR:-/tmp}" \
             xcodebuild -quiet -project "$stage/ios/Quilcast.xcodeproj" -scheme Quilcast -derivedDataPath "$stage/DerivedData" \
-            -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build
+            -destination 'generic/platform=iOS Simulator' ARCHS=arm64 CODE_SIGNING_ALLOWED=NO build-for-testing

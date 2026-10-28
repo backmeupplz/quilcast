@@ -6,8 +6,19 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		4D0000000000000000000020 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4D0000000000000000000010;
+			remoteInfo = Quilcast;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		4D0000000000000000000004 /* Quilcast.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Quilcast.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D0000000000000000000021 /* QuilcastTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuilcastTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D0000000000000000000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -17,10 +28,22 @@
 			path = Quilcast;
 			sourceTree = "<group>";
 		};
+		4D0000000000000000000022 /* QuilcastTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = QuilcastTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		4D0000000000000000000012 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D0000000000000000000023 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -35,6 +58,7 @@
 			children = (
 				4D0000000000000000000006 /* Info.plist */,
 				4D0000000000000000000007 /* Quilcast */,
+				4D0000000000000000000022 /* QuilcastTests */,
 				4D0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -43,6 +67,7 @@
 			isa = PBXGroup;
 			children = (
 				4D0000000000000000000004 /* Quilcast.app */,
+				4D0000000000000000000021 /* QuilcastTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +95,26 @@
 			productReference = 4D0000000000000000000004 /* Quilcast.app */;
 			productType = "com.apple.product-type.application";
 		};
+		4D0000000000000000000024 /* QuilcastTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4D0000000000000000000025 /* Build configuration list for PBXNativeTarget "QuilcastTests" */;
+			buildPhases = (
+				4D0000000000000000000026 /* Sources */,
+				4D0000000000000000000023 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4D0000000000000000000027 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4D0000000000000000000022 /* QuilcastTests */,
+			);
+			name = QuilcastTests;
+			productName = QuilcastTests;
+			productReference = 4D0000000000000000000021 /* QuilcastTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +127,9 @@
 				TargetAttributes = {
 					4D0000000000000000000010 = {
 						CreatedOnToolsVersion = 27.0;
+					};
+					4D0000000000000000000024 = {
+						TestTargetID = 4D0000000000000000000010;
 					};
 				};
 			};
@@ -121,6 +169,7 @@
 			projectRoot = "";
 			targets = (
 				4D0000000000000000000010 /* Quilcast */,
+				4D0000000000000000000024 /* QuilcastTests */,
 			);
 		};
 /* End PBXProject section */
@@ -143,7 +192,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4D0000000000000000000026 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4D0000000000000000000027 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4D0000000000000000000010 /* Quilcast */;
+			targetProxy = 4D0000000000000000000020 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		4D0000000000000000000041 /* Debug */ = {
@@ -246,6 +310,38 @@
 			};
 			name = Release;
 		};
+		4D0000000000000000000028 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = ACWP4F58HZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borodutch.quilcast.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Quilcast.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Quilcast";
+			};
+			name = Debug;
+		};
+		4D0000000000000000000029 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = ACWP4F58HZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borodutch.quilcast.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Quilcast.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Quilcast";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -263,6 +359,15 @@
 			buildConfigurations = (
 				4D0000000000000000000044 /* Debug */,
 				4D0000000000000000000045 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4D0000000000000000000025 /* Build configuration list for PBXNativeTarget "QuilcastTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D0000000000000000000028 /* Debug */,
+				4D0000000000000000000029 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -106,7 +106,7 @@ let ids = 0
 let root: HTMLElement | undefined
 
 const show = (app: App | null) => ((shown = app?.id ?? null), update())
-const narrow = () => matchMedia('(max-width: 699px)').matches
+const narrow = () => matchMedia('(max-width: 559px), (max-width: 699px) and (max-height: 599px)').matches
 
 /** Open a mini app, or bring it forward if it's already open. */
 export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; from?: string; notification?: Notice } = {}) {
@@ -667,10 +667,12 @@ const castCtx = (c: Cast) => ({
   timestamp: Date.parse(c.timestamp), text: castText(c), embeds: c.embeds.flatMap((e) => e.url ?? []), channelKey: channelOf(c.parent_url),
 })
 const haptics = 'vibrate' in navigator
+// the Quilcast apps are phones however wide they are (an unfolded iPhone Duo has the sidebar)
+const inApp = navigator.userAgent.includes('QuilcastApp/')
 
 const context = async (app: App) => ({
   client: {
-    platformType: narrow() ? 'mobile' : 'web', clientFid: QUILCAST_FID, added: savedApps().some((s) => s.url === app.url),
+    platformType: narrow() || inApp ? 'mobile' : 'web', clientFid: QUILCAST_FID, added: savedApps().some((s) => s.url === app.url),
     notificationDetails: notifying(app.origin) ? await details(app).catch(() => undefined) : undefined, safeAreaInsets: { top: 0, bottom: 0, left: 0, right: 0 },
   },
   user: userCtx(myUser()!),
