@@ -321,6 +321,7 @@
   "Quilcast home": "Главная Quilcast",
   "Quilcast is a small, open client that reads from and posts to the Hypersnap network that Quilibrium runs. There is no server in between, and your keys stay in this browser.": "Quilcast — небольшой открытый клиент, который читает и публикует напрямую в сети Hypersnap от Quilibrium. Между вами нет сервера, а ваши ключи остаются в этом браузере.",
   "Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.": "Quilcast общается напрямую с сетью Hypersnap, а ваши ключи никогда не покидают этот браузер.",
+  "Quilcast talks straight to the Hypersnap network, and your keys never leave this device.": "Quilcast общается напрямую с сетью Hypersnap, а ваши ключи никогда не покидают это устройство.",
   "Quote": "Цитировать",
   "Quote cast": "Цитировать каст",
   "Quotes": "Цитаты",

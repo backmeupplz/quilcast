@@ -312,7 +312,7 @@ function Home() {
       )}
       {!account?.done && (
         <div class="banner">
-          <div><b>{t('Farcaster without the middlemen')}</b><p>{t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p></div>
+          <div><b>{t('Farcaster without the middlemen')}</b><p>{app ? t('Quilcast talks straight to the Hypersnap network, and your keys never leave this device.') : t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p></div>
           <a class="btn small" href="/join">{t('Join')}</a>
         </div>
       )}

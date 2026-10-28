@@ -541,6 +541,7 @@
   "Quilcast is a third-party Farcaster client (yes, the one with Ogre mode and Japanese web mode), not an official Farcaster app. Anyone with a recovery phrase or private key can take everything in its wallet, so only add one you are willing to use here.": "Quilcast는 공식 Farcaster 앱이 아닌 서드파티 Farcaster 클라이언트예요(맞아요, 오우거 모드와 일본 웹 모드가 있는 그 앱이요). 복구 문구나 개인 키를 가진 사람은 누구나 지갑의 모든 자산을 가져갈 수 있으니, 여기서 써도 괜찮은 것만 추가하세요.",
   "Quilcast laid out like Quilibrium's Quorum app: its sidebar, apps on the right, and the wallet docked beside an open mini app.": "Quilibrium의 Quorum 앱처럼 배치한 Quilcast예요. 사이드바, 오른쪽의 앱, 열린 미니 앱 옆에 붙은 지갑까지요.",
   "Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.": "Quilcast는 Hypersnap 네트워크와 직접 통신하고, 키는 절대 이 브라우저를 벗어나지 않아요.",
+  "Quilcast talks straight to the Hypersnap network, and your keys never leave this device.": "Quilcast는 Hypersnap 네트워크와 직접 통신하고, 키는 절대 이 기기를 벗어나지 않아요.",
   "Quilcast theme": "Quilcast 테마",
   "Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.": "그 후 이 브라우저용 키 추가나 미니 앱 로그인처럼 계정 자체가 서명해야 할 때 Quilcast가 입력을 요청해요. 먼저 적어 두세요.",
   "Quorum": "Quorum",

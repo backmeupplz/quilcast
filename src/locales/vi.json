@@ -541,6 +541,7 @@
   "Quilcast is a third-party Farcaster client (yes, the one with Ogre mode and Japanese web mode), not an official Farcaster app. Anyone with a recovery phrase or private key can take everything in its wallet, so only add one you are willing to use here.": "Quilcast là ứng dụng Farcaster của bên thứ ba (đúng vậy, cái có chế độ Chằn tinh và chế độ web Nhật), không phải ứng dụng chính thức của Farcaster. Bất kỳ ai có cụm từ khôi phục hoặc khóa riêng tư đều có thể lấy hết tài sản trong ví, nên chỉ thêm ví mà bạn sẵn sàng dùng ở đây.",
   "Quilcast laid out like Quilibrium's Quorum app: its sidebar, apps on the right, and the wallet docked beside an open mini app.": "Quilcast với bố cục giống ứng dụng Quorum của Quilibrium: thanh bên của Quorum, ứng dụng ở bên phải và ví gắn cạnh ứng dụng mini đang mở.",
   "Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.": "Quilcast kết nối thẳng tới mạng Hypersnap, và khóa của bạn không bao giờ rời khỏi trình duyệt này.",
+  "Quilcast talks straight to the Hypersnap network, and your keys never leave this device.": "Quilcast kết nối thẳng tới mạng Hypersnap, và khóa của bạn không bao giờ rời khỏi thiết bị này.",
   "Quilcast theme": "Chủ đề Quilcast",
   "Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.": "Sau đó Quilcast sẽ hỏi khi chính tài khoản cần ký, như khi thêm khóa cho trình duyệt này hoặc đăng nhập vào ứng dụng mini. Hãy ghi lại trước.",
   "Quorum": "Quorum",

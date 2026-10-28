@@ -541,6 +541,7 @@
   "Quilcast is a third-party Farcaster client (yes, the one with Ogre mode and Japanese web mode), not an official Farcaster app. Anyone with a recovery phrase or private key can take everything in its wallet, so only add one you are willing to use here.": "Quilcast เป็นไคลเอนต์ Farcaster ของบุคคลที่สาม (ใช่ ตัวที่มีโหมดยักษ์กับโหมดเว็บญี่ปุ่นนั่นแหละ) ไม่ใช่แอป Farcaster อย่างเป็นทางการ ใครก็ตามที่มีวลีกู้คืนหรือคีย์ส่วนตัวสามารถเอาทุกอย่างในกระเป๋าเงินไปได้ จึงควรเพิ่มเฉพาะกระเป๋าเงินที่คุณยินดีใช้ที่นี่",
   "Quilcast laid out like Quilibrium's Quorum app: its sidebar, apps on the right, and the wallet docked beside an open mini app.": "Quilcast ในเลย์เอาต์แบบแอป Quorum ของ Quilibrium มีแถบด้านข้าง แอปทางขวา และกระเป๋าเงินที่ต่ออยู่ข้างมินิแอปที่เปิด",
   "Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.": "Quilcast สื่อสารกับเครือข่าย Hypersnap โดยตรง และคีย์ของคุณจะไม่ออกจากเบราว์เซอร์นี้",
+  "Quilcast talks straight to the Hypersnap network, and your keys never leave this device.": "Quilcast สื่อสารกับเครือข่าย Hypersnap โดยตรง และคีย์ของคุณจะไม่ออกจากอุปกรณ์นี้",
   "Quilcast theme": "ธีม Quilcast",
   "Quilcast then asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app. Have it written down first.": "จากนั้น Quilcast จะขอวลีนี้เมื่อตัวบัญชีต้องลงนามเอง เช่น เพิ่มคีย์สำหรับเบราว์เซอร์นี้หรือเข้าสู่ระบบมินิแอป จดไว้ก่อน",
   "Quorum": "Quorum",

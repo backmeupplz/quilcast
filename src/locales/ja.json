@@ -321,6 +321,7 @@
   "Quilcast home": "Quilcast ホーム",
   "Quilcast is a small, open client that reads from and posts to the Hypersnap network that Quilibrium runs. There is no server in between, and your keys stay in this browser.": "Quilcast は、Quilibrium が運営する Hypersnap ネットワークで読み書きする、小さくてオープンなクライアントです。間にサーバーはなく、鍵はこのブラウザに保管されます。",
   "Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.": "Quilcast は Hypersnap ネットワークと直接やり取りし、鍵がこのブラウザの外に出ることはありません。",
+  "Quilcast talks straight to the Hypersnap network, and your keys never leave this device.": "Quilcast は Hypersnap ネットワークと直接やり取りし、鍵がこのデバイスの外に出ることはありません。",
   "Quote": "引用",
   "Quote cast": "引用キャスト",
   "Quotes": "引用",
