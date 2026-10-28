@@ -55,6 +55,10 @@ const node = createServer(async (q, r) => {
   if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : [] }))
   if (u.pathname === '/v2/farcaster/cast')
     return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: evil, timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: `http://127.0.0.1:${internalPort}/a.png` }], author: { fid: 1, username: 'x', display_name: evil, pfp_url: `http://127.0.0.1:${internalPort}/pfp.png` }, reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } }))
+  // a profile page's latest casts; nobody is called "nobody"
+  if (u.pathname === '/v2/farcaster/feed/user/casts') return r.end(JSON.stringify({ casts: [{ hash: 'ef'.repeat(20), text: evil, timestamp: '2026-01-02T00:00:00Z', author: { fid: 1 } }, { hash: '12'.repeat(20), parent_hash: 'ab'.repeat(20), text: 'a reply', timestamp: '2026-01-01T00:00:00Z' }] }))
+  if (u.searchParams.get('username') === 'nobody') return (r.statusCode = 404), r.end('{"message":"User not found"}')
+  if (u.pathname === '/v2/farcaster/user/search') return r.end('{"users":[]}')
   if (u.pathname.startsWith('/v2/farcaster/user')) return r.end(JSON.stringify({ user: { fid: 1, username: 'x', display_name: 'X', custody_address: address(key), profile: { bio: { text: evil } } } }))
   r.statusCode = 404
   r.end('{}')
@@ -119,6 +123,30 @@ test('cast and profile meta tags escape user text, including $ replacement patte
     assert.equal(html.match(/<meta property="og:title"/g).length, 1, path)
     assert.ok(!/canonical" href="[^"]*"[^ /]/.test(html), path)
   }
+})
+
+test('profile pages: their own head, ProfilePage JSON-LD, plain HTML casts, a share card; unknown names are a 404', async () => {
+  const html = await (await fetch(base + '/u/X')).text()
+  assert.match(html, /<title>X \(@x\) on Farcaster · Quilcast<\/title>/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/quilcast\.test\/u\/x" \/>/)
+  const desc = html.match(/<meta name="description" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+  assert.ok(desc.length <= 160 && desc.endsWith("Read @x's latest casts on Quilcast."), desc)
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(\{"@context.*?)<\/script>/)[1])
+  assert.equal(ld['@type'], 'ProfilePage')
+  assert.equal(ld.mainEntity.alternateName, '@x')
+  assert.equal(ld.mainEntity.description.slice(0, 5), '$& $\'')
+  const app = html.match(/<div id="app">(<section class="ssr">[\s\S]*?<\/section>)<\/div>/)[1]
+  assert.match(app, /<h1>X<\/h1>/)
+  assert.match(app, new RegExp(`<a href="/c/${'ef'.repeat(20)}"><time datetime="2026-01-02T00:00:00.000Z">Jan 2, 2026</time></a>`))
+  assert.match(app, /Reply<\/div><p class="text">a reply<\/p>/)
+  assert.ok(!html.includes('noindex'))
+  const card = await fetch(html.match(/<meta property="og:image" content="([^"]*)"/)[1].replace('https://quilcast.test', base))
+  assert.equal(card.headers.get('content-type'), 'image/png')
+  const none = await fetch(base + '/u/nobody')
+  assert.equal(none.status, 404)
+  assert.match(await none.text(), /<meta name="robots" content="noindex, follow" \/>/)
+  const list = await (await fetch(base + '/u/x/followers')).text()
+  assert.ok(list.includes('noindex') && !list.includes('rel="canonical"'))
 })
 
 test('casts are mini app embeds with a 3:2 card', async () => {

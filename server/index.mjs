@@ -23,6 +23,7 @@ import { credits, gifs, pick, refresh } from './shrek.mjs'
 import { getDesign, getLook, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
 import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
+import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -484,6 +485,30 @@ async function themeCard(id, raw) {
   ${stk}
 </svg>`
 }
+/** A profile's share card: their picture, name, bio and follower counts. */
+async function profileCard(u) {
+  const name = nameOf(u).slice(0, 80)
+  const pfp = u.pfp_url ? await dataUri(sized(u.pfp_url, 'w=352')) : null
+  const bio = wrap(String(u.profile?.bio?.text || '').slice(0, 400) || ' ', 34, 1032, 4)
+  const f = u.follower_count || 0
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="g" cx="0.9" cy="0.05" r="0.8"><stop offset="0" stop-color="#3a2a9a"/><stop offset="1" stop-color="#0d0c11" stop-opacity="0"/></radialGradient>
+    <clipPath id="av"><circle cx="172" cy="172" r="88"/></clipPath>
+  </defs>
+  <rect width="1200" height="630" fill="#0d0c11"/><rect width="1200" height="630" fill="url(#g)"/>
+  <circle cx="172" cy="172" r="88" fill="#2a2735"/>
+  ${pfp ? `<image href="${pfp}" x="84" y="84" width="176" height="176" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : `<text x="172" y="198" font-family="Inter" font-weight="700" font-size="72" fill="#9893a5" text-anchor="middle">${esc([...name][0]?.toUpperCase() || '?')}</text>`}
+  <text x="300" y="160" font-family="Inter, Noto Emoji" font-weight="700" font-size="52" fill="#edebf3">${esc(wrap(name, 52, 816, 1)[0] || '')}</text>
+  <text x="300" y="214" font-family="Inter" font-size="32" fill="#9893a5">@${esc(fname(u) || u.fid)}</text>
+  <text font-family="Inter, Noto Emoji" font-size="34" fill="#edebf3">${bio.map((l, i) => `<tspan x="84" y="${336 + i * 45}">${esc(l) || ' '}</tspan>`).join('')}</text>
+  <line x1="84" y1="540" x2="1116" y2="540" stroke="#25232d" stroke-width="2"/>
+  <g transform="translate(84 562) scale(1.25)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
+  <text x="138" y="593" font-family="Inter" font-weight="700" font-size="28" fill="#edebf3">Quilcast</text>
+  <text x="1116" y="592" xml:space="preserve" font-family="Inter" font-size="26" fill="#9893a5" text-anchor="end"><tspan font-weight="700" fill="#edebf3">${n(u.following_count || 0)}</tspan> following  ·  <tspan font-weight="700" fill="#edebf3">${n(f)}</tspan> ${f === 1 ? 'follower' : 'followers'}</text>
+</svg>`
+}
+
 // a theme never changes, so neither does its card; called inside a render slot already (renders() isn't reentrant)
 const themePng = (id, th) => pngs.get(`theme:${id}`) || keep(pngs, 100, `theme:${id}`, themeCard(id, th).then(render))
 
@@ -498,10 +523,34 @@ const pngs = new Map()
 // a miss isn't kept, so the next request asks the node again
 const lookup = (k, path, pick) => cache.get(k) || keep(cache, 1000, k, fetchJson(NODE + path).then((r) => pick(r) || (cache.delete(k), null)))
 const getCast = (hash) => lookup(hash, `/v2/farcaster/cast?identifier=${hash}&type=hash`, (r) => r?.cast)
-// by-username only knows fnames; ENS names ("shoni.eth") are found by search, exact match only
-const byName = (name) => fetchJson(`${NODE}/v2/farcaster/user/by-username?username=${encodeURIComponent(name)}`).then((r) => r?.user ||
-  fetchJson(`${NODE}/v2/farcaster/user/search?q=${encodeURIComponent(name)}&limit=10`).then((s) => (s?.users || s?.result?.users || []).find((u) => u.username?.toLowerCase() === name.toLowerCase())))
-const getUser = (name) => cache.get(`u:${name}`) || keep(cache, 1000, `u:${name}`, (/^\d+$/.test(name) ? fetchJson(`${NODE}/v2/farcaster/user?fid=${name}`).then((r) => r?.user) : byName(name)).then((u) => u || (cache.delete(`u:${name}`), null)))
+// the node's answer; null when it says there's no such thing, a throw when it fails
+async function nodeJson(path) {
+  const r = await fetch(NODE + path, { signal: AbortSignal.timeout(5000) })
+  if (r.status === 404) return null
+  if (!r.ok) throw new Error(`node answered ${r.status}`)
+  return r.json()
+}
+// by-username only knows fnames; ENS names ("shoni.eth") are found by search, exact match only. An unused FID comes
+// back as an empty user.
+async function findUser(name) {
+  if (/^\d{1,10}$/.test(name)) return nodeJson(`/v2/farcaster/user?fid=${name}`).then((r) => (r?.user?.custody_address ? r.user : null))
+  const u = (await nodeJson(`/v2/farcaster/user/by-username?username=${encodeURIComponent(name)}`))?.user
+  if (u) return u
+  const s = await nodeJson(`/v2/farcaster/user/search?q=${encodeURIComponent(name)}&limit=10`)
+  return (s?.users || s?.result?.users || []).find((x) => x.username?.toLowerCase() === name.toLowerCase()) || null
+}
+// a profile page's user and latest casts, kept ten minutes (a "no such user" too), so crawlers don't send every hit to
+// the node; a failure isn't kept
+const profiles = new Map()
+function getProfile(name) {
+  const k = name.toLowerCase()
+  const hit = profiles.get(k)
+  if (hit && hit.at > Date.now() - 600e3) return hit.p
+  const p = findUser(name).then(async (u) => u && { u, casts: (await nodeJson(`/v2/farcaster/feed/user/casts?fid=${u.fid}&limit=25`).catch(() => null))?.casts || [] })
+  keep(profiles, 2000, k, { at: Date.now(), p })
+  p.catch(() => profiles.delete(k))
+  return p
+}
 
 const index = await readFile(join(DIST, 'index.html'), 'utf8')
 refresh()
@@ -516,7 +565,7 @@ function launchAt(h, path, embed = `${SITE}/embed.png`) {
   }
   return h
 }
-function page({ title, desc, path, image, alt, embed }) {
+function page({ title, desc, path, image, alt, embed, type = 'article', robots, json, body }) {
   let h = launchAt(index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`), path, embed)
   const set = (attr, keys, v) => keys.forEach((k) => (h = meta(h, attr, k, v)))
   set('name', ['description', 'twitter:description'], desc)
@@ -525,8 +574,14 @@ function page({ title, desc, path, image, alt, embed }) {
   set('name', ['twitter:title'], title)
   set('property', ['og:url'], SITE + path)
   if (image) set('property', ['og:image'], image), set('name', ['twitter:image'], image), set('property', ['og:image:alt'], alt), set('name', ['twitter:image:alt'], alt)
-  return h.replace(/(<link rel="canonical" href=")[^"]*/, (_, p) => p + esc(SITE + path)).replace('<meta property="og:type" content="website" />', '<meta property="og:type" content="article" />')
+  h = h.replace(/(<link rel="canonical" href=")[^"]*/, (_, p) => p + esc(SITE + path)).replace('<meta property="og:type" content="website" />', () => `<meta property="og:type" content="${type}" />`)
+  // JSON-LD isn't run, so the CSP leaves it be; "<" is escaped so user text can't close the script
+  if (json) h = h.replace('</head>', () => `<script type="application/ld+json">${JSON.stringify(json).replace(/</g, '\\u003c')}</script>\n</head>`)
+  if (body) h = h.replace('<div id="app"></div>', () => `<div id="app">${body}</div>`)
+  return robots ? noindex(h) : h
 }
+// out of search: no canonical, a robots tag instead
+const noindex = (h) => h.replace(/\s*<link rel="canonical" href="[^"]*" \/>/, '').replace('</head>', '<meta name="robots" content="noindex, follow" />\n</head>')
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.json': 'application/json', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' }
 
@@ -770,12 +825,33 @@ createServer(async (req, res) => {
       return html(page({ title: `${c.author?.display_name || c.author?.username} (@${c.author?.username}) on Quilcast`, desc, path, image: `${SITE}/og/c/${hash}.png`, alt: desc, embed: `${SITE}/og/c/${hash}.3x2.png` }))
     }
 
+    // someone's following and followers lists are only lists of other profiles
+    if (/^\/u\/[^/]{1,64}\/(following|followers)$/.test(path)) return html(noindex(launchAt(index, path)))
     const user = path.match(/^\/u\/([^/]{1,64})$/)
     if (user) {
-      if (!cache.has(`u:${user[1]}`) && limited(`look:${ip}`, 120)) return app()
-      const u = await getUser(user[1]).catch(() => null)
-      if (!u) return app()
-      return html(page({ title: `${u.display_name || u.username} (@${u.username}) on Quilcast`, desc: u.profile?.bio?.text || `${u.display_name || u.username} on Farcaster`, path }))
+      if (!profiles.has(user[1].toLowerCase()) && limited(`look:${ip}`, 120)) return app()
+      // when the node fails, the app still gets its chance to load the profile
+      const p = await getProfile(user[1]).catch(() => undefined)
+      if (p === undefined) return app()
+      if (!p) return send(req, res, 404, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform' }, Buffer.from(noindex(launchAt(index, path))))
+      const { u, casts } = p
+      const at = fname(u)
+      const name = nameOf(u)
+      const off = hidden(u)
+      return html(page({
+        title: `${name}${at ? ` (@${at})` : ''} on Farcaster · Quilcast`, desc: describe(u), path: pathOf(u), type: 'profile', robots: off,
+        image: `${SITE}/og/u/${u.fid}.png`, alt: `${name} on Farcaster`, json: ld(u, SITE + pathOf(u)), body: profileBody(u, off ? [] : casts),
+      }))
+    }
+    const ogUser = path.match(/^\/og\/u\/([1-9]\d{0,9})\.png$/)
+    if (ogUser) {
+      const k = `u:${ogUser[1]}`
+      if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
+      const p = await getProfile(ogUser[1]).catch(() => null)
+      if (!p) return res.writeHead(404).end()
+      // ponytail: a card stays until it falls out of the cache or the server restarts; key it by a profile hash if edits must show sooner
+      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => profileCard(p.u).then(render))))
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }).end(png)
     }
 
     const designPage = path.match(/^\/design\/([\w-]{10})$/)

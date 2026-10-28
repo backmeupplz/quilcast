@@ -1461,7 +1461,10 @@ function App() {
 
 applyTheme()
 loadLang().then(() => {
-  render(<App />, document.getElementById('app')!)
+  const root = document.getElementById('app')!
+  // a profile's plain HTML from the server (server/profile.mjs) makes way for the app, in the same frame
+  root.replaceChildren()
+  render(<App />, root)
   // in a Farcaster client's frame or webview, as a mini app (src/inapp.ts)
   if (window.parent !== window || 'ReactNativeWebView' in window) import('./inapp.ts')
   // a Winamp left open (src/amp.tsx) comes back, paused, until it's closed

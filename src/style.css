@@ -277,6 +277,12 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .counts a { color: inherit; }
 .counts a:hover { text-decoration: underline; }
 .profile + .tabs { border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+/* a profile as the server sends it (server/profile.mjs), there until the app starts and draws its own */
+.ssr { display: flex; justify-content: center; }
+.ssr h1 { font-size: 20px; font-weight: 800; margin-top: 10px; overflow-wrap: anywhere; }
+.ssr h2 { font-size: 15px; padding: 12px 16px; border-block: var(--bw, 1px) var(--bs, solid) var(--line); }
+.ssr .cast { cursor: auto; }
+.ssr-pfp { width: 72px; height: 72px; }
 .row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: var(--ink); border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
 .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .row-top { display: flex; gap: 4px; min-width: 0; white-space: nowrap; }
