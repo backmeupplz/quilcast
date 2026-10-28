@@ -374,13 +374,17 @@ input:not([type='checkbox']):not([type='search']), textarea {
   border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); background: var(--bg); color: var(--ink);
 }
 .join input:not([type='checkbox']), .join textarea { margin-top: 6px; padding: 11px 13px; border-radius: calc(12px * var(--rs, 1)); }
+/* a field inside its label would take the label's small bold font (Quorum's own field rule, as specific and later, still wins) */
+.join input:not([type='checkbox']) { font-size: 15px; font-weight: 400; }
 input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 textarea { resize: vertical; }
 small { display: block; font-weight: 400; color: var(--muted); margin-top: 6px; font-size: 13px; }
 small.ok { color: var(--recast); }
 small.warn { color: var(--warn); }
-.prefix { position: relative; }
-.prefix span { position: absolute; inset-inline-start: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 400; margin-top: 3px; }
+/* the @ is centered on the field in the field's own font, so it sits on the name's baseline */
+.prefix { position: relative; margin-top: 6px; }
+.prefix span { position: absolute; inset-inline-start: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; font-weight: 400; pointer-events: none; }
+.join .prefix input { margin-top: 0; }
 .prefix input { padding-inline-start: 30px !important; }
 .check { display: flex; gap: 10px; align-items: center; font-weight: 500; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); }
@@ -389,6 +393,8 @@ small.warn { color: var(--warn); }
 .join { padding: 8px 16px 24px; }
 .join h1 { font-size: 24px; margin: 8px 0 4px; }
 .join .lede { color: var(--muted); font-size: 15px; margin: 4px 0 18px; line-height: 1.5; }
+/* the button after the last field is a step apart from it, as the fields are from each other */
+.join :is(label, textarea) + .btn.wide { margin-top: 20px; }
 .choice { display: block; width: 100%; text-align: start; margin-top: 10px; padding: 16px 18px; border-radius: calc(14px * var(--rs, 1)); border: var(--bw, 1px) var(--bs, solid) var(--line); background: var(--card); }
 .choice b { display: block; font-size: 16px; }
 .choice span { color: var(--muted); font-size: 14px; }
@@ -1536,6 +1542,8 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   & input:not([type='checkbox']):not([type='search']):where(:not([type='range'], [type='color'], .mv-amt)) { padding: 9px 16px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); font-size: 16px; font-weight: 400; line-height: 22px; transition: border-color 0.15s, box-shadow 0.15s; }
   & textarea { padding: 9px 16px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); font-size: 16px; font-weight: 400; line-height: 22px; }
   & label { font-size: 14px; font-weight: 500; }
+  & .prefix span { inset-inline-start: 16px; font-size: 16px; line-height: 22px; }
+  & .prefix input { padding-inline-start: 34px !important; }
   & :is(input, textarea)::placeholder { color: var(--muted); }
   & input:not([type='checkbox']):not([type='search']):where(:not([type='range'], [type='color'], .mv-amt)):focus, & textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--q-ring); }
   & select { padding: 8px 12px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); color: var(--ink); }
