@@ -5,7 +5,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -250,17 +250,24 @@ function Unit({ c, owner }: { c: Cast; owner?: number }) {
   )
 }
 
+// the signed-out home feed the server's page shows (server/home.mjs), until the feed loads its first page
+let boot: Cast[] | null = null
 // `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately; `owner` is the profile
 // it's on. A conversation with a muted post in it is left out whole.
 function Feed({ load, k, empty, keep, cacheKey, thread, owner }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number }) {
   // the posts this feed shows so far, for threads(); a first page starts over
   const shown = useRef(new Set<string>())
   return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
-    initial={() => (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
+    initial={() => (cacheKey === '0:trending' && boot) || (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
     load={async (cursor) => {
       const r = await load(cursor)
       if (!cursor) shown.current = new Set()
-      const casts = thread ? await threads(r.casts, shown.current) : keep ? r.casts.filter(keep) : r.casts
+      let casts = thread ? await threads(r.casts, shown.current) : keep ? r.casts.filter(keep) : r.casts
+      // the server's page (at most a minute old) keeps its order on top, with fresh counts, and the rest goes under
+      // it, so nothing on screen moves
+      const kept = !cursor && cacheKey === '0:trending' && boot
+      if (!cursor) boot = null
+      if (kept) casts = [...kept.map((b) => casts.find((c) => c.hash === b.hash) || b), ...casts.filter((c) => !kept.some((b) => b.hash === c.hash))]
       await hydrateParents(casts)
       if (!cursor) await warm(casts.slice(0, 6))
       if (!cursor && cacheKey) {
@@ -1462,7 +1469,12 @@ function App() {
 applyTheme()
 loadLang().then(() => {
   const root = document.getElementById('app')!
-  // a profile's plain HTML from the server (server/profile.mjs) makes way for the app, in the same frame
+  // the home page's feed as the server drew it, so the app's first frame draws the same
+  try {
+    const d = JSON.parse(document.getElementById('boot')?.textContent || 'null')
+    if (d) seed(d), (boot = d.casts)
+  } catch {}
+  // a profile's or the home page's plain HTML from the server (server/profile.mjs, home.mjs) makes way for the app, in the same frame
   root.replaceChildren()
   render(<App />, root)
   // in a Farcaster client's frame or webview, as a mini app (src/inapp.ts)

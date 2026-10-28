@@ -1,7 +1,8 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
-import { castText, cleanDesign, cleanTheme, DEFAULTS, designId, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, sized, themeId, themeVars, X_LOGO, type Look, type Theme } from './shared.ts'
+import { castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, P, shortUrl, sized, spaceOf, themeId, themeVars, TOKENS, X_LOGO, type Look, type Theme } from './shared.ts'
+export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, setMute } from './mutes.ts'
@@ -52,51 +53,7 @@ let listed: Promise<Listed[]> | undefined
 export const loadListed = () => (listed ||= fetch('/api/apps').then((r) => r.json(), () => []).then((l) => (Array.isArray(l) && l.length ? l : ((listed = undefined), []))))
 export const launchUrl = (url: string) => requireAccount() && import('./miniapp.tsx').then((x) => x.launchUrl(url))
 
-export const P = {
-  home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
-  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-4.3-4.3',
-  user: 'M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z',
-  reply: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.9L3 20l1.1-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z',
-  recast: 'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3',
-  quote: 'M7 7h4v4c0 3-1.5 4.5-4 5M15 7h4v4c0 3-1.5 4.5-4 5',
-  like: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z',
-  share: 'M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14',
-  back: 'M19 12H5M12 19l-7-7 7-7',
-  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
-  pen: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
-  trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
-  image: 'M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM3 16l5-5 5 5M14 14l2-2 5 5M15.5 8.5h.01',
-  hash: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18',
-  x: 'M18 6 6 18M6 6l12 12',
-  play: 'M7 4v16l13-8z',
-  more: 'M5 12h.01M12 12h.01M19 12h.01',
-  vmore: 'M12 5h.01M12 12h.01M12 19h.01',
-  bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0',
-  mail: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 7l9 6 9-6',
-  plus: 'M12 5v14M5 12h14',
-  check: 'M20 6 9 17l-5-5',
-  min: 'M6 12h12',
-  wallet: 'M19 7V5a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V6M16.5 13.5h.01',
-  apps: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
-  mic: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3',
-  micOff: 'M2 2l20 20M19 10v2a7 7 0 0 1-.1 1M5 10v2a7 7 0 0 0 12 5M15 9.3V5a3 3 0 0 0-5.7-1.3M9 9v3a3 3 0 0 0 5.1 2.1M12 19v3',
-  mute: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0M3 3l18 18',
-  flag: 'M4 22V4s1-1 4-1 5 2 8 2 4-1 4-1v11s-1 1-4 1-5-2-8-2-4 1-4 1',
-  block: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8',
-  explore: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3z',
-  refresh: 'M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5',
-  sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4',
-  moon: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
-  expand: 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7',
-  copy: 'M8 8h12v12H8zM4 16V4h12',
-  chev: 'M9 6l6 6-6 6',
-  swap: 'M7 4v13M3 13l4 4 4-4M17 20V7M21 11l-4-4-4 4',
-  up: 'M12 19V5M5 12l7-7 7 7',
-  down: 'M12 5v14M5 12l7 7 7-7',
-  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
-  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
-  pin: 'M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2v.8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z',
-}
+export { P }
 export const Icon = ({ d, fill, size = 18 }: { d: string; fill?: boolean; size?: number }) => (
   <svg class={d === P.back || d === P.chev ? 'flip' : undefined} viewBox="0 0 24 24" width={size} height={size} fill={fill ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d={d} />
@@ -183,9 +140,6 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
   return link ? <a class="avatar" href={userPath(u)} style={style} onClick={stop} aria-label={nameOf(u)}>{inner}</a> : <span class="avatar" style={style} onClick={onClick}>{inner}</span>
 }
 
-// links, @mentions and /channels inside cast text
-const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@[a-z0-9][a-z0-9.-]*[a-z0-9]|(?<![\\w/:])\\/[a-z0-9-]{2,}(?![\\w/]))`, 'gi')
-const shortUrl = (s: string) => ((s = s.replace(/^https?:\/\/(www\.)?/, '')), s.length > 40 ? s.slice(0, 40) + '…' : s)
 export function RichText({ text, class: cls = 'text' }: { text: string; class?: string }) {
   // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round
   return (
@@ -429,6 +383,16 @@ export const unfurl = (u: string) => {
 const got = new Map<string, unknown>()
 const shapes = new Map<string, [number, number] | null>()
 
+/** What the server drew its home page with (server/home.mjs): with them the app's first frame is that page. */
+export function seed(d: { got: Record<string, unknown>; shapes: Record<string, [number, number] | null> }) {
+  for (const [k, v] of Object.entries(d.got)) {
+    got.set(k, v)
+    if (k.startsWith('u:')) unfurls.set(k.slice(2), Promise.resolve(v as Unfurl))
+    else castCache.set(k.slice(2), Promise.resolve(v as Cast))
+  }
+  for (const [u, s] of Object.entries(d.shapes)) shapes.set(u, s)
+}
+
 /** Before a feed's first page shows: the link previews, quoted casts and lone images' sizes its first casts would load
  * anyway, so each is drawn at its final size instead of growing (and pushing the posts below) when it arrives. Waits
  * at most `ms`; whatever is late loads as before. */
@@ -628,7 +592,6 @@ const ownPath = (u?: string) => {
   const x = u && new URL(u)
   return x && (x.host === 'quilcast.com' || x.host === location.host) ? x.pathname : ''
 }
-const castOf = (path: string) => path.match(/^\/c\/(?:0x)?([0-9a-f]{40})$/i)?.[1].toLowerCase()
 
 const designs = new Map<string, Promise<Look | null>>()
 export const designOf = (id: string) => {
@@ -695,8 +658,6 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   )
 }
 
-/** The room id in a farcaster.xyz Space link. */
-export const spaceOf = (u: string) => u.match(/^https?:\/\/(?:www\.)?(?:warpcast\.com|farcaster\.xyz)\/~\/spaces\/([\w-]{1,64})\/?(?:[?#].*)?$/)?.[1]
 
 /** A Space linked in a cast. Its details need a farcaster.xyz token, so they load only for accounts that turned Spaces on. */
 function SpaceEmbed({ id }: { id: string }) {

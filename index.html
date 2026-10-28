@@ -6,6 +6,9 @@
     <title>Quilcast, a Farcaster client for Hypersnap</title>
     <meta name="description" content="Quilcast is a tiny, open Farcaster client that talks straight to the Hypersnap network run by Quilibrium, with your keys kept in your own browser." />
     <link rel="canonical" href="https://quilcast.com/" />
+    <!-- the home page arrives with the signed-out feed drawn in (server/home.mjs); a browser that has an account, a
+      theme or settings here draws its own page instead, so that one stays hidden (style.css [data-own]) -->
+    <script>try{var s=localStorage;if(['accounts','account','theme','settings','ogre'].some(function(k){return s.getItem('quilcast:'+k)}))document.documentElement.setAttribute('data-own','')}catch(e){}</script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- the first feed and its avatars come from these, so their connections open while the script loads -->

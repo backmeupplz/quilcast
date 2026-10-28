@@ -1,6 +1,7 @@
 // Hypersnap reads plus the locally stored accounts. Writes live in write.ts,
 // loaded on demand so readers never download the crypto.
 import { dropEd, hex, keep, newEd, SECRETS, secretsOf, type Secrets } from './keys.ts'
+import { LINK_RE, safeUrl, toUrl } from './shared.ts'
 
 export const read = <T,>(k: string, d: T): T => {
   try {
@@ -163,21 +164,7 @@ export function follow(e: MouseEvent) {
   a.pathname + a.search !== location.pathname + location.search ? go(a.pathname + a.search) : dispatchEvent(new Event('refresh'))
 }
 
-// links as people write them: with a scheme, or a bare domain on a common TLD ("quilcast.com/x")
-const TLDS = 'com|org|net|xyz|io|app|dev|ai|co|me|gg|so|sh|fm|tv|art|fun|lol|wtf|info|page|site|tech|link|to|us|uk|de|fr|eu|ca|ly|cc|club|blog|news|social|world|live|studio|games|finance|money|cash|network|systems|build|tools'
-export const LINK_RE = new RegExp(`https?:\\/\\/[^\\s<>"]+[^\\s<>".,;:!?)\\]'"]|(?<![@\\w.\\/-])(?:[a-z0-9-]+\\.)+(?:${TLDS})\\b(?:\\/[^\\s<>"]*[^\\s<>".,;:!?)\\]'"])?`, 'gi')
-export const toUrl = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}`)
-
-// URLs from casts, profiles and link previews are untrusted: Snapchain only checks their length, so
-// a "link" can be javascript:… or point at the viewer's own network. Only public http(s) gets through.
-const LOCAL = /^(localhost|.*\.localhost|.*\.local|0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|\[)/i
-export function safeUrl(u?: string | null) {
-  if (typeof u !== 'string') return
-  try {
-    const x = new URL(u)
-    if (/^https?:$/.test(x.protocol) && !x.username && !x.password && !LOCAL.test(x.hostname)) return x.href
-  } catch {}
-}
+export { LINK_RE, safeUrl, toUrl }
 
 export const USER_DATA = { PFP: 1, DISPLAY: 2, BIO: 3, URL: 5, USERNAME: 6 }
 

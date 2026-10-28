@@ -55,6 +55,12 @@ const node = createServer(async (q, r) => {
   if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : [] }))
   if (u.pathname === '/v2/farcaster/cast')
     return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: evil, timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: `http://127.0.0.1:${internalPort}/a.png` }], author: { fid: 1, username: 'x', display_name: evil, pfp_url: `http://127.0.0.1:${internalPort}/pfp.png` }, reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } }))
+  // the signed-out home page's feed: a cast, a reply (left out) and a farcaster.xyz Space (left out)
+  if (u.pathname === '/v2/farcaster/feed/trending') return r.end(JSON.stringify({ casts: [
+    { hash: '0x' + 'a1'.repeat(20), text: evil + ' see quilcast.com', timestamp: '2026-01-02T00:00:00Z', embeds: [], author: { fid: 2, username: 'ann', display_name: evil, custody_address: '0x' + '22'.repeat(20) }, reactions: { likes_count: 1200, recasts_count: 0 }, replies: { count: 3 } },
+    { hash: '0x' + 'a2'.repeat(20), parent_hash: '0x' + 'a1'.repeat(20), text: 'a trending reply', timestamp: '2026-01-02T00:00:00Z', embeds: [], author: { fid: 3, username: 'bob' }, reactions: {}, replies: {} },
+    { hash: '0x' + 'a3'.repeat(20), text: 'join my space', timestamp: '2026-01-02T00:00:00Z', embeds: [{ url: 'https://farcaster.xyz/~/spaces/abc' }], author: { fid: 4, username: 'cat' }, reactions: {}, replies: {} },
+  ] }))
   // a profile page's latest casts; nobody is called "nobody"
   if (u.pathname === '/v2/farcaster/feed/user/casts') return r.end(JSON.stringify({ casts: [{ hash: 'ef'.repeat(20), text: evil, timestamp: '2026-01-02T00:00:00Z', author: { fid: 1 } }, { hash: '12'.repeat(20), parent_hash: 'ab'.repeat(20), text: 'a reply', timestamp: '2026-01-01T00:00:00Z' }] }))
   if (u.searchParams.get('username') === 'nobody') return (r.statusCode = 404), r.end('{"message":"User not found"}')
@@ -147,6 +153,28 @@ test('profile pages: their own head, ProfilePage JSON-LD, plain HTML casts, a sh
   assert.match(await none.text(), /<meta name="robots" content="noindex, follow" \/>/)
   const list = await (await fetch(base + '/u/x/followers')).text()
   assert.ok(list.includes('noindex') && !list.includes('rel="canonical"'))
+})
+
+test('the home page arrives with the signed-out feed drawn in, its style and scripts allowed by hash', async () => {
+  const r = await fetch(base + '/')
+  const html = await r.text()
+  const csp = r.headers.get('content-security-policy')
+  const app = html.match(/<div id="app">(<div class="app ssr-home">[\s\S]*?)<script type="application\/json"/)?.[1]
+  assert.ok(app, 'drawn in')
+  assert.equal(app.match(/<article class="cast"/g).length, 1)
+  assert.ok(!app.includes('trending reply') && !app.includes('join my space'))
+  assert.ok(!app.includes('<script>alert') && app.includes('&#60;script&#62;alert(1)'))
+  assert.match(app, /<a href="https:\/\/quilcast\.com\/" target="_blank" rel="noopener noreferrer nofollow">quilcast\.com<\/a>/)
+  assert.match(app, /<span>1\.2K<\/span>/)
+  const boot = JSON.parse(html.match(/<script type="application\/json" id="boot">(.*?)<\/script>/s)[1])
+  assert.deepEqual(boot.casts.map((c) => c.hash), ['0x' + 'a1'.repeat(20)])
+  assert.equal(boot.casts[0].author.custody_address, undefined)
+  const hash = (s) => `'sha256-${createHash('sha256').update(s).digest('base64')}'`
+  // the app's stylesheet and the cards' sizes, inline
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)[1]
+  assert.ok(!/<link rel="stylesheet"/.test(html) && csp.includes(hash(css)))
+  // every inline script (the head's account check, the folds' "Show more") is allowed by its hash
+  for (const [, js] of html.matchAll(/<script>([^<]*)<\/script>/g)) assert.ok(csp.includes(hash(js)), js.slice(0, 40))
 })
 
 test('casts are mini app embeds with a 3:2 card', async () => {

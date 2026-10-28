@@ -24,6 +24,7 @@ import { getDesign, getLook, listLooks, loadLooks, putDesign, putLook } from './
 import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
+import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -54,8 +55,11 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 // Farcaster and Base clients may frame the page, as a mini app (their frame gets its own storage, apart from quilcast.com's;
 // Quilcast in Quilcast shares it, being the same app). Mini apps are https pages framed by the app (src/miniapp.tsx sandboxes them). Images and video come from anywhere (avatars, embeds, CDNs); the node
 // and RPC URLs are user settings, hence https: for connect-src; messages and Spaces update over farcaster.xyz's websocket, and Spaces audio comes from LiveKit.
+// index.html's one inline script (it hides the server-drawn home page from browsers with their own account), by hash
+const INLINE_JS = readFileSync(join(DIST, 'index.html'), 'utf8').match(/<script>([^<]*)<\/script>/)?.[1]
+const sha = (s) => `'sha256-${createHash('sha256').update(s).digest('base64')}'`
 const CSP = [
-  "default-src 'self'", "script-src 'self'", `style-src 'self'${LEGAL_CSS && ` 'sha256-${createHash('sha256').update(LEGAL_CSS).digest('base64')}'`}`, 'img-src * data: blob:', 'media-src * data: blob:',
+  "default-src 'self'", `script-src 'self'${INLINE_JS ? ` ${sha(INLINE_JS)}` : ''} ${sha(FOLD)}`, `style-src 'self'${LEGAL_CSS && ` 'sha256-${createHash('sha256').update(LEGAL_CSS).digest('base64')}'`}`, 'img-src * data: blob:', 'media-src * data: blob:',
   "connect-src 'self' https: wss://ws.farcaster.xyz wss://*.livekit.cloud http://localhost:* http://127.0.0.1:*", "worker-src 'self' blob:", "font-src 'self'", "manifest-src 'self'",
   "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-src https:",
   "frame-ancestors 'self' https://farcaster.xyz https://*.farcaster.xyz https://warpcast.com https://*.warpcast.com https://base.app https://*.base.app https://*.coinbase.com",
@@ -553,6 +557,43 @@ function getProfile(name) {
 }
 
 const index = await readFile(join(DIST, 'index.html'), 'utf8')
+
+// The signed-out home page (server/home.mjs): trending's first 20 casts with the previews, quoted casts and image sizes
+// they show, drawn into the page. Redrawn at most once a minute, in the background, so visitors and crawlers never
+// wait on the node; what isn't back within 3 s is drawn as the app would before it arrives.
+const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
+const APP_CSS_LINK = index.match(/<link rel="stylesheet" crossorigin href="\/assets\/[^"]+\.css">/)?.[0]
+const APP_CSS = APP_CSS_LINK ? readFileSync(join(DIST, APP_CSS_LINK.match(/href="\/([^"]+)"/)[1]), 'utf8') : ''
+let home = null
+let homeAt = 0
+let homeNext = null
+async function drawHome() {
+  const casts = trending((await nodeJson('/v2/farcaster/feed/trending?limit=50'))?.casts || []).slice(0, 20).map(lean)
+  if (!casts.length) throw new Error('no trending casts')
+  const w = wants(casts)
+  const got = {}
+  const sizes = {}
+  await Promise.race([Promise.allSettled([
+    ...w.links.map((u) => previews(() => unfurl(u)).then((x) => (got[`u:${u}`] = x ?? null))),
+    ...w.quotes.map((h) => getCast(h).then((c) => c && (got[`c:${h}`] = lean(c)))),
+    ...w.lone.map((u) => (shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOf(u)).catch(() => null))).then((x) => (sizes[u] = x))),
+  ]), new Promise((ok) => setTimeout(ok, 3000))])
+  const data = { casts, got: { ...got }, shapes: { ...sizes } }
+  const { html: app, css } = homeBody(data, VERSION)
+  // the app's stylesheet comes inline too: the page paints without a second round trip
+  const style = APP_CSS + css
+  const page = index.replace(APP_CSS_LINK, () => `<style>${style}</style>`)
+    .replace('<div id="app"></div>', () => `<div id="app">${app}<script type="application/json" id="boot">${JSON.stringify(data).replace(/</g, '\\u003c')}</script></div>`)
+  return { at: Date.now(), page, csp: CSP.replace("style-src 'self'", () => `style-src 'self' ${sha(style)}`) }
+}
+function getHome() {
+  if (!homeNext && Date.now() - homeAt > 60e3) {
+    homeNext = drawHome().then((h) => ((home = h), (homeAt = h.at)), (e) => (console.error('home', e.message), (homeAt = Date.now() - 50e3)))
+      .finally(() => (homeNext = null))
+  }
+  return home ? Promise.resolve(home) : homeNext ? homeNext.then(() => home) : Promise.resolve(null)
+}
+getHome()
 refresh()
 setInterval(refresh, 6 * 3600e3).unref()
 // swap the default title/description/url/image in index.html for page-specific ones; replacements
@@ -613,6 +654,13 @@ createServer(async (req, res) => {
   const json = (code, body, cache = 'no-store') => send(req, res, code, { 'content-type': 'application/json', 'cache-control': cache }, Buffer.from(JSON.stringify(body)))
   // every other page is the app as is, its embed opening that page
   const app = () => (path === '/' || !path ? html(index, 'index.html') : html(launchAt(index, path)))
+  // the home page with the signed-out feed drawn in, or the bare app when there's none yet (2 s at most)
+  const homePage = async () => {
+    const h = await Promise.race([getHome(), new Promise((ok) => setTimeout(ok, 2000))])
+    if (!h) return app()
+    res.setHeader('content-security-policy', h.csp)
+    return html(h.page, `home:${h.at}`)
+  }
   let url, path
   try {
     url = new URL(req.url, 'http://x')
@@ -887,6 +935,7 @@ createServer(async (req, res) => {
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
     }
 
+    if (path === '/') return homePage()
     const file = normalize(join(DIST, PAGES[path] || path))
     if (file.startsWith(DIST) && extname(file)) {
       const page = extname(file) === '.html'
