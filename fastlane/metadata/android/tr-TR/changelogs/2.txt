@@ -1,0 +1,1 @@
+Quilcast artık 22 dilde kullanılabiliyor ve cihazınızın dilini takip ediyor. Arapça sağdan sola gösteriliyor, cast'ler ise yazıldıkları yönü koruyor.

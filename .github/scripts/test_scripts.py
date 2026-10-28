@@ -1,11 +1,119 @@
 """Checks for the shared release scripts: python3 -m unittest discover -s .github/scripts"""
-import os, sys, tempfile, unittest
+import hashlib, json, os, sys, tempfile, unittest
+from unittest import mock
 
 os.environ.setdefault("APP_STORE_APP_ID", "1")
 os.environ.setdefault("ASC_KEY_ID", "KEY")
 os.environ.setdefault("ASC_ISSUER_ID", "issuer")
 sys.path.insert(0, os.path.dirname(__file__))
-import appstore, fdroid, notes
+import appstore, fdroid, listings, notes
+
+
+class FakeStore:
+    """App Store Connect for listings.appstore: versions, one app info, localizations and screenshots, recording writes"""
+    def __init__(self, versions, localizations=None, shots=None, build="VALID"):
+        self.build = build
+        self.versions = [{"id": i, "attributes": {"versionString": s, "appStoreState": state}} for i, s, state in versions]
+        self.localizations = {locale: {"id": "loc-" + locale, "attributes": dict(a, locale=locale)} for locale, a in (localizations or {}).items()}
+        self.writes, self.uploaded, self.count = [], [], 0
+        # the 6.9" set already on the store, as (checksum, processing state); new uploads join it, processed
+        self.shots = [{"id": f"old-{n}", "attributes": {"sourceFileChecksum": c, "assetDeliveryState": {"state": s}}}
+                      for n, (c, s) in enumerate(shots or [])]
+        self.submissions = [{"id": "sub", "attributes": {"state": v["attributes"]["appStoreState"]}}
+                            for v in self.versions if v["attributes"]["appStoreState"] in appstore.OPEN]
+
+    def data(self, method, path, query=None, body=None, ok=()):
+        if method != "GET":
+            self.writes.append((method, path, body))
+            self.count += 1
+            new = {"id": f"new-{self.count}", "attributes": dict(body["data"].get("attributes", {})) if body else {}}
+            if path == "/v1/appStoreVersions":
+                new["attributes"]["appStoreState"] = "PREPARE_FOR_SUBMISSION"
+            if path == "/v1/appScreenshots":
+                new["attributes"]["uploadOperations"] = [{"method": "PUT", "url": f"https://upload/{self.count}", "offset": 0,
+                                                          "length": new["attributes"]["fileSize"], "requestHeaders": []}]
+                self.shots.append(new)
+            if method == "DELETE" and path.startswith("/v1/appScreenshots/"):
+                self.shots = [s for s in self.shots if s["id"] != path.split("/")[-1]]
+            if method == "PATCH" and path.startswith("/v1/appScreenshots/"):
+                shot = next(s for s in self.shots if s["id"] == path.split("/")[-1])
+                shot["attributes"].update(body["data"]["attributes"], assetDeliveryState={"state": "COMPLETE"})
+            if method == "PATCH" and path.startswith("/v1/reviewSubmissions/"):  # cancelling hands the version back
+                self.submissions = []
+                for v in self.versions:
+                    if v["attributes"]["appStoreState"] in appstore.OPEN: v["attributes"]["appStoreState"] = "DEVELOPER_REJECTED"
+            return new
+        if path == "/v1/reviewSubmissions":
+            return self.submissions
+        if path == "/v1/builds":
+            return [{"id": "b", "attributes": {"processingState": self.build}}]
+        if path.endswith("/appScreenshotSets"):
+            return [{"id": "set", "attributes": {"screenshotDisplayType": listings.DISPLAY}}] if self.shots else []
+        if path.endswith("/appScreenshots"):
+            return self.shots
+        if path.endswith("/appStoreVersions"):
+            return self.versions
+        if path.endswith("/appAvailabilityV2"):
+            return {"id": "avail"}
+        if path.endswith("/territoryAvailabilities"):
+            return [{"attributes": {"available": t != "CHN"}, "relationships": {"territory": {"data": {"id": t}}}} for t in ("USA", "CHN")]
+        if path.endswith("/appInfos"):
+            return [{"id": "info", "attributes": {"state": "PREPARE_FOR_SUBMISSION"}}]
+        if path.endswith("/ageRatingDeclaration"):
+            return {"attributes": {"socialMedia": False}}
+        if path.endswith("/appStoreVersionLocalizations"):
+            return list(self.localizations.values())
+        return []  # no app info localizations, screenshot sets or screenshots yet
+
+    def api(self, method, path, query=None, body=None, ok=()):
+        return {"data": self.data(method, path, query, body=body, ok=ok)}
+
+    def urlopen(self, request, timeout=None):
+        self.uploaded.append(request.data)
+        return mock.MagicMock()
+
+    def __enter__(self):
+        self.patches = [mock.patch.object(appstore, "data", self.data), mock.patch.object(appstore, "api", self.api),
+                        mock.patch.object(appstore, "versions", lambda: self.versions),
+                        mock.patch.object(listings.urllib.request, "urlopen", self.urlopen)]
+        for p in self.patches: p.start()
+        return self
+
+    def __exit__(self, *exc):
+        for p in self.patches: p.stop()
+
+
+class FakePlay:
+    """The Play edits API for listings.play, one language; the first image upload lands but answers 503, as Play now
+    and then does, so a naive retry would leave it in twice"""
+    def __init__(self, listings=()):
+        self.images, self.calls, self.urls, self.flaky, self.listings, self.bodies = {}, [], [], True, list(listings), []
+
+    def urlopen(self, request, timeout=None):
+        method, url = request.get_method(), request.full_url.split("?")[0]
+        self.calls.append((method, url.split("/edits")[-1]))
+        self.urls.append(request.full_url)
+        answer = {}
+        if method == "POST" and url.endswith("/edits"):
+            answer = {"id": "e"}
+        elif method == "GET" and url.endswith("/listings"):
+            answer = {"listings": self.listings}
+        elif method == "PUT" and "/listings/" in url:
+            self.bodies.append(json.loads(request.data))
+        elif "/listings/" in url and url.rsplit("/", 1)[-1] in listings.PLAY_IMAGES:
+            kind = url.rsplit("/", 1)[-1]
+            if method == "GET":
+                answer = {"images": [{"sha256": s} for s in self.images.get(kind, [])]}
+            elif method == "DELETE":
+                self.images[kind] = []
+            elif method == "POST":
+                self.images.setdefault(kind, []).append(hashlib.sha256(request.data).hexdigest())
+                if self.flaky:
+                    self.flaky = False
+                    raise listings.urllib.error.HTTPError(url, 503, "Service Unavailable", {}, None)
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = json.dumps(answer).encode()
+        return response
 
 METADATA = """AutoName: Mesh+
 
@@ -116,6 +224,160 @@ class Scripts(unittest.TestCase):
             self.assertEqual(notes.read(english, "ja", 4000), "Faster sync.")  # no folder
             self.assertEqual(notes.read(english, "de-DE", 10), "Schnellere")
             self.assertEqual(notes.path(english, "en-US"), english)
+
+    def test_listing_sections_and_versions(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "de-DE"))
+            os.makedirs(os.path.join(root, "screenshots"))  # no listing.md: not a locale
+            with open(os.path.join(root, "listing.md"), "w") as f:
+                f.write("# App Store listing (en-US)\n\n## Name (max 30)\nQuilcast\n\n## Description (max 4000)\nOne.\n\nTwo.\n\n## URLs\n- x\n")
+            with open(os.path.join(root, "de-DE", "listing.md"), "w") as f:
+                f.write("## Name\nQuilcast DE\n")
+            self.assertEqual(listings.appstore_locales(root), {"en-US": os.path.join(root, "listing.md"), "de-DE": os.path.join(root, "de-DE", "listing.md")})
+            self.assertEqual(listings.sections(os.path.join(root, "listing.md")), {"Name": "Quilcast", "Description": "One.\n\nTwo.", "URLs": "- x"})
+        self.assertEqual(listings.next_version(["1.0.0", "0.9.12", "1.0"]), "1.0.1")
+        self.assertEqual(listings.next_version([]), "1.0.0")
+
+    def test_listings_wait_for_a_version_in_review(self):
+        store = FakeStore([("v1", "1.0.0", "WAITING_FOR_REVIEW")])
+        with store:
+            listings.appstore("1.0.1", False)
+        self.assertEqual(store.writes, [])
+
+    def test_listings_start_the_next_version_and_fill_every_locale(self):
+        store = FakeStore([("v1", "1.0.0", "READY_FOR_SALE")], {"en-US": {"supportUrl": "https://s", "description": "Old"}})
+        with tempfile.TemporaryDirectory() as root, store:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("appstore/de-DE")
+                os.makedirs("appstore/screenshots/de-DE")
+                with open("appstore/listing.md", "w") as f: f.write("## Name\nQuilcast\n## Description\nOld\n")
+                with open("appstore/de-DE/listing.md", "w") as f: f.write("## Name\nQuilcast\n## Subtitle\nFarcaster-Client\n## Description\nNeu\n")
+                for n in (1, 2):
+                    with open(f"appstore/screenshots/de-DE/{n}.jpg", "wb") as f: f.write(b"jpeg %d" % n)
+                listings.appstore(None, True)
+                self.assertEqual(store.writes, [])  # a dry run sends nothing
+                listings.appstore("1.0.1", False)
+            finally:
+                os.chdir(cwd)
+        kinds = [(method, path.split("/")[2]) for method, path, _ in store.writes]
+        self.assertEqual(kinds[0], ("POST", "appStoreVersions"))
+        self.assertEqual(store.writes[0][2]["data"]["attributes"]["versionString"], "1.0.1")
+        added = [body["data"]["attributes"] for method, path, body in store.writes if path == "/v1/appStoreVersionLocalizations"]
+        self.assertEqual(added, [{"description": "Neu", "locale": "de-DE", "supportUrl": "https://s"}])  # en-US was already right
+        self.assertEqual([body["data"]["attributes"]["fileName"] for method, path, body in store.writes if path == "/v1/appScreenshots"], ["1.jpg", "2.jpg"])
+        self.assertEqual(store.uploaded, [b"jpeg 1", b"jpeg 2"])
+        done = [body["data"]["attributes"] for method, path, body in store.writes if method == "PATCH" and "appScreenshots/" in path]
+        self.assertEqual([d["sourceFileChecksum"] for d in done], [hashlib.md5(b"jpeg 1").hexdigest(), hashlib.md5(b"jpeg 2").hexdigest()])
+
+    def test_a_release_cancels_the_review_and_puts_the_listing_on_that_version(self):
+        store = FakeStore([("v1", "1.0.0", "WAITING_FOR_REVIEW")], {"en-US": {"description": "Old"}})
+        with tempfile.TemporaryDirectory() as root, store:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("appstore")
+                with open("appstore/listing.md", "w") as f: f.write("## Name\nQuilcast\n## Description\nNew\n")
+                listings.appstore("1.0.1", True, release="2")
+                self.assertEqual(store.writes, [])  # a dry run sends nothing
+                listings.appstore("1.0.1", False, release="2")
+            finally:
+                os.chdir(cwd)
+        self.assertEqual(store.writes[0][1], "/v1/reviewSubmissions/sub")
+        self.assertEqual(store.writes[0][2]["data"]["attributes"], {"canceled": True})
+        self.assertIn(("PATCH", "/v1/appStoreVersionLocalizations/loc-en-US", {"description": "New"}),
+                      [(m, p, b["data"]["attributes"]) for m, p, b in store.writes])
+        self.assertNotIn("/v1/appStoreVersions", [p for m, p, b in store.writes])  # the cancelled version, not a new one
+
+    def test_a_release_with_a_broken_build_cancels_nothing(self):
+        store = FakeStore([("v1", "1.0.0", "WAITING_FOR_REVIEW")], build="INVALID")
+        with store, self.assertRaises(SystemExit):
+            listings.appstore("1.0.1", False, release="2")
+        self.assertEqual(store.writes, [])
+
+    def test_a_release_out_of_time_waiting_for_the_build_cancels_nothing(self):
+        store = FakeStore([("v1", "1.0.0", "WAITING_FOR_REVIEW")], build="PROCESSING")
+        with store, mock.patch.object(listings, "UNTIL", 0), mock.patch.object(listings.time, "sleep"), self.assertRaises(SystemExit):
+            listings.appstore("1.0.1", False, release="2")
+        self.assertEqual(store.writes, [])
+
+    def test_app_review_out_of_time_waiting_for_the_build_cancels_nothing(self):
+        store = FakeStore([("v1", "1.0.0", "WAITING_FOR_REVIEW")], build="PROCESSING")
+        with store, mock.patch.dict(os.environ, {"SUBMIT_UNTIL": "1"}), mock.patch.object(appstore.time, "sleep"), \
+                mock.patch.object(sys, "argv", ["appstore.py", "1.0.1", "2", "notes.txt"]), self.assertRaises(SystemExit):
+            appstore.main()
+        self.assertEqual(store.writes, [])
+
+    def test_a_release_out_of_time_sends_the_texts_and_leaves_the_screenshots(self):
+        store = FakeStore([("v1", "1.0.0", "WAITING_FOR_REVIEW")], {"en-US": {"description": "Old"}})
+        with tempfile.TemporaryDirectory() as root, store:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("appstore/screenshots/en-US")
+                with open("appstore/listing.md", "w") as f: f.write("## Name\nQuilcast\n## Description\nNew\n")
+                with open("appstore/screenshots/en-US/1.jpg", "wb") as f: f.write(b"jpeg 1")
+                # 10 minutes left: enough to cancel and send the texts, not a locale's screenshots
+                with mock.patch.object(listings, "UNTIL", listings.time.time() + 600), self.assertRaises(SystemExit):
+                    listings.appstore("1.0.1", False, release="2")
+            finally:
+                os.chdir(cwd)
+        paths = [p for m, p, b in store.writes]
+        self.assertEqual(paths[0], "/v1/reviewSubmissions/sub")
+        self.assertIn("/v1/appStoreVersionLocalizations/loc-en-US", paths)
+        self.assertIn("/v1/appInfoLocalizations", paths)  # the name went too, before the screenshots
+        self.assertFalse([p for p in paths if "Screenshot" in p])
+        self.assertEqual(store.uploaded, [])
+
+    def test_a_screenshot_apple_failed_to_process_is_uploaded_again(self):
+        with tempfile.TemporaryDirectory() as root:
+            shot = os.path.join(root, "1.jpg")
+            with open(shot, "wb") as f: f.write(b"jpeg 1")
+            md5 = hashlib.md5(b"jpeg 1").hexdigest()
+            say = lambda text: None
+            with FakeStore([], shots=[(md5, "COMPLETE")]) as store:
+                self.assertFalse(listings.upload_screenshots(appstore, "loc", [shot], say, False))
+            with FakeStore([], shots=[(md5, "FAILED")]) as store:
+                self.assertTrue(listings.upload_screenshots(appstore, "loc", [shot], say, False))
+                self.assertEqual([s["attributes"]["assetDeliveryState"]["state"] for s in store.shots], ["COMPLETE"])
+                self.assertEqual(store.uploaded, [b"jpeg 1"])
+
+    def test_play_images_retried_after_a_5xx_are_not_left_in_twice(self):
+        fake = FakePlay()
+        with tempfile.TemporaryDirectory() as root:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("fastlane/metadata/android/de-DE/images/phoneScreenshots")
+                with open("fastlane/metadata/android/de-DE/title.txt", "w") as f: f.write("Quilcast")
+                for n in (1, 2):
+                    with open(f"fastlane/metadata/android/de-DE/images/phoneScreenshots/{n}.jpg", "wb") as f: f.write(b"jpeg %d" % n)
+                with mock.patch.dict(os.environ, {"PLAY_PACKAGE": "com.example"}), \
+                        mock.patch.object(listings.urllib.request, "urlopen", fake.urlopen), mock.patch.object(listings.time, "sleep"), \
+                        mock.patch("play.access_token", return_value="t"):
+                    listings.play(False)
+            finally:
+                os.chdir(cwd)
+        self.assertEqual(fake.images["phoneScreenshots"], [hashlib.sha256(b"jpeg %d" % n).hexdigest() for n in (1, 2)])
+        self.assertIn(("POST", "/e:commit"), fake.calls)
+        # Play's default would withdraw a release in review and resubmit it
+        self.assertTrue(any(u.endswith(":commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW") for u in fake.urls))
+
+    def test_play_listing_update_keeps_the_promo_video(self):
+        fake = FakePlay([{"language": "de-DE", "title": "Alt", "video": "https://youtu.be/x"}])
+        with tempfile.TemporaryDirectory() as root:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("fastlane/metadata/android/de-DE")
+                with open("fastlane/metadata/android/de-DE/title.txt", "w") as f: f.write("Quilcast")
+                with mock.patch.dict(os.environ, {"PLAY_PACKAGE": "com.example"}), \
+                        mock.patch.object(listings.urllib.request, "urlopen", fake.urlopen), mock.patch("play.access_token", return_value="t"):
+                    listings.play(False)
+            finally:
+                os.chdir(cwd)
+        self.assertEqual(fake.bodies, [{"language": "de-DE", "title": "Quilcast", "video": "https://youtu.be/x"}])
 
     def test_es256_signature_from_der(self):
         r, s = b"\x00" + b"\x80" * 32, b"\x01" * 31  # a padded r and a short s

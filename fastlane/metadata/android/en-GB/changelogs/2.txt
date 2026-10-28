@@ -1,0 +1,1 @@
+Quilcast now speaks 22 languages and follows your device's language. Arabic is laid out right to left, and casts keep the direction they were written in.

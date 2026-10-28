@@ -4,7 +4,8 @@
 A submission still waiting or in review is cancelled, and its version takes the new number and build.
   appstore.py <version> <build number> <notes file> [--dry-run]   (--dry-run prints the plan and changes nothing)
   env: APP_STORE_APP_ID, ASC_KEY_ID, ASC_ISSUER_ID; the key is AuthKey_<ASC_KEY_ID>.p8 in API_PRIVATE_KEYS_DIR
-       (default ~/.appstoreconnect/private_keys), the folder altool reads too"""
+       (default ~/.appstoreconnect/private_keys), the folder altool reads too; optional SUBMIT_UNTIL, the Unix time
+       after which it stops waiting for the build (before cancelling anything)"""
 import base64, json, os, subprocess, sys, time, urllib.error, urllib.request
 import notes
 from urllib.parse import urlencode
@@ -81,6 +82,9 @@ def main():
         state = builds[0]["attributes"]["processingState"] if builds else "NOT_FOUND"
         if state == "VALID" or dry: break
         if state in ("FAILED", "INVALID"): sys.exit(f"Build {version} ({build_number}) is {state}")
+        # SUBMIT_UNTIL (Unix time): give up while nothing is cancelled yet, rather than cancel and then hit the job's timeout
+        if os.environ.get("SUBMIT_UNTIL") and time.time() > int(os.environ["SUBMIT_UNTIL"]):
+            sys.exit(f"Out of time waiting for build {version} ({build_number}): nothing was cancelled")
         print(f"Build {version} ({build_number}): {state}, waiting")
         time.sleep(30)
     else:

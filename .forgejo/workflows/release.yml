@@ -33,6 +33,7 @@ permissions:
 # Each store holds one pending submission, so releases go one at a time
 concurrency:
   group: release
+  cancel-in-progress: false  # queue behind a running Listings or release, never cancel it
 env:
   TAG: ${{ github.event.release.tag_name || inputs.tag }}
   MODE: ${{ inputs.mode || 'full' }}
@@ -133,7 +134,8 @@ jobs:
   ios:
     needs: version
     runs-on: macos-26
-    timeout-minutes: 90
+    # The first release with every locale's 120 screenshots waits for the build, then uploads them all
+    timeout-minutes: 180
     env:
       VERSION: ${{ needs.version.outputs.name }}
       CODE: ${{ needs.version.outputs.code }}
@@ -143,6 +145,11 @@ jobs:
       # API_PRIVATE_KEYS_DIR) and is removed at the end. The build uses the Mac's selected Xcode.
       - name: App Store Connect key
         run: |
+          # The listing stops 30 minutes before the job's timeout, which leaves App Review its turn; App Review stops
+          # waiting for the build 15 minutes before it, while it can still give up without having cancelled anything
+          start=$(date +%s)
+          echo "LISTING_UNTIL=$(( start + 150 * 60 ))" >> "$GITHUB_ENV"
+          echo "SUBMIT_UNTIL=$(( start + 165 * 60 ))" >> "$GITHUB_ENV"
           [ -n "$ASC_KEY_P8" ] || { echo "::warning::No ASC_KEY_P8 secret: skipping the iPhone app"; exit 0; }
           keys=$(mktemp -d "$RUNNER_TEMP/asc.XXXXXX")
           printf '%s\n' "$ASC_KEY_P8" > "$keys/AuthKey_$ASC_KEY_ID.p8"
@@ -154,10 +161,27 @@ jobs:
           ref: ${{ env.TAG }}
       # The build number is the Android versionCode, so both stores count the same way
       - name: Archive, sign and upload
+        id: upload
         if: env.IOS
         run: ios/release.sh "$VERSION" "$CODE" ${{ env.MODE == 'dry-run' && '--no-upload' || '' }}
-      - name: App Review
+      # Every locale's name, texts and screenshots from appstore/ go on the version first, so What's New finds them all;
+      # --release waits for the build, then cancels a submission still waiting or in review (as appstore.py would), so
+      # they go on this version. Out of time, it stops before cancelling (build still processing) or before a locale's
+      # screenshots (--until: the job's LISTING_UNTIL or 15 minutes before this step's timeout, whichever comes first, so
+      # the step timeout only catches a hang). Either way the step fails and the job goes on, since a job timeout would skip
+      # App Review after the review was cancelled, and running the release again can't recover: altool refuses the same
+      # build number twice.
+      - name: App Store listing
         if: env.IOS && env.MODE != 'testflight-only'
+        timeout-minutes: 120
+        run: |
+          deadline=$(( $(date +%s) + 105 * 60 ))
+          [ "$deadline" -lt "$LISTING_UNTIL" ] || deadline=$LISTING_UNTIL
+          python3 .github/scripts/listings.py appstore --release "$CODE" --version "$VERSION" --until "$deadline" ${{ env.MODE == 'dry-run' && '--dry-run' || '' }}
+      # Runs even when the listing step failed or timed out after cancelling the review, so the version still goes back to
+      # App Review (with whatever screenshots were left out going on with the next release)
+      - name: App Review
+        if: ${{ !cancelled() && steps.upload.outcome == 'success' && env.IOS && env.MODE != 'testflight-only' }}
         run: python3 .github/scripts/appstore.py "$VERSION" "$CODE" "$NOTES_DIR/$CODE.txt" ${{ env.MODE == 'dry-run' && '--dry-run' || '' }}
       - name: Remove the key
         if: always() && env.API_PRIVATE_KEYS_DIR

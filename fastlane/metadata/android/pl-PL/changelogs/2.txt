@@ -1,0 +1,1 @@
+Quilcast mówi teraz w 22 językach i dopasowuje się do języka urządzenia. Arabski wyświetla się od prawej do lewej, a casty zachowują kierunek, w którym zostały napisane.

@@ -1,0 +1,58 @@
+# Sends the store listings in the repo to both stores, every language (.github/scripts/listings.py): Google Play gets each
+# language's title, descriptions, feature graphic and screenshots from fastlane/metadata/android/, which go to review
+# when committed; the App Store gets each locale's name, subtitle, description, keywords, promotional text and 6.9"
+# screenshots from appstore/ on the version being prepared, so they ship with the next release (release.yml sends them
+# too, right before it submits). Only what differs from the store is sent.
+# Run by hand (Actions → Listings → Run workflow): dry-run shows what would change and sends nothing.
+name: Listings
+on:
+  workflow_dispatch:
+    inputs:
+      store:
+        description: Which store
+        type: choice
+        options: [both, play, appstore]
+        default: both
+      mode:
+        description: dry-run or send
+        type: choice
+        options: [dry-run, send]
+        default: dry-run
+permissions:
+  contents: read
+# Each store holds one pending change at a time, shared with releases
+concurrency:
+  group: release
+  # queue behind a running release, never cancel it. Only one run waits per group: one queued after it replaces the
+  # waiting one (a Listings run waiting behind a release can be dropped by a newer release or Listings run, or the
+  # other way round), so check that a queued run actually ran.
+  cancel-in-progress: false
+env:
+  DRY: ${{ inputs.mode != 'send' && '--dry-run' || '' }}
+  PLAY_PACKAGE: com.borodutch.quilcast
+  APP_STORE_APP_ID: '6827321089'
+  ASC_KEY_ID: 3FT23S9NSM
+  ASC_ISSUER_ID: a18f42ff-6c44-410c-badf-50b11de8dbb8
+jobs:
+  listings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Google Play
+        if: inputs.store != 'appstore'
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          [ -n "$PLAY_SERVICE_ACCOUNT_JSON" ] || { echo "::error::No PLAY_SERVICE_ACCOUNT_JSON secret"; exit 1; }
+          python3 .github/scripts/listings.py play $DRY
+      - name: App Store
+        if: ${{ !cancelled() && inputs.store != 'play' }}
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          [ -n "$ASC_KEY_P8" ] || { echo "::error::No ASC_KEY_P8 secret"; exit 1; }
+          keys=$(mktemp -d)
+          trap 'rm -rf "$keys"' EXIT
+          printf '%s\n' "$ASC_KEY_P8" > "$keys/AuthKey_$ASC_KEY_ID.p8"
+          API_PRIVATE_KEYS_DIR="$keys" python3 .github/scripts/listings.py appstore $DRY
