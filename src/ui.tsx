@@ -152,9 +152,10 @@ export const Tabs = <T extends string>({ tabs, value, set }: { tabs: [T, string]
   </nav>
 )
 
-/** Someone else's image: lazy, sent without a referrer, and hidden rather than broken when it fails. */
+/** Someone else's image: lazy, sent without a referrer, and hidden rather than broken when it fails. An http:// one is
+ * asked for over https://, as Chrome would anyway, so the page never loads mixed content. */
 export const Img = (p: { src?: string; class?: string; style?: string }) => (
-  <img alt="" loading="lazy" referrerpolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} {...p} />
+  <img alt="" loading="lazy" referrerpolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} {...p} src={p.src?.replace(/^http:\/\//i, 'https://')} />
 )
 
 /** A mini app's icon, or the first letter of its name when there's none or it won't load. */
