@@ -5,6 +5,14 @@ export const isImg = (u: string) => /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u)
 export const MAX_EMBEDS = 4
 export const isVid = (u: string) => /\.(m3u8|mp4|webm|mov)(\?|$)/i.test(u)
 
+/** How a cast's embeds sit (ui.tsx Embeds, server/home.mjs): its pictures (one tile, however many) and videos side by
+ *  side in a scrolling strip when there are several; its `cards` (links, tweets, Spaces) full width, one under another,
+ *  and compact when the cast has anything else to show (squeezed into a strip's tile they stretched and clipped, #257). */
+export const embedLayout = (urls: string[], cards: number) => {
+  const tiles = +urls.some(isImg) + urls.filter(isVid).length
+  return { strip: tiles > 1, compact: cards > 0 && tiles + cards > 1 }
+}
+
 /** Farcaster's image CDN resizes on request (`w=96`, `anim=false,w=144`…), so nothing needs the full original. */
 export const sized = (u: string, variant: string) => u.replace(/^(https:\/\/imagedelivery\.net\/[\w-]+\/[\w-]+)\/original$/, `$1/${variant}`)
 

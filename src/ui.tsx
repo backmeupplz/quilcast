@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
-import { castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, P, shortUrl, sized, spaceOf, themeId, themeVars, TOKENS, X_LOGO, type Look, type Theme } from './shared.ts'
+import { castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, P, shortUrl, sized, spaceOf, themeId, themeVars, TOKENS, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -360,9 +360,10 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
     <div class="tweet" onClick={(e) => (stop(e), open(u, '_blank', 'noopener,noreferrer'))} role="link" tabIndex={0}>
       <div class="tw-head">
         {safeUrl(t.author.avatar) && <Img class="tw-av" src={safeUrl(t.author.avatar)} />}
-        <b>{t.author.name}</b><span class="handle">@{t.author.handle}</span>
-        {t.at && <span class="handle">· {ago(new Date(t.at * 1000).toISOString())}</span>}
-        <svg class="tw-x" viewBox="0 0 24 24" width="16" height="16" aria-label="X"><path d={X_LOGO} fill="currentColor" /></svg>
+        {/* the X logo by the name: alone in the corner it looked like a close button */}
+        <b>{t.author.name}</b><svg class="tw-x" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d={X_LOGO} fill="currentColor" /></svg>
+        <span class="handle">@{t.author.handle}</span>
+        {t.at && <span class="handle tw-at">· {ago(new Date(t.at * 1000).toISOString())}</span>}
       </div>
       {t.text && <RichText text={t.text.replace(/\s*https:\/\/t\.co\/\S+$/, '')} class="text tw-text" />}
       {t.photos.length > 0 && <Media urls={t.photos} />}
@@ -680,18 +681,13 @@ function Embeds({ c }: { c: Cast }) {
   const spaces = [...new Set(urls.flatMap((u) => spaceOf(u) || []))]
   const links = urls.filter((u) => !isImg(u) && !isVid(u) && !linked(u) && !spaceOf(u))
   const quotes = [...new Set([...c.embeds.flatMap((e) => (/^(0x)?[0-9a-f]{40}$/i.test(e.cast_id?.hash || '') ? [e.cast_id!.hash.replace(/^0x/, '').toLowerCase()] : [])), ...urls.flatMap((u) => linked(u) || [])])]
-  const all = (
-    <>
-      <Media urls={urls} />
-      {spaces.map((id) => <SpaceEmbed id={id} />)}
-      {links.map((u) => <LinkCard u={u} c={c} />)}
-    </>
-  )
-  // several embeds (the images count as one) sit side by side and scroll, instead of stacking into a tall cast;
-  // quoted casts are text, so they stay full width below (squeezed into a tile they stretched into an empty box)
+  const cards = [...spaces.map((id) => <SpaceEmbed id={id} />), ...links.map((u) => <LinkCard u={u} c={c} />)]
+  const { strip, compact } = embedLayout(urls, cards.length)
+  // quoted casts are text, so they stay full width below
   return (
     <>
-      {+urls.some(isImg) + urls.filter(isVid).length + links.length + spaces.length > 1 ? <div class="strip">{all}</div> : all}
+      {strip ? <div class="strip"><Media urls={urls} /></div> : <Media urls={urls} />}
+      {compact ? <div class="cards">{cards}</div> : cards}
       {quotes.map((h) => <QuoteCard hash={h} />)}
     </>
   )

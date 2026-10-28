@@ -2,7 +2,7 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { castOf, castText, designId, isImg, isVid, LOGO, n, P, safeUrl, shortUrl, sized, spaceOf, themeId, TOKENS, toUrl, X_LOGO } from '../src/shared.ts'
+import { castOf, castText, designId, embedLayout, isImg, isVid, LOGO, n, P, safeUrl, shortUrl, sized, spaceOf, themeId, TOKENS, toUrl, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -106,8 +106,9 @@ export function body(d, version, now = Date.now()) {
   const tweet = (t) => {
     const video = safeUrl(t.video)
     const av = safeUrl(t.author?.avatar)
-    return `<div class="tweet" role="link" tabindex="0"><div class="tw-head">${av ? img(av, 'tw-av') : ''}<b>${esc(t.author?.name)}</b><span class="handle">@${esc(t.author?.handle)}</span>` +
-      `${t.at ? `<span class="handle">· ${ago(t.at * 1000)}</span>` : ''}<svg class="tw-x" viewBox="0 0 24 24" width="16" height="16" aria-label="X"><path d="${X_LOGO}" fill="currentColor"></path></svg></div>` +
+    return `<div class="tweet" role="link" tabindex="0"><div class="tw-head">${av ? img(av, 'tw-av') : ''}<b>${esc(t.author?.name)}</b>` +
+      `<svg class="tw-x" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="${X_LOGO}" fill="currentColor"></path></svg><span class="handle">@${esc(t.author?.handle)}</span>` +
+      `${t.at ? `<span class="handle tw-at">· ${ago(t.at * 1000)}</span>` : ''}</div>` +
       (t.text ? rich(t.text.replace(/\s*https:\/\/t\.co\/\S+$/, ''), 'text tw-text') : '') + (t.photos?.length ? media(t.photos) : '') +
       (!t.photos?.length && video ? `<div class="tw-video">${img(video)}<span class="play">${icon(P.play, 24, true)}</span></div>` : '') +
       (t.quote ? `<div class="tw-quote"><b>${esc(t.quote.name)}</b> <span class="handle">@${esc(t.quote.handle)}</span><p>${esc(t.quote.text)}</p></div>` : '') +
@@ -131,8 +132,9 @@ export function body(d, version, now = Date.now()) {
     const urls = urlsOf(c)
     const spaces = [...new Set(urls.flatMap((u) => spaceOf(u) || []))]
     const links = linksOf(c)
-    const all = media(urls) + spaces.map(space).join('') + links.map(link).join('')
-    return (+urls.some(isImg) + urls.filter(isVid).length + links.length + spaces.length > 1 ? `<div class="strip">${all}</div>` : all) + quotesOf(c).map(quote).join('')
+    const cards = spaces.map(space).join('') + links.map(link).join('')
+    const { strip, compact } = embedLayout(urls, spaces.length + links.length)
+    return (strip ? `<div class="strip">${media(urls)}</div>` : media(urls)) + (compact ? `<div class="cards">${cards}</div>` : cards) + quotesOf(c).map(quote).join('')
   }
   const count = (x) => `<span>${x ? n(x) : ''}</span>`
   const cast = (c) => {
