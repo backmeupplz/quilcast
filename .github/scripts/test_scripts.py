@@ -475,10 +475,43 @@ class Scripts(unittest.TestCase):
                     listings.appstore(None, False)
             finally:
                 os.chdir(cwd)
-        self.assertIn("Out of time", str(stop.exception))
+        self.assertEqual(stop.exception.code, 1)
+        self.assertIn("Out of time", out.getvalue())
         self.assertIn("Waiting for Apple to process 1 screenshot set", out.getvalue())  # the set sent is still waited for
         self.assertEqual(list(store.sets), [IPHONE])
         self.assertEqual(store.uploaded, [b"iphone 1"])
+
+    def test_running_out_of_time_says_so_before_a_wait_that_runs_out_too(self):
+        store = FakeStore([("v1", "1.0.1", "PREPARE_FOR_SUBMISSION")], {"en-US": {"description": "Old"}, "de-DE": {"description": "Alt"}})
+        with tempfile.TemporaryDirectory() as root, store:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                for locale in ("en-US", "de-DE"):
+                    os.makedirs(f"appstore/screenshots/{locale}")
+                    with open(f"appstore/screenshots/{locale}/1.jpg", "wb") as f: f.write(locale.encode())
+                os.makedirs("appstore/de-DE")
+                with open("appstore/listing.md", "w") as f: f.write("## Name\nTodorant\n## Description\nOld\n")
+                with open("appstore/de-DE/listing.md", "w") as f: f.write("## Name\nTodorant\n## Description\nAlt\n")
+                real_wait = listings.wait_for_processing
+                def wait(a, processing):
+                    for s in store.sets[IPHONE]:  # Apple is still processing the set sent
+                        s["attributes"]["assetDeliveryState"]["state"] = "UPLOAD_COMPLETE"
+                    real_wait(a, processing)
+                clock = [0]
+                def sleep(seconds): clock[0] += seconds
+                # time for the first locale's set only, then the wait for it runs out of time too
+                with mock.patch.object(listings, "time_for", side_effect=[True, False]), mock.patch.object(listings, "wait_for_processing", wait), \
+                        mock.patch.object(listings.time, "time", lambda: clock[0]), mock.patch.object(listings.time, "sleep", sleep), \
+                        contextlib.redirect_stdout(io.StringIO()) as out, self.assertRaises(SystemExit) as stop:
+                    listings.appstore(None, False)
+            finally:
+                os.chdir(cwd)
+        self.assertEqual(len(store.uploaded), 1)  # one locale's set went, the other's was left out
+        self.assertIn("weren't processed in time", str(stop.exception))
+        log = out.getvalue()
+        self.assertIn("Out of time: this set and the ones after it", log)
+        self.assertLess(log.index("Out of time"), log.index("Waiting for Apple to process 1 screenshot set"))
 
     def test_play_images_retried_after_a_5xx_are_not_left_in_twice(self):
         fake = FakePlay()

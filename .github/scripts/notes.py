@@ -1,4 +1,4 @@
-# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus and todorant. Repo values come from env.
+# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus, todorant and quilcast. Repo values come from env.
 """Release notes per language, in fastlane's layout that F-Droid reads too: the release scripts get the English
 fastlane/metadata/android/en-US/changelogs/<versionCode>.txt, and a language's own notes sit next to it in
 fastlane/metadata/android/<language>/changelogs/<versionCode>.txt (Play's language codes). A language without

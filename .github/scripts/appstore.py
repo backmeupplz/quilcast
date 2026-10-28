@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus and todorant. Repo values come from env.
+# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus, todorant and quilcast. Repo values come from env.
 """Sends an uploaded iPhone build to App Review, released automatically once approved.
 A submission still waiting or in review is cancelled, and its version takes the new number and build.
   appstore.py <version> <build number> <notes file> [--dry-run]   (--dry-run prints the plan and changes nothing)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus and todorant. Repo values come from env.
+# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus, todorant and quilcast. Repo values come from env.
 # Attaches files to the release <tag> on git.borodutch.com and to the same release on the GitHub mirror, replacing files
 # of the same name. Releases don't mirror, and download links (the site, F-Droid's Binaries) point at GitHub, so the GitHub
 # release is created from the tag (mirrored within seconds) when it's missing, under the same title and notes.

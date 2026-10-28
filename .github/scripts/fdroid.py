@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus and todorant. Repo values come from env.
+# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus, todorant and quilcast. Repo values come from env.
 """Brings the app's open fdroiddata merge request up to a release: its metadata keeps one build entry, this version.
 Once the merge request is merged, F-Droid's checkupdates follows new tags itself and this does nothing.
   fdroid.py <version> <version code> <commit> [--dry-run]   (--dry-run prints the change and pushes nothing)

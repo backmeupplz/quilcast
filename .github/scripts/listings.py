@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus and todorant. Repo values come from env.
+# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus, todorant and quilcast. Repo values come from env.
 """Store listings in every language, from the texts and screenshots in the repo.
   listings.py play [--dry-run]                    Google Play: title, short and full description, feature graphic and
                                                   phone, 7" and 10" screenshots per language; committing sends them to review
@@ -338,8 +338,10 @@ def appstore(version_string, dry, release=None):
                 print(f"{locale} {device} screenshots:")
                 upload_screenshots(a, localizations[locale]["id"], display, files, say, dry, processing)
     except OutOfTime:
+        # said before the wait, which near the deadline usually runs out of time too; flushed, as that exit goes to stderr
+        print("  Out of time: this set and the ones after it keep their screenshots until the next release or Listings run", flush=True)
         wait_for_processing(a, processing)
-        sys.exit("  Out of time: this set and the ones after it keep their screenshots until the next release or Listings run")
+        sys.exit(1)
     if not dry:
         wait_for_processing(a, processing)
 

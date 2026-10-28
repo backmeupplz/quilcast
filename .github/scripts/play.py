@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus and todorant. Repo values come from env.
+# Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus, todorant and quilcast. Repo values come from env.
 """Sends an Android App Bundle to Google Play production (full rollout) for review.
 A release still in review is withdrawn for this one (changesInReviewBehavior=CANCEL_IN_REVIEW_AND_SUBMIT).
   play.py <bundle.aab> <version name> <notes file> [--dry-run]   (--dry-run validates the edit, then discards it)
