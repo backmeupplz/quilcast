@@ -8,8 +8,9 @@
     <link rel="canonical" href="https://quilcast.com/" />
     <!-- the home page arrives with the signed-out feed drawn in (server/home.mjs); a browser that has an account, a
       theme or settings here draws its own page instead, so that one stays hidden (style.css [data-own]). Otherwise
-      the page's first picture (its quilcast:lead) is asked for right away, ahead of the page's other pictures -->
-    <script>try{var s=localStorage;if(['accounts','account','theme','settings','ogre'].some(function(k){return s.getItem('quilcast:'+k)}))document.documentElement.setAttribute('data-own','');else{var m=document.querySelector('meta[name="quilcast:lead"]');if(m){var l=document.createElement('link');l.rel='preload';l.as='image';l.fetchPriority='high';l.imageSrcset=m.content;l.imageSizes=m.dataset.sizes;document.head.appendChild(l)}}}catch(e){}</script>
+      the page's first picture (its quilcast:lead) is asked for right away, and the app's scripts (held in #app-js)
+      once it's on screen: the page is already drawn, and they'd only share the line with it -->
+    <script>try{var s=localStorage,o=['accounts','account','theme','settings','ogre'].some(function(k){return s.getItem('quilcast:'+k)})}catch(e){}var d=document,t=d.getElementById('app-js'),m=d.querySelector('meta[name="quilcast:lead"]'),go=function(){t&&d.head.append(t.content);t=null};if(o)d.documentElement.setAttribute('data-own','');if(o||!m)go();else{var l=d.createElement('link');l.rel='preload';l.as='image';l.fetchPriority='high';l.imageSrcset=m.content;l.imageSizes=m.dataset.sizes;l.onload=l.onerror=function(){requestAnimationFrame(function(){setTimeout(go)})};setTimeout(go,3000);d.head.appendChild(l)}</script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- the first feed and its avatars come from these, so their connections open while the script loads -->

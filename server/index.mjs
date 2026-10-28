@@ -563,6 +563,7 @@ const index = await readFile(join(DIST, 'index.html'), 'utf8')
 // wait on the node; what isn't back within 3 s is drawn as the app would before it arrives.
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
 const APP_CSS_LINK = index.match(/<link rel="stylesheet" crossorigin href="\/assets\/[^"]+\.css">/)?.[0]
+const APP_JS = /<script type="module"[^>]*><\/script>|<link rel="modulepreload"[^>]*>/g
 const APP_CSS = APP_CSS_LINK ? readFileSync(join(DIST, APP_CSS_LINK.match(/href="\/([^"]+)"/)[1]), 'utf8') : ''
 let home = null
 let homeAt = 0
@@ -591,9 +592,10 @@ async function drawHome() {
   if (lead) leads.add(lead), (data.lead = lead), leads.size > 20 && leads.delete(leads.values().next().value)
   // the app's stylesheet comes inline too: the page paints without a second round trip
   const style = APP_CSS + css
-  // the page is drawn without the app, so its scripts come after the page's own pictures
-  const page = index.replace('<script>', () => `${meta}<script>`).replace(APP_CSS_LINK, () => `<style>${style}</style>`)
-    .replace(/<(script type="module"|link rel="modulepreload") crossorigin /g, '<$1 crossorigin fetchpriority="low" ')
+  // the page is drawn without the app, so index.html's head script loads the app's scripts once its first picture is
+  // shown (or at once in a browser with its own account, which never shows this page)
+  const page = index.replace(APP_JS, '').replace('<script>', () => `<template id="app-js">${index.match(APP_JS).join('')}</template>${meta}<script>`)
+    .replace(APP_CSS_LINK, () => `<style>${style}</style>`)
     .replace('<div id="app"></div>', () => `<div id="app">${app}<script type="application/json" id="boot">${JSON.stringify(data).replace(/</g, '\\u003c')}</script></div>`)
   return { at: Date.now(), page, csp: CSP.replace("style-src 'self'", () => `style-src 'self' ${sha(style)}`) }
 }
