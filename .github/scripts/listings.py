@@ -22,7 +22,7 @@ App Store: appstore/<locale>/listing.md (en-US: appstore/listing.md), sections "
 --dry-run prints the changes and sends nothing (Play validates them in an edit it then discards). Only what differs
 from the store is sent, so running it again is safe.
 env: as for play.py and appstore.py."""
-import glob, hashlib, json, os, re, sys, time, urllib.error, urllib.request
+import glob, hashlib, http.client, json, os, re, sys, time, urllib.error, urllib.request
 
 PLAY_ROOT, APPSTORE_ROOT, SHOTS_ROOT = "fastlane/metadata/android", "appstore", "appstore/screenshots"
 PLAY_TEXTS = {"title": "title.txt", "shortDescription": "short_description.txt", "fullDescription": "full_description.txt"}
@@ -34,7 +34,8 @@ INFO_TEXTS = {"name": "Name", "subtitle": "Subtitle"}
 DISPLAYS = {"": ("APP_IPHONE_67", '6.9" iPhone'),  # 1320x2868
             "ipad-13": ("APP_IPAD_PRO_3GEN_129", '13" iPad')}  # 2064x2752
 TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
-SHOT_MINUTES = 15  # what one locale's screenshot set may take: the upload, then up to 10 minutes of processing
+SHOT_MINUTES = 15  # left before a locale's screenshot set goes: its upload, then 10 minutes or more for Apple to process it
+PROCESS_MINUTES = 30  # without --until: how long the sets sent may take to process, all together, after the last one went
 UNTIL = None  # --until: the Unix time by which a release needs this done, so App Review still gets its turn
 
 
@@ -150,20 +151,30 @@ def play(dry):
         print(f"{changed} Play listing change{'s' if changed != 1 else ''} sent to review")
 
 
-def upload_screenshots(a, localization, display, files, say, dry):
-    """Makes the locale's set for this display type exactly these files, in this order; returns whether anything changed"""
+class OutOfTime(Exception):
+    pass
+
+
+def upload_screenshots(a, localization, display, files, say, dry, processing):
+    """Makes the locale's set for this display type exactly these files, in this order. A set Apple still has to process
+    goes into processing (its id) for wait_for_processing, which runs once every set is sent"""
     sets = {s["attributes"]["screenshotDisplayType"]: s for s in a.data("GET", f"/v1/appStoreVersionLocalizations/{localization}/appScreenshotSets")}
     shots = a.data("GET", f"/v1/appScreenshotSets/{sets[display]['id']}/appScreenshots") if display in sets else []
     # a screenshot Apple failed to process keeps its checksum, so it counts as different
     if ([s["attributes"].get("sourceFileChecksum") for s in shots] == [digest(f, "md5") for f in files]
             and not any(shot_state(s) == "FAILED" for s in shots)):
-        return False
+        if all(shot_state(s) == "COMPLETE" for s in shots):
+            print("  up to date")
+        else:  # sent by an earlier run that stopped waiting
+            print("  up to date, Apple is still processing it")
+            processing.append(sets[display]["id"])
+        return
     say(f"  {len(files)} screenshots replace {len(shots)}")
     if dry:
-        return True
+        return
     # checked before the old ones go, so a set is never left half done
     if not time_for(SHOT_MINUTES):
-        sys.exit("  Out of time: this set and the ones after it keep their screenshots until the next release or Listings run")
+        raise OutOfTime()
     if display in sets:
         shot_set = sets[display]["id"]
         for s in shots:
@@ -188,15 +199,32 @@ def upload_screenshots(a, localization, display, files, say, dry):
                     print(f"  {os.path.basename(f)}: {e}, trying the part again")
                     time.sleep(5 * 2 ** attempt)
         a.data("PATCH", f"/v1/appScreenshots/{shot['id']}", body=a.resource("appScreenshots", shot["id"], {"uploaded": True, "sourceFileChecksum": digest(f, "md5")}))
-    # App Review takes the version right after this, so the set has to be processed first
-    for attempt in range(60):
-        states = [shot_state(s) for s in a.data("GET", f"/v1/appScreenshotSets/{shot_set}/appScreenshots")]
+    processing.append(shot_set)
+
+
+def wait_for_processing(a, processing):
+    """App Review takes the version right after this, so the sets sent have to be processed first. Apple processes them side
+    by side, at times taking well over 10 minutes for one, so every set is sent before any is waited for; the wait lasts
+    until --until, or PROCESS_MINUTES without it. It checks one set at a time (the next once that one is done), so a long
+    wait stays well inside the key's 3600 requests an hour, and a rate limit or a server error only means asking again"""
+    deadline = UNTIL or time.time() + PROCESS_MINUTES * 60
+    if processing:
+        print(f"Waiting for Apple to process {len(processing)} screenshot set{'s' if len(processing) != 1 else ''}")
+    while processing:
+        try:
+            shots = a.data("GET", f"/v1/appScreenshotSets/{processing[0]}/appScreenshots", ok=(429, 500, 502, 503, 504))
+        except (OSError, http.client.HTTPException) as e:  # a dropped connection, over a wait this long
+            print(f"  {e!r}, asking again")
+            shots = None
+        states = [shot_state(s) for s in shots or []]
         if "FAILED" in states:
-            sys.exit(f"  Apple couldn't process a screenshot: {states}")
-        if all(s == "COMPLETE" for s in states):
-            return True
-        time.sleep(10)
-    sys.exit(f"  The screenshots weren't processed within 10 minutes: {states}")
+            sys.exit(f"  Apple couldn't process a screenshot in set {processing[0]}: {states}")
+        if shots is not None and all(s == "COMPLETE" for s in states):
+            processing.pop(0)
+            continue
+        if time.time() + 15 > deadline:
+            sys.exit(f"  {len(processing)} screenshot sets weren't processed in time (running this again waits for them): {processing}")
+        time.sleep(15)
 
 
 def shot_state(shot):
@@ -297,17 +325,23 @@ def appstore(version_string, dry, release=None):
             localizations = existing
     # screenshots last: they take the longest, so running out of time leaves only them behind; every locale's iPhone set
     # goes before the iPad ones
-    for folder, (display, device) in DISPLAYS.items():
-        for locale in listings:
-            files = images(os.path.join(SHOTS_ROOT, locale, folder, "*"))
-            if not files:
-                continue
-            if locale not in localizations:
-                say(f"{locale}: upload {len(files)} {device} screenshots once the localization exists")
-                continue
-            print(f"{locale} {device} screenshots:")
-            if not upload_screenshots(a, localizations[locale]["id"], display, files, say, dry):
-                print("  up to date")
+    processing = []
+    try:
+        for folder, (display, device) in DISPLAYS.items():
+            for locale in listings:
+                files = images(os.path.join(SHOTS_ROOT, locale, folder, "*"))
+                if not files:
+                    continue
+                if locale not in localizations:
+                    say(f"{locale}: upload {len(files)} {device} screenshots once the localization exists")
+                    continue
+                print(f"{locale} {device} screenshots:")
+                upload_screenshots(a, localizations[locale]["id"], display, files, say, dry, processing)
+    except OutOfTime:
+        wait_for_processing(a, processing)
+        sys.exit("  Out of time: this set and the ones after it keep their screenshots until the next release or Listings run")
+    if not dry:
+        wait_for_processing(a, processing)
 
 
 def main():

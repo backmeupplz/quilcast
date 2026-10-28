@@ -1,5 +1,5 @@
 """Checks for the shared release scripts: python3 -m unittest discover -s .github/scripts"""
-import contextlib, hashlib, io, json, os, sys, tempfile, unittest
+import contextlib, hashlib, io, json, os, subprocess, sys, tempfile, unittest
 from unittest import mock
 
 os.environ.setdefault("APP_STORE_APP_ID", "1")
@@ -341,12 +341,89 @@ class Scripts(unittest.TestCase):
             with open(shot, "wb") as f: f.write(b"jpeg 1")
             md5 = hashlib.md5(b"jpeg 1").hexdigest()
             say = lambda text: None
-            with FakeStore([], shots=[(md5, "COMPLETE")]) as store:
-                self.assertFalse(listings.upload_screenshots(appstore, "loc", IPHONE, [shot], say, False))
+            with FakeStore([], shots=[(md5, "COMPLETE")]) as store, contextlib.redirect_stdout(io.StringIO()):
+                processing = []
+                listings.upload_screenshots(appstore, "loc", IPHONE, [shot], say, False, processing)
+                self.assertEqual((store.uploaded, processing), ([], []))
             with FakeStore([], shots=[(md5, "FAILED")]) as store:
-                self.assertTrue(listings.upload_screenshots(appstore, "loc", IPHONE, [shot], say, False))
+                processing = []
+                listings.upload_screenshots(appstore, "loc", IPHONE, [shot], say, False, processing)
                 self.assertEqual([s["attributes"]["assetDeliveryState"]["state"] for s in store.sets[IPHONE]], ["COMPLETE"])
                 self.assertEqual(store.uploaded, [b"jpeg 1"])
+                self.assertEqual(processing, [IPHONE])
+
+    def test_a_set_apple_is_still_processing_is_waited_for_not_sent_again(self):
+        with tempfile.TemporaryDirectory() as root:
+            shot = os.path.join(root, "1.jpg")
+            with open(shot, "wb") as f: f.write(b"jpeg 1")
+            with FakeStore([], shots=[(hashlib.md5(b"jpeg 1").hexdigest(), "UPLOAD_COMPLETE")]) as store, \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                processing = []
+                listings.upload_screenshots(appstore, "loc", IPHONE, [shot], lambda text: None, False, processing)
+                self.assertEqual((store.uploaded, processing), ([], [IPHONE]))
+                self.assertIn("up to date, Apple is still processing it", out.getvalue())
+                # 20 minutes of processing, longer than the old 10-minute limit
+                clock = [0]
+                def sleep(seconds):
+                    clock[0] += seconds
+                    if clock[0] >= 20 * 60:
+                        store.sets[IPHONE][0]["attributes"]["assetDeliveryState"]["state"] = "COMPLETE"
+                with mock.patch.object(listings.time, "sleep", sleep), mock.patch.object(listings.time, "time", lambda: clock[0]):
+                    listings.wait_for_processing(appstore, processing)
+                self.assertEqual(processing, [])
+                self.assertEqual(clock[0], 20 * 60)
+
+    def test_waiting_asks_one_set_at_a_time_and_again_after_a_rate_limit(self):
+        done = [{"attributes": {"assetDeliveryState": {"state": "COMPLETE"}}}]
+        # None: a 429 carried on past; then a dropped connection
+        answers = {"a": [None, ConnectionResetError("reset"), done], "b": [done]}
+        asked = []
+        def data(method, path, query=None, ok=()):
+            self.assertIn(429, ok)
+            asked.append(path.split("/")[-2])
+            answer = answers[asked[-1]].pop(0)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+        with mock.patch.object(appstore, "data", data), mock.patch.object(listings.time, "sleep") as sleep, \
+                contextlib.redirect_stdout(io.StringIO()):
+            processing = ["a", "b"]
+            listings.wait_for_processing(appstore, processing)
+        self.assertEqual((asked, processing, sleep.call_count), (["a", "a", "a", "b"], [], 2))
+
+    def test_waiting_stops_at_the_deadline_and_on_a_failed_screenshot(self):
+        for state, message in (("UPLOAD_COMPLETE", "weren't processed in time"), ("FAILED", "couldn't process")):
+            with FakeStore([], shots=[("md5", state)]), contextlib.redirect_stdout(io.StringIO()):
+                clock = [0]
+                def sleep(seconds): clock[0] += seconds
+                with mock.patch.object(listings.time, "sleep", sleep), mock.patch.object(listings.time, "time", lambda: clock[0]), \
+                        self.assertRaises(SystemExit) as stop:
+                    listings.wait_for_processing(appstore, [IPHONE])
+                self.assertIn(message, str(stop.exception))
+                self.assertLessEqual(clock[0], listings.PROCESS_MINUTES * 60)
+
+    def test_every_set_is_sent_before_any_is_waited_for(self):
+        store = FakeStore([("v1", "1.0.1", "PREPARE_FOR_SUBMISSION")], {"en-US": {"description": "Old"}, "de-DE": {"description": "Alt"}})
+        waits = []
+        with tempfile.TemporaryDirectory() as root, store:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                for locale in ("en-US", "de-DE"):
+                    os.makedirs(f"appstore/screenshots/{locale}")
+                    with open(f"appstore/screenshots/{locale}/1.jpg", "wb") as f: f.write(locale.encode())
+                os.makedirs("appstore/de-DE")
+                with open("appstore/listing.md", "w") as f: f.write("## Name\nTodorant\n## Description\nOld\n")
+                with open("appstore/de-DE/listing.md", "w") as f: f.write("## Name\nTodorant\n## Description\nAlt\n")
+                real_wait = listings.wait_for_processing
+                def wait(a, processing):
+                    waits.append(list(store.uploaded))
+                    real_wait(a, processing)
+                with mock.patch.object(listings, "wait_for_processing", wait), contextlib.redirect_stdout(io.StringIO()):
+                    listings.appstore(None, False)
+            finally:
+                os.chdir(cwd)
+        self.assertEqual([sorted(uploaded) for uploaded in waits], [[b"de-DE", b"en-US"]])  # one wait, after both uploads
 
     def test_listings_sync_the_ipad_set_from_its_folder(self):
         store = FakeStore([("v1", "1.0.1", "PREPARE_FOR_SUBMISSION")], {"en-US": {"description": "Old"}},
@@ -393,11 +470,13 @@ class Scripts(unittest.TestCase):
                 with open("appstore/screenshots/en-US/1.jpg", "wb") as f: f.write(b"iphone 1")
                 with open("appstore/screenshots/en-US/ipad-13/1.jpg", "wb") as f: f.write(b"ipad 1")
                 # time for one set: the iPhone one goes, the iPad one waits for the next run
-                with mock.patch.object(listings, "time_for", side_effect=[True, False]), contextlib.redirect_stdout(io.StringIO()), \
-                        self.assertRaises(SystemExit):
+                with mock.patch.object(listings, "time_for", side_effect=[True, False]), contextlib.redirect_stdout(io.StringIO()) as out, \
+                        self.assertRaises(SystemExit) as stop:
                     listings.appstore(None, False)
             finally:
                 os.chdir(cwd)
+        self.assertIn("Out of time", str(stop.exception))
+        self.assertIn("Waiting for Apple to process 1 screenshot set", out.getvalue())  # the set sent is still waited for
         self.assertEqual(list(store.sets), [IPHONE])
         self.assertEqual(store.uploaded, [b"iphone 1"])
 
@@ -436,6 +515,50 @@ class Scripts(unittest.TestCase):
             finally:
                 os.chdir(cwd)
         self.assertEqual(fake.bodies, [{"language": "de-DE", "title": "Quilcast", "video": "https://youtu.be/x"}])
+
+    def test_fdroid_rewrite_sets_the_gradle_flavor(self):
+        # A flavored app's entry needs its flavor: with gradle: [yes] Gradle builds every flavor and fdroidserver finds no APK
+        old = METADATA.replace("      - fdroid\n", "      - yes\n")
+        new = fdroid.rewrite(old, "0.4.4", "8", "a" * 40, gradle="fdroid")
+        self.assertEqual(new, fdroid.rewrite(METADATA, "0.4.4", "8", "a" * 40))
+        self.assertIn("    subdir: app\n    gradle:\n      - fdroid\n\nAllowedAPKSigningKeys", new)
+        # The same value changes nothing, and without FDROID_GRADLE the entry keeps the flavor it has
+        self.assertEqual(fdroid.rewrite(new, "0.4.4", "8", "a" * 40, gradle="fdroid"), new)
+        self.assertIn("    gradle:\n      - fdroid\n", fdroid.rewrite(new, "0.4.5", "9", "b" * 40))
+        with self.assertRaises(SystemExit):
+            fdroid.rewrite(METADATA.replace("    gradle:\n      - fdroid\n", ""), "0.4.4", "8", "a" * 40, gradle="fdroid")
+
+    def test_fdroid_main_takes_the_gradle_flavor_from_the_env(self):
+        old = METADATA.replace("      - fdroid\n", "      - yes\n")
+        def urlopen(url):
+            body = json.dumps({"state": "opened", "iid": 123, "web_url": "https://gitlab.com/mr"}) if "merge_requests" in url else old
+            return io.BytesIO(body.encode())
+        env = {"FDROID_MR": "123", "FDROID_APP_ID": "com.example", "FDROID_FORK": "backmeupplz/fdroiddata", "FDROID_BRANCH": "com.example",
+               "FDROID_GRADLE": "fdroid"}
+        with mock.patch.dict(os.environ, env), mock.patch("sys.argv", ["fdroid.py", "0.4.4", "8", "a" * 40, "--dry-run"]), \
+                mock.patch.object(fdroid.urllib.request, "urlopen", urlopen), contextlib.redirect_stdout(io.StringIO()) as out:
+            fdroid.main()
+        self.assertIn("\n-      - yes\n+      - fdroid\n", out.getvalue())
+        self.assertIn("Dry run: nothing pushed", out.getvalue())
+
+    def test_fdroid_push_failure_reports_git_output_without_the_token(self):
+        def urlopen(url):
+            body = json.dumps({"state": "opened", "iid": 123, "web_url": "https://gitlab.com/mr"}) if "merge_requests" in url else METADATA
+            return io.BytesIO(body.encode())
+        def run(argv, cwd, **kw):
+            self.assertTrue(kw["capture_output"])
+            if "push" not in argv:
+                if "sparse-checkout" in argv:
+                    os.makedirs(os.path.join(cwd, "metadata"))
+                return subprocess.CompletedProcess(argv, 0, "", "")
+            return subprocess.CompletedProcess(argv, 1, "", "remote: HTTP Basic: Access denied for s3cret-token\nfatal: Authentication failed for 'https://gitlab.com/backmeupplz/fdroiddata.git/'\n")
+        env = {"GITLAB_TOKEN": "s3cret-token", "FDROID_MR": "123", "FDROID_APP_ID": "com.example", "FDROID_FORK": "backmeupplz/fdroiddata", "FDROID_BRANCH": "com.example"}
+        with mock.patch.dict(os.environ, env), mock.patch("sys.argv", ["fdroid.py", "0.4.4", "8", "a" * 40]), \
+                mock.patch.object(fdroid.urllib.request, "urlopen", urlopen), mock.patch.object(fdroid.subprocess, "run", run), \
+                contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit) as exit:
+            fdroid.main()
+        self.assertEqual(exit.exception.code, "git push failed with status 1: remote: HTTP Basic: Access denied for *** | fatal: Authentication failed for 'https://gitlab.com/backmeupplz/fdroiddata.git/'")
+
 
     def test_es256_signature_from_der(self):
         r, s = b"\x00" + b"\x80" * 32, b"\x01" * 31  # a padded r and a short s
