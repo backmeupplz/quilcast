@@ -12,7 +12,7 @@ IPHONE, IPAD = listings.DISPLAYS[""][0], listings.DISPLAYS["ipad-13"][0]
 
 class FakeStore:
     """App Store Connect for listings.appstore: versions, one app info, localizations and screenshots, recording writes"""
-    def __init__(self, versions, localizations=None, shots=None, build="VALID"):
+    def __init__(self, versions, localizations=None, shots=None, build="VALID", pages=()):
         self.build = build
         self.versions = [{"id": i, "attributes": {"versionString": s, "appStoreState": state}} for i, s, state in versions]
         self.localizations = {locale: {"id": "loc-" + locale, "attributes": dict(a, locale=locale)} for locale, a in (localizations or {}).items()}
@@ -21,10 +21,19 @@ class FakeStore:
         # state); new uploads join their set, processed
         self.sets = {IPHONE: [{"id": f"old-{n}", "attributes": {"sourceFileChecksum": c, "assetDeliveryState": {"state": s}}}
                               for n, (c, s) in enumerate(shots)]} if shots else {}
+        # the version's open submission ("sub"), and pages: open ones holding only a custom product page, as
+        # (id, state, submitted date)
         self.submissions = [{"id": "sub", "attributes": {"state": v["attributes"]["appStoreState"]}}
                             for v in self.versions if v["attributes"]["appStoreState"] in appstore.OPEN]
+        self.items = {"sub": [{"relationships": {"appStoreVersion": {"data": {"type": "appStoreVersions", "id": v}}}} for v, s, state in versions]}
+        for page, state, date in pages:
+            self.submissions.append({"id": page, "attributes": {"state": state, "submittedDate": date}})
+            self.items[page] = [{"relationships": {"appStoreVersion": {"data": None},
+                                                   "appCustomProductPageVersion": {"data": {"type": "appCustomProductPageVersions", "id": "cpp-" + page}}}}]
 
     def data(self, method, path, query=None, body=None, ok=()):
+        if method == "PATCH" and path.startswith("/v1/reviewSubmissions/") and body["data"]["attributes"].get("canceled"):
+            self.submissions = [s for s in self.submissions if s["id"] != path.split("/")[-1]]
         if method != "GET":
             self.writes.append((method, path, body))
             self.count += 1
@@ -43,13 +52,16 @@ class FakeStore:
             if method == "PATCH" and path.startswith("/v1/appScreenshots/"):
                 shot = next(s for shots in self.sets.values() for s in shots if s["id"] == path.split("/")[-1])
                 shot["attributes"].update(body["data"]["attributes"], assetDeliveryState={"state": "COMPLETE"})
-            if method == "PATCH" and path.startswith("/v1/reviewSubmissions/"):  # cancelling hands the version back
-                self.submissions = []
+            if path == "/v1/reviewSubmissions/sub" and body["data"]["attributes"].get("canceled"):  # cancelling hands the version back
                 for v in self.versions:
                     if v["attributes"]["appStoreState"] in appstore.OPEN: v["attributes"]["appStoreState"] = "DEVELOPER_REJECTED"
             return new
         if path == "/v1/reviewSubmissions":
-            return self.submissions
+            return [s for s in self.submissions if s["attributes"]["state"] in query["filter[state]"].split(",")]
+        if path.startswith("/v1/reviewSubmissions/") and path.endswith("/items"):
+            return self.items[path.split("/")[-2]]
+        if path.startswith("/v1/reviewSubmissions/"):  # a cancelled one is done
+            return next((s for s in self.submissions if s["id"] == path.split("/")[-1]), {"attributes": {"state": "COMPLETE"}})
         if path == "/v1/builds":
             return [{"id": "b", "attributes": {"processingState": self.build}}]
         if path.endswith("/appScreenshotSets"):
@@ -294,6 +306,53 @@ class Scripts(unittest.TestCase):
         self.assertIn(("PATCH", "/v1/appStoreVersionLocalizations/loc-en-US", {"description": "New"}),
                       [(m, p, b["data"]["attributes"]) for m, p, b in store.writes])
         self.assertNotIn("/v1/appStoreVersions", [p for m, p, b in store.writes])  # the cancelled version, not a new one
+
+    def test_a_release_leaves_a_custom_product_page_review_alone(self):
+        store = FakeStore([("v1", "1.0.0", "WAITING_FOR_REVIEW")], {"en-US": {"description": "Old"}},
+                          pages=[("page", "WAITING_FOR_REVIEW", "2026-10-28T06:41:00Z")])
+        with tempfile.TemporaryDirectory() as root, store, contextlib.redirect_stdout(io.StringIO()) as out:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("appstore")
+                with open("appstore/listing.md", "w") as f: f.write("## Name\nQuilcast\n## Description\nNew\n")
+                listings.appstore("1.0.1", False, release="2")  # release.yml: the listing, then App Review
+                with mock.patch.object(sys, "argv", ["appstore.py", "1.0.1", "2", "notes.txt"]):
+                    appstore.main()
+            finally:
+                os.chdir(cwd)
+        cancelled = [p for m, p, b in store.writes if m == "PATCH" and b["data"]["attributes"].get("canceled")]
+        self.assertEqual(cancelled, ["/v1/reviewSubmissions/sub"])  # the version's, not the page's
+        self.assertEqual([s["id"] for s in store.submissions], ["page"])
+        self.assertIn("Leave the WAITING_FOR_REVIEW submission page alone: it holds no app version", out.getvalue())
+        self.assertIn("1.0.1 (2) is waiting for review", out.getvalue())
+
+    def test_pages_in_every_review_slot_make_room_for_a_release(self):
+        # rejected first, then the last one waiting, never one in review while another can go
+        for pages, cancelled in [
+                ([("a", "WAITING_FOR_REVIEW", "2026-10-27T06:41:00Z"), ("b", "WAITING_FOR_REVIEW", "2026-10-28T06:41:00Z")], "b"),
+                ([("a", "WAITING_FOR_REVIEW", "2026-10-27T06:41:00Z"), ("b", "IN_REVIEW", "2026-10-28T06:41:00Z")], "a"),
+                ([("a", "UNRESOLVED_ISSUES", "2026-10-26T06:41:00Z"), ("b", "WAITING_FOR_REVIEW", "2026-10-28T06:41:00Z")], "a")]:
+            with self.subTest(pages=pages):
+                store = FakeStore([("v1", "1.0.0", "READY_FOR_SALE")], pages=pages)
+                with store, contextlib.redirect_stdout(io.StringIO()):
+                    appstore.cancel_for_release(print, True)
+                    self.assertEqual(store.writes, [])  # a dry run sends nothing
+                    appstore.cancel_for_release(print, False)
+                self.assertEqual([p for m, p, b in store.writes], ["/v1/reviewSubmissions/" + cancelled])
+                self.assertEqual(len(store.submissions), 1)
+        # one page leaves the other slot free
+        store = FakeStore([("v1", "1.0.0", "READY_FOR_SALE")], pages=[("a", "WAITING_FOR_REVIEW", "2026-10-27T06:41:00Z")])
+        with store, contextlib.redirect_stdout(io.StringIO()):
+            appstore.cancel_for_release(print, False)
+        self.assertEqual(store.writes, [])
+        # a cancelling that doesn't finish fails the release rather than its submission later
+        store = FakeStore([("v1", "1.0.0", "READY_FOR_SALE")], pages=[("a", "WAITING_FOR_REVIEW", "2026-10-27T06:41:00Z"),
+                                                                       ("b", "WAITING_FOR_REVIEW", "2026-10-28T06:41:00Z")])
+        stuck = lambda method, path, query=None, **kw: {"attributes": {"state": "CANCELING"}} if path == "/v1/reviewSubmissions/b" else store.data(method, path, query, **kw)
+        with store, mock.patch.object(appstore, "data", stuck), mock.patch.object(appstore.time, "sleep"), \
+                contextlib.redirect_stdout(io.StringIO()), self.assertRaises(SystemExit):
+            appstore.cancel_for_release(print, False)
 
     def test_a_release_with_a_broken_build_cancels_nothing(self):
         store = FakeStore([("v1", "1.0.0", "WAITING_FOR_REVIEW")], build="INVALID")

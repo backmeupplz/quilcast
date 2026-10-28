@@ -10,8 +10,9 @@
                                                   it starts version X.Y.Z
                                                   (default: the last one's patch + 1), which appstore.py then renames and submits;
                                                   --release <build number> (release.yml, right before appstore.py) first waits for
-                                                  that build to process, then cancels a submission waiting or in review, as
-                                                  appstore.py would, so the listing goes on that version;
+                                                  that build to process, then cancels the version's submission waiting or in
+                                                  review, as appstore.py would, so the listing goes on that version (custom
+                                                  product pages keep theirs);
                                                   --until <Unix time> stops it in time: before cancelling while the build
                                                   still processes, and before a screenshot set once 15 minutes are left
 Play: fastlane/metadata/android/<Play language>/title.txt, short_description.txt, full_description.txt and
@@ -237,8 +238,8 @@ def time_for(minutes):
 
 
 def cancel_review(a, version, build, say, dry):
-    """What appstore.py does before it submits: once the new build has processed, cancel the submission waiting or in
-    review, which hands its version back for editing. Returns the versions afterwards (in a dry run, as they are)."""
+    """What appstore.py does before it submits: once the new build has processed, cancel the version's submission waiting
+    or in review, which hands the version back for editing (appstore.cancel_for_release). Returns the versions afterwards (in a dry run, as they are)."""
     # as appstore.py: nothing is cancelled for a build that won't make it to review
     query = {"filter[app]": a.APP, "filter[version]": build, "filter[preReleaseVersion.version]": version}
     for attempt in range(120):
@@ -251,10 +252,7 @@ def cancel_review(a, version, build, say, dry):
         time.sleep(30)
     else:
         sys.exit("The build didn't finish processing within an hour")
-    for submission in a.data("GET", "/v1/reviewSubmissions", {"filter[app]": a.APP, "filter[platform]": "IOS", "filter[state]": ",".join(a.OPEN)}):
-        say(f"Cancel the {submission['attributes']['state']} submission {submission['id']} (the release replaces it)")
-        if not dry:
-            a.data("PATCH", f"/v1/reviewSubmissions/{submission['id']}", body=a.resource("reviewSubmissions", submission["id"], {"canceled": True}))
+    a.cancel_for_release(say, dry, " (the release replaces it)")
     for attempt in range(40):  # cancelling takes a moment to reach the version
         all_versions = a.versions()
         if dry or any(v["attributes"]["appStoreState"] in a.EDITABLE for v in all_versions) \

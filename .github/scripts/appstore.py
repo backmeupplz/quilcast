@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus, todorant and quilcast. Repo values come from env.
 """Sends an uploaded iPhone build to App Review, released automatically once approved.
-A submission still waiting or in review is cancelled, and its version takes the new number and build.
+A submission of an app version still waiting or in review is cancelled, and its version takes the new number and build;
+one holding only other items, such as custom product pages (todorant's appstore/cpp.py), is left to its review unless
+such submissions take all of Apple's review slots.
   appstore.py <version> <build number> <notes file> [--dry-run]   (--dry-run prints the plan and changes nothing)
   env: APP_STORE_APP_ID, ASC_KEY_ID, ASC_ISSUER_ID; the key is AuthKey_<ASC_KEY_ID>.p8 in API_PRIVATE_KEYS_DIR
        (default ~/.appstoreconnect/private_keys), the folder altool reads too; optional SUBMIT_UNTIL, the Unix time
@@ -16,6 +18,7 @@ KEY = os.path.join(os.path.expanduser(os.environ.get("API_PRIVATE_KEYS_DIR", "~/
 EDITABLE = {"PREPARE_FOR_SUBMISSION", "READY_FOR_REVIEW", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "INVALID_BINARY"}
 OPEN = ["WAITING_FOR_REVIEW", "IN_REVIEW", "UNRESOLVED_ISSUES"]
 REVIEWING = {"WAITING_FOR_REVIEW", "IN_REVIEW"}
+SLOTS = 2  # "maximum limit of 2 in-flight reviewSubmissions for platform=IOS" (Apple's 409; undocumented)
 
 
 def b64(raw):
@@ -70,6 +73,43 @@ def versions():
     return data("GET", f"/v1/apps/{APP}/appStoreVersions", {"filter[platform]": "IOS", "limit": 10})
 
 
+def holds_version(submission):
+    items = data("GET", f"/v1/reviewSubmissions/{submission['id']}/items", {"include": "appStoreVersion", "limit": 50}) or []
+    return any((item.get("relationships", {}).get("appStoreVersion") or {}).get("data") for item in items)
+
+
+def cancel_for_release(say, dry, why=""):
+    """Before a release submits: cancels the open submissions holding an app version, which hands the version back for
+    editing. One holding only custom product pages (todorant's appstore/cpp.py) or other items keeps its review, which
+    cancelling would restart, unless such submissions fill Apple's in-flight slots: then the one Apple is least far
+    along with makes room (appstore/cpp.py sends it again)."""
+    replaced, others = [], []
+    for submission in data("GET", "/v1/reviewSubmissions", {"filter[app]": APP, "filter[platform]": "IOS", "filter[state]": ",".join(OPEN)}):
+        (replaced if holds_version(submission) else others).append(submission)
+    # rejected first, then waiting (the last submitted first), then in review
+    others.sort(key=lambda s: s["attributes"].get("submittedDate") or "", reverse=True)
+    others.sort(key=lambda s: ["UNRESOLVED_ISSUES", "WAITING_FOR_REVIEW", "IN_REVIEW"].index(s["attributes"]["state"]))
+    room = others[:max(0, len(others) - SLOTS + 1)]
+    for submission in replaced:
+        say(f"Cancel the {submission['attributes']['state']} submission {submission['id']}{why}")
+    for submission in others:
+        if submission in room:
+            say(f"Cancel the {submission['attributes']['state']} submission {submission['id']}, which holds no app version, "
+                f"to free one of Apple's {SLOTS} review slots")
+        else:
+            print(f"Leave the {submission['attributes']['state']} submission {submission['id']} alone: it holds no app version")
+    if dry:
+        return
+    for submission in replaced + room:
+        data("PATCH", f"/v1/reviewSubmissions/{submission['id']}", body=resource("reviewSubmissions", submission["id"], {"canceled": True}))
+    for submission in room:  # its slot frees once the cancelling is done
+        for attempt in range(40):
+            if data("GET", f"/v1/reviewSubmissions/{submission['id']}")["attributes"]["state"] not in OPEN + ["CANCELING"]: break
+            time.sleep(15)
+        else:
+            sys.exit(f"The cancelled submission {submission['id']} didn't finish cancelling within 10 minutes, so it still holds a review slot")
+
+
 def main():
     version, build_number, notes_file = sys.argv[1:4]
     dry = "--dry-run" in sys.argv
@@ -92,11 +132,8 @@ def main():
     say(f"Use build {version} ({build_number}), now {state}")
     build = {"type": "builds", "id": builds[0]["id"]} if builds else None
 
-    # A submission still waiting or in review is replaced by this one: cancelling hands its version back for editing
-    for submission in data("GET", "/v1/reviewSubmissions", {"filter[app]": APP, "filter[platform]": "IOS", "filter[state]": ",".join(OPEN)}):
-        say(f"Cancel the {submission['attributes']['state']} submission {submission['id']}")
-        if not dry:
-            data("PATCH", f"/v1/reviewSubmissions/{submission['id']}", body=resource("reviewSubmissions", submission["id"], {"canceled": True}))
+    # A version's submission still waiting or in review is replaced by this one: cancelling hands its version back for editing
+    cancel_for_release(say, dry)
 
     # Cancelling takes a moment to reach the version
     for attempt in range(40):
@@ -141,7 +178,8 @@ def main():
     say(f"Submit {version} ({build_number}) for review, released automatically once approved")
     if dry:
         return
-    # A draft submission (never sent) is reused; adding a version it already holds is a 409
+    # A draft submission (never sent) is reused; adding a version it already holds is a 409. A custom product page that
+    # cpp.py left in it goes along, and the next release cancels it with the version (cpp.py sends it again)
     drafts = data("GET", "/v1/reviewSubmissions", {"filter[app]": APP, "filter[platform]": "IOS", "filter[state]": "READY_FOR_REVIEW"})
     submission = drafts[0] if drafts else data("POST", "/v1/reviewSubmissions", body=resource(
         "reviewSubmissions", attributes={"platform": "IOS"}, app={"type": "apps", "id": APP}))
