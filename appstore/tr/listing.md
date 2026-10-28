@@ -10,7 +10,7 @@ Merkeziyetsiz sosyal ağ
 Quilcast, ağa doğrudan bağlanan küçük ve açık bir Farcaster istemcisidir. Anahtarlarınız cihazınızda kalır; mini uygulamalar, mesajlar ve Sohbet Odaları da burada.
 
 ## Keywords (max 100)
-kripto cüzdan,medya,merkezi olmayan,mini uygulama,blokzincir,takas,cast,sohbet odası,tema,profil,eth
+kripto cüzdan,medya,merkezi olmayan,blokzincir,takas,cast,sohbet odası,tema,profil,eth,mesaj,kanal
 
 ## Description (max 4000)
 Quilcast, hiçbir şirketin sahibi olmadığı açık sosyal ağ Farcaster için küçük ve açık kaynaklı bir istemcidir. Doğrudan Hypersnap ağına bağlanır, paylaştığınız her şeyi kendi cihazınızda imzalar ve anahtarlarınızı da orada tutar.

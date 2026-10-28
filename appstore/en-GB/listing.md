@@ -10,7 +10,7 @@ Decentralised social media
 Read and post on Farcaster from a small, open-source client. Your keys stay on your device, and messages, live audio Spaces, mini apps and a crypto wallet are built in.
 
 ## Keywords (max 100)
-web3,crypto,wallet,mini apps,network,open source,ethereum,blockchain,community,privacy,profile,nft
+web3,crypto,wallet,mini,network,open source,ethereum,blockchain,community,privacy,profile,nft,defi
 
 ## Description (max 4000)
 Quilcast is a small, open-source client for Farcaster, the decentralised social network that no company owns. It talks straight to the Hypersnap network, signs everything you post on your own device, and keeps your keys there too.
