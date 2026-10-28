@@ -19,9 +19,11 @@ export const sized = (u: string, variant: string) => u.replace(/^(https:\/\/imag
  *  boxes that don't take their size from the picture (ui.tsx Media), as a srcset changes a picture's natural size. */
 export const srcsetOf = (u: string) => (sized(u, 'w=600') === u ? undefined : `${sized(u, 'w=600')} 600w, ${sized(u, 'w=1200')} 1200w`)
 /** The home page's first picture through quilcast.com itself (server/index.mjs /i/), so a phone gets it over the
- *  page's own connection instead of opening one to the CDN first. */
-export const viaUs = (u: string) => u.replaceAll('https://imagedelivery.net/', '/i/')
-// the box's width (the column less the avatar rail and the cast's padding) when lazy loading can't measure it
+ *  page's own connection instead of opening one to the CDN first. Always WebP (every browser shows it, and the CDN in
+ *  front of us caches it by its extension). */
+export const viaUs = (u: string) => u.replace(/https:\/\/imagedelivery\.net\/([\w-]+\/[\w-]+\/w=\d+)/g, '/i/$1.webp')
+// the box's width: the column less the avatar rail and the cast's padding (not `auto`: Chrome loads the 1200 px
+// picture when an image sized by layout is taken off the page)
 export const IMG_SIZES = '(max-width: 600px) calc(100vw - 86px), 512px'
 /** A lone picture's box, from its size (ui.tsx Media, server/home.mjs): its own shape, at most 510 px tall, and that
  *  size even before it loads, as the `.imgs` around it fits its content (without it the box starts 120 px wide). */

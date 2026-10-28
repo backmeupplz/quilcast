@@ -569,15 +569,11 @@ let homeAt = 0
 // the pictures the home page has led with lately (home.mjs `lead`), the only ones /i/ passes on
 const leads = new Set()
 const leadImgs = new Map()
-/** A lead picture from Farcaster's CDN in the format the browser asked for (it answers AVIF, WebP or JPEG by Accept). */
-const leadImg = (u, accept) => {
-  const as = /image\/avif/.test(accept) ? 'image/avif' : /image\/webp/.test(accept) ? 'image/webp' : 'image/jpeg'
-  const k = `${as} ${u}`
-  return leadImgs.get(k) || keep(leadImgs, 40, k, safeGet(u, { max: 4e6, headers: { accept: as } }).then((r) => {
-    if (r.status !== 200 || r.truncated || !/^image\//.test(r.type)) throw new Error(`lead ${r.status}`)
-    return r
-  }))
-}
+/** A lead picture from Farcaster's CDN as WebP (it answers AVIF, WebP or JPEG by Accept). */
+const leadImg = (u) => leadImgs.get(u) || keep(leadImgs, 40, u, safeGet(u, { max: 4e6, headers: { accept: 'image/webp' } }).then((r) => {
+  if (r.status !== 200 || r.truncated || r.type !== 'image/webp') throw new Error(`lead ${r.status} ${r.type}`)
+  return r
+}))
 let homeNext = null
 async function drawHome() {
   const casts = trending((await nodeJson('/v2/farcaster/feed/trending?limit=50'))?.casts || []).slice(0, 20).map(lean)
@@ -839,14 +835,14 @@ createServer(async (req, res) => {
     }
 
     // the home page's first picture, from quilcast.com itself (server/home.mjs, shared.ts viaUs)
-    const via = path.match(/^\/i\/([\w-]+\/[\w-]+)\/(w=600|w=1200)$/)
+    const via = path.match(/^\/i\/([\w-]+\/[\w-]+)\/(w=600|w=1200)\.webp$/)
     if (via) {
       const u = `https://imagedelivery.net/${via[1]}/${via[2]}`
       if (!leads.has(`https://imagedelivery.net/${via[1]}/w=1200`)) return res.writeHead(404).end()
       if (limited(`i:${ip}`, 120)) return res.writeHead(302, { location: u }).end()
-      const r = await leadImg(u, req.headers.accept || '').catch(() => null)
+      const r = await leadImg(u).catch(() => null)
       if (!r) return res.writeHead(302, { location: u }).end()
-      return res.writeHead(200, { 'content-type': r.type, 'content-length': r.body.length, 'cache-control': 'public, max-age=31536000, immutable', vary: 'accept' }).end(r.body)
+      return res.writeHead(200, { 'content-type': r.type, 'content-length': r.body.length, 'cache-control': 'public, max-age=31536000, immutable' }).end(r.body)
     }
 
     if (path === '/api/poster') {

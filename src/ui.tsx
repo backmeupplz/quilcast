@@ -306,7 +306,7 @@ export function Media({ urls: given, images }: { urls: string[]; images?: boolea
         <div class={`imgs n${shown.length}`} onClick={stop}>
           {shown.map((u, i) => (
             <button class="img" aria-label={t('Open image {n} of {total}', { n: i + 1, total: imgs.length })} onClick={() => shell.view(imgs, i)}>
-              <Img src={our(sized(u, 'w=1200'))} style={box} {...((box || shown.length > 1) && srcsetOf(u) ? { srcset: our(srcsetOf(u)!), sizes: `auto, ${IMG_SIZES}` } : {})} />
+              <Img src={our(sized(u, 'w=1200'))} style={box} {...((box || shown.length > 1) && srcsetOf(u) ? { srcset: our(srcsetOf(u)!), sizes: IMG_SIZES } : {})} />
               {i === 3 && imgs.length > 4 && <span class="more-imgs">+{imgs.length - 4}</span>}
             </button>
           ))}

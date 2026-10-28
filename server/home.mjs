@@ -80,7 +80,7 @@ export function body(d, version, now = Date.now()) {
     const top = set && first && (first = false, true)
     if (top) (lead = src), (src = viaUs(src)), (set = viaUs(set))
     return `<img${k ? ` class="${k}"` : ''} alt="" loading="lazy"${top ? ' fetchpriority="high"' : low ? ' fetchpriority="low"' : ''} referrerpolicy="no-referrer" src="${esc(src.replace(/^http:\/\//i, 'https://'))}"` +
-      `${set ? ` srcset="${esc(set)}" sizes="auto, ${IMG_SIZES}"` : ''}>`
+      `${set ? ` srcset="${esc(set)}" sizes="${IMG_SIZES}"` : ''}>`
   }
   const rich = (text, k = 'text') => `<p class="${k}" dir="auto">${text.split(TOKENS).map((p, i) => {
     if (i % 2 === 0) return esc(p)
@@ -91,7 +91,8 @@ export function body(d, version, now = Date.now()) {
   }).join('')}</p>`
   const avatar = (u, size = 40, link = true) => {
     const pfp = safeUrl(u.pfp_url)
-    const inner = pfp ? img(sized(pfp, 'anim=false,w=144')) : `<span>${esc([...(u.display_name || u.username || '?')][0])}</span>`
+    // `low`: after the casts' pictures (avatars come from the CDN's own connection, and are the smallest thing here)
+    const inner = pfp ? img(sized(pfp, 'anim=false,w=144'), '', '', true) : `<span>${esc([...(u.display_name || u.username || '?')][0])}</span>`
     const k = cls(`width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px`)
     return link ? `<a class="avatar ${k}" href="${esc(userPath(u))}" aria-label="${esc(nameOf(u))}">${inner}</a>` : `<span class="avatar ${k}">${inner}</span>`
   }
