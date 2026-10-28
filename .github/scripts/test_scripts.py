@@ -1,5 +1,5 @@
 """Checks for the shared release scripts: python3 -m unittest discover -s .github/scripts"""
-import hashlib, json, os, sys, tempfile, unittest
+import contextlib, hashlib, io, json, os, sys, tempfile, unittest
 from unittest import mock
 
 os.environ.setdefault("APP_STORE_APP_ID", "1")
@@ -7,6 +7,7 @@ os.environ.setdefault("ASC_KEY_ID", "KEY")
 os.environ.setdefault("ASC_ISSUER_ID", "issuer")
 sys.path.insert(0, os.path.dirname(__file__))
 import appstore, fdroid, listings, notes
+IPHONE, IPAD = listings.DISPLAYS[""][0], listings.DISPLAYS["ipad-13"][0]
 
 
 class FakeStore:
@@ -16,9 +17,10 @@ class FakeStore:
         self.versions = [{"id": i, "attributes": {"versionString": s, "appStoreState": state}} for i, s, state in versions]
         self.localizations = {locale: {"id": "loc-" + locale, "attributes": dict(a, locale=locale)} for locale, a in (localizations or {}).items()}
         self.writes, self.uploaded, self.count = [], [], 0
-        # the 6.9" set already on the store, as (checksum, processing state); new uploads join it, processed
-        self.shots = [{"id": f"old-{n}", "attributes": {"sourceFileChecksum": c, "assetDeliveryState": {"state": s}}}
-                      for n, (c, s) in enumerate(shots or [])]
+        # screenshot sets by display type, the set's id too: the 6.9" one already on the store, as (checksum, processing
+        # state); new uploads join their set, processed
+        self.sets = {IPHONE: [{"id": f"old-{n}", "attributes": {"sourceFileChecksum": c, "assetDeliveryState": {"state": s}}}
+                              for n, (c, s) in enumerate(shots)]} if shots else {}
         self.submissions = [{"id": "sub", "attributes": {"state": v["attributes"]["appStoreState"]}}
                             for v in self.versions if v["attributes"]["appStoreState"] in appstore.OPEN]
 
@@ -29,14 +31,17 @@ class FakeStore:
             new = {"id": f"new-{self.count}", "attributes": dict(body["data"].get("attributes", {})) if body else {}}
             if path == "/v1/appStoreVersions":
                 new["attributes"]["appStoreState"] = "PREPARE_FOR_SUBMISSION"
+            if path == "/v1/appScreenshotSets":
+                new["id"] = new["attributes"]["screenshotDisplayType"]
+                self.sets[new["id"]] = []
             if path == "/v1/appScreenshots":
                 new["attributes"]["uploadOperations"] = [{"method": "PUT", "url": f"https://upload/{self.count}", "offset": 0,
                                                           "length": new["attributes"]["fileSize"], "requestHeaders": []}]
-                self.shots.append(new)
+                self.sets[body["data"]["relationships"]["appScreenshotSet"]["data"]["id"]].append(new)
             if method == "DELETE" and path.startswith("/v1/appScreenshots/"):
-                self.shots = [s for s in self.shots if s["id"] != path.split("/")[-1]]
+                self.sets = {d: [s for s in shots if s["id"] != path.split("/")[-1]] for d, shots in self.sets.items()}
             if method == "PATCH" and path.startswith("/v1/appScreenshots/"):
-                shot = next(s for s in self.shots if s["id"] == path.split("/")[-1])
+                shot = next(s for shots in self.sets.values() for s in shots if s["id"] == path.split("/")[-1])
                 shot["attributes"].update(body["data"]["attributes"], assetDeliveryState={"state": "COMPLETE"})
             if method == "PATCH" and path.startswith("/v1/reviewSubmissions/"):  # cancelling hands the version back
                 self.submissions = []
@@ -48,9 +53,9 @@ class FakeStore:
         if path == "/v1/builds":
             return [{"id": "b", "attributes": {"processingState": self.build}}]
         if path.endswith("/appScreenshotSets"):
-            return [{"id": "set", "attributes": {"screenshotDisplayType": listings.DISPLAY}}] if self.shots else []
+            return [{"id": d, "attributes": {"screenshotDisplayType": d}} for d in self.sets]
         if path.endswith("/appScreenshots"):
-            return self.shots
+            return self.sets[path.split("/")[-2]]
         if path.endswith("/appStoreVersions"):
             return self.versions
         if path.endswith("/appAvailabilityV2"):
@@ -337,11 +342,64 @@ class Scripts(unittest.TestCase):
             md5 = hashlib.md5(b"jpeg 1").hexdigest()
             say = lambda text: None
             with FakeStore([], shots=[(md5, "COMPLETE")]) as store:
-                self.assertFalse(listings.upload_screenshots(appstore, "loc", [shot], say, False))
+                self.assertFalse(listings.upload_screenshots(appstore, "loc", IPHONE, [shot], say, False))
             with FakeStore([], shots=[(md5, "FAILED")]) as store:
-                self.assertTrue(listings.upload_screenshots(appstore, "loc", [shot], say, False))
-                self.assertEqual([s["attributes"]["assetDeliveryState"]["state"] for s in store.shots], ["COMPLETE"])
+                self.assertTrue(listings.upload_screenshots(appstore, "loc", IPHONE, [shot], say, False))
+                self.assertEqual([s["attributes"]["assetDeliveryState"]["state"] for s in store.sets[IPHONE]], ["COMPLETE"])
                 self.assertEqual(store.uploaded, [b"jpeg 1"])
+
+    def test_listings_sync_the_ipad_set_from_its_folder(self):
+        store = FakeStore([("v1", "1.0.1", "PREPARE_FOR_SUBMISSION")], {"en-US": {"description": "Old"}},
+                          shots=[(hashlib.md5(b"iphone 1").hexdigest(), "COMPLETE")])
+        def shot_writes():
+            return [(m, p) for m, p, b in store.writes if "Screenshot" in p]
+        with tempfile.TemporaryDirectory() as root, store:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("appstore/screenshots/en-US/ipad-13")
+                with open("appstore/listing.md", "w") as f: f.write("## Name\nTodorant\n## Description\nOld\n")
+                with open("appstore/screenshots/en-US/1.jpg", "wb") as f: f.write(b"iphone 1")
+                for n in (1, 2):
+                    with open(f"appstore/screenshots/en-US/ipad-13/{n}.jpg", "wb") as f: f.write(b"ipad %d" % n)
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    listings.appstore(None, True)
+                self.assertEqual(shot_writes(), [])  # a dry run sends nothing, and shows the iPad set
+                self.assertIn('en-US 6.9" iPhone screenshots:\n  up to date\nen-US 13" iPad screenshots:\nWould   2 screenshots replace 0',
+                              out.getvalue())
+                with contextlib.redirect_stdout(io.StringIO()):
+                    listings.appstore(None, False)
+                self.assertEqual(shot_writes()[0], ("POST", "/v1/appScreenshotSets"))
+                self.assertEqual(store.writes[[p for m, p, b in store.writes].index("/v1/appScreenshotSets")][2]["data"]["attributes"],
+                                 {"screenshotDisplayType": IPAD})
+                self.assertEqual(store.uploaded, [b"ipad 1", b"ipad 2"])  # the iPhone set was already right
+                self.assertEqual([s["attributes"]["sourceFileChecksum"] for s in store.sets[IPAD]],
+                                 [hashlib.md5(b"ipad 1").hexdigest(), hashlib.md5(b"ipad 2").hexdigest()])
+                sent = len(store.writes)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    listings.appstore(None, False)
+                self.assertFalse([p for m, p, b in store.writes[sent:] if "Screenshot" in p])  # both sets match now
+            finally:
+                os.chdir(cwd)
+
+    def test_listings_send_every_iphone_set_before_the_ipad_ones(self):
+        store = FakeStore([("v1", "1.0.1", "PREPARE_FOR_SUBMISSION")], {"en-US": {"description": "Old"}})
+        with tempfile.TemporaryDirectory() as root, store:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("appstore/screenshots/en-US/ipad-13")
+                with open("appstore/listing.md", "w") as f: f.write("## Name\nTodorant\n## Description\nOld\n")
+                with open("appstore/screenshots/en-US/1.jpg", "wb") as f: f.write(b"iphone 1")
+                with open("appstore/screenshots/en-US/ipad-13/1.jpg", "wb") as f: f.write(b"ipad 1")
+                # time for one set: the iPhone one goes, the iPad one waits for the next run
+                with mock.patch.object(listings, "time_for", side_effect=[True, False]), contextlib.redirect_stdout(io.StringIO()), \
+                        self.assertRaises(SystemExit):
+                    listings.appstore(None, False)
+            finally:
+                os.chdir(cwd)
+        self.assertEqual(list(store.sets), [IPHONE])
+        self.assertEqual(store.uploaded, [b"iphone 1"])
 
     def test_play_images_retried_after_a_5xx_are_not_left_in_twice(self):
         fake = FakePlay()

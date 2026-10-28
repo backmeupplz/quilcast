@@ -5,18 +5,20 @@
                                                   phone, 7" and 10" screenshots per language; committing sends them to review
   listings.py appstore [--version X.Y.Z] [--dry-run]
                                                   App Store: name and subtitle, description, keywords, promotional text and
-                                                  6.9" iPhone screenshots per locale, on the version being prepared, so they
-                                                  ship with it; with no such version and none in review, it starts version X.Y.Z
+                                                  6.9" iPhone and 13" iPad screenshots per locale, on the version being
+                                                  prepared, so they ship with it; with no such version and none in review,
+                                                  it starts version X.Y.Z
                                                   (default: the last one's patch + 1), which appstore.py then renames and submits;
                                                   --release <build number> (release.yml, right before appstore.py) first waits for
                                                   that build to process, then cancels a submission waiting or in review, as
                                                   appstore.py would, so the listing goes on that version;
                                                   --until <Unix time> stops it in time: before cancelling while the build
-                                                  still processes, and before a locale's screenshots once 15 minutes are left
+                                                  still processes, and before a screenshot set once 15 minutes are left
 Play: fastlane/metadata/android/<Play language>/title.txt, short_description.txt, full_description.txt and
   images/featureGraphic.{png,jpg}, images/{phone,sevenInch,tenInch}Screenshots/*.{png,jpg}
 App Store: appstore/<locale>/listing.md (en-US: appstore/listing.md), sections "## Name", "## Subtitle", "## Keywords",
   "## Promotional text" and "## Description" (a "(max N)" after the title is fine), and appstore/screenshots/<locale>/*.{png,jpg}
+  (6.9" iPhone) and appstore/screenshots/<locale>/ipad-13/*.{png,jpg} (13" iPad); a set with no files is left as it is
 --dry-run prints the changes and sends nothing (Play validates them in an edit it then discards). Only what differs
 from the store is sent, so running it again is safe.
 env: as for play.py and appstore.py."""
@@ -28,9 +30,11 @@ PLAY_IMAGES = {"featureGraphic": "featureGraphic", "phoneScreenshots": "phoneScr
                "sevenInchScreenshots": "sevenInchScreenshots/*", "tenInchScreenshots": "tenInchScreenshots/*"}
 VERSION_TEXTS = {"description": "Description", "keywords": "Keywords", "promotionalText": "Promotional text"}
 INFO_TEXTS = {"name": "Name", "subtitle": "Subtitle"}
-DISPLAY = "APP_IPHONE_67"  # the 6.9" iPhone set (1320x2868); Apple scales it down for the smaller iPhones
+# appstore/screenshots/<locale>/<folder> -> its screenshot set; Apple scales each down for the smaller devices
+DISPLAYS = {"": ("APP_IPHONE_67", '6.9" iPhone'),  # 1320x2868
+            "ipad-13": ("APP_IPAD_PRO_3GEN_129", '13" iPad')}  # 2064x2752
 TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
-SHOT_MINUTES = 15  # what one locale's screenshots may take: the upload, then up to 10 minutes of processing
+SHOT_MINUTES = 15  # what one locale's screenshot set may take: the upload, then up to 10 minutes of processing
 UNTIL = None  # --until: the Unix time by which a release needs this done, so App Review still gets its turn
 
 
@@ -146,10 +150,10 @@ def play(dry):
         print(f"{changed} Play listing change{'s' if changed != 1 else ''} sent to review")
 
 
-def upload_screenshots(a, localization, files, say, dry):
-    """Makes the locale's 6.9" set exactly these files, in this order; returns whether anything changed"""
+def upload_screenshots(a, localization, display, files, say, dry):
+    """Makes the locale's set for this display type exactly these files, in this order; returns whether anything changed"""
     sets = {s["attributes"]["screenshotDisplayType"]: s for s in a.data("GET", f"/v1/appStoreVersionLocalizations/{localization}/appScreenshotSets")}
-    shots = a.data("GET", f"/v1/appScreenshotSets/{sets[DISPLAY]['id']}/appScreenshots") if DISPLAY in sets else []
+    shots = a.data("GET", f"/v1/appScreenshotSets/{sets[display]['id']}/appScreenshots") if display in sets else []
     # a screenshot Apple failed to process keeps its checksum, so it counts as different
     if ([s["attributes"].get("sourceFileChecksum") for s in shots] == [digest(f, "md5") for f in files]
             and not any(shot_state(s) == "FAILED" for s in shots)):
@@ -157,15 +161,15 @@ def upload_screenshots(a, localization, files, say, dry):
     say(f"  {len(files)} screenshots replace {len(shots)}")
     if dry:
         return True
-    # checked before the old ones go, so a locale is never left half done
+    # checked before the old ones go, so a set is never left half done
     if not time_for(SHOT_MINUTES):
-        sys.exit("  Out of time: this locale and the ones after it keep their screenshots until the next release or Listings run")
-    if DISPLAY in sets:
-        shot_set = sets[DISPLAY]["id"]
+        sys.exit("  Out of time: this set and the ones after it keep their screenshots until the next release or Listings run")
+    if display in sets:
+        shot_set = sets[display]["id"]
         for s in shots:
             a.api("DELETE", f"/v1/appScreenshots/{s['id']}")
     else:
-        shot_set = a.data("POST", "/v1/appScreenshotSets", body=a.resource("appScreenshotSets", attributes={"screenshotDisplayType": DISPLAY},
+        shot_set = a.data("POST", "/v1/appScreenshotSets", body=a.resource("appScreenshotSets", attributes={"screenshotDisplayType": display},
                           appStoreVersionLocalization={"type": "appStoreVersionLocalizations", "id": localization}))["id"]
     for f in files:
         raw = open(f, "rb").read()
@@ -291,17 +295,19 @@ def appstore(version_string, dry, release=None):
                 existing[locale] = a.data("POST", f"/v1/{kind}", body=a.resource(kind, attributes=dict(fields, locale=locale), **parent))
         if kind == "appStoreVersionLocalizations":
             localizations = existing
-    # screenshots last: they take the longest, so running out of time leaves only them behind
-    for locale in listings:
-        files = images(os.path.join(SHOTS_ROOT, locale, "*"))
-        if not files:
-            continue
-        if locale not in localizations:
-            say(f"{locale}: upload {len(files)} screenshots once the localization exists")
-            continue
-        print(f"{locale} screenshots:")
-        if not upload_screenshots(a, localizations[locale]["id"], files, say, dry):
-            print("  up to date")
+    # screenshots last: they take the longest, so running out of time leaves only them behind; every locale's iPhone set
+    # goes before the iPad ones
+    for folder, (display, device) in DISPLAYS.items():
+        for locale in listings:
+            files = images(os.path.join(SHOTS_ROOT, locale, folder, "*"))
+            if not files:
+                continue
+            if locale not in localizations:
+                say(f"{locale}: upload {len(files)} {device} screenshots once the localization exists")
+                continue
+            print(f"{locale} {device} screenshots:")
+            if not upload_screenshots(a, localizations[locale]["id"], display, files, say, dry):
+                print("  up to date")
 
 
 def main():
