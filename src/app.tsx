@@ -1,6 +1,6 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, accounts, amFollowing, askUser, findUsers, follow, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, askUser, findUsers, follow, followsMe, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
@@ -658,6 +658,8 @@ function Profile({ id }: { id: string }) {
   const [err, setErr] = useState('')
   const [tab, setTab] = useState<'casts' | 'replies'>('casts')
   const [following, setFollowing] = useState<boolean | null>(null)
+  // they follow the viewer; shown only once known, so nothing jumps while it's asked
+  const [followsYou, setFollowsYou] = useState(false)
   const [menu, setMenu] = useState(false)
   // the profile's look (src/looks.tsx), and the owner's unsaved version while they edit it
   const [L, setL] = useState<Looks | null>(null)
@@ -673,7 +675,14 @@ function Profile({ id }: { id: string }) {
     setTab('casts')
     setLook(null)
     setDraft(null)
-    getUser(k?.fid ?? id).then((u) => (setU(u), isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))), () => setErr(t('No one goes by that name.')))
+    setFollowsYou(false)
+    let live = true
+    getUser(k?.fid ?? id).then((u) => {
+      setU(u)
+      isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))
+      followsMe(u).then((f) => live && setFollowsYou(f))
+    }, () => setErr(t('No one goes by that name.')))
+    return () => void (live = false)
   }, [id])
   const self = account?.fid === u?.fid
   // a shared design (`design`, an id) is put on top of the look being edited
@@ -749,7 +758,7 @@ function Profile({ id }: { id: string }) {
                 )}
               </div>
               <h2><span class={shown ? L.nameClass(shown) : undefined}>{nameOf(u)}</span></h2>
-              <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span>{!self && (blockOf(u.fid) || muteOf(u.fid)) && <span class="pill">{blockOf(u.fid) ? t('Blocked') : t('Muted')} {untilText((blockOf(u.fid) || muteOf(u.fid))!.until)}</span>}</div>
+              <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span>{!self && followsYou && <span class="pill">{t('Follows you')}</span>}{!self && (blockOf(u.fid) || muteOf(u.fid)) && <span class="pill">{blockOf(u.fid) ? t('Blocked') : t('Muted')} {untilText((blockOf(u.fid) || muteOf(u.fid))!.until)}</span>}</div>
               {shown && <L.Mood l={shown} />}
               {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
               <div class="counts"><a href={`${userPath(u)}/following`}><b>{n(u.following_count)}</b> {t('following')}</a><a href={`${userPath(u)}/followers`}><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</a></div>

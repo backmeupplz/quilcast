@@ -214,6 +214,12 @@ export async function loadMine() {
 
 export const isFollowing = async (target: number) =>
   !!account?.fid && (await get('/v1/linkById', { fid: account.fid, target_fid: target, link_type: 'follow' }).then(() => true, () => false))
+/** Whether `u` follows the signed-in user ("Follows you"): the node's viewer_context when it says, else the follow link. */
+export const followsMe = async (u: User) => {
+  const me = account?.fid
+  if (!me || me === u.fid) return false
+  return u.viewer_context?.followed_by ?? (await get('/v1/linkById', { fid: u.fid, target_fid: me, link_type: 'follow' }).then(() => true, () => false))
+}
 // asked once per person per visit (Home asks about the author of every reply's parent)
 const follows = new Map<number, Promise<boolean>>()
 export const amFollowing = (fid: number) => follows.get(fid) || (follows.set(fid, isFollowing(fid)), follows.get(fid)!)
@@ -227,7 +233,7 @@ export async function findUsers(q: string) {
 }
 
 // viewer_context comes from nodes with Hypersnap PR #43 when asked with viewer_fid
-export type User = { fid: number; viewer_context?: { following?: boolean }; username?: string; display_name?: string; pfp_url?: string; profile?: { bio?: { text?: string } }; follower_count?: number; following_count?: number; custody_address?: string }
+export type User = { fid: number; viewer_context?: { following?: boolean; followed_by?: boolean }; username?: string; display_name?: string; pfp_url?: string; profile?: { bio?: { text?: string } }; follower_count?: number; following_count?: number; custody_address?: string }
 export type Cast = {
   hash: string; text: string; timestamp: string; author: User; parent_hash?: string | null; parent_url?: string | null; parent_author?: { fid: number | null }
   embeds: { url?: string; cast_id?: { fid: number; hash: string } }[]

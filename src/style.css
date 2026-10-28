@@ -275,7 +275,9 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .profile { padding: 16px; }
 .profile .row-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 .profile h2 { font-size: 20px; font-weight: 800; }
-.profile > .handle { margin-top: 1px; }
+/* a long handle breaks anywhere and each pill wraps whole, so the row never overflows on a phone */
+.profile > .handle { margin-top: 1px; overflow-wrap: anywhere; }
+.profile > .handle .pill { display: inline-block; white-space: nowrap; }
 .pill { margin-inline-start: 6px; font-size: 12px; background: var(--soft); padding: 1px 7px; border-radius: calc(99px * var(--rs, 1)); color: var(--muted); }
 .profile .text { margin-top: 10px; }
 .counts { display: flex; gap: 16px; margin-top: 10px; color: var(--muted); font-size: 14px; }
