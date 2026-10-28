@@ -80,8 +80,10 @@ export function body(d, version, now = Date.now()) {
   const img = (src, k = '', set, low) => {
     const top = set && first && (first = false, true)
     if (top) (lead = src), (src = viaUs(src)), (set = viaUs(set)), (meta = `<meta name="quilcast:lead" content="${esc(set)}" data-sizes="${IMG_SIZES}">`)
-    return `<img${k ? ` class="${k}"` : ''} alt="" loading="lazy"${top ? ' fetchpriority="high"' : low ? ' fetchpriority="low"' : ''} referrerpolicy="no-referrer" src="${esc(src.replace(/^http:\/\//i, 'https://'))}"` +
-      `${set ? ` srcset="${esc(set)}" sizes="${IMG_SIZES}"` : ''}>`
+    // the others wait (data-src) until the first one is on screen: index.html's head script lets them load then
+    const at = top ? '' : 'data-'
+    return `<img${k ? ` class="${k}"` : ''} alt="" loading="lazy"${top ? ' fetchpriority="high"' : low ? ' fetchpriority="low"' : ''} referrerpolicy="no-referrer" ${at}src="${esc(src.replace(/^http:\/\//i, 'https://'))}"` +
+      `${set ? ` ${at}srcset="${esc(set)}" sizes="${IMG_SIZES}"` : ''}>`
   }
   const rich = (text, k = 'text') => `<p class="${k}" dir="auto">${text.split(TOKENS).map((p, i) => {
     if (i % 2 === 0) return esc(p)
@@ -105,7 +107,7 @@ export function body(d, version, now = Date.now()) {
     const box = shape ? cls(shape) : ''
     return (imgs.length ? `<div class="imgs n${shown.length}">${shown.map((u, i) => `<button class="img" aria-label="Open image ${i + 1} of ${imgs.length}">${img(sized(u, 'w=1200'), box, (shape || shown.length > 1) && srcsetOf(u))}${i === 3 && imgs.length > 4 ? `<span class="more-imgs">+${imgs.length - 4}</span>` : ''}</button>`).join('')}</div>` : '') +
       // as Chrome and Safari draw it (they play HLS themselves); Firefox's app swaps in its play button
-      urls.filter(isVid).map((u) => `<div class="vid"><video src="${esc(u)}"${poster(u) ? ` poster="${esc(poster(u))}"` : ''} controls="" preload="none" playsinline=""></video></div>`).join('')
+      urls.filter(isVid).map((u) => `<div class="vid"><video src="${esc(u)}"${poster(u) ? ` data-poster="${esc(poster(u))}"` : ''} controls="" preload="none" playsinline=""></video></div>`).join('')
   }
   const quote = (hash) => {
     const c = d.got[`c:${hash}`]
@@ -177,5 +179,6 @@ export function body(d, version, now = Date.now()) {
     `<main class="col"><div class="phead"><div class="phead-row"><a class="brand only-mobile" href="/" aria-label="Quilcast home">${logo(26)}</a><h1>Home</h1></div></div>` +
     `<div class="banner"><div><b>Farcaster without the middlemen</b><p>Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.</p></div><a class="btn small" href="/join">Join</a></div>` +
     `${cards}<div></div></main></div>`
-  return { html, css: [...rules].map(([decl, k]) => `#app .${k}{${decl}}`).join(''), lead, meta }
+  // with no first picture to wait for, nothing waits
+  return { html: lead ? html : html.replace(/ data-(src|srcset|poster)=/g, ' $1='), css: [...rules].map(([decl, k]) => `#app .${k}{${decl}}`).join(''), lead, meta }
 }

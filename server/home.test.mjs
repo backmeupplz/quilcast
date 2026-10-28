@@ -42,9 +42,15 @@ test('the first picture comes through quilcast.com at its final size; a link pre
   const { html, css, lead } = body(d, '0.0.0')
   assert.equal(lead, 'https://imagedelivery.net/a/b/w=1200')
   assert.match(html, /<img class="s\d+" alt="" loading="lazy" fetchpriority="high" referrerpolicy="no-referrer" src="\/i\/a\/b\/w=1200\.webp" srcset="\/i\/a\/b\/w=600\.webp 600w, \/i\/a\/b\/w=1200\.webp 1200w"/)
-  // the next one is the CDN's, and without a known size it takes the picture's own (so no srcset, which would change it)
-  assert.match(html, /<img alt="" loading="lazy" referrerpolicy="no-referrer" src="https:\/\/imagedelivery\.net\/a\/c\/w=1200">/)
+  // the next one is the CDN's, waits for the first (index.html), and without a known size takes the picture's own
+  // (so no srcset, which would change it)
+  assert.match(html, /<img alt="" loading="lazy" referrerpolicy="no-referrer" data-src="https:\/\/imagedelivery\.net\/a\/c\/w=1200">/)
   // a known size holds the box before the picture arrives (without it `.imgs` fit to an empty picture: 120 px wide)
   assert.match(css, /aspect-ratio:1200\/800;contain:size;contain-intrinsic-size:1200px 800px/)
   assert.match(html, /<img class="lc-img" alt="" loading="lazy" fetchpriority="low"/)
+})
+
+test('without a first picture nothing waits for one', () => {
+  const html = page([link])
+  assert.ok(!html.includes('data-src') && html.includes('<img class="lc-img" alt="" loading="lazy" fetchpriority="low" referrerpolicy="no-referrer" src="https://quilcast.com/og.png">'))
 })
