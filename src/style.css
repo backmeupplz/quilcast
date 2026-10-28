@@ -83,7 +83,8 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
   .tabbar {
     display: flex !important; position: fixed; inset: auto 0 0; z-index: 6; justify-content: space-around;
     padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
-    background: color-mix(in srgb, var(--bar, var(--bg)) 88%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    /* -webkit- first everywhere: the build drops a backdrop-filter that a -webkit-backdrop-filter follows (server/css.test.mjs) */
+    background: color-mix(in srgb, var(--bar, var(--bg)) 88%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
     border-top: var(--bw, 1px) var(--bs, solid) var(--line);
   }
   .tabbar a { display: grid; place-items: center; flex: 0 1 52px; min-width: 0; height: 40px; color: var(--muted); border-radius: calc(12px * var(--rs, 1)); }
@@ -100,7 +101,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
   /* the Quilcast app draws under the status bar; the header's color fills it */
   position: sticky; top: 0; z-index: 5; padding-top: env(safe-area-inset-top);
   background: color-mix(in srgb, var(--bar, var(--bg)) 85%, transparent);
-  backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  -webkit-backdrop-filter: saturate(1.6) blur(14px); backdrop-filter: saturate(1.6) blur(14px);
   border-bottom: var(--bw, 1px) var(--bs, solid) var(--line);
 }
 .phead-row { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 12px 0 8px; }
@@ -667,7 +668,7 @@ small.warn { color: var(--warn); }
 .look.on .profile { overflow: hidden; }
 .look.on .profile + .tabs { border: 0; }
 /* the rest of the page stays readable over a busy background */
-:root[data-look] .side, :root[data-look] .extra { background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+:root[data-look] .side, :root[data-look] .extra { background: color-mix(in srgb, var(--bg) 85%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 :root[data-look] .extra { padding-inline-end: 16px; }
 .lk-banner { display: block; width: calc(100% + 32px); max-width: none; margin: -16px -16px 12px; max-height: 220px; object-fit: cover; }
 .lk-mood { margin-top: 6px; font-size: 0.93em; }
@@ -1043,7 +1044,7 @@ body:has(.space-bar) .dock { bottom: 84px; }
 .th-bg.center { background-repeat: no-repeat; background-position: center; }
 .th-bg::after { content: ''; position: absolute; inset: 0; background: var(--th-scrim, transparent); }
 :root[data-th-img]:not([data-look]) .col { background: color-mix(in srgb, var(--bg) var(--th-sheer, 88%), transparent); }
-:root[data-th-img]:not([data-look]) .side, :root[data-th-img]:not([data-look]) .extra { background: color-mix(in srgb, var(--bg) calc(var(--th-sheer, 88%) * 0.6), transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+:root[data-th-img]:not([data-look]) .side, :root[data-th-img]:not([data-look]) .extra { background: color-mix(in srgb, var(--bg) calc(var(--th-sheer, 88%) * 0.6), transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 :root[data-th-img] .phead { background-color: color-mix(in srgb, var(--bar, var(--bg)) var(--th-sheer, 88%), transparent); }
 :root[data-th-fx]:not([data-th-img], [data-look]) :is(.col, .side, .extra) { background: color-mix(in srgb, var(--bg) var(--th-sheer, 88%), transparent); }
 :root[data-th-fx]:not([data-th-img], [data-look], [data-quorum]) .phead { background-color: color-mix(in srgb, var(--bar, var(--bg)) var(--th-sheer, 88%), transparent); }
@@ -1504,7 +1505,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 
 :where(:root[data-quorum]) {
   /* headers: quorum-desktop .chat-header, a solid bar over a stronger line */
-  & .phead { background: var(--bar, var(--bg)); backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom: var(--bw, 1px) var(--bs, solid) var(--q-border); }
+  & .phead { background: var(--bar, var(--bg)); -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom: var(--bw, 1px) var(--bs, solid) var(--q-border); }
   & .phead-row { height: 56px; padding: 0 12px 0 16px; }
   & .phead-row h1 { font-size: 16px; font-weight: 700; letter-spacing: 0; }
   /* UserInitials: a face without a picture is its initial on a solid disc */
@@ -1762,7 +1763,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 /* ---------- Quorum mode on phones: quorum-mobile's tab bar (a solid strip, ⋮ opens a labelled second row), its round
    + button, and toasts above the bar ---------- */
 @media (max-width: 699px) {
-  .tabbar.q-tabbar { flex-direction: column; justify-content: flex-start; padding: 0 0 env(safe-area-inset-bottom); background: var(--bar, light-dark(#fff, #000)); backdrop-filter: none; -webkit-backdrop-filter: none; border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
+  .tabbar.q-tabbar { flex-direction: column; justify-content: flex-start; padding: 0 0 env(safe-area-inset-bottom); background: var(--bar, light-dark(#fff, #000)); -webkit-backdrop-filter: none; backdrop-filter: none; border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
   .q-tab-row, .q-tab-more { display: flex; align-items: center; }
   .q-tab-row { height: 53px; }
   .q-tab-more { height: 62px; padding-bottom: 6px; animation: fade 0.15s; }
