@@ -3,6 +3,14 @@
 export const isImg = (u: string) => /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u) || /imagedelivery\.net|i\.imgur\.com/.test(u)
 // Hypersnap V20 (Aug 2026) raised the cap from 2 to 4 for every fid
 export const MAX_EMBEDS = 4
+/** How many more attachments a composer post takes: MAX_EMBEDS less the ones it has and its fixed embeds (the first
+ *  post's quote and a mini app's links). The photo and GIF buttons are off at 0. */
+export const embedRoom = (files: number, fixed: number) => Math.max(0, MAX_EMBEDS - files - fixed)
+/** A post's attachments plus a picked GIF, which is Tenor's own URL (src/gifs.tsx, nothing is uploaded); the same
+ *  attachments when the post has no room left. */
+export const withGif = <F extends { url?: string }>(files: F[], fixed: number, gif: F) => (embedRoom(files.length, fixed) ? [...files, gif] : files)
+/** A composer post's media embeds: the fixed ones, then its attachments (write.ts post adds the quote and links). */
+export const postMedia = (fixed: string[], files: { url?: string }[]) => [...fixed, ...files.map((f) => f.url!)]
 export const isVid = (u: string) => /\.(m3u8|mp4|webm|mov)(\?|$)/i.test(u)
 
 /** How a cast's embeds sit (ui.tsx Embeds, server/home.mjs): its pictures (one tile, however many) and videos side by
@@ -387,6 +395,7 @@ export const P = {
   gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
   pen: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
+  gif: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM9.5 9h-2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2v-3h-1M12 9v6M17.5 9h-3v6M14.5 12h2.5',
   image: 'M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM3 16l5-5 5 5M14 14l2-2 5 5M15.5 8.5h.01',
   hash: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18',
   x: 'M18 6 6 18M6 6l12 12',

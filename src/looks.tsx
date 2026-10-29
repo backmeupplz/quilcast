@@ -10,6 +10,7 @@ import { ProfileAmp } from './amp.tsx'
 import { BASE, museum, skinShot, type MuseumSkin } from './skin.ts'
 import { ampItem, cleanDesign, cleanLook, DESIGN_KEYS, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look, type Sticker } from './shared.ts'
 import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
+import { GifPicker } from './gifs.tsx'
 
 export const clean = cleanLook
 
@@ -529,34 +530,6 @@ function SkinPicker({ pick, close }: { pick: (md5: string) => void; close: () =>
       )}
       {list && more && <button class="btn ghost small" onClick={next}>{t('More skins')}</button>}
       <p class="hint">{t('Skins from the Winamp Skin Museum.')}</p>
-    </div>
-  )
-}
-
-type Gif = { url: string; preview: string; title: string }
-export function GifPicker({ pick, close, stickers }: { pick: (url: string) => void; close: () => void; stickers?: boolean }) {
-  const [q, setQ] = useState('')
-  const [list, setList] = useState<Gif[] | null>(null)
-  const input = useRef<HTMLInputElement>(null)
-  useEffect(() => input.current?.focus(), [])
-  useEffect(() => {
-    let live = true
-    const t = setTimeout(() => {
-      setList(null)
-      fetch(`/api/gifs?q=${encodeURIComponent(q.trim() || 'sparkle')}${stickers ? '&stickers=1' : ''}`).then((r) => r.json()).then((l) => live && setList(Array.isArray(l) ? l : []), () => live && setList([]))
-    }, 350)
-    return () => ((live = false), clearTimeout(t))
-  }, [q, stickers])
-  return (
-    <div class="lk-edit-body lk-gifs">
-      <div class="lk-gifs-head">
-        <input ref={input} value={q} placeholder={stickers ? t('Search stickers') : t('Search GIFs')} onInput={(e) => setQ(e.currentTarget.value)} />
-        <button class="btn ghost small" onClick={close}>{t('Back')}</button>
-      </div>
-      {!list ? <div class="spinner" /> : !list.length ? <p class="hint">{t('No GIFs found.')}</p> : (
-        <div class="lk-gif-grid">{list.filter((g) => isLookImg(g.url)).map((g) => <button onClick={() => pick(g.url)} aria-label={g.title || t('GIF')}><Img src={g.preview} /></button>)}</div>
-      )}
-      <p class="hint">{stickers ? t('Stickers from Tenor.') : t('GIFs from Tenor.')}</p>
     </div>
   )
 }

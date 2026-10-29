@@ -33,19 +33,33 @@ export function parse(html) {
   })
 }
 
-/** Profile looks' GIF picker (src/looks.tsx): one Tenor search page, as { url, preview, w, h }; the GIF itself
- *  stays under 4 MB, the size profile looks take (server/looks.mjs). `stickers` searches Tenor's stickers, which
- *  have see-through backgrounds. */
+/** The GIF picker's results (src/gifs.tsx) in one Tenor search page, as { url, preview, w, h, title, cast }. `url`
+ *  stays under 4 MB, the size profile looks take (server/looks.mjs). `stickers` searches Tenor's stickers, which have
+ *  see-through backgrounds.
+ *
+ *  `cast` is what the composer embeds in a cast, which other Farcaster clients show too. The Farcaster app reads an
+ *  embed's type from the file: Tenor `.gif`s that people cast come back from its API as `image/gif` images, its own
+ *  GIF picker (KLIPY) casts `.gif`s as well, and the videos it plays are its own HLS streams, so an `.mp4` would
+ *  likely end up a link. An animated `.webp` plays only where a client's image pipeline keeps its frames, while
+ *  every client animates a GIF. So a `.gif`: Tenor's `mediumgif` is the 498 px GIF with fewer colors, about two
+ *  thirds of the full one's weight; then the full one, and the 220 px `tinygif` when both are over 4 MB (a few are,
+ *  at up to 12 MB), which is too much for a feed. */
+export function gifResults(html, stickers = false) {
+  return results(html).flatMap((g) => {
+    const f = g.media_formats || {}
+    const ok = (x) => x?.url && TENOR.test(x.url)
+    const big = (stickers ? [f.webp_transparent, f.gif_transparent] : [f.webp, f.gif]).find((x) => x?.size < 4e6 && ok(x))
+    const small = (stickers ? [f.tinywebp_transparent, f.tinygif_transparent] : [f.tinywebp, f.tinygif]).find(ok)
+    const cast = stickers ? undefined : [f.mediumgif, f.gif].find((x) => x?.size < 4e6 && ok(x)) || [f.tinygif].find(ok)
+    return big && small ? [{ url: big.url, preview: small.url, w: big.dims?.[0] || 1, h: big.dims?.[1] || 1, title: String(g.content_description || '').slice(0, 100), ...(cast && { cast: cast.url }) }] : []
+  })
+}
+
 export async function gifs(q, stickers = false) {
   const r = await safeGet(`https://tenor.com/search/${encodeURIComponent(q.replace(/\s+/g, '-'))}-gifs${stickers ? '?format=stickers' : ''}`, { max: 4e6, timeout: 10e3, headers: { 'user-agent': UA } })
   // a failure throws, so the search isn't cached and gets tried again
   if (r.status !== 200) throw new Error(`tenor ${r.status}`)
-  return results(r.body.toString()).flatMap((g) => {
-    const f = g.media_formats || {}
-    const big = (stickers ? [f.webp_transparent, f.gif_transparent] : [f.webp, f.gif]).find((x) => x?.size < 4e6 && TENOR.test(x.url))
-    const small = (stickers ? [f.tinywebp_transparent, f.tinygif_transparent] : [f.tinywebp, f.tinygif]).find((x) => x?.url && TENOR.test(x.url))
-    return big && small ? [{ url: big.url, preview: small.url, w: big.dims?.[0] || 1, h: big.dims?.[1] || 1, title: String(g.content_description || '').slice(0, 100) }] : []
-  })
+  return gifResults(r.body.toString(), stickers)
 }
 
 /** Refill the pool from Tenor; keeps the old one if Tenor fails. */

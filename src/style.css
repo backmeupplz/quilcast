@@ -478,10 +478,13 @@ small.warn { color: var(--warn); }
 .picker input { margin-bottom: 4px; }
 .count { margin-inline-start: auto; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .count.warn { color: var(--warn); }
+/* the GIF search (src/gifs.tsx) takes the posts' place in the composer until one is picked */
+.sheet .lk-gifs { max-height: 65vh; padding: 8px 0 4px; }
 @media (max-width: 600px) {
   .modal { padding: 0; align-items: stretch; }
   .sheet { border-radius: 0; max-width: none; display: flex; flex-direction: column; }
   .toolbar { margin-top: auto; }
+  .sheet .lk-gifs { max-height: none; min-height: 0; }
 }
 @keyframes fade { from { opacity: 0; } }
 

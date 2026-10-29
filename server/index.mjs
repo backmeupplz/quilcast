@@ -786,7 +786,13 @@ createServer(async (req, res) => {
       const stickers = url.searchParams.has('stickers')
       const k = `${stickers ? 's:' : ''}${q.toLowerCase()}`
       if (!gifCache.has(k) && limited(`gifs:${ip}`, 30)) return json(429, [])
-      const r = await (gifCache.get(k) || keep(gifCache, 500, k, previews(() => gifs(q, stickers)))).catch(() => [])
+      let p = gifCache.get(k)
+      if (!p) {
+        p = keep(gifCache, 500, k, previews(() => gifs(q, stickers)))
+        // searches change, and the composer opens on "trending": an hour, like the browsers' cache below
+        setTimeout(() => gifCache.get(k) === p && gifCache.delete(k), 3600e3).unref()
+      }
+      const r = await p.catch(() => [])
       return json(200, r, 'public, max-age=3600')
     }
 

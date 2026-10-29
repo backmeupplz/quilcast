@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, LINK_RE, loadUsers, myUser, toUrl, users, type Account, type Cast, type User } from './api.ts'
 import { t } from './i18n.ts'
-import { castText, isImg, isVid, MAX_EMBEDS } from './shared.ts'
+import { GifPicker } from './gifs.tsx'
+import { castText, embedRoom, isImg, isVid, postMedia, withGif } from './shared.ts'
 import { Avatar, channelUrl, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, toast, w } from './ui.tsx'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
@@ -122,7 +123,7 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
   }
   const grow = (el: HTMLTextAreaElement) => ((el.style.height = 'auto'), (el.style.height = el.scrollHeight + 'px'))
   useEffect(() => void (ref.current && grow(ref.current)), [part.text])
-  const slots = Math.max(0, MAX_EMBEDS - part.files.length - (first ? +!!quote + embeds.length : 0))
+  const slots = embedRoom(part.files.length, first ? +!!quote + embeds.length : 0)
   return (
     <div class={`part${last ? '' : ' threaded'}`} onClick={onFocus}>
       <div class="editor">
@@ -178,17 +179,20 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
   const [channel, setChannel] = useState(initial)
   const [busy, setBusy] = useState(false)
   const [as, setAs] = useState<Account>(account!)
+  const [gifs, setGifs] = useState(false)
   const pick = useRef<HTMLInputElement>(null)
   const update = (id: number, p: Partial<Part> | ((x: Part) => Partial<Part>)) =>
     setParts((ps) => ps.map((x) => (x.id === id ? { ...x, ...(typeof p === 'function' ? p(x) : p) } : x)))
-  const cur = parts[active] || parts[0]
+  // after a failed send took the posts that went out, `active` may point past the end
+  const at = parts[active] ? active : 0
+  const cur = parts[at]
   const left = LIMIT - bytes(cur.text)
   const filled = (p: Part, i: number) => p.text.trim() || p.files.length || fixed(i)
   const ready = parts.every((p, i) => (filled(p, i) || (i > 0 && !p.text && !p.files.length)) && bytes(p.text) <= LIMIT && p.files.every((f) => f.url)) && filled(parts[0], 0)
 
   const attach = (list: FileList | null) => {
     const part = cur
-    const room = MAX_EMBEDS - part.files.length - fixed(active)
+    const room = embedRoom(part.files.length, fixed(at))
     for (const file of [...(list || [])].slice(0, room)) {
       const a: Attachment = { id: Math.random(), preview: URL.createObjectURL(file), video: file.type.startsWith('video/') }
       const patch = (p: Partial<Attachment>) => update(part.id, (x) => ({ files: x.files.map((f) => (f.id === a.id ? { ...f, ...p } : f)) }))
@@ -199,6 +203,13 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
         .then((url) => patch({ url }), (e) => patch({ err: e.message }))
     }
   }
+  // a GIF is attached as it is, already at its URL
+  const gif = (url: string) => {
+    const part = cur
+    update(part.id, (x) => ({ files: withGif(x.files, fixed(at), { id: Math.random(), preview: url, video: false, url }) }))
+    setGifs(false)
+  }
+  const room = busy ? 0 : embedRoom(cur.files.length, fixed(at))
   const add = () => (setParts((ps) => [...ps, newPart()]), setActive(parts.length))
   const send = async () => {
     setBusy(true)
@@ -213,7 +224,7 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
           parent: prev,
           channel: i === 0 && !parent && channel ? channelUrl(channel) : undefined,
           quote: i === 0 && quote ? { fid: quote.author.fid, hash: quote.hash } : undefined,
-          media: [...(i === 0 ? embeds : []), ...p.files.map((f) => f.url!)],
+          media: postMedia(i === 0 ? embeds : [], p.files),
           as,
         })
         first ||= hash
@@ -234,7 +245,7 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
   return (
     <div class="modal" onClick={() => onClose()}>
       <div class="sheet" role="dialog" aria-label={parent ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => (e.key === 'Escape' && onClose(null), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
+        onKeyDown={(e) => (e.key === 'Escape' && (gifs ? setGifs(false) : onClose(null)), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
         <div class="sheet-top">
           <button class="link-btn" onClick={() => onClose()}>{t('Cancel')}</button>
           <AsPicker value={as} set={setAs} />
@@ -246,22 +257,24 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
             <div><b>{nameOf(parent.author)}</b> <span class="handle">@{handle(parent.author)}</span><p>{castText(parent).slice(0, 200)}</p></div>
           </div>
         )}
-        <div class="parts">
+        {gifs && <GifPicker cast start="trending" pick={gif} close={() => setGifs(false)} />}
+        <div class="parts" hidden={gifs}>
           {parts.map((p, i) => (
-            <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === active}
+            <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs}
               onFocus={() => setActive(i)} attach={attach}
               remove={i > 0 ? () => (setParts((ps) => ps.filter((x) => x.id !== p.id)), setActive(i - 1)) : undefined}
               placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : quote ? t('Add a comment') : t("What's happening?")} />
           ))}
         </div>
-        <div class="toolbar">
+        <div class="toolbar" hidden={gifs}>
           <input ref={pick} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
-          <button class="icon-btn" aria-label={t('Add photo or video')} disabled={cur.files.length >= 2 - fixed(active)} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
+          <button class="icon-btn" aria-label={t('Add photo or video')} disabled={!room} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
+          <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs(true)}><Icon d={P.gif} /></button>
           {!parent && <ChannelPicker value={channel} set={setChannel} />}
           <span class={`count${left < 50 ? ' warn' : ''}`} title={bytes(cur.text) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
             {bytes(cur.text) > 280 ? left : ''}
           </span>
-          <button class="icon-btn add-part" aria-label={t('Add another post to the thread')} disabled={!filled(cur, active)} onClick={add}><Icon d={P.plus} /></button>
+          <button class="icon-btn add-part" aria-label={t('Add another post to the thread')} disabled={!filled(cur, at)} onClick={add}><Icon d={P.plus} /></button>
         </div>
       </div>
     </div>
