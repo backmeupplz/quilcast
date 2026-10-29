@@ -1000,5 +1000,13 @@
   "{n}h": "{n} h",
   "{n}m": "{n} min",
   "{n}s left": "{n} s restantes",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Un problème est survenu et Quilcast s’est arrêté. Recharger la page règle généralement le problème."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Un problème est survenu et Quilcast s’est arrêté. Recharger la page règle généralement le problème.",
+  "Delete draft": "Supprimer le brouillon",
+  "Discard": "Abandonner",
+  "Draft saved": "Brouillon enregistré",
+  "Drafts": "Brouillons",
+  "No drafts yet.": "Aucun brouillon pour l’instant.",
+  "Save draft": "Enregistrer le brouillon",
+  "Save this as a draft?": "Enregistrer comme brouillon ?",
+  "Too many drafts. Delete some first.": "Trop de brouillons. Supprimez-en d’abord quelques-uns."
 }

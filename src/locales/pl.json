@@ -1000,5 +1000,13 @@
   "{n}h": "{n} godz.",
   "{n}m": "{n} min",
   "{n}s left": "zostało {n} s",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Coś poszło nie tak i Quilcast przestał działać. Zwykle pomaga ponowne załadowanie strony."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Coś poszło nie tak i Quilcast przestał działać. Zwykle pomaga ponowne załadowanie strony.",
+  "Delete draft": "Usuń szkic",
+  "Discard": "Odrzuć",
+  "Draft saved": "Zapisano szkic",
+  "Drafts": "Szkice",
+  "No drafts yet.": "Nie masz jeszcze szkiców.",
+  "Save draft": "Zapisz szkic",
+  "Save this as a draft?": "Zapisać jako szkic?",
+  "Too many drafts. Delete some first.": "Za dużo szkiców. Najpierw usuń kilka."
 }

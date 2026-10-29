@@ -3,7 +3,8 @@ import { account, accounts, findUsers, get, go, idOf, LINK_RE, loadUsers, myUser
 import { t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
 import { castText, embedRoom, isImg, isVid, postMedia, withGif } from './shared.ts'
-import { Avatar, channelUrl, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, toast, w } from './ui.tsx'
+import { ago, Avatar, channelUrl, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, toast, w } from './ui.tsx'
+import type { Draft } from './write.ts'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
 const bytes = (s: string) => new TextEncoder().encode(s).length
@@ -169,10 +170,34 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
   )
 }
 
+/** The account's drafts (sealed on our server, write.ts), to pick one up again or delete it. */
+function DraftList({ open, close }: { open: (d: Draft) => void; close: () => void }) {
+  const [list, setList] = useState<Draft[] | null>(null)
+  useEffect(() => void w().then((m) => m.listDrafts()).then(setList, (e) => (toast(e.message), close())), [])
+  const drop = (d: Draft) => (setList((l) => l!.filter((x) => x.id !== d.id)), w().then((m) => m.dropDraft(d.id)).catch((e) => toast(e.message)))
+  if (!list) return <div class="drafts"><span class="spinner" /></div>
+  return (
+    <div class="drafts">
+      {!list.length && <p class="muted">{t('No drafts yet.')}</p>}
+      {list.map((d) => (
+        <div class="draft">
+          <button class="draft-open" onClick={() => open(d)}>
+            <span class="clamp">{d.parts[0]?.text.trim() || '…'}</span>
+            <small class="muted">{[ago(d.at), d.parent ? t('Reply') : d.quote ? t('Quote cast') : '', d.channel && `/${d.channel}`, d.parts.some((p) => p.media.length) && '📎'].filter(Boolean).join(' · ')}</small>
+          </button>
+          <button class="icon-btn" aria-label={t('Delete draft')} onClick={(e) => ((e.currentTarget.closest('.sheet') as HTMLElement)?.focus(), drop(d))}><Icon d={P.x} size={16} /></button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** `text` and `embeds` prefill the first post (a mini app's composeCast); `onDone` hears the new hash, or null. */
-export function Composer({ parent, quote, channel: initial, text = '', embeds = [], onDone, onClose: close }: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void; onClose: () => void }) {
+export function Composer({ channel: initial, text = '', embeds = [], onDone, onClose: close, ...props }: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void; onClose: () => void }) {
   const [parts, setParts] = useState<Part[]>(() => [{ ...newPart(), text }])
   const onClose = (hash: string | null = null) => (onDone?.(hash), close())
+  // a draft picked up again brings its own cast to reply to or quote
+  const [{ parent, quote }, setCtx] = useState({ parent: props.parent, quote: props.quote })
   // the first post's fixed embeds (a quote, a mini app's links) leave less room for attachments
   const fixed = (i: number) => (i === 0 ? +!!quote + embeds.length : 0)
   const [active, setActive] = useState(0)
@@ -181,6 +206,43 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
   const [as, setAs] = useState<Account>(account!)
   const [gifs, setGifs] = useState(false)
   const pick = useRef<HTMLInputElement>(null)
+  // drafts: the one being edited, its list on screen, and the "keep it?" question on closing. A mini app's composeCast
+  // has none: its embeds are the app's, and the app hears what happened.
+  const canDraft = !onDone && !embeds.length
+  const [draft, setDraft] = useState<string>()
+  const [drafts, setDrafts] = useState(false)
+  const [asking, setAsking] = useState(false)
+  const snap = (ps: Part[], ch?: string) => JSON.stringify([ps.map((p) => [p.text, p.files.map((f) => f.url)]), ch])
+  const base = useRef<string>(undefined)
+  base.current ??= snap(parts, channel)
+  const empty = parts.every((p) => !p.text.trim() && !p.files.length)
+  const uploading = parts.some((p) => p.files.some((f) => !f.url && !f.err))
+  // closing with something new in it asks first; asked twice, it goes back to editing
+  const leave = () => (asking ? setAsking(false) : canDraft && !busy && !empty && snap(parts, channel) !== base.current ? setAsking(true) : onClose())
+  const keep = async () => {
+    setBusy(true)
+    try {
+      const media = (p: Part) => p.files.flatMap((f) => (f.url ? [f.url] : []))
+      await (await w()).saveDraft({ id: draft || crypto.randomUUID(), at: Date.now(), parts: parts.map((p) => ({ text: p.text, media: media(p) })), channel: parent ? undefined : channel, parent: parent?.hash, quote: quote?.hash, as: as.fid })
+      toast('Draft saved')
+      onClose()
+    } catch (e: any) {
+      toast(e.message)
+      setBusy(false)
+    }
+  }
+  const open = async (d: Draft) => {
+    const [p, q] = await Promise.all([d.parent ? fetchCast(d.parent) : null, d.quote ? fetchCast(d.quote) : null])
+    const ps = d.parts.map((x) => ({ ...newPart(), text: x.text, files: x.media.map((url) => ({ id: Math.random(), preview: url, video: isVid(url), url })) }))
+    setCtx({ parent: p || undefined, quote: q || undefined })
+    setParts(ps)
+    setChannel(d.channel)
+    setAs(accounts.find((a) => a.done && a.fid === d.as) || account!)
+    setDraft(d.id)
+    setActive(0)
+    setDrafts(false)
+    base.current = snap(ps, d.channel)
+  }
   const update = (id: number, p: Partial<Part> | ((x: Part) => Partial<Part>)) =>
     setParts((ps) => ps.map((x) => (x.id === id ? { ...x, ...(typeof p === 'function' ? p(x) : p) } : x)))
   // after a failed send took the posts that went out, `active` may point past the end
@@ -232,6 +294,7 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
         setParts((ps) => ps.filter((x) => x.id !== p.id))
       }
       onClose(first)
+      if (draft) w().then((m) => m.dropDraft(draft)).catch(() => {})
       toast(parts.length > 1 ? 'Thread posted' : parent ? 'Reply sent' : 'Cast sent')
       // a mini app that asked for the cast stays on screen
       onDone || (go(`/c/${first}`), sent())
@@ -243,30 +306,41 @@ export function Composer({ parent, quote, channel: initial, text = '', embeds = 
     }
   }
   return (
-    <div class="modal" onClick={() => onClose()}>
-      <div class="sheet" role="dialog" aria-label={parent ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => (e.key === 'Escape' && (gifs ? setGifs(false) : onClose(null)), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
+    <div class="modal" onClick={leave}>
+      <div class="sheet" tabIndex={-1} role="dialog" aria-label={parent ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => (e.key === 'Escape' && (gifs ? setGifs(false) : drafts ? setDrafts(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
         <div class="sheet-top">
-          <button class="link-btn" onClick={() => onClose()}>{t('Cancel')}</button>
+          <span class="sheet-left">
+            <button class="link-btn" onClick={leave}>{t('Cancel')}</button>
+            {canDraft && (empty || drafts) && !draft && <button class={`link-btn${drafts ? ' on' : ''}`} aria-pressed={drafts} onClick={() => setDrafts(!drafts)}>{t('Drafts')}</button>}
+          </span>
           <AsPicker value={as} set={setAs} />
           <button class="btn" disabled={busy || !ready} onClick={send}>{busy ? t('Sending…') : parts.length > 1 ? t('Post all') : parent ? t('Reply') : t('Cast')}</button>
         </div>
-        {parent && (
+        {asking && (
+          <div class="draft-ask" role="alertdialog" aria-label={t('Save this as a draft?')}>
+            <span>{t('Save this as a draft?')}</span>
+            <button class="link-btn" onClick={() => onClose()}>{t('Discard')}</button>
+            <button class="btn" disabled={busy || uploading} onClick={keep}>{t('Save draft')}</button>
+          </div>
+        )}
+        {drafts && <DraftList open={open} close={() => setDrafts(false)} />}
+        {parent && !drafts && (
           <div class="ctx">
             <Avatar u={parent.author} size={28} link={false} />
             <div><b>{nameOf(parent.author)}</b> <span class="handle">@{handle(parent.author)}</span><p>{castText(parent).slice(0, 200)}</p></div>
           </div>
         )}
         {gifs && <GifPicker cast start="trending" pick={gif} close={() => setGifs(false)} />}
-        <div class="parts" hidden={gifs}>
+        <div class="parts" hidden={gifs || drafts}>
           {parts.map((p, i) => (
-            <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs}
+            <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs && !drafts}
               onFocus={() => setActive(i)} attach={attach}
               remove={i > 0 ? () => (setParts((ps) => ps.filter((x) => x.id !== p.id)), setActive(i - 1)) : undefined}
               placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : quote ? t('Add a comment') : t("What's happening?")} />
           ))}
         </div>
-        <div class="toolbar" hidden={gifs}>
+        <div class="toolbar" hidden={gifs || drafts}>
           <input ref={pick} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
           <button class="icon-btn" aria-label={t('Add photo or video')} disabled={!room} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
           <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs(true)}><Icon d={P.gif} /></button>

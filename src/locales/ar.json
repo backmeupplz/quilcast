@@ -1000,5 +1000,13 @@
   "{n}h": "{n} س",
   "{n}m": "{n} د",
   "{n}s left": "تبقّى {n} ث",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "حدث خطأ ما وتوقف Quilcast. عادةً ما تحل إعادة تحميل الصفحة المشكلة."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "حدث خطأ ما وتوقف Quilcast. عادةً ما تحل إعادة تحميل الصفحة المشكلة.",
+  "Delete draft": "حذف المسودة",
+  "Discard": "تجاهل",
+  "Draft saved": "تم حفظ المسودة",
+  "Drafts": "المسودات",
+  "No drafts yet.": "لا توجد مسودات بعد.",
+  "Save draft": "حفظ كمسودة",
+  "Save this as a draft?": "هل تريد حفظ هذا كمسودة؟",
+  "Too many drafts. Delete some first.": "مسودات كثيرة جدًا. احذف بعضها أولًا."
 }

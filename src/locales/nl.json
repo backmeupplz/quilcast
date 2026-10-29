@@ -1000,5 +1000,13 @@
   "{n}h": "{n}u",
   "{n}m": "{n}m",
   "{n}s left": "nog {n}s",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Er ging iets mis en Quilcast is gestopt. De pagina opnieuw laden lost dit meestal op."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Er ging iets mis en Quilcast is gestopt. De pagina opnieuw laden lost dit meestal op.",
+  "Delete draft": "Concept verwijderen",
+  "Discard": "Weggooien",
+  "Draft saved": "Concept opgeslagen",
+  "Drafts": "Concepten",
+  "No drafts yet.": "Nog geen concepten.",
+  "Save draft": "Concept opslaan",
+  "Save this as a draft?": "Opslaan als concept?",
+  "Too many drafts. Delete some first.": "Te veel concepten. Verwijder er eerst een paar."
 }

@@ -31,6 +31,7 @@ Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App 
 - The app speaks 22 languages: English, Arabic (right to left), Chinese (Simplified and Traditional), Dutch, French, German, Hindi, Indonesian, Italian, Japanese, Korean, Polish, Portuguese (Brazil and Portugal), Russian, Spanish, Swedish, Thai, Turkish, Ukrainian and Vietnamese. It follows the device's language unless you pick one in Settings; the strings are in `src/locales/` and `npm run i18n` checks every file has them all
 - Translations: casts in another language get a Translate button (the language is guessed in the browser; translations come from free models through OpenRouter and are kept per cast)
 - Mute or block people for a day, a week, a month or for good, and mute words. Farcaster has neither, so they're Quilcast's own, kept private on our server (signed with your key) so every device gets them. Report a cast or a person from the same ⋯ menu; casts and accounts taken down after a report go in `src/removed.json`
+- Drafts: closing a cast with something new in it asks whether to save it as a draft, and the composer's Drafts list picks one up again (a reply reopens as a reply) on any device. Each draft is sealed with AES-GCM in the browser under a key made from the account's custody signature of a fixed message, so our server keeps files it can't read; a wallet account's wallet signs that message once per browser
 - Quilcast is a Farcaster mini app itself: open quilcast.com links inside farcaster.xyz, the Base app or Quilcast
 - Settings: profile (with photo upload), theme, light or dark, profile looks on or off, recovery phrase and key export, removing the recovery phrase from this browser, node and Optimism RPC URLs, version
 
@@ -57,6 +58,7 @@ Channel pages aren't there because Hypersnap (and upstream Snapchain) can't list
 | `src/fx.ts` | Profile effects: one small particle engine and the presets it draws |
 | `src/amp.tsx`, `src/skin.ts` | The profile Winamp and its skin reader |
 | `src/mutes.ts`, `server/mutes.mjs` | Mutes and blocks |
+| `src/compose.tsx`, `src/write.ts`, `server/drafts.mjs` | Drafts: the composer's Drafts list and save/discard prompt, sealing them in the browser, and keeping the sealed files (one per draft, per FID) |
 | `android/`, `ios/` | The apps (see Apps) |
 
 The message encoders are checked byte for byte against `@farcaster/core`, `viem` and Quilibrium's `quorum-shared`.

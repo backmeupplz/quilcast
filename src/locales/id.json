@@ -1000,5 +1000,13 @@
   "{n}h": "{n} j",
   "{n}m": "{n} mnt",
   "{n}s left": "sisa {n} dtk",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Terjadi kesalahan dan Quilcast berhenti. Memuat ulang halaman biasanya memperbaikinya."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Terjadi kesalahan dan Quilcast berhenti. Memuat ulang halaman biasanya memperbaikinya.",
+  "Delete draft": "Hapus draf",
+  "Discard": "Buang",
+  "Draft saved": "Draf disimpan",
+  "Drafts": "Draf",
+  "No drafts yet.": "Belum ada draf.",
+  "Save draft": "Simpan draf",
+  "Save this as a draft?": "Simpan sebagai draf?",
+  "Too many drafts. Delete some first.": "Terlalu banyak draf. Hapus beberapa dulu."
 }

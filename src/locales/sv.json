@@ -1000,5 +1000,13 @@
   "{n}h": "{n} h",
   "{n}m": "{n} min",
   "{n}s left": "{n} s kvar",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Något gick fel och Quilcast stannade. Att ladda om sidan brukar lösa det."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Något gick fel och Quilcast stannade. Att ladda om sidan brukar lösa det.",
+  "Delete draft": "Radera utkast",
+  "Discard": "Släng",
+  "Draft saved": "Utkastet sparat",
+  "Drafts": "Utkast",
+  "No drafts yet.": "Inga utkast än.",
+  "Save draft": "Spara utkast",
+  "Save this as a draft?": "Spara som utkast?",
+  "Too many drafts. Delete some first.": "För många utkast. Radera några först."
 }

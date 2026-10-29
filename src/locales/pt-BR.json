@@ -1000,5 +1000,13 @@
   "{n}h": "{n} h",
   "{n}m": "{n} min",
   "{n}s left": "faltam {n} s",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Algo deu errado e o Quilcast parou. Recarregar a página costuma resolver."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Algo deu errado e o Quilcast parou. Recarregar a página costuma resolver.",
+  "Delete draft": "Excluir rascunho",
+  "Discard": "Descartar",
+  "Draft saved": "Rascunho salvo",
+  "Drafts": "Rascunhos",
+  "No drafts yet.": "Nenhum rascunho ainda.",
+  "Save draft": "Salvar rascunho",
+  "Save this as a draft?": "Salvar como rascunho?",
+  "Too many drafts. Delete some first.": "Rascunhos demais. Exclua alguns primeiro."
 }

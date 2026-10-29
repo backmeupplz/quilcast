@@ -1000,5 +1000,13 @@
   "{n}h": "{n} Std.",
   "{n}m": "{n} Min.",
   "{n}s left": "noch {n} s",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Etwas ist schiefgelaufen und Quilcast wurde angehalten. Meist hilft es, die Seite neu zu laden."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Etwas ist schiefgelaufen und Quilcast wurde angehalten. Meist hilft es, die Seite neu zu laden.",
+  "Delete draft": "Entwurf löschen",
+  "Discard": "Verwerfen",
+  "Draft saved": "Entwurf gespeichert",
+  "Drafts": "Entwürfe",
+  "No drafts yet.": "Noch keine Entwürfe.",
+  "Save draft": "Als Entwurf speichern",
+  "Save this as a draft?": "Als Entwurf speichern?",
+  "Too many drafts. Delete some first.": "Zu viele Entwürfe. Lösche zuerst einige."
 }

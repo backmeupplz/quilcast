@@ -22,6 +22,7 @@ import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
 import { getDesign, getLook, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
 import { getMutes, loadMutes, putMutes } from './mutes.mjs'
+import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
@@ -41,6 +42,7 @@ loadTranslations(DATA)
 // cast translations (server/translate.mjs): free OpenRouter models, set by OPENROUTER_API_KEY
 const TRANSLATOR = { key: process.env.OPENROUTER_API_KEY, url: process.env.OPENROUTER_URL, site: SITE, models: process.env.OPENROUTER_MODELS?.split(',').map((m) => m.trim()).filter(Boolean) }
 loadMutes(DATA)
+loadDrafts(DATA)
 loadThemes(DATA)
 const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) => new URL(`fonts/${f}`, import.meta.url).pathname)
 
@@ -743,6 +745,17 @@ createServer(async (req, res) => {
       const r = await (req.method === 'GET' ? getMutes : putMutes)(req, fid, NODE).catch((e) => e)
       const err = r instanceof Error
       if (err && !r.status) console.error('mutes', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // drafts, sealed in the browser (server/drafts.mjs)
+    const drafts = path.match(/^\/api\/drafts\/([1-9]\d{0,9})$/)
+    if (drafts) {
+      const fid = Number(drafts[1])
+      if (req.method !== 'GET' && req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
+      if (limited(`drafts:${ip}`, 300, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      const r = await (req.method === 'GET' ? getDrafts : putDraft)(req, fid, NODE).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('drafts', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
     }
     const design = path.match(/^\/api\/design(?:\/([\w-]{10}))?$/)

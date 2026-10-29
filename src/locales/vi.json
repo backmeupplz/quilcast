@@ -1000,5 +1000,13 @@
   "{n}h": "{n} giờ",
   "{n}m": "{n} phút",
   "{n}s left": "còn {n} giây",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Đã xảy ra lỗi và Quilcast đã dừng. Tải lại trang thường sẽ khắc phục được."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Đã xảy ra lỗi và Quilcast đã dừng. Tải lại trang thường sẽ khắc phục được.",
+  "Delete draft": "Xóa bản nháp",
+  "Discard": "Bỏ",
+  "Draft saved": "Đã lưu bản nháp",
+  "Drafts": "Bản nháp",
+  "No drafts yet.": "Chưa có bản nháp nào.",
+  "Save draft": "Lưu bản nháp",
+  "Save this as a draft?": "Lưu thành bản nháp?",
+  "Too many drafts. Delete some first.": "Quá nhiều bản nháp. Hãy xóa bớt trước."
 }

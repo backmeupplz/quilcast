@@ -1000,5 +1000,13 @@
   "{n}h": "{n} घं.",
   "{n}m": "{n} मि.",
   "{n}s left": "{n} से. बाकी",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "कुछ गड़बड़ हो गई और Quilcast रुक गया। पेज को फिर से लोड करने से आमतौर पर यह ठीक हो जाता है।"
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "कुछ गड़बड़ हो गई और Quilcast रुक गया। पेज को फिर से लोड करने से आमतौर पर यह ठीक हो जाता है।",
+  "Delete draft": "ड्राफ़्ट हटाएँ",
+  "Discard": "छोड़ें",
+  "Draft saved": "ड्राफ़्ट सहेजा गया",
+  "Drafts": "ड्राफ़्ट",
+  "No drafts yet.": "अभी कोई ड्राफ़्ट नहीं।",
+  "Save draft": "ड्राफ़्ट सहेजें",
+  "Save this as a draft?": "इसे ड्राफ़्ट के रूप में सहेजें?",
+  "Too many drafts. Delete some first.": "बहुत ज़्यादा ड्राफ़्ट। पहले कुछ हटाएँ।"
 }

@@ -1000,5 +1000,13 @@
   "{n}h": "{n} ชม.",
   "{n}m": "{n} นาที",
   "{n}s left": "เหลือ {n} วินาที",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "เกิดข้อผิดพลาดและ Quilcast หยุดทำงาน โดยปกติการโหลดหน้านี้ใหม่จะช่วยแก้ไขได้"
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "เกิดข้อผิดพลาดและ Quilcast หยุดทำงาน โดยปกติการโหลดหน้านี้ใหม่จะช่วยแก้ไขได้",
+  "Delete draft": "ลบฉบับร่าง",
+  "Discard": "ทิ้ง",
+  "Draft saved": "บันทึกฉบับร่างแล้ว",
+  "Drafts": "ฉบับร่าง",
+  "No drafts yet.": "ยังไม่มีฉบับร่าง",
+  "Save draft": "บันทึกฉบับร่าง",
+  "Save this as a draft?": "บันทึกเป็นฉบับร่างไหม",
+  "Too many drafts. Delete some first.": "ฉบับร่างมากเกินไป ลบบางส่วนก่อน"
 }

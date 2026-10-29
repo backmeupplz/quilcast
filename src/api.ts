@@ -1,6 +1,6 @@
 // Hypersnap reads plus the locally stored accounts. Writes live in write.ts,
 // loaded on demand so readers never download the crypto.
-import { dropEd, hex, keep, newEd, SECRETS, secretsOf, type Secrets } from './keys.ts'
+import { drop, dropEd, hex, keep, newEd, SECRETS, secretsOf, type Secrets } from './keys.ts'
 import { LINK_RE, safeUrl, toUrl } from './shared.ts'
 
 export const read = <T,>(k: string, d: T): T => {
@@ -52,7 +52,7 @@ function sync(id: string, f: keyof Secrets, v: unknown) {
 function persist(gone: Account[] = []) {
   save('quilcast:accounts', accounts.map(strip))
   const writes: Promise<unknown>[] = accounts.flatMap((a) => SECRETS.filter((f) => f in a).map((f) => sync(idOf(a), f, a[f])))
-  for (const a of gone) writes.push(...SECRETS.map((f) => sync(idOf(a), f, undefined)), ...[a.pub, a.appPub].flatMap((k) => (k ? [dropEd(k)] : [])))
+  for (const a of gone) writes.push(...SECRETS.map((f) => sync(idOf(a), f, undefined)), ...[a.pub, a.appPub].flatMap((k) => (k ? [dropEd(k)] : [])), drop(`drafts:${a.fid}`))
   // another tab may have saved the list meanwhile, so this only takes secrets out of what's there now
   return Promise.all(writes).then(() => save('quilcast:accounts', read<Account[]>('quilcast:accounts', []).map(strip)), (e) => console.error('vault', e))
 }

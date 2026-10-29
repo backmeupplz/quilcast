@@ -1000,5 +1000,13 @@
   "{n}h": "{n} h",
   "{n}m": "{n} min",
   "{n}s left": "{n} s rimanenti",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Qualcosa è andato storto e Quilcast si è fermato. Ricaricare la pagina di solito risolve il problema."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Qualcosa è andato storto e Quilcast si è fermato. Ricaricare la pagina di solito risolve il problema.",
+  "Delete draft": "Elimina bozza",
+  "Discard": "Scarta",
+  "Draft saved": "Bozza salvata",
+  "Drafts": "Bozze",
+  "No drafts yet.": "Ancora nessuna bozza.",
+  "Save draft": "Salva bozza",
+  "Save this as a draft?": "Salvare come bozza?",
+  "Too many drafts. Delete some first.": "Troppe bozze. Eliminane prima qualcuna."
 }

@@ -362,6 +362,27 @@ test('mutes: private to the account, read and written only with its key', async 
   assert.equal((await call('GET', 7, '', { key: ed25519.utils.randomSecretKey() })).status, 403)
 })
 
+test('drafts: sealed boxes kept per account, read and written only with its key', async () => {
+  const call = (method, fid, body = '', { key = signer, what = method === 'GET' ? 'quilcast-drafts-read' : 'quilcast-drafts' } = {}) => {
+    const ts = Date.now()
+    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex')
+    return fetch(`${base}/api/drafts/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
+  }
+  const id = crypto.randomUUID()
+  const body = JSON.stringify({ id, box: 'aXY=.c2VhbGVk' })
+  assert.equal((await fetch(`${base}/api/drafts/7`)).status, 401)
+  assert.deepEqual(await (await call('GET', 7)).json(), [])
+  assert.equal((await call('PUT', 7, body, { what: 'quilcast-drafts-read' })).status, 401)
+  assert.equal((await call('PUT', 8, body)).status, 403)
+  assert.equal((await call('PUT', 7, JSON.stringify({ id: '../x', box: 'a.b' }))).status, 400)
+  assert.equal((await call('PUT', 7, JSON.stringify({ id, box: 'not sealed' }))).status, 400)
+  assert.equal((await call('PUT', 7, body)).status, 200)
+  assert.deepEqual(await (await call('GET', 7)).json(), [{ id, box: 'aXY=.c2VhbGVk' }])
+  assert.equal((await call('GET', 7, '', { key: ed25519.utils.randomSecretKey() })).status, 403)
+  assert.equal((await call('PUT', 7, JSON.stringify({ id, box: null }))).status, 200)
+  assert.deepEqual(await (await call('GET', 7)).json(), [])
+})
+
 test('profile looks: saved only with a key the node lists for that FID, cleaned, and removable', async () => {
   const put = (fid, look, { key = signer, ts = Date.now(), as = fid } = {}) => {
     const body = JSON.stringify(look)

@@ -447,6 +447,17 @@ small.warn { color: var(--warn); }
 .modal { position: fixed; inset: 0; z-index: 31; background: rgb(10 8 20 / 0.45); display: flex; align-items: flex-start; justify-content: center; padding: 6vh 16px 16px; animation: fade 0.15s; }
 .sheet { width: 100%; max-width: 580px; background: var(--card); border-radius: calc(18px * var(--rs, 1)); padding: 10px 16px 8px; box-shadow: 0 24px 60px rgb(0 0 0 / 0.3); }
 .sheet-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; }
+.sheet:focus { outline: none; }
+.sheet-left { display: flex; gap: 16px; align-items: center; }
+.sheet-left .link-btn.on { text-decoration: underline; }
+.draft-ask { display: flex; align-items: center; gap: 14px; padding: 10px 12px; margin: 4px 0 8px; border-radius: 12px; background: var(--soft); }
+.draft-ask span { flex: 1; font-weight: 550; }
+.drafts { max-height: 65vh; overflow-y: auto; min-height: 80px; }
+.drafts > .spinner { display: block; margin: 24px auto; }
+.drafts > p { text-align: center; padding: 24px 0; margin: 0; }
+.draft { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); }
+.draft-open { flex: 1; min-width: 0; display: grid; gap: 2px; text-align: start; border: 0; background: none; color: inherit; padding: 10px 2px; }
+.draft-open .clamp { -webkit-line-clamp: 2; overflow-wrap: anywhere; }
 .ctx { display: flex; gap: 10px; margin: 6px 0 2px; font-size: 14px; position: relative; }
 .ctx::after { content: ''; position: absolute; inset-inline-start: 13px; top: 32px; bottom: -14px; width: 2px; background: var(--line); }
 .ctx p { margin: 2px 0 0; color: var(--muted); -webkit-line-clamp: 3; }

@@ -1000,5 +1000,13 @@
   "{n}h": "{n}시간",
   "{n}m": "{n}분",
   "{n}s left": "{n}초 남음",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "문제가 발생해 Quilcast가 멈췄습니다. 보통 페이지를 새로고침하면 해결됩니다."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "문제가 발생해 Quilcast가 멈췄습니다. 보통 페이지를 새로고침하면 해결됩니다.",
+  "Delete draft": "임시 저장 삭제",
+  "Discard": "버리기",
+  "Draft saved": "임시 저장됨",
+  "Drafts": "임시 저장",
+  "No drafts yet.": "아직 임시 저장된 글이 없습니다.",
+  "Save draft": "임시 저장",
+  "Save this as a draft?": "임시 저장할까요?",
+  "Too many drafts. Delete some first.": "임시 저장된 글이 너무 많습니다. 먼저 몇 개를 삭제하세요."
 }

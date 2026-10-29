@@ -1000,5 +1000,13 @@
   "Swap {amount} {from} for ≈ {got} {to}": "將 {amount} {from} 兌換為 ≈ {got} {to}",
   "Report @{name}": "檢舉 @{name}",
   "Report this cast": "檢舉此 cast",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "發生問題，Quilcast 已停止運作。重新載入頁面通常就能解決。"
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "發生問題，Quilcast 已停止運作。重新載入頁面通常就能解決。",
+  "Delete draft": "刪除草稿",
+  "Discard": "捨棄",
+  "Draft saved": "草稿已儲存",
+  "Drafts": "草稿",
+  "No drafts yet.": "還沒有草稿。",
+  "Save draft": "儲存草稿",
+  "Save this as a draft?": "儲存為草稿？",
+  "Too many drafts. Delete some first.": "草稿太多了，請先刪除一些。"
 }

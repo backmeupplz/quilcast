@@ -1000,5 +1000,13 @@
   "Swap {amount} {from} for ≈ {got} {to}": "将 {amount} {from} 兑换为 ≈ {got} {to}",
   "Report @{name}": "举报 @{name}",
   "Report this cast": "举报此 cast",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "出了点问题，Quilcast 已停止运行。重新加载页面通常可以解决。"
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "出了点问题，Quilcast 已停止运行。重新加载页面通常可以解决。",
+  "Delete draft": "删除草稿",
+  "Discard": "放弃",
+  "Draft saved": "草稿已保存",
+  "Drafts": "草稿",
+  "No drafts yet.": "还没有草稿。",
+  "Save draft": "保存草稿",
+  "Save this as a draft?": "保存为草稿？",
+  "Too many drafts. Delete some first.": "草稿太多了，请先删除一些。"
 }

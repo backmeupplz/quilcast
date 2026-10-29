@@ -1000,5 +1000,13 @@
   "Swap {amount} {from} for ≈ {got} {to}": "Cambiar {amount} {from} por ≈ {got} {to}",
   "Report @{name}": "Denunciar a @{name}",
   "Report this cast": "Denunciar este cast",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Algo salió mal y Quilcast se detuvo. Recargar la página suele solucionarlo."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Algo salió mal y Quilcast se detuvo. Recargar la página suele solucionarlo.",
+  "Delete draft": "Eliminar borrador",
+  "Discard": "Descartar",
+  "Draft saved": "Borrador guardado",
+  "Drafts": "Borradores",
+  "No drafts yet.": "Aún no hay borradores.",
+  "Save draft": "Guardar borrador",
+  "Save this as a draft?": "¿Guardar como borrador?",
+  "Too many drafts. Delete some first.": "Demasiados borradores. Elimina algunos primero."
 }

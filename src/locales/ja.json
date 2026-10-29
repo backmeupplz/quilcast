@@ -1000,5 +1000,13 @@
   "Swap {amount} {from} for ≈ {got} {to}": "{amount} {from} を ≈ {got} {to} にスワップ",
   "Report @{name}": "@{name}を報告",
   "Report this cast": "このキャストを報告",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "問題が発生したため Quilcast が停止しました。通常はページを再読み込みすると直ります。"
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "問題が発生したため Quilcast が停止しました。通常はページを再読み込みすると直ります。",
+  "Delete draft": "下書きを削除",
+  "Discard": "破棄",
+  "Draft saved": "下書きを保存しました",
+  "Drafts": "下書き",
+  "No drafts yet.": "下書きはまだありません。",
+  "Save draft": "下書きを保存",
+  "Save this as a draft?": "下書きとして保存しますか？",
+  "Too many drafts. Delete some first.": "下書きが多すぎます。先にいくつか削除してください。"
 }

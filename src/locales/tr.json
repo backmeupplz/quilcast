@@ -1000,5 +1000,13 @@
   "{n}h": "{n} sa",
   "{n}m": "{n} dk",
   "{n}s left": "{n} sn kaldı",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Bir şeyler ters gitti ve Quilcast durdu. Sayfayı yeniden yüklemek genellikle sorunu çözer."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Bir şeyler ters gitti ve Quilcast durdu. Sayfayı yeniden yüklemek genellikle sorunu çözer.",
+  "Delete draft": "Taslağı sil",
+  "Discard": "Vazgeç",
+  "Draft saved": "Taslak kaydedildi",
+  "Drafts": "Taslaklar",
+  "No drafts yet.": "Henüz taslak yok.",
+  "Save draft": "Taslağı kaydet",
+  "Save this as a draft?": "Taslak olarak kaydedilsin mi?",
+  "Too many drafts. Delete some first.": "Çok fazla taslak var. Önce birkaçını sil."
 }

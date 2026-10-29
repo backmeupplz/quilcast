@@ -5,7 +5,7 @@ import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
 import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, rawEd, reactionBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
-import { dropEd, edKey, newEd, type Ed } from './keys.ts'
+import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { MAX_EMBEDS } from './shared.ts'
 
 /** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
@@ -403,3 +403,47 @@ export const saveLook = (look: object | null) => keyFetch(`/api/look/${account!.
 export const fetchMutes = (a = account!) =>
   (a.pub || a.signer) && a.scopes === SCOPES_VERSION ? keyFetch(`/api/mutes/${a.fid}`, 'quilcast-mutes-read', 'GET', '', 1) : Promise.resolve(null)
 export const saveMutes = (m: object) => keyFetch(`/api/mutes/${account!.fid}`, 'quilcast-mutes', 'PUT', JSON.stringify(m))
+
+// --- drafts ---
+// Kept on our server (server/drafts.mjs), each sealed with AES-GCM under a key only the account's custody can make: the
+// SHA-256 of its signature of a fixed message. The phrase and Ethereum wallets sign deterministically, so every device
+// makes the same key and the server only ever holds ciphertext. A browser keeps the key in the vault (non-extractable),
+// so the custody signs once per browser.
+// ponytail: a smart-contract wallet may sign differently each time; its drafts then open only in the browser that saved them
+export type Draft = { id: string; at: number; parts: { text: string; media: string[] }[]; channel?: string; parent?: string; quote?: string; as?: number }
+const draftKeys = new Map<number, Promise<CryptoKey>>()
+const draftKey = (a = account!) => {
+  const fid = a.fid!
+  if (!draftKeys.has(fid))
+    draftKeys.set(fid, (async () => {
+      const kept = await kv<CryptoKey | undefined>('readonly', (s) => s.get(`drafts:${fid}`)).catch(() => undefined)
+      if (kept) return kept
+      // the message never changes (not even its language): a different one would make a different key
+      const msg = new TextEncoder().encode(`Quilcast drafts key for FID ${fid}\n\nSigning this lets Quilcast encrypt your drafts so only you can read them. It sends nothing and costs nothing.`)
+      const sig = await (await custodyOf(a)).message(msg)
+      const key = await crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', sig.slice(0, 64)), 'AES-GCM', false, ['encrypt', 'decrypt'])
+      await kv('readwrite', (s) => s.put(key, `drafts:${fid}`)).catch(() => {})
+      return key
+    })().catch((e) => (draftKeys.delete(fid), Promise.reject(e))))
+  return draftKeys.get(fid)!
+}
+const b64 = (b: Uint8Array) => btoa(Array.from(b, (x) => String.fromCharCode(x)).join(''))
+const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
+
+/** The account's drafts, newest first; asks its custody to sign the first time in this browser. */
+export async function listDrafts(): Promise<Draft[]> {
+  const key = await draftKey()
+  const got: { id: string; box: string }[] = await keyFetch(`/api/drafts/${account!.fid}`, 'quilcast-drafts-read', 'GET')
+  const open = async ({ id, box }: { id: string; box: string }) => {
+    const [iv, data] = box.split('.').map(unb64)
+    return { ...JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data))), id } as Draft
+  }
+  // one sealed under another key (see ponytail above) is skipped
+  return (await Promise.all(got.map((d) => open(d).catch(() => null)))).filter((d) => !!d).sort((a, b) => b.at - a.at)
+}
+export async function saveDraft(d: Draft) {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await draftKey(), new TextEncoder().encode(JSON.stringify(d))))
+  await keyFetch(`/api/drafts/${account!.fid}`, 'quilcast-drafts', 'PUT', JSON.stringify({ id: d.id, box: `${b64(iv)}.${b64(data)}` }))
+}
+export const dropDraft = (id: string) => keyFetch(`/api/drafts/${account!.fid}`, 'quilcast-drafts', 'PUT', JSON.stringify({ id, box: null }))

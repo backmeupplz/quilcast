@@ -1000,5 +1000,13 @@
   "Swap {amount} {from} for ≈ {got} {to}": "Обменять {amount} {from} на ≈ {got} {to}",
   "Report @{name}": "Пожаловаться на @{name}",
   "Report this cast": "Пожаловаться на каст",
-  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Что-то пошло не так, и Quilcast остановился. Обычно помогает перезагрузить страницу."
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Что-то пошло не так, и Quilcast остановился. Обычно помогает перезагрузить страницу.",
+  "Delete draft": "Удалить черновик",
+  "Discard": "Не сохранять",
+  "Draft saved": "Черновик сохранён",
+  "Drafts": "Черновики",
+  "No drafts yet.": "Черновиков пока нет.",
+  "Save draft": "Сохранить черновик",
+  "Save this as a draft?": "Сохранить как черновик?",
+  "Too many drafts. Delete some first.": "Слишком много черновиков. Сначала удалите несколько."
 }
