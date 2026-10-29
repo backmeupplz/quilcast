@@ -999,5 +999,6 @@
   "{n}d": "{n} j",
   "{n}h": "{n} h",
   "{n}m": "{n} min",
-  "{n}s left": "{n} s restantes"
+  "{n}s left": "{n} s restantes",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Un problème est survenu et Quilcast s’est arrêté. Recharger la page règle généralement le problème."
 }

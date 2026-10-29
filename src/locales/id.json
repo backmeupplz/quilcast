@@ -999,5 +999,6 @@
   "{n}d": "{n} h",
   "{n}h": "{n} j",
   "{n}m": "{n} mnt",
-  "{n}s left": "sisa {n} dtk"
+  "{n}s left": "sisa {n} dtk",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Terjadi kesalahan dan Quilcast berhenti. Memuat ulang halaman biasanya memperbaikinya."
 }

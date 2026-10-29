@@ -999,5 +999,6 @@
   "{n}d": "{n}d",
   "{n}h": "{n}u",
   "{n}m": "{n}m",
-  "{n}s left": "nog {n}s"
+  "{n}s left": "nog {n}s",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Er ging iets mis en Quilcast is gestopt. De pagina opnieuw laden lost dit meestal op."
 }

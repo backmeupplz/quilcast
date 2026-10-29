@@ -999,5 +999,6 @@
   "{n}d": "{n} दिन",
   "{n}h": "{n} घं.",
   "{n}m": "{n} मि.",
-  "{n}s left": "{n} से. बाकी"
+  "{n}s left": "{n} से. बाकी",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "कुछ गड़बड़ हो गई और Quilcast रुक गया। पेज को फिर से लोड करने से आमतौर पर यह ठीक हो जाता है।"
 }

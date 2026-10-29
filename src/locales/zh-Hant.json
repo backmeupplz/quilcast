@@ -999,5 +999,6 @@
   "Send {amount} {symbol}": "傳送 {amount} {symbol}",
   "Swap {amount} {from} for ≈ {got} {to}": "將 {amount} {from} 兌換為 ≈ {got} {to}",
   "Report @{name}": "檢舉 @{name}",
-  "Report this cast": "檢舉此 cast"
+  "Report this cast": "檢舉此 cast",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "發生問題，Quilcast 已停止運作。重新載入頁面通常就能解決。"
 }

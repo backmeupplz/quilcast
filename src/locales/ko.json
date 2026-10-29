@@ -999,5 +999,6 @@
   "{n}d": "{n}일",
   "{n}h": "{n}시간",
   "{n}m": "{n}분",
-  "{n}s left": "{n}초 남음"
+  "{n}s left": "{n}초 남음",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "문제가 발생해 Quilcast가 멈췄습니다. 보통 페이지를 새로고침하면 해결됩니다."
 }

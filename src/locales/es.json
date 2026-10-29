@@ -999,5 +999,6 @@
   "Send {amount} {symbol}": "Enviar {amount} {symbol}",
   "Swap {amount} {from} for ≈ {got} {to}": "Cambiar {amount} {from} por ≈ {got} {to}",
   "Report @{name}": "Denunciar a @{name}",
-  "Report this cast": "Denunciar este cast"
+  "Report this cast": "Denunciar este cast",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Algo salió mal y Quilcast se detuvo. Recargar la página suele solucionarlo."
 }

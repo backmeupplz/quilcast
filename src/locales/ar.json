@@ -999,5 +999,6 @@
   "{n}d": "{n} ي",
   "{n}h": "{n} س",
   "{n}m": "{n} د",
-  "{n}s left": "تبقّى {n} ث"
+  "{n}s left": "تبقّى {n} ث",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "حدث خطأ ما وتوقف Quilcast. عادةً ما تحل إعادة تحميل الصفحة المشكلة."
 }

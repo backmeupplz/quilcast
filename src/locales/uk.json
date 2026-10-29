@@ -999,5 +999,6 @@
   "Send {amount} {symbol}": "Надіслати {amount} {symbol}",
   "Swap {amount} {from} for ≈ {got} {to}": "Обміняти {amount} {from} на ≈ {got} {to}",
   "Report @{name}": "Поскаржитися на @{name}",
-  "Report this cast": "Поскаржитися на каст"
+  "Report this cast": "Поскаржитися на каст",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Щось пішло не так, і Quilcast зупинився. Зазвичай допомагає перезавантажити сторінку."
 }

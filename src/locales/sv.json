@@ -999,5 +999,6 @@
   "{n}d": "{n} d",
   "{n}h": "{n} h",
   "{n}m": "{n} min",
-  "{n}s left": "{n} s kvar"
+  "{n}s left": "{n} s kvar",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Något gick fel och Quilcast stannade. Att ladda om sidan brukar lösa det."
 }

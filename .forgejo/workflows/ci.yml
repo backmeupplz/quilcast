@@ -17,7 +17,7 @@ jobs:
   check:
     # Our own PRs and pushes run on the Mac runners; outsiders' PRs (AGit via the github bot) on Linux
     runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["backmeupplz","renovate","claude"]'), github.event.pull_request.user.login)) && 'macos-latest' || 'ubuntu-latest' }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       # The Mac uses Homebrew's node; production is the Dockerfile's node 24
@@ -31,3 +31,6 @@ jobs:
       # Same order as the Dockerfile: the server tests serve dist/
       - run: npm run build
       - run: npm test
+      # the app in WebKit, Safari's engine (e2e/); the install is a no-op once the runner has this Playwright's WebKit
+      - run: npx playwright install ${{ runner.os == 'Linux' && '--with-deps ' || '' }}webkit
+      - run: npm run test:e2e

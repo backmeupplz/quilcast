@@ -5,7 +5,8 @@
     "build": "vite build",
     "test": "node --test src/*.test.ts server/*.test.mjs",
     "i18n": "node scripts/i18n-keys.mjs --check",
-    "start": "node server/index.mjs"
+    "start": "node server/index.mjs",
+    "test:e2e": "node --test e2e/*.test.mjs"
   },
   "type": "module",
   "private": true,
@@ -21,6 +22,7 @@
     "@scure/bip39": "2.4.0",
     "hls.js": "1.7.3",
     "livekit-client": "2.22.4",
+    "playwright": "1.64.1",
     "preact": "11.0.1",
     "typescript": "7.0.2",
     "viem": "2.57.3",

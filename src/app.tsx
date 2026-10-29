@@ -1,5 +1,6 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { crashed, started } from './crash.ts'
 import { account, accounts, amFollowing, askUser, findUsers, follow, followsMe, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
@@ -1477,6 +1478,9 @@ function App() {
 
 applyTheme()
 loadLang().then(async () => {
+  // index.html's head script starts the app once the page is parsed, but whatever else starts it early mustn't find
+  // the page without its #app yet
+  if (document.readyState === 'loading') await new Promise((ok) => document.addEventListener('DOMContentLoaded', ok, { once: true }))
   const root = document.getElementById('app')!
   // the server's page shows its first picture (server/home.mjs) before the app draws it again, so a phone's largest
   // paint doesn't wait for the app. The browser counts a picture as painted a frame or two after drawing it, and not
@@ -1501,11 +1505,13 @@ loadLang().then(async () => {
   } catch {}
   // a profile's or the home page's plain HTML from the server (server/profile.mjs, home.mjs) makes way for the app, in the same frame
   root.replaceChildren()
+  // an error drawing it throws here (nothing in the app catches one), and crash.ts shows it
   render(<App />, root)
+  started()
   // in a Farcaster client's frame or webview, as a mini app (src/inapp.ts)
   if (window.parent !== window || 'ReactNativeWebView' in window) import('./inapp.ts')
   // a Winamp left open (src/amp.tsx) comes back, paused, until it's closed
   try {
     if (localStorage.getItem('quilcast:amp')) import('./amp.tsx')
   } catch {}
-})
+}).catch(crashed)

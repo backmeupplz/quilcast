@@ -999,5 +999,6 @@
   "Send {amount} {symbol}": "{amount} {symbol} を送信",
   "Swap {amount} {from} for ≈ {got} {to}": "{amount} {from} を ≈ {got} {to} にスワップ",
   "Report @{name}": "@{name}を報告",
-  "Report this cast": "このキャストを報告"
+  "Report this cast": "このキャストを報告",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "問題が発生したため Quilcast が停止しました。通常はページを再読み込みすると直ります。"
 }

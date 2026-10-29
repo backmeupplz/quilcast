@@ -999,5 +999,6 @@
   "{n}d": "{n} g",
   "{n}h": "{n} sa",
   "{n}m": "{n} dk",
-  "{n}s left": "{n} sn kaldı"
+  "{n}s left": "{n} sn kaldı",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Bir şeyler ters gitti ve Quilcast durdu. Sayfayı yeniden yüklemek genellikle sorunu çözer."
 }

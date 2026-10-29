@@ -306,6 +306,13 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 /* the signed-out home page as the server sends it (server/home.mjs): not for a browser with its own account or looks */
 [data-own] .ssr-home { display: none; }
 .ssr-home > .extra { order: 1; }
+/* what went wrong when the app couldn't start or draw (src/crash.ts), over whatever is left of the page */
+.crash {
+  position: fixed; inset: 0; z-index: 2147483647; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px; background: var(--bg); color: var(--ink); text-align: center;
+}
+.crash p { max-width: 28em; }
+.crash code { max-width: 40em; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
 .ssr-pfp { width: 72px; height: 72px; }
 .row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: var(--ink); border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
 .row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }

@@ -999,5 +999,6 @@
   "{n}d": "{n} ngày",
   "{n}h": "{n} giờ",
   "{n}m": "{n} phút",
-  "{n}s left": "còn {n} giây"
+  "{n}s left": "còn {n} giây",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "Đã xảy ra lỗi và Quilcast đã dừng. Tải lại trang thường sẽ khắc phục được."
 }

@@ -999,5 +999,6 @@
   "{n}d": "{n} วัน",
   "{n}h": "{n} ชม.",
   "{n}m": "{n} นาที",
-  "{n}s left": "เหลือ {n} วินาที"
+  "{n}s left": "เหลือ {n} วินาที",
+  "Something went wrong and Quilcast stopped. Reloading the page usually fixes it.": "เกิดข้อผิดพลาดและ Quilcast หยุดทำงาน โดยปกติการโหลดหน้านี้ใหม่จะช่วยแก้ไขได้"
 }
