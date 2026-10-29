@@ -194,6 +194,9 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .lb-open { position: absolute; bottom: 18px; left: 50%; translate: -50% 0; color: rgb(255 255 255 / 0.75); font-size: 13px; }
 .vid { position: relative; margin-top: 10px; border-radius: calc(14px * var(--rs, 1)); overflow: hidden; background: #000; border: var(--bw, 1px) var(--bs, solid) var(--line); }
 .vid video { display: block; width: 100%; max-height: 520px; aspect-ratio: 16 / 9; background: #000; }
+/* a video whose shape is known (shared.ts vidBoxOf) gets a box in that shape, at most 510px tall, before anything loads */
+.vid.shaped { width: min(100%, var(--alone)); aspect-ratio: var(--ar); }
+.vid.shaped > video { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; aspect-ratio: auto; }
 .play { position: absolute; inset: 0; margin: auto; width: 64px; height: 64px; border-radius: calc(99px * var(--rs, 1)); border: 0; display: grid; place-items: center; background: rgb(0 0 0 / 0.55); color: #fff; padding-left: 4px; }
 .linkcard { display: flex; flex-direction: column; margin-top: 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); overflow: hidden; color: var(--ink); min-width: 0; }
 .lc-img { width: 100%; aspect-ratio: 1.91 / 1; max-height: 320px; object-fit: cover; display: block; background: var(--soft); border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
@@ -244,6 +247,8 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .strip > .vid { min-height: 200px; }
 .strip > .vid > video { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; aspect-ratio: auto; object-fit: cover; }
 .strip > .vid > video:playing { object-fit: contain; }
+/* a tall or square video's tile keeps its shape, at most 300px tall (the row grows to it); a wide one's stays 260px */
+.strip > .vid.shaped { width: min(260px, 80%, var(--tile)); }
 /* a cast's cards next to its other embeds, full width one under another and compact: a link's picture is a thumbnail
    beside its text (as tall as the card, never making it taller; a short card's spare room goes under the button, and
    a picture that fails to load leaves its column empty), a picture or a tweet's photo or video shorter */
@@ -452,6 +457,7 @@ small.warn { color: var(--warn); }
 .embed-preview { margin-inline-start: 42px; pointer-events: none; }
 .embed-preview .linkcard, .embed-preview .tweet, .embed-preview .quote { margin-top: 8px; }
 .embed-preview .lc-img, .embed-preview .imgs img, .embed-preview .tw-video img { max-height: 180px; }
+.embed-preview .vid.shaped { width: min(100%, var(--tile)); }
 /* compact card: image on the left across both rows, text then a mini app's button on the right */
 .embed-preview .linkcard.big { display: grid; grid-template-columns: 140px minmax(0, 1fr); }
 .embed-preview .linkcard.big .lc-img { grid-row: span 2; width: 100%; height: 100%; aspect-ratio: auto; border-bottom: 0; border-inline-end: var(--bw, 1px) var(--bs, solid) var(--line); }

@@ -38,6 +38,21 @@ export const IMG_SIZES = '(max-width: 600px) calc(100vw - 86px), 512px'
 export const boxOf = (one?: [number, number] | null) =>
   one && one[0] > 0 && one[1] > 0 ? `width:min(100%,${one[0]}px,${Math.round((510 * one[0]) / one[1])}px);aspect-ratio:${one[0]}/${one[1]};contain:size;contain-intrinsic-size:${one[0]}px ${one[1]}px` : undefined
 
+/** Farcaster's streams get a first-frame poster from our server (server/index.mjs /api/poster), in the video's shape. */
+export const poster = (src?: string) => (src && /^https:\/\/stream\.farcaster\.xyz\//.test(src) ? `/api/poster?url=${encodeURIComponent(src)}` : undefined)
+type Shape = [number, number] | null | undefined
+const real = (s: Shape): s is [number, number] => !!s && s[0] > 0 && s[1] > 0 && Number.isFinite(s[0] / s[1])
+/** A video's shape: its own once it has played, else its poster's (Hypersnap's embeds carry no size; the server reads
+ *  the poster before the feed draws, or the app once it shows), else none, and the box stays 16:9. */
+export const vidShape = (played: Shape, posterShape: Shape) => (real(played) ? played : real(posterShape) ? posterShape : null)
+/** The played size, only while it's this video's: a Video handed another src must not keep the last one's shape. */
+export const playedOf = (p: { src: string; size: [number, number] } | null, src: string) => (p?.src === src ? p.size : null)
+/** A video's box in its shape (ui.tsx Video, server/home.mjs, style.css `.vid.shaped`): alone, at most 510 px tall like a
+ *  lone picture (`--alone`, its width at that height); in a strip or a composer's preview, at most 300 px (`--tile`). No
+ *  shape, no box: the 16:9 one. */
+export const vidBoxOf = (s: Shape) =>
+  real(s) ? `--ar:${s[0]}/${s[1]};--alone:${Math.round((510 * s[0]) / s[1])}px;--tile:${Math.round((300 * s[0]) / s[1])}px` : undefined
+
 export const n = (x = 0) => (x >= 1e6 ? (x / 1e6).toFixed(1) + 'M' : x >= 1e4 ? Math.round(x / 1e3) + 'K' : x >= 1e3 ? (x / 1e3).toFixed(1) + 'K' : String(x))
 
 type Mentioned = { text?: string; mentioned_profiles?: { username?: string }[]; mentioned_profiles_ranges?: { start: number; end: number }[] }

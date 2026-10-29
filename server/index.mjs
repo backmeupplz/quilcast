@@ -165,6 +165,9 @@ async function shapeOf(url) {
   return info ? [info.w, info.h] : null
 }
 
+// a picture's size, or a video's from its poster (only Farcaster's streams have one; it's in the video's shape)
+const shapeOfAny = (url) => (isVid(url) ? posterOf(url).then((p) => p && shapeOf(p)) : shapeOf(url))
+
 // Farcaster's videos live on Cloudflare Stream; the signed playlist path also serves a thumbnail
 const posters = new Map()
 async function posterOf(u) {
@@ -585,7 +588,7 @@ async function drawHome() {
   await Promise.race([Promise.allSettled([
     ...w.links.map((u) => previews(() => unfurl(u)).then((x) => (got[`u:${u}`] = x ?? null))),
     ...w.quotes.map((h) => getCast(h).then((c) => c && (got[`c:${h}`] = lean(c)))),
-    ...w.lone.map((u) => (shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOf(u)).catch(() => null))).then((x) => (sizes[u] = x))),
+    ...w.lone.map((u) => (shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOfAny(u)).catch(() => null))).then((x) => (sizes[u] = x))),
   ]), new Promise((ok) => setTimeout(ok, 3000))])
   const data = { casts, got: { ...got }, shapes: { ...sizes } }
   const { html: app, css, lead, meta } = homeBody(data, VERSION)
@@ -833,12 +836,12 @@ createServer(async (req, res) => {
       return json(200, await previews(() => unfurl(target)), 'public, max-age=86400')
     }
 
-    // up to 8 images' sizes: the feed draws a lone image at its final size before it loads, so nothing below it
-    // jumps when it arrives (src/ui.tsx warm)
+    // up to 8 images' (or videos') sizes: the feed draws a lone image or a video at its final size before it loads, so
+    // nothing below it jumps when it arrives (src/ui.tsx warm)
     if (path === '/api/shapes') {
       const urls = url.searchParams.getAll('u').filter((u) => /^https:\/\//i.test(u) && u.length <= 2048).slice(0, 8)
       if (limited(`shapes:${ip}`, 120)) return json(429, {})
-      const sizes = await Promise.all(urls.map((u) => shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOf(u)).catch(() => null))))
+      const sizes = await Promise.all(urls.map((u) => shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOfAny(u)).catch(() => null))))
       return json(200, Object.fromEntries(urls.map((u, i) => [u, sizes[i]])), 'public, max-age=86400')
     }
 

@@ -2,7 +2,7 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { boxOf, castOf, castText, designId, embedLayout, isImg, isVid, LOGO, n, P, safeUrl, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, TOKENS, toUrl, viaUs, X_LOGO } from '../src/shared.ts'
+import { boxOf, castOf, castText, designId, embedLayout, isImg, isVid, LOGO, n, P, poster, safeUrl, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, TOKENS, toUrl, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -36,6 +36,8 @@ export function wants(casts) {
   for (const c of casts) {
     const imgs = urlsOf(c).filter(isImg)
     if (imgs.length === 1) lone.add(sized(imgs[0], 'w=1200'))
+    // a video's shape is its poster's (ui.tsx warm)
+    for (const u of urlsOf(c)) if (isVid(u) && poster(u)) lone.add(u)
     for (const u of linksOf(c)) {
       const path = ownPath(u)
       if (!/^\/(design|theme)\//.test(path)) links.add(u)
@@ -50,7 +52,6 @@ const handle = (u) => uname(u) || `!${u.fid}`
 const nameOf = (u) => u.display_name || handle(u)
 const userPath = (u) => `/u/${uname(u) || u.fid}`
 const channelOf = (u) => u?.match(/(?:warpcast\.com|farcaster\.xyz)\/~\/channel\/([^/?#]+)/)?.[1]
-const poster = (src) => (src && /^https:\/\/stream\.farcaster\.xyz\//.test(src) ? `/api/poster?url=${encodeURIComponent(src)}` : undefined)
 const plural = (x, one, many) => `${n(x)} ${x === 1 ? one : many}`
 
 /** The page's #app contents and the stylesheet for its sizes (the CSP allows no style attributes), from `d`:
@@ -107,7 +108,7 @@ export function body(d, version, now = Date.now()) {
     const box = shape ? cls(shape) : ''
     return (imgs.length ? `<div class="imgs n${shown.length}">${shown.map((u, i) => `<button class="img" aria-label="Open image ${i + 1} of ${imgs.length}">${img(sized(u, 'w=1200'), box, (shape || shown.length > 1) && srcsetOf(u))}${i === 3 && imgs.length > 4 ? `<span class="more-imgs">+${imgs.length - 4}</span>` : ''}</button>`).join('')}</div>` : '') +
       // as Chrome and Safari draw it (they play HLS themselves); Firefox's app swaps in its play button
-      urls.filter(isVid).map((u) => `<div class="vid"><video src="${esc(u)}"${poster(u) ? ` data-poster="${esc(poster(u))}"` : ''} controls="" preload="none" playsinline=""></video></div>`).join('')
+      urls.filter(isVid).map((u) => `<div class="vid${vidBoxOf(d.shapes[u]) ? ` shaped ${cls(vidBoxOf(d.shapes[u]))}` : ''}"><video src="${esc(u)}"${poster(u) ? ` data-poster="${esc(poster(u))}"` : ''} controls="" preload="none" playsinline=""></video></div>`).join('')
   }
   const quote = (hash) => {
     const c = d.got[`c:${hash}`]

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { embedLayout } from './shared.ts'
+import { embedLayout, playedOf, vidBoxOf, vidShape } from './shared.ts'
 
 const img = (i: number) => `https://imagedelivery.net/a/b${i}/original`
 const vid = (i: number) => `https://stream.farcaster.xyz/v${i}/manifest.m3u8`
@@ -51,4 +51,36 @@ test("a compact link card's picture is a thumbnail that can't stretch the card o
   assert.match(rule('.cards .linkcard.big .lc-img'), /width: 112px;/)
   // text and button keep the second column when the picture fails to load (Img hides it)
   assert.match(rule('.cards .linkcard.big .lc-text, .cards .linkcard.big .lc-btn'), /grid-column: 2;/)
+})
+
+// #275: a video's box takes its shape (a 1080×1920 cast showed in a 16:9 box with wide black bars)
+test("a video's shape: its own once played, else its poster's, else none (the 16:9 box)", () => {
+  assert.deepEqual(vidShape([1080, 1920], [404, 720]), [1080, 1920])
+  assert.deepEqual(vidShape(null, [404, 720]), [404, 720])
+  assert.deepEqual(vidShape([0, 0], [404, 720]), [404, 720], "a video that hasn't its size yet")
+  assert.equal(vidShape(null, null), null)
+  assert.equal(vidShape(undefined, [0, 720]), null)
+  assert.equal(vidBoxOf(null), undefined, 'no box: the 16:9 one')
+})
+
+test("a played size is only its own video's: another src falls back to that one's poster", () => {
+  const a = 'https://stream.farcaster.xyz/v1/video/a.m3u8'
+  const b = 'https://stream.farcaster.xyz/v1/video/b.m3u8'
+  const played = { src: a, size: [1920, 1080] as [number, number] }
+  assert.deepEqual(playedOf(played, a), [1920, 1080])
+  assert.equal(playedOf(played, b), null)
+  assert.deepEqual(vidShape(playedOf(played, b), [404, 720]), [404, 720], "B's poster, not A's played 16:9")
+  assert.equal(playedOf(null, a), null)
+})
+
+test("a video's box is at most 510px tall alone and 300px in a strip", () => {
+  // tall: 287px wide at 510px tall, 169px wide in a tile
+  assert.equal(vidBoxOf([404, 720]), '--ar:404/720;--alone:286px;--tile:168px')
+  assert.equal(vidBoxOf([1080, 1920]), '--ar:1080/1920;--alone:287px;--tile:169px')
+  assert.equal(vidBoxOf([720, 720]), '--ar:720/720;--alone:510px;--tile:300px')
+  // wide: wider than the column, so it fills it as before
+  assert.equal(vidBoxOf([1280, 720]), '--ar:1280/720;--alone:907px;--tile:533px')
+  const css = readFileSync(new URL('./style.css', import.meta.url), 'utf8')
+  assert.ok(css.includes('.vid.shaped { width: min(100%, var(--alone)); aspect-ratio: var(--ar); }'))
+  assert.ok(css.includes('.strip > .vid.shaped { width: min(260px, 80%, var(--tile)); }'))
 })

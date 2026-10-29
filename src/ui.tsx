@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, P, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, viaUs, X_LOGO, type Look, type Theme } from './shared.ts'
+import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -260,8 +260,6 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
 }
 
 export const urlsOf = (c: Cast) => c.embeds.flatMap((e) => safeUrl(e.url) ?? [])
-// Farcaster's streams get a first-frame poster from our server
-const poster = (src?: string) => (src && /^https:\/\/stream\.farcaster\.xyz\//.test(src) ? `/api/poster?url=${encodeURIComponent(src)}` : undefined)
 /** the cast's first image, or its video's poster */
 export const thumbOf = (c: Cast) => {
   const urls = urlsOf(c)
@@ -273,6 +271,21 @@ export function Video({ src }: { src: string }) {
   const ref = useRef<HTMLVideoElement>(null)
   const hls = src.includes('.m3u8') && !document.createElement('video').canPlayType('application/vnd.apple.mpegurl')
   const [ready, setReady] = useState(!hls)
+  // its box takes the video's shape: the poster's, from the server (warm) or read here once it shows, then the video's
+  // own once it plays; 16:9 while nothing is known
+  // (kept with its src: Media keys each Video by its src, and this holds even where a Video is reused for another one)
+  const [played, setPlayed] = useState<{ src: string; size: [number, number] } | null>(null)
+  const [, learnt] = useState(0)
+  const box = vidBoxOf(vidShape(playedOf(played, src), shapes.get(src)))
+  useEffect(() => {
+    const url = poster(src)
+    if (shapes.get(src) || !url) return
+    // the same picture the <video> shows as its poster, so it's loaded once
+    const i = new Image()
+    i.onload = () => i.naturalWidth && (shapes.set(src, [i.naturalWidth, i.naturalHeight]), learnt((x) => x + 1))
+    i.src = url
+    return () => void (i.onload = null)
+  }, [src])
   const start = async (e: Event) => {
     e.stopPropagation()
     // the full build: Farcaster's streams carry audio as a separate rendition, which hls.js/light drops
@@ -284,9 +297,10 @@ export function Video({ src }: { src: string }) {
     ref.current!.play().catch(() => {})
   }
   return (
-    <div class="vid" onClick={stop}>
+    <div class={box ? 'vid shaped' : 'vid'} style={box} onClick={stop}>
       {/* nothing loads from the video's host until it's played (no data spent, no third-party cookies) */}
-      <video ref={ref} src={hls ? undefined : src} poster={poster(src)} controls={ready} preload="none" playsInline />
+      <video ref={ref} src={hls ? undefined : src} poster={poster(src)} controls={ready} preload="none" playsInline
+        onLoadedMetadata={(e) => e.currentTarget.videoWidth && setPlayed({ src, size: [e.currentTarget.videoWidth, e.currentTarget.videoHeight] })} />
       {!ready && <button class="play" aria-label={t('Play video')} onClick={start}><Icon d={P.play} fill size={26} /></button>}
     </div>
   )
@@ -312,7 +326,8 @@ export function Media({ urls: given, images }: { urls: string[]; images?: boolea
           ))}
         </div>
       )}
-      {urls.filter(isVid).map((u) => <Video src={u} />)}
+      {/* keyed: a Media handed another cast's videos (a tapped reply) starts each one fresh, its shape and player too */}
+      {urls.filter(isVid).map((u) => <Video key={u} src={u} />)}
     </>
   )
 }
@@ -409,6 +424,8 @@ export function warm(casts: Cast[], ms = 800) {
     const urls = urlsOf(c)
     const imgs = urls.filter(isImg)
     if (imgs.length === 1) lone.push(sized(imgs[0], 'w=1200'))
+    // a video's shape is its poster's, which the server reads (only Farcaster's streams have one)
+    lone.push(...urls.filter((u) => isVid(u) && poster(u)))
     for (const u of urls) {
       const path = ownPath(safeUrl(u))
       const q = castOf(path)

@@ -54,3 +54,15 @@ test('without a first picture nothing waits for one', () => {
   const html = page([link])
   assert.ok(!html.includes('data-src') && html.includes('<img class="lc-img" alt="" loading="lazy" fetchpriority="low" referrerpolicy="no-referrer" src="https://quilcast.com/og.png">'))
 })
+
+// #275: a video's box takes the shape the server read from its poster, before anything loads
+test("a video is drawn in its poster's shape, and 16:9 when that's unknown", () => {
+  const v = 'https://stream.farcaster.xyz/v1/video/01a18616-1a75-a56e-1a34-d5e740f5898c.m3u8'
+  const drawn = (shapes) => body({ casts: [cast('b'.repeat(40), [v])], got, shapes }, '0.0.0', Date.parse('2026-10-28T12:00:00Z'))
+  const tall = drawn({ [v]: [404, 720] })
+  const k = tall.html.match(/<div class="vid shaped (s\d+)"><video /)?.[1]
+  assert.ok(k, 'the shaped box')
+  assert.ok(tall.css.includes(`#app .${k}{--ar:404/720;--alone:286px;--tile:168px}`))
+  const plain = drawn({ [v]: null })
+  assert.ok(plain.html.includes('<div class="vid"><video '))
+})
