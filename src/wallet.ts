@@ -1,15 +1,28 @@
 // An external wallet (MetaMask, Rabby, OKX…) as the custody address, through viem. Only loaded when someone
-// connects one. Finding the wallet works like Veydrift: with several injected, Rabby or OKX, else window.ethereum.
+// connects one. Wallets announce themselves over EIP-6963; window.ethereum is the fallback, for older wallets and
+// for the mini app host (inapp.ts leaves the client's provider there).
 import { createWalletClient, custom, type EIP1193Provider } from 'viem'
 import { mainnet, optimism } from 'viem/chains'
 import { ID_GATEWAY, registerData } from './eth.ts'
 import { unhex, type Custody } from './fc.ts'
 
 type Injected = EIP1193Provider & { providers?: Injected[]; isRabby?: boolean; isOkxWallet?: boolean }
+// Two extensions racing for window.ethereum can leave an object there that answers nothing, not even eth_chainId,
+// and the connect then hangs with no prompt. Only a live wallet announces itself, so asking steps around the
+// leftover. Extensions answer while this module loads, the same way miniapp.tsx collects them.
+const announced: Injected[] = []
+window.addEventListener?.('eip6963:announceProvider', (e) => {
+  const p = (e as CustomEvent).detail?.provider as Injected | undefined
+  if (typeof p?.request === 'function' && !announced.includes(p)) announced.push(p)
+})
+window.dispatchEvent?.(new Event('eip6963:requestProvider'))
+
 function provider() {
   const w = window as unknown as { ethereum?: Injected; okxwallet?: Injected }
-  const all = w.ethereum?.providers || []
-  const p = all.find((x) => x.isRabby) || all.find((x) => x.isOkxWallet) || w.okxwallet || w.ethereum
+  const all = [...announced, ...(w.ethereum?.providers || [])]
+  // window.ethereum when it is one of the live wallets: that is the one the browser is set to reach for
+  const same = w.ethereum && announced.includes(w.ethereum) ? w.ethereum : undefined
+  const p = all.find((x) => x.isRabby) || all.find((x) => x.isOkxWallet) || same || announced[0] || w.okxwallet || w.ethereum
   if (!p) throw new Error('No wallet found in this browser. Install one like MetaMask or Rabby, or open Quilcast in your wallet app.')
   return p
 }
