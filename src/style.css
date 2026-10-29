@@ -521,6 +521,8 @@ small.warn { color: var(--warn); }
 .ask-card > .app-icon { width: 44px; height: 44px; font-size: 18px; }
 .ask-card .accounts { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); padding: 4px; }
 .ask-card .acct.on { background: var(--soft); }
+.join .accounts { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); padding: 4px; }
+.join .acct.on { background: var(--soft); }
 .ask-card .btns { justify-content: flex-end; margin-top: 4px; }
 .mini-primary { flex: none; margin: 8px 12px 12px; padding: 12px; }
 .app-icon { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: calc(10px * var(--rs, 1)); object-fit: cover; background: var(--soft); color: var(--muted); font-weight: 700; flex: none; }
