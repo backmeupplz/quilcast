@@ -66,6 +66,21 @@ export const Logo = ({ size = 28 }: { size?: number }) => (
   </svg>
 )
 
+export const WalletIcon = ({ w }: { w?: { icon: string } }) => (w?.icon ? <img class="wallet-icon" src={w.icon} alt="" /> : <Icon d={P.wallet} size={16} />)
+/** A list to choose a wallet from: the mini app connect prompts and "Use a wallet" both show it. */
+export function Choose<W extends { name: string; icon: string }>({ list, value, set }: { list: W[]; value?: W; set: (w: W) => void }) {
+  const [, force] = useState(0)
+  return (
+    <div class="accounts">
+      {list.map((w) => (
+        <button class={`acct${w === value ? ' on' : ''}`} aria-pressed={w === value} onClick={() => (set(w), force((x) => x + 1))}>
+          <WalletIcon w={w} /><span><b>{w.name}</b></span>{w === value && list.length > 1 && <Icon d={P.check} />}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export const ago = (t: string | number) => {
   const s = (Date.now() - new Date(t).getTime()) / 1000
   if (s < 60) return tr('now')

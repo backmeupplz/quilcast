@@ -13,7 +13,7 @@ import { base58, hex } from './fc.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
 import { castText, LOGO } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
-import { askPush, channelOf, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl } from './ui.tsx'
+import { askPush, channelOf, Choose, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
 
 const QUILCAST_FID = 3356316
@@ -212,21 +212,6 @@ async function accounts(app: App) {
     if (typeof a === 'string') (w.address = a.toLowerCase()), (app.wallet = w), (app.connected = true), update()
   }
   return app.connected && app.wallet?.address ? [app.wallet.address] : []
-}
-
-const WalletIcon = ({ w }: { w?: { icon: string } }) => (w?.icon ? <img class="wallet-icon" src={w.icon} alt="" /> : <Icon d={P.wallet} size={16} />)
-/** A list to choose a wallet from, for the connect prompts. */
-function Choose<W extends { name: string; icon: string }>({ list, value, set }: { list: W[]; value?: W; set: (w: W) => void }) {
-  const [, force] = useState(0)
-  return (
-    <div class="accounts">
-      {list.map((w) => (
-        <button class={`acct${w === value ? ' on' : ''}`} aria-pressed={w === value} onClick={() => (set(w), force((x) => x + 1))}>
-          <WalletIcon w={w} /><span><b>{w.name}</b></span>{w === value && list.length > 1 && <Icon d={P.check} />}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 async function connect(app: App) {

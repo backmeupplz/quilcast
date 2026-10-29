@@ -5,6 +5,8 @@ import { account, accounts, get, getUser, go, idOf, setAccount, settings, USER_D
 import { balance, fidOf, register, registerPrice } from './eth.ts'
 import { address, custodyKey, fnameProof } from './fc.ts'
 import { t } from './i18n.ts'
+import { Choose } from './ui.tsx'
+import type { Choice } from './wallet.ts'
 import { custodyOf, ensureSigner, setUserData } from './write.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -128,11 +130,15 @@ const WALLET_IN = () => [t('Connecting your wallet'), t('Finding your Farcaster 
 function WalletIn() {
   const f = useFlow()
   const [none, setNone] = useState('')
+  const [wallets, setWallets] = useState<Choice[]>([])
+  const [pick, setPick] = useState<Choice>()
+  // the wallets announce themselves while wallet.ts loads, so the list has to be in before the first click
+  useEffect(() => void import('./wallet.ts').then((m) => (setWallets(m.choices()), setPick(m.choices()[0]))), [])
   // a wallet without a Farcaster account can register one
   if (none) return <Create wallet={none} />
   const connect = f.run(async (step) => {
     step(0)
-    const addr = await (await import('./wallet.ts')).connect()
+    const addr = await (await import('./wallet.ts')).connect(pick?.key)
     step(1)
     const fid = await fidFor(addr)
     fid ? await enter({ phrase: '', wallet: addr, fid, done: true }, step) : setNone(addr)
@@ -141,6 +147,7 @@ function WalletIn() {
     <div class="join">
       <h1>{t('Use a wallet')}</h1>
       <p class="lede">{t('Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and after that it asks only when something needs the account itself, like claiming a username or signing in to a mini app.')}</p>
+      {wallets.length > 1 && !f.busy && <section class="card"><Choose list={wallets} value={pick} set={setPick} /></section>}
       <Progress {...f} steps={WALLET_IN()} />
       <button class="btn wide" disabled={f.busy} onClick={connect}>{f.busy ? t('Check your wallet…') : t('Connect wallet')}</button>
     </div>
