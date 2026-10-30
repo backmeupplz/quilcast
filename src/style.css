@@ -208,7 +208,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .lc-title { font-weight: 600; -webkit-line-clamp: 2; }
 .lc-desc { color: var(--muted); -webkit-line-clamp: 2; }
 .lc-btn { margin: 0 12px 10px; padding: 7px; border-radius: calc(10px * var(--rs, 1)); background: var(--soft); text-align: center; font-weight: 600; font-size: 14px; }
-.tweet { margin-top: 10px; padding: 12px 14px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); cursor: pointer; }
+.tweet { margin-top: 10px; padding: max(12px, calc(7px * var(--rs, 1))) max(14px, calc(9px * var(--rs, 1))); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); cursor: pointer; }
 .tw-head { display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; font-size: 14px; }
 /* a long handle shortens first, then the name; the time and the X logo by the name keep their size */
 .tw-head b, .tw-head .handle { overflow: hidden; text-overflow: ellipsis; }
@@ -223,7 +223,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .tw-quote { margin-top: 8px; padding: 8px 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); font-size: 14px; }
 .tw-quote p { margin: 2px 0 0; color: var(--muted); -webkit-line-clamp: 3; }
 .tw-stats { display: flex; gap: 14px; margin-top: 8px; color: var(--muted); font-size: 13px; }
-.quote { display: block; margin-top: 10px; padding: 10px 12px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); color: var(--ink); font-size: 14px; }
+.quote { display: block; margin-top: 10px; padding: max(10px, calc(7px * var(--rs, 1))) max(12px, calc(9px * var(--rs, 1))); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); color: var(--ink); font-size: 14px; }
 .quote .meta { align-items: center; gap: 6px; }
 .quote .meta span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 /* a quoted cast's picture sits under its text, at size, like in the cast itself */
