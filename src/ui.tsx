@@ -603,16 +603,18 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const design = /^\/design\//.test(path) ? designId(path) : undefined
   const themeLink = /^\/theme\//.test(path) ? themeId(path) : undefined
   const cast = castOf(path)
-  const [d, setD] = useState<Unfurl | undefined>(() => (u ? (got.get(`u:${u}`) as Unfurl) : undefined))
-  const [bad, setBad] = useState(false)
-  useEffect(() => void (u && !d && !design && !themeLink && !cast && unfurl(u).then(setD)), [u])
+  // read by url on every render: the same card can be handed another link (the cast page reuses it after posting a reply)
+  const d = u ? (got.get(`u:${u}`) as Unfurl | undefined) : undefined
+  const [, loaded] = useState(0)
+  const [bad, setBad] = useState<string>()
+  useEffect(() => void (u && !d && !design && !themeLink && !cast && unfurl(u).then(() => loaded((x) => x + 1))), [u])
   if (!u) return null
   if (design) return <DesignCard id={design} by={c?.author} />
   if (themeLink) return <ThemeCard id={themeLink} by={c?.author} />
   if (cast) return <QuoteCard hash={cast} />
   if (d?.tweet) return <TweetCard u={u} t={d.tweet} />
   // an image that won't load drops the card's image column too
-  const image = bad ? undefined : safeUrl(d?.image)
+  const image = d?.image === bad ? undefined : safeUrl(d?.image)
   // a link straight to an image renders as the image
   if (image && d?.image === d?.url) return <Media urls={[image]} images />
   const icon = safeUrl(d?.icon)
@@ -620,7 +622,7 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   return (
     <a class={`linkcard${image ? ' big' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow"
       onClick={(e) => (e.stopPropagation(), app && !e.metaKey && !e.ctrlKey && !e.shiftKey && (e.preventDefault(), launchApp({ ...app, icon }, { cast: c, embed: u })))}>
-      {image && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(true)} />}
+      {image && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(d?.image)} />}
       <span class="lc-text">
         <span class="lc-site">{icon && <Img src={icon} low />}{new URL(u).hostname.replace(/^www\./, '')}</span>
         {d?.title && <b class="lc-title">{d.title}</b>}
@@ -683,8 +685,10 @@ export const fetchCast = (hash: string) => {
 }
 
 export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
-  const [c, setC] = useState<Cast | null | undefined>(() => given ?? (hash ? (got.get(`c:${hash.replace(/^0x/, '').toLowerCase()}`) as Cast | null | undefined) : undefined))
-  useEffect(() => void (hash && c === undefined && fetchCast(hash).then(setC)), [hash])
+  // like LinkCard, read by hash on every render so a reused card never keeps the cast it showed before
+  const c = given ?? (hash ? (got.get(`c:${hash.replace(/^0x/, '').toLowerCase()}`) as Cast | null | undefined) : undefined)
+  const [, loaded] = useState(0)
+  useEffect(() => void (hash && c === undefined && fetchCast(hash).then(() => loaded((x) => x + 1))), [hash])
   if (c === null) return <div class="quote muted">{t('This cast is unavailable.')}</div>
   if (!c) return <div class="quote skeleton" />
   if (hides(c)) return <div class="quote muted">{t('Hidden by your mutes.')}</div>
