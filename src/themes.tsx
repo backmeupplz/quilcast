@@ -8,8 +8,8 @@ import { t, tn } from './i18n.ts'
 import { PRESETS as EFFECTS } from './fx.ts'
 import { GifPicker } from './gifs.tsx'
 import { EditSticker, focusSticker } from './looks.tsx'
-import { BG_MODES, BORDERS, cleanTheme, DEFAULTS, FONTS, FX, isLookImg, LIMITS, NAME_FX, ownMedia, sized, themeId, themeVars, type Theme } from './shared.ts'
-import { CARD, Img, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
+import { BG_MODES, BORDERS, cleanTheme, DEFAULTS, FONTS, FX, HOLIDAYS, isLookImg, LIMITS, NAME_FX, ownMedia, sized, themeId, themeVars, type Theme } from './shared.ts'
+import { CARD, dressed, Img, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
 
 // --- built-in themes ---
 // two of Quorum's sample skins (theme/skins/samples.ts) and a few of our own; GIFs are Tenor's
@@ -47,6 +47,7 @@ export const BUILT_IN: Theme[] = [
     name: 'Glitter', base: 'light', bg: '#ffe0f0', card: '#fff0f8', soft: '#ffd6ec', line: '#ff8ac6', ink: '#5a0838', muted: '#a0507c', accent: '#ff2e9a', like: '#ff2e9a', recast: '#7a5cff',
     bgImg: tenor('4AZnyLAk3nE', 'pink-sparkles'), bgMode: 'tile', sheer: 84, round: 2, borderWidth: 3, borderStyle: 'dotted', font: 'comic', nameFx: 'glitter', nameColor: '#ff2e9a', fx: 'glitter',
   },
+  ...HOLIDAYS.map((h) => h.theme),
 ]
 
 const same = (a: Theme | null | undefined, b: Theme | null | undefined) => JSON.stringify(a || null) === JSON.stringify(b || null)
@@ -287,7 +288,7 @@ export function ThemeSettings() {
   return (
     <>
       <div class="th-now">
-        <span class="th-name"><small>{t('Wearing')}</small><b>{theme ? theme.name || t('Untitled theme') : t('Plain Quilcast')}</b></span>
+        <span class="th-name"><small>{t('Wearing')}</small><b>{dressed() ? dressed()!.name || t('Untitled theme') : t('Plain Quilcast')}</b></span>
         <span class="btns">
           <button type="button" class="btn small" onClick={() => shell.editTheme(theme)}>{theme ? t('Customize') : t('Make a theme')}</button>
           {theme && <button type="button" class="btn ghost small" onClick={() => wear(null, true)}>{t('Plain')}</button>}
@@ -337,7 +338,7 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
   const up = (p: Theme) => set((x) => ({ ...x, ...p }))
   useEffect(() => void wear(cleanTheme(d)), [d])
   // leaving without saving puts the saved theme back
-  const cancel = () => (wear(theme), close())
+  const cancel = () => (wear(dressed()), close())
   const save = () => {
     const th = cleanTheme({ ...d, name: d.name || t('My theme') })
     remember({ theme: th })

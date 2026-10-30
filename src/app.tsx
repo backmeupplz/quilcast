@@ -6,7 +6,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -1190,6 +1190,15 @@ function Settings() {
             </div>
           </div>
           {theme?.base && <p class="hint">{t('Your theme picks its own; this counts when you wear none.')}</p>}
+        </section>
+        <section>
+          <div class="setting">
+            <h2>{t('Holiday themes')}</h2>
+            <div class="seg">
+              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={(settings.holidays !== false) === v ? 'on' : ''} onClick={() => ((settings.holidays = v as boolean), saveSettings(), wear(dressed()), force((x) => x + 1))}>{label}</button>)}
+            </div>
+          </div>
+          <p class="hint">{t('Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.')}</p>
         </section>
         <section>
           <div class="setting">

@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
+import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -465,11 +465,16 @@ export let theme: Theme | null = (() => {
   const th = cleanTheme(read('quilcast:theme', null))
   return Object.keys(th).length ? th : null
 })()
-export let worn = theme
+/** What the page wears when no draft is open: this browser's theme, else the holiday's if one is on and Settings allow it. */
+export const dressed = () => theme ?? (settings.holidays === false ? null : holidayOn(new Date()) ?? null)
+export let worn = dressed()
 let vars: string[] = []
 let face: { url: string; f?: FontFace } | undefined
 /** Show `th` on the page (null: the plain app); `keep` also makes it this browser's theme. */
 export function wear(th: Theme | null, keep = false) {
+  if (keep) (theme = th), th ? save('quilcast:theme', th) : localStorage.removeItem('quilcast:theme')
+  // taking a theme off leaves the holiday's on
+  if (keep && !th) th = dressed()
   const root = document.documentElement
   for (const k of vars) root.style.removeProperty(k)
   const v = th ? themeVars(th) : {}
@@ -486,7 +491,6 @@ export function wear(th: Theme | null, keep = false) {
     const now: typeof face = (face = th?.fontUrl ? { url: th.fontUrl } : undefined)
     if (now) new FontFace('quilcast-theme', `url("${ownMedia(now.url)}")`).load().then((f) => face === now && document.fonts.add((now.f = f)), () => {})
   }
-  if (keep) (theme = th), th ? save('quilcast:theme', th) : localStorage.removeItem('quilcast:theme')
   worn = th
   dispatchEvent(new Event('theme'))
 }

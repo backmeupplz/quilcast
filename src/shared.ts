@@ -347,6 +347,32 @@ export function themeVars(th: Theme) {
   if (th.size) v['--zoom'] = String(th.size)
   return v
 }
+
+// Holidays: their theme is worn, from `from` to `to` (MM-DD, both days in), by whoever wears no theme of their own,
+// unless Settings turned it off (ui.tsx dressed). index.html's inline script has the same dates: keep them in step.
+const tenor = (id: string, slug: string, sticker = false) => `https://media.tenor.com/${id}AAAA${sticker ? 'l' : 'x'}/${slug}.webp`
+export const HOLIDAYS: { from: string; to: string; theme: Theme }[] = [
+  {
+    from: '10-24', to: '11-01', theme: {
+      name: 'Halloween', base: 'dark', bg: '#0d0714', card: '#170d22', soft: '#22122f', line: '#3d1f52', ink: '#fff1e0', muted: '#c79a6b', accent: '#ff7a1a', onAccent: '#140a02', like: '#ff4d2e', recast: '#9be15d', warn: '#ffd23f',
+      bgImg: tenor('LgYV36XUrfw', 'halloween-haunted-house'), bgMode: 'cover', scrim: 40, sheer: 84, round: 0.9, font: 'trebuchet', nameFx: 'glow', nameColor: '#ff9a3c', fx: 'spooky',
+      stickers: [{ src: tenor('0UlFI1EDUoM', 'halloween-pumpkin', true), x: 7, y: 88, w: 16 }, { src: tenor('J7UIYXHZL5g', 'witch-witchcraft', true), x: 91, y: 84, w: 18, r: -8 }],
+    },
+  },
+  {
+    from: '12-18', to: '12-31', theme: {
+      name: 'Christmas', base: 'dark', bg: '#120806', card: '#1d0e0b', soft: '#2a1410', line: '#5a1e18', ink: '#fff6e8', muted: '#d8b48a', accent: '#e8b64c', onAccent: '#1a0d05', like: '#ff4d4d', recast: '#4cc38a', warn: '#ffd23f',
+      bgImg: tenor('5zlS7a5TKf8', 'deck-the-halls'), bgMode: 'cover', scrim: 45, sheer: 84, round: 1.3, font: 'georgia', nameFx: 'glow', nameColor: '#ffd77a', fx: 'flakes',
+      stickers: [{ src: tenor('AapSUCEYnas', 'gingerbread-man-gingerbread-cookie', true), x: 7, y: 88, w: 13, r: -6 }, { src: tenor('eQiQsknXopw', 'christmas-tree-christmas', true), x: 93, y: 84, w: 14 }],
+    },
+  },
+]
+/** The holiday on `day`, if one is on. */
+export const holidayOn = (day: Date) => {
+  const md = `${day.getMonth() + 1}`.padStart(2, '0') + '-' + `${day.getDate()}`.padStart(2, '0')
+  return HOLIDAYS.find((h) => h.from <= md && md <= h.to)?.theme
+}
+
 /** A shared theme's id, from its link or the bare id. */
 export const themeId = (s: string) => s.trim().match(/^(?:https?:\/\/[^/]+)?(?:\/theme\/)?([\w-]{10})\/?$/)?.[1]
 

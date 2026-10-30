@@ -1,7 +1,7 @@
 // cleanTheme is the only thing between a stored or shared theme and the page's CSS, so hostile input has to come out inert.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cleanTheme, ownMedia, readableOn, themeId, themeVars } from './shared.ts'
+import { cleanTheme, HOLIDAYS, holidayOn, ownMedia, readableOn, themeId, themeVars } from './shared.ts'
 
 test('cleanTheme keeps valid settings and drops everything else', () => {
   const th = cleanTheme({
@@ -51,4 +51,11 @@ test('text on a theme\'s accent stays readable when the theme leaves it out', ()
   assert.equal(themeVars({ accent: '#7cc4ff' })['--on-accent'], '#0b0b0f')
   assert.equal(themeVars({ accent: '#7cc4ff', onAccent: '#ffffff' })['--on-accent'], '#ffffff')
   assert.equal(themeVars({})['--on-accent'], undefined)
+})
+
+test('holiday themes are on for their days only, and pass cleanTheme as they are', () => {
+  const on = (m: number, d: number) => holidayOn(new Date(2026, m - 1, d))?.name
+  assert.deepEqual([on(10, 23), on(10, 24), on(10, 31), on(11, 1), on(11, 2)], [undefined, 'Halloween', 'Halloween', 'Halloween', undefined])
+  assert.deepEqual([on(12, 17), on(12, 18), on(12, 25), on(12, 31), on(1, 1)], [undefined, 'Christmas', 'Christmas', 'Christmas', undefined])
+  for (const h of HOLIDAYS) assert.deepEqual(cleanTheme(h.theme), h.theme, h.theme.name)
 })
