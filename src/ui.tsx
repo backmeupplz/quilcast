@@ -127,7 +127,7 @@ export const Tabs = <T extends string>({ tabs, value, set }: { tabs: [T, string]
 /** Someone else's image: lazy, sent without a referrer, and hidden rather than broken when it fails. An http:// one is
  * asked for over https://, as Chrome would anyway, so the page never loads mixed content. `low`: a link preview's
  * pictures (other sites', often huge for their box) come after the casts' own (server/home.mjs too). */
-export const Img = ({ low, ...p }: { src?: string; class?: string; style?: string; srcset?: string; sizes?: string; low?: boolean }) => (
+export const Img = ({ low, ...p }: { src?: string; class?: string; style?: string; srcset?: string; sizes?: string; low?: boolean; onError?: () => void }) => (
   <img alt="" loading="lazy" fetchpriority={low ? 'low' : undefined} referrerpolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} {...p} src={p.src?.replace(/^http:\/\//i, 'https://')} />
 )
 
@@ -600,13 +600,15 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const themeLink = /^\/theme\//.test(path) ? themeId(path) : undefined
   const cast = castOf(path)
   const [d, setD] = useState<Unfurl | undefined>(() => (u ? (got.get(`u:${u}`) as Unfurl) : undefined))
+  const [bad, setBad] = useState(false)
   useEffect(() => void (u && !d && !design && !themeLink && !cast && unfurl(u).then(setD)), [u])
   if (!u) return null
   if (design) return <DesignCard id={design} by={c?.author} />
   if (themeLink) return <ThemeCard id={themeLink} by={c?.author} />
   if (cast) return <QuoteCard hash={cast} />
   if (d?.tweet) return <TweetCard u={u} t={d.tweet} />
-  const image = safeUrl(d?.image)
+  // an image that won't load drops the card's image column too
+  const image = bad ? undefined : safeUrl(d?.image)
   // a link straight to an image renders as the image
   if (image && d?.image === d?.url) return <Media urls={[image]} images />
   const icon = safeUrl(d?.icon)
@@ -614,7 +616,7 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   return (
     <a class={`linkcard${image ? ' big' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow"
       onClick={(e) => (e.stopPropagation(), app && !e.metaKey && !e.ctrlKey && !e.shiftKey && (e.preventDefault(), launchApp({ ...app, icon }, { cast: c, embed: u })))}>
-      {image && <Img class="lc-img" src={sized(image, 'w=1200')} low />}
+      {image && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(true)} />}
       <span class="lc-text">
         <span class="lc-site">{icon && <Img src={icon} low />}{new URL(u).hostname.replace(/^www\./, '')}</span>
         {d?.title && <b class="lc-title">{d.title}</b>}

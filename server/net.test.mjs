@@ -40,6 +40,7 @@ test('the head scanner is linear on hostile HTML', () => {
   scan('<link<meta '.repeat(150000))
   scan('<meta property="og:title" content="' + 'a'.repeat(1.5e6) + '">')
   assert.ok(performance.now() - t < 1000)
+  assert.equal(scan('<meta property="og:description" content="a=1&amp;amp;b &amp;#39;c&amp;#39; &amp;quot;d&amp;quot; e &amp; f">').meta['og:description'], 'a=1&b \'c\' "d" e & f')
   const { meta, title, icon } = scan('<head><title>Hi &amp; bye</title><meta property="og:title" content="T"><link rel="icon" href="/f.ico"></head><meta property="og:image" content="late">')
   assert.equal(meta['og:title'], 'T')
   assert.equal(meta['og:image'], undefined)

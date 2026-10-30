@@ -8,8 +8,9 @@ const clip = (s, n) => (typeof s === 'string' ? s.slice(0, n) : undefined)
 const httpUrl = (u) => (typeof u === 'string' && /^https?:\/\//i.test(u) ? u.slice(0, 2048) : undefined)
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
+// `&amp;` before an entity counts as escaping it twice (GitHub's og:description does), so both layers come off
 const decode = (s) =>
-  s?.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|amp|lt|gt|quot|apos);/gi, (m, e) => {
+  s?.replace(/&(?:amp;)?(#x[0-9a-f]{1,6}|#\d{1,7}|amp|lt|gt|quot|apos);/gi, (m, e) => {
     if (e[0] !== '#') return ENT[e.toLowerCase()]
     const cp = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)
     return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : m
