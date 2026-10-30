@@ -26,7 +26,8 @@ const LIMIT = { image: 10e6, video: 100e6 }
 const CHUNK = 8 * 1024 * 1024
 // the volume shares the host disk with every other service, so local storage is capped hard
 const MAX_ACTIVE = 40, MAX_ACTIVE_PER_FID = 3, MAX_INCOMING = 2e9
-const DAILY_LOCAL_PER_FID = 300e6, MEDIA_CAP = 20e9, FREE_FLOOR = 40e9
+// FREE_FLOOR is the host's: tests (server.test.mjs) set 0 so they don't depend on the runner's free disk
+const DAILY_LOCAL_PER_FID = 300e6, MEDIA_CAP = 20e9, FREE_FLOOR = Number(process.env.FREE_FLOOR || 40e9)
 const known = (type) => typeof type === 'string' && Object.hasOwn(EXT, type)
 
 // the first bytes must match the declared type, so nothing else can be stored under a media name
