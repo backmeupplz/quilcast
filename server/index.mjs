@@ -56,13 +56,13 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 // The app keeps users' keys in localStorage, so scripts may only come from this origin, and only Quilcast itself and
 // Farcaster and Base clients may frame the page, as a mini app (their frame gets its own storage, apart from quilcast.com's;
 // Quilcast in Quilcast shares it, being the same app). Mini apps are https pages framed by the app (src/miniapp.tsx sandboxes them). Images and video come from anywhere (avatars, embeds, CDNs); the node
-// and RPC URLs are user settings, hence https: for connect-src; messages and Spaces update over farcaster.xyz's websocket, and Spaces audio comes from LiveKit.
+// and RPC URLs are user settings, hence https: for connect-src; WalletConnect pairs over Reown's relay, messages and Spaces update over farcaster.xyz's websocket, and Spaces audio comes from LiveKit.
 // index.html's one inline script (it hides the server-drawn home page from browsers with their own account), by hash
 const INLINE_JS = readFileSync(join(DIST, 'index.html'), 'utf8').match(/<script>([^<]*)<\/script>/)?.[1]
 const sha = (s) => `'sha256-${createHash('sha256').update(s).digest('base64')}'`
 const CSP = [
   "default-src 'self'", `script-src 'self'${INLINE_JS ? ` ${sha(INLINE_JS)}` : ''} ${sha(FOLD)}`, `style-src 'self'${LEGAL_CSS && ` 'sha256-${createHash('sha256').update(LEGAL_CSS).digest('base64')}'`}`, 'img-src * data: blob:', 'media-src * data: blob:',
-  "connect-src 'self' https: wss://ws.farcaster.xyz wss://*.livekit.cloud http://localhost:* http://127.0.0.1:*", "worker-src 'self' blob:", "font-src 'self'", "manifest-src 'self'",
+  "connect-src 'self' https: wss://ws.farcaster.xyz wss://relay.walletconnect.org wss://relay.walletconnect.com wss://*.livekit.cloud http://localhost:* http://127.0.0.1:*", "worker-src 'self' blob:", "font-src 'self'", "manifest-src 'self'",
   "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-src https:",
   "frame-ancestors 'self' https://farcaster.xyz https://*.farcaster.xyz https://warpcast.com https://*.warpcast.com https://base.app https://*.base.app https://*.coinbase.com",
 ].join('; ')

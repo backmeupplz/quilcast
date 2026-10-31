@@ -533,6 +533,8 @@ small.warn { color: var(--warn); }
 .ask-card .accounts { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); padding: 4px; }
 .ask-card .acct.on { background: var(--soft); }
 .join .accounts { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); padding: 4px; }
+.join .pair { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.join .pair img { width: min(100%, 260px); aspect-ratio: 1; background: #fff; border-radius: calc(12px * var(--rs, 1)); padding: 8px; }
 .join .acct.on { background: var(--soft); }
 .ask-card .btns { justify-content: flex-end; margin-top: 4px; }
 .mini-primary { flex: none; margin: 8px 12px 12px; padding: 12px; }

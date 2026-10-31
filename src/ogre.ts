@@ -87,7 +87,7 @@ export function ogreTap(el: Element) {
     } catch {}
     return
   }
-  timer = setTimeout(() => (taps = 0), 500)
+  timer = window.setTimeout(() => (taps = 0), 500)
 }
 
 // a number that floats up off the pfp and fades, like damage over a mob in a game

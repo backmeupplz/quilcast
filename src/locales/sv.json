@@ -1015,5 +1015,8 @@
   "Delete everything?": "Radera allt?",
   "Deleting…": "Raderar…",
   "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast raderar allt som servern sparar för det här kontot (profilutseende, tystade och blockerade, utkast, uppladdade foton och videor) och tar bort nycklarna från den här enheten. Ditt Farcaster-ID och dina casts finns i det öppna nätverket: radera casts via deras ⋯-meny först om du vill att de ska försvinna.",
-  "Your data couldn't be deleted: {error}": "Dina data kunde inte raderas: {error}"
+  "Your data couldn't be deleted: {error}": "Dina data kunde inte raderas: {error}",
+  "WalletConnect QR code": "QR-kod för WalletConnect",
+  "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Skanna den med plånboken i din telefon eller öppna den i en plånboksapp på den här enheten.",
+  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "WalletConnect-sessionen har tagit slut. Logga in med din plånbok igen för att ansluta den på nytt."
 }

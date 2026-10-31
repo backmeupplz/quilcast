@@ -1015,5 +1015,8 @@
   "Delete everything?": "Hapus semuanya?",
   "Deleting…": "Menghapus…",
   "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast menghapus semua yang disimpan servernya untuk akun ini (tampilan profil, bisukan dan blokir, draf, foto dan video yang diunggah) dan menghapus kuncinya dari perangkat ini. ID Farcaster dan cast kamu ada di jaringan publik: hapus cast dari menu ⋯ masing-masing terlebih dahulu jika ingin menghilangkannya.",
-  "Your data couldn't be deleted: {error}": "Datamu tidak dapat dihapus: {error}"
+  "Your data couldn't be deleted: {error}": "Datamu tidak dapat dihapus: {error}",
+  "WalletConnect QR code": "Kode QR WalletConnect",
+  "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Pindai ini dengan dompet di ponselmu, atau buka di aplikasi dompet di perangkat ini.",
+  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "Sesi WalletConnect berakhir. Masuk lagi dengan dompetmu untuk menghubungkannya kembali."
 }

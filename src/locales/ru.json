@@ -1015,5 +1015,8 @@
   "Delete everything?": "Удалить всё?",
   "Deleting…": "Удаление…",
   "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast удалит всё, что его сервер хранит для этого аккаунта (оформление профиля, скрытые и заблокированные, черновики, загруженные фото и видео), и сотрёт ключи с этого устройства. Ваш Farcaster ID и касты находятся в публичной сети: если хотите, чтобы они исчезли, сначала удалите касты через их меню ⋯.",
-  "Your data couldn't be deleted: {error}": "Не удалось удалить данные: {error}"
+  "Your data couldn't be deleted: {error}": "Не удалось удалить данные: {error}",
+  "WalletConnect QR code": "QR-код WalletConnect",
+  "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Отсканируйте это кошельком на телефоне или откройте в приложении кошелька на этом устройстве.",
+  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "Сессия WalletConnect закончилась. Войдите с кошельком ещё раз, чтобы подключить его снова."
 }

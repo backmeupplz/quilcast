@@ -1015,5 +1015,8 @@
   "Delete everything?": "모두 삭제할까요?",
   "Deleting…": "삭제 중…",
   "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast는 이 계정에 대해 서버에 보관한 모든 것(프로필 꾸미기, 뮤트와 차단, 임시 저장, 업로드한 사진과 동영상)을 삭제하고 이 기기에서 키를 지웁니다. Farcaster ID와 캐스트는 공개 네트워크에 있습니다. 없애고 싶다면 먼저 각 캐스트의 ⋯ 메뉴에서 삭제하세요.",
-  "Your data couldn't be deleted: {error}": "데이터를 삭제할 수 없습니다: {error}"
+  "Your data couldn't be deleted: {error}": "데이터를 삭제할 수 없습니다: {error}",
+  "WalletConnect QR code": "WalletConnect QR 코드",
+  "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "휴대폰의 지갑으로 스캔하거나 이 기기의 지갑 앱에서 여세요.",
+  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "WalletConnect 세션이 종료되었습니다. 지갑으로 다시 로그인해 다시 연결하세요."
 }

@@ -74,6 +74,14 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
         config.userContentController.addUserScript(WKUserScript(source: bar, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         config.userContentController.add(self, name: "bar")
         config.userContentController.add(self, name: "requestReview")
+        #if DEBUG
+        // LOCAL ONLY (App Review demo recording, board #308): QC_DEMO_JS = a script file path (simulator) or the script
+        if let v = ProcessInfo.processInfo.environment["QC_DEMO_JS"], let js = v.hasPrefix("/") ? try? String(contentsOfFile: v, encoding: .utf8) : v {
+            config.userContentController.addUserScript(WKUserScript(source: "window.__qcAgreed = \(UserDefaults.standard.bool(forKey: "agreed"));", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+            config.userContentController.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+            config.userContentController.add(self, name: "demo")
+        }
+        #endif
         web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = self
         web.uiDelegate = self
@@ -105,12 +113,20 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
         super.viewDidAppear(animated)
         // App Review 1.2: people agree to the community rules before they see anything others posted
         guard !UserDefaults.standard.bool(forKey: "agreed"), presentedViewController == nil else { return }
-        let rules = UIHostingController(rootView: Rules { [weak self] in
+        let agree = { [weak self] in
             UserDefaults.standard.set(true, forKey: "agreed")
             self?.dismiss(animated: true)
-        })
+            #if DEBUG
+            self?.web.evaluateJavaScript("window.__qcAgreed = true")
+            #endif
+        }
+        let rules = UIHostingController(rootView: Rules(agree: agree))
         rules.isModalInPresentation = true
         present(rules, animated: true)
+        #if DEBUG
+        // LOCAL ONLY demo recording: read the rules for a moment, then agree
+        if ProcessInfo.processInfo.environment["QC_DEMO_JS"] != nil { DispatchQueue.main.asyncAfter(deadline: .now() + 7, execute: agree) }
+        #endif
     }
 
     func open(_ url: URL) {
@@ -127,6 +143,7 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.frameInfo.isMainFrame else { return }
+        if message.name == "demo" { print("QCDEMO", message.body); fflush(stdout); return }
         // the page reports each cast or reply sent; RatingPrompt decides whether that's the moment to ask for a rating
         if message.name == "requestReview" {
             if !crashed, RatingPrompt.cast(), let scene = view.window?.windowScene { AppStore.requestReview(in: scene) }

@@ -23,8 +23,42 @@ window.addEventListener?.('eip6963:announceProvider', (e) => {
 })
 window.dispatchEvent?.(new Event('eip6963:requestProvider'))
 
-/** The wallets that announced themselves, for the picker on "Use a wallet". */
-export const choices = () => announced.slice()
+// WalletConnect: a wallet on another device, usually a phone, reached through Reown's relay after scanning a QR code.
+// The project id is public (it only names Quilcast to the relay); with none set, the option stays hidden.
+const WC_PROJECT = 'b41717a1a3d91a46633e2ec5983515f8'
+const WC = 'walletconnect'
+const WC_CHAINS = ['eip155:10', 'eip155:1']
+let up: Promise<any> | undefined
+const universal = () =>
+  (up ??= import('@walletconnect/universal-provider').then(async ({ UniversalProvider }) => {
+    const p = await UniversalProvider.init({ projectId: WC_PROJECT, metadata: { name: 'Quilcast', description: 'A Farcaster client', url: location.origin, icons: [`${location.origin}/icon.png`] } })
+    // a session lasts a week; each visit asks for another, so it lasts as long as it's used
+    if (p.session) p.client.extend({ topic: p.session.topic }).catch(() => {})
+    return p
+  }))
+// viem talks EIP-1193; the session answers per chain, so the chain viem switches to is kept here and passed along
+export function bridge(p: any): Injected {
+  let chain = 10
+  return {
+    request: async ({ method, params }: { method: string; params?: any }) => {
+      if (method === 'eth_chainId') return `0x${chain.toString(16)}`
+      if (method === 'wallet_switchEthereumChain') {
+        const id = parseInt(params[0].chainId)
+        // a chain the wallet didn't approve stays on the current one; the wallet signs there or says why not
+        if (p.session.namespaces.eip155?.accounts.some((a: string) => a.startsWith(`eip155:${id}:`))) chain = id
+        return null
+      }
+      return p.request({ method, params }, `eip155:${chain}`)
+    },
+  } as Injected
+}
+const wcChoice: Choice = { name: 'WalletConnect', icon: '', key: WC, provider: { request: async (a: any) => (await provider(WC)).request(a) } as Injected }
+
+/** The wallets that announced themselves, for the picker on "Use a wallet", and WalletConnect after them. */
+export const choices = () => [...announced, ...(WC_PROJECT ? [wcChoice] : [])]
+
+/** A QR code of a WalletConnect link, as an image URL. */
+export const qr = async (uri: string) => `data:image/svg+xml,${encodeURIComponent((await import('uqr')).renderSVG(uri, { border: 2 }))}`
 
 // Which wallet an address connected with, by rdns. Later signatures have to go back to that same wallet: another
 // one doesn't hold the address and would refuse, and with several wallets the guess below could land on either.
@@ -45,7 +79,13 @@ const remember = (address: string, key: string) => {
 }
 const keyFor = (address: string) => used()[address.toLowerCase()]
 
-function provider(key?: string) {
+async function provider(key?: string): Promise<Injected> {
+  if (key === WC) {
+    const p = await universal()
+    // ponytail: an ended session can't be picked up again from a signature prompt; reconnecting means signing in again
+    if (!p.session) throw new Error('The WalletConnect session ended. Sign in with your wallet again to reconnect it.')
+    return bridge(p)
+  }
   const w = window as unknown as { ethereum?: Injected; okxwallet?: Injected }
   // the wallet this address was connected with, while it is still here
   const want = key ? announced.find((c) => c.key === key) : undefined
@@ -58,23 +98,39 @@ function provider(key?: string) {
   if (!p) throw new Error('No wallet found in this browser. Install one like MetaMask or Rabby, or open Quilcast in your wallet app.')
   return p
 }
-const client = (key?: string) => createWalletClient({ transport: custom(provider(key)) })
+const client = async (key?: string) => createWalletClient({ transport: custom(await provider(key)) })
 // viem's errors carry a page of details; people need the first line
 const tidy = <T>(p: Promise<T>) => p.catch((e) => Promise.reject(new Error(e?.shortMessage || e?.message || 'The wallet refused.')))
 
 /** Ask a wallet for its address, and remember which one it was. `key` is a choices() rdns; without one this
- *  takes the only wallet there is, the way it did before the picker. */
-export async function connect(key?: string) {
-  const [addr] = await tidy(client(key).requestAddresses())
+ *  takes the only wallet there is, the way it did before the picker. WalletConnect hands `show` the link to
+ *  pair with, and '' once it's done. */
+export async function connect(key?: string, show?: (uri: string) => void) {
+  if (key === WC) await pair(show)
+  const [addr] = await tidy((await client(key)).requestAddresses())
   if (!addr) throw new Error('The wallet shared no address.')
   const address = addr.toLowerCase()
   if (key) remember(address, key)
   return address
 }
 
+// ponytail: one session per browser, so a second WalletConnect account replaces the first one's connection
+async function pair(show?: (uri: string) => void) {
+  const p = await universal()
+  if (p.session) await p.disconnect().catch(() => {})
+  const uri = (u: string) => show?.(u)
+  p.on('display_uri', uri)
+  try {
+    await tidy(p.connect({ optionalNamespaces: { eip155: { chains: WC_CHAINS, methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData_v4'], events: ['accountsChanged', 'chainChanged'] } } }))
+  } finally {
+    p.off?.('display_uri', uri)
+    show?.('')
+  }
+}
+
 const CHAINS = { 1: mainnet, 10: optimism }
 async function on(id: 1 | 10, key?: string) {
-  const c = client(key)
+  const c = await client(key)
   if ((await c.getChainId()) === id) return c
   try {
     await c.switchChain({ id })
@@ -99,7 +155,7 @@ export const walletCustody = (address: string): Custody => {
     address,
     // MetaMask only signs typed data for the chain it's on, so it switches to the domain's chain first
     typed: async (t) => sig65(await tidy(on(t.domain.chainId as 1, key).then((c) => c.signTypedData({ account, ...t } as any)))),
-    message: async (m) => sig65(await tidy(client(key).signMessage({ account, message: { raw: m } }))),
+    message: async (m) => sig65(await tidy(client(key).then((c) => c.signMessage({ account, message: { raw: m } })))),
   }
 }
 

@@ -1015,5 +1015,8 @@
   "Delete everything?": "¿Eliminar todo?",
   "Deleting…": "Eliminando…",
   "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast elimina todo lo que su servidor guarda de esta cuenta (aspecto del perfil, silenciados y bloqueos, borradores, fotos y vídeos subidos) y borra sus claves de este dispositivo. Tu ID de Farcaster y tus casts están en la red pública: si quieres que desaparezcan, elimina antes los casts desde su menú ⋯.",
-  "Your data couldn't be deleted: {error}": "No se pudieron eliminar tus datos: {error}"
+  "Your data couldn't be deleted: {error}": "No se pudieron eliminar tus datos: {error}",
+  "WalletConnect QR code": "Código QR de WalletConnect",
+  "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Escanéalo con la billetera de tu teléfono o ábrelo en una app de billetera en este dispositivo.",
+  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "La sesión de WalletConnect terminó. Vuelve a iniciar sesión con tu billetera para reconectarla."
 }

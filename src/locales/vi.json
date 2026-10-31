@@ -1015,5 +1015,8 @@
   "Delete everything?": "Xóa tất cả?",
   "Deleting…": "Đang xóa…",
   "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast xóa mọi thứ máy chủ của nó lưu cho tài khoản này (giao diện hồ sơ, danh sách ẩn và chặn, bản nháp, ảnh và video đã tải lên) và xóa khóa khỏi thiết bị này. Farcaster ID và các cast của bạn nằm trên mạng công khai: nếu muốn chúng biến mất, hãy xóa cast từ menu ⋯ của từng cast trước.",
-  "Your data couldn't be deleted: {error}": "Không thể xóa dữ liệu của bạn: {error}"
+  "Your data couldn't be deleted: {error}": "Không thể xóa dữ liệu của bạn: {error}",
+  "WalletConnect QR code": "Mã QR WalletConnect",
+  "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Quét mã này bằng ví trên điện thoại, hoặc mở trong ứng dụng ví trên thiết bị này.",
+  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "Phiên WalletConnect đã kết thúc. Đăng nhập lại bằng ví để kết nối lại."
 }

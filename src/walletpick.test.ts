@@ -35,9 +35,9 @@ test('the wallet someone picks is the one that connects and signs, and a stale g
         })),
   }
   const w = await import('./wallet.ts')
-  // the picker offers both wallets, and the stale object is not one of them
-  assert.deepEqual(w.choices().map((c) => c.key), ['app.phantom', 'io.metamask'])
-  assert.deepEqual(w.choices().map((c) => c.name), ['Phantom', 'MetaMask'])
+  // the picker offers both wallets and WalletConnect after them, and the stale object is not one of them
+  assert.deepEqual(w.choices().map((c) => c.key), ['app.phantom', 'io.metamask', 'walletconnect'])
+  assert.deepEqual(w.choices().map((c) => c.name), ['Phantom', 'MetaMask', 'WalletConnect'])
   // picking the second one connects that one, not the first and not the stale global
   const address = await w.connect('io.metamask')
   assert.equal(address, mm.address.toLowerCase())

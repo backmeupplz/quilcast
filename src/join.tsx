@@ -132,13 +132,15 @@ function WalletIn() {
   const [none, setNone] = useState('')
   const [wallets, setWallets] = useState<Choice[]>([])
   const [pick, setPick] = useState<Choice>()
+  const [pair, setPair] = useState<{ uri: string; img: string }>()
   // the wallets announce themselves while wallet.ts loads, so the list has to be in before the first click
   useEffect(() => void import('./wallet.ts').then((m) => (setWallets(m.choices()), setPick(m.choices()[0]))), [])
   // a wallet without a Farcaster account can register one
   if (none) return <Create wallet={none} />
   const connect = f.run(async (step) => {
     step(0)
-    const addr = await (await import('./wallet.ts')).connect(pick?.key)
+    const w = await import('./wallet.ts')
+    const addr = await w.connect(pick?.key, async (uri) => setPair(uri ? { uri, img: await w.qr(uri) } : undefined))
     step(1)
     const fid = await fidFor(addr)
     fid ? await enter({ phrase: '', wallet: addr, fid, done: true }, step) : setNone(addr)
@@ -148,6 +150,13 @@ function WalletIn() {
       <h1>{t('Use a wallet')}</h1>
       <p class="lede">{t('Connect the wallet that owns your Farcaster account. Quilcast never sees its keys: the wallet approves a signing key for this browser, and after that it asks only when something needs the account itself, like claiming a username or signing in to a mini app.')}</p>
       {wallets.length > 1 && !f.busy && <section class="card"><Choose list={wallets} value={pick} set={setPick} /></section>}
+      {pair && (
+        <section class="card pair">
+          <img src={pair.img} alt={t('WalletConnect QR code')} />
+          <p>{t('Scan this with the wallet on your phone, or open it in a wallet app on this device.')}</p>
+          <a class="btn" href={pair.uri}>{t('Open in a wallet app')}</a>
+        </section>
+      )}
       <Progress {...f} steps={WALLET_IN()} />
       <button class="btn wide" disabled={f.busy} onClick={connect}>{f.busy ? t('Check your wallet…') : t('Connect wallet')}</button>
     </div>
