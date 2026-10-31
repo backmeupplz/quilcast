@@ -11,7 +11,7 @@ import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
-import { mkdir, readdir, readFile, rename, rm, stat, statfs, truncate } from 'node:fs/promises'
+import { appendFile, mkdir, readdir, readFile, rename, rm, stat, statfs, truncate } from 'node:fs/promises'
 import { join } from 'node:path'
 import { keySigned } from './looks.mjs'
 import { fail, fetchJson, gate, imageInfo } from './net.mjs'
@@ -21,6 +21,8 @@ export const FC = process.env.FC_URL || 'https://client.farcaster.xyz'
 export const FC_HEADERS = { origin: 'https://farcaster.xyz', referer: 'https://farcaster.xyz/', accept: 'application/json' }
 export const MEDIA = process.env.MEDIA_DIR || '/data/media'
 const TMP = join(MEDIA, '..', 'incoming')
+// which files each FID kept on our volume, one name a line, so Delete account can find them (/m/ only serves media names)
+const OWNERS = join(MEDIA, 'owners')
 export const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' }
 const LIMIT = { image: 10e6, video: 100e6 }
 const CHUNK = 8 * 1024 * 1024
@@ -251,6 +253,8 @@ export async function done(req, id, { site, node }) {
       const name = `${createHash('sha256').update(body).digest('hex').slice(0, 24)}.${EXT[job.type]}`
       await mkdir(MEDIA, { recursive: true })
       await rename(job.file, join(MEDIA, name))
+      await mkdir(OWNERS, { recursive: true })
+      await appendFile(join(OWNERS, String(job.fid)), name + '\n')
       quota.set(job.fid, { day: today(), bytes: used(job.fid) + body.length })
       mediaBytes += body.length
       job.url = `${site}/m/${name}`
@@ -268,6 +272,15 @@ export async function done(req, id, { site, node }) {
       return rm(job.file, { force: true }).catch(() => {})
     })
   return status(id)
+}
+
+/** Deletes the photos and videos `fid` uploaded to our volume (Delete account). Files from before 0.36.0 aren't in the
+ *  index; the privacy page still offers deleting those by email. */
+export async function dropUploads(fid) {
+  const list = join(OWNERS, String(fid))
+  const names = (await readFile(list, 'utf8').catch(() => '')).split('\n').filter((n) => /^[0-9a-f]{24}\.\w+$/.test(n))
+  await Promise.all(names.map((n) => rm(join(MEDIA, n), { force: true })))
+  await rm(list, { force: true })
 }
 
 export function status(id) {

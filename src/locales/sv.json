@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "Spara som utkast?",
   "Too many drafts. Delete some first.": "För många utkast. Radera några först.",
   "Holiday themes": "Högtidsteman",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast klär ut sig till halloween och jul, om du inte har ett eget tema."
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast klär ut sig till halloween och jul, om du inte har ett eget tema.",
+  "Delete account": "Radera konto",
+  "Delete everything?": "Radera allt?",
+  "Deleting…": "Raderar…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast raderar allt som servern sparar för det här kontot (profilutseende, tystade och blockerade, utkast, uppladdade foton och videor) och tar bort nycklarna från den här enheten. Ditt Farcaster-ID och dina casts finns i det öppna nätverket: radera casts via deras ⋯-meny först om du vill att de ska försvinna.",
+  "Your data couldn't be deleted: {error}": "Dina data kunde inte raderas: {error}"
 }

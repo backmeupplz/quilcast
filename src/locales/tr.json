@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "Taslak olarak kaydedilsin mi?",
   "Too many drafts. Delete some first.": "Çok fazla taslak var. Önce birkaçını sil.",
   "Holiday themes": "Bayram temaları",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Kendi temanı kullanmıyorsan Quilcast Cadılar Bayramı ve Noel için süslenir."
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Kendi temanı kullanmıyorsan Quilcast Cadılar Bayramı ve Noel için süslenir.",
+  "Delete account": "Hesabı sil",
+  "Delete everything?": "Her şey silinsin mi?",
+  "Deleting…": "Siliniyor…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast, sunucusunun bu hesap için tuttuğu her şeyi (profil görünümü, sessize alınanlar ve engellenenler, taslaklar, yüklenen fotoğraf ve videolar) siler ve anahtarlarını bu cihazdan kaldırır. Farcaster kimliğin ve cast'lerin herkese açık ağda durur: kaybolmalarını istiyorsan önce cast'leri ⋯ menüsünden sil.",
+  "Your data couldn't be deleted: {error}": "Verilerin silinemedi: {error}"
 }

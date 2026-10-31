@@ -1056,6 +1056,7 @@ function Settings() {
   const [orig, setOrig] = useState<Record<number, string>>({})
   const [phrase, setPhrase] = useState(false)
   const [out, setOut] = useState<false | 'ask' | 'busy' | 'stuck'>(false)
+  const [del, setDel] = useState<false | 'ask' | 'busy'>(false)
   const asked = useRef(0)
   const [forgetting, setForgetting] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -1113,6 +1114,24 @@ function Settings() {
       }
     }
     // the keys are erased before leaving, so nothing is left half-deleted
+    await setAccount(null)
+    location.assign('/')
+  }
+  // Delete account (App Review 5.1.1(v)): our server forgets the account, then it signs out the way Sign out does. The
+  // Farcaster ID and casts live on the network, which nobody can erase for everyone; the hint says so.
+  const deleteAccount = async () => {
+    if (!del) return (asked.current = Date.now()), setDel('ask')
+    if (del === 'busy' || Date.now() - asked.current < 1000) return
+    setDel('busy')
+    try {
+      const m = await w()
+      await m.deleteServerData()
+      await m.removeAppKey(account!).catch(() => {})
+      await m.revokeSigner(account!).catch(() => {})
+    } catch (e: any) {
+      toast(t("Your data couldn't be deleted: {error}", { error: e.message }))
+      return setDel('ask')
+    }
     await setAccount(null)
     location.assign('/')
   }
@@ -1258,6 +1277,8 @@ function Settings() {
             {account.phrase && <div class="setting"><span>{t('All keys as a file')}</span><button class="btn ghost small" onClick={exportKeys}>{t('Export')}</button></div>}
             {account.dm && <div class="setting"><span>{t('Key to your messages on farcaster.xyz')}</span><button class="btn ghost small" onClick={() => (setAccount({ ...account!, dm: undefined }), import('./dms.ts').then((m) => m.stop()))}>{t('Forget')}</button></div>}
             <div class="setting"><span>{account.username ? t('Sign out of @{username}', { username: account.username }) : t('Sign out')}</span><button class="btn danger small" disabled={out === 'busy'} onClick={signOut}>{out === 'busy' ? t('Signing out…') : out === 'stuck' ? t('Sign out anyway') : out ? t('Erase keys?') : t('Sign out')}</button></div>
+            <div class="setting"><span>{t('Delete account')}</span><button class="btn danger small" disabled={del === 'busy'} onClick={deleteAccount}>{del === 'busy' ? t('Deleting…') : del ? t('Delete everything?') : t('Delete')}</button></div>
+            {del && <p class="hint">{t('Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.')}</p>}
             {out && <p class="hint">{account.wallet ? t('This removes the account and its signing key from this browser. Your wallet is not affected.') : t('This erases the recovery phrase from this browser. Export your keys first if it\'s your only copy.')}</p>}
           </section>
         )}

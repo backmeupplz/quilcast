@@ -269,6 +269,36 @@ test('an upload signed by one of the account\'s keys works once; a key the node 
   assert.match(st.url, /^https:\/\/quilcast\.test\/m\/[0-9a-f]{24}\.png$/)
 })
 
+test('Delete account removes the look, mutes, drafts and uploads kept for the FID, only with its key', async () => {
+  const signed = (what, body = '', key = signer) => {
+    const ts = Date.now()
+    return { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:7:${ts}:${body}`), key)).toString('hex') }
+  }
+  const put = (kind, what, body) => fetch(`${base}/api/${kind}/7`, { method: 'PUT', body, headers: signed(what, body) })
+  assert.equal((await put('mutes', 'quilcast-mutes', JSON.stringify({ words: [], users: [{ v: 3 }], blocks: [] }))).status, 200)
+  assert.equal((await put('drafts', 'quilcast-drafts', JSON.stringify({ id: crypto.randomUUID(), box: 'aXY=.c2VhbGVk' }))).status, 200)
+  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 3]), Buffer.alloc(40)])
+  const { id } = await (await fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(png.length), 'x-fid': '7', ...signed('quilcast-upload') } })).json()
+  await fetch(`${base}/api/upload/${id}?offset=0`, { method: 'PUT', body: png })
+  let st = await (await fetch(`${base}/api/upload/${id}/done`, { method: 'POST' })).json()
+  for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
+  const media = st.url.replace('https://quilcast.test', base)
+  assert.equal((await fetch(media)).status, 200)
+  const del = (headers) => fetch(`${base}/api/account/7`, { method: 'DELETE', headers })
+  assert.equal((await del({})).status, 401)
+  assert.equal((await del(signed('quilcast-mutes'))).status, 401)
+  assert.equal((await del(signed('quilcast-delete', '', ed25519.utils.randomSecretKey()))).status, 403)
+  assert.equal((await fetch(media)).status, 200)
+  const r = await del(signed('quilcast-delete'))
+  assert.equal(r.status, 200)
+  assert.deepEqual(await r.json(), { deleted: 7 })
+  assert.equal((await fetch(media)).status, 404)
+  assert.deepEqual(await (await fetch(`${base}/api/mutes/7`, { headers: signed('quilcast-mutes-read') })).json(), { words: [], users: [], blocks: [] })
+  assert.deepEqual(await (await fetch(`${base}/api/drafts/7`, { headers: signed('quilcast-drafts-read') })).json(), [])
+  assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
+  assert.equal((await fetch(`${base}/api/account/7`)).status, 405)
+})
+
 test('the DM relay carries the token to the direct-cast endpoints and nowhere else', async () => {
   const call = (op, init) => fetch(`${base}/api/dm/${op}`, init)
   assert.equal((await (await call('nonce')).json()).result.nonce, 'n1')

@@ -2,7 +2,7 @@
 //   GET /api/mutes/<fid>   the list, signed "quilcast-mutes-read:<fid>:<ts>:" (empty body)
 //   PUT /api/mutes/<fid>   replace it, signed "quilcast-mutes:<fid>:<ts>:<body>"
 // Both are signed by one of the account's Farcaster keys (x-key, x-ts, x-sig), like profile looks.
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanMutes } from '../src/shared.ts'
 import { parseJson, readText } from './net.mjs'
@@ -11,6 +11,8 @@ import { keySigned } from './looks.mjs'
 let dir = ''
 export const loadMutes = (dataDir) => mkdir((dir = join(dataDir, 'mutes')), { recursive: true })
 const file = (fid) => join(dir, `${fid}.json`)
+
+export const dropMutes = (fid) => rm(file(fid), { force: true })
 
 export async function getMutes(req, fid, node) {
   await keySigned(req, 'quilcast-mutes-read', fid, '', node)

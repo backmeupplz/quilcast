@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "下書きとして保存しますか？",
   "Too many drafts. Delete some first.": "下書きが多すぎます。先にいくつか削除してください。",
   "Holiday themes": "季節のテーマ",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "ハロウィンとクリスマスには Quilcast が着せ替わります。自分のテーマを使っているときは変わりません。"
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "ハロウィンとクリスマスには Quilcast が着せ替わります。自分のテーマを使っているときは変わりません。",
+  "Delete account": "アカウントを削除",
+  "Delete everything?": "すべて削除しますか？",
+  "Deleting…": "削除中…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast は、このアカウントについてサーバーに保存しているもの（プロフィールの見た目、ミュートとブロック、下書き、アップロードした写真と動画）をすべて削除し、この端末から鍵を消去します。Farcaster ID とキャストは公開ネットワーク上にあります。消したい場合は、先に各キャストの ⋯ メニューから削除してください。",
+  "Your data couldn't be deleted: {error}": "データを削除できませんでした: {error}"
 }

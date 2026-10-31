@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "इसे ड्राफ़्ट के रूप में सहेजें?",
   "Too many drafts. Delete some first.": "बहुत ज़्यादा ड्राफ़्ट। पहले कुछ हटाएँ।",
   "Holiday themes": "त्योहार वाली थीम",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast हैलोवीन और क्रिसमस पर सज जाता है, जब तक आपने अपनी कोई थीम न लगाई हो।"
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast हैलोवीन और क्रिसमस पर सज जाता है, जब तक आपने अपनी कोई थीम न लगाई हो।",
+  "Delete account": "खाता हटाएँ",
+  "Delete everything?": "सब कुछ हटाएँ?",
+  "Deleting…": "हटाया जा रहा है…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast इस खाते के लिए अपने सर्वर पर रखी हर चीज़ हटा देता है (प्रोफ़ाइल लुक, म्यूट और ब्लॉक, ड्राफ़्ट, अपलोड की गई फ़ोटो और वीडियो) और इस डिवाइस से इसकी कुंजियाँ मिटा देता है। आपकी Farcaster ID और कास्ट सार्वजनिक नेटवर्क पर रहते हैं: अगर आप उन्हें हटाना चाहते हैं तो पहले उनके ⋯ मेन्यू से कास्ट हटाएँ।",
+  "Your data couldn't be deleted: {error}": "आपका डेटा हटाया नहीं जा सका: {error}"
 }

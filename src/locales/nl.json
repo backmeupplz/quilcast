@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "Opslaan als concept?",
   "Too many drafts. Delete some first.": "Te veel concepten. Verwijder er eerst een paar.",
   "Holiday themes": "Feestdagthema’s",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast verkleedt zich voor Halloween en Kerst, tenzij je een eigen thema draagt."
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast verkleedt zich voor Halloween en Kerst, tenzij je een eigen thema draagt.",
+  "Delete account": "Account verwijderen",
+  "Delete everything?": "Alles verwijderen?",
+  "Deleting…": "Verwijderen…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast verwijdert alles wat de server voor dit account bewaart (profiellook, gedempte en geblokkeerde accounts, concepten, geüploade foto's en video's) en wist de sleutels van dit apparaat. Je Farcaster-ID en casts staan op het openbare netwerk: verwijder casts eerst via hun ⋯-menu als je ze weg wilt hebben.",
+  "Your data couldn't be deleted: {error}": "Je gegevens konden niet worden verwijderd: {error}"
 }

@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "Lưu thành bản nháp?",
   "Too many drafts. Delete some first.": "Quá nhiều bản nháp. Hãy xóa bớt trước.",
   "Holiday themes": "Giao diện ngày lễ",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast được trang trí cho Halloween và Giáng sinh, trừ khi bạn dùng giao diện riêng."
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast được trang trí cho Halloween và Giáng sinh, trừ khi bạn dùng giao diện riêng.",
+  "Delete account": "Xóa tài khoản",
+  "Delete everything?": "Xóa tất cả?",
+  "Deleting…": "Đang xóa…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast xóa mọi thứ máy chủ của nó lưu cho tài khoản này (giao diện hồ sơ, danh sách ẩn và chặn, bản nháp, ảnh và video đã tải lên) và xóa khóa khỏi thiết bị này. Farcaster ID và các cast của bạn nằm trên mạng công khai: nếu muốn chúng biến mất, hãy xóa cast từ menu ⋯ của từng cast trước.",
+  "Your data couldn't be deleted: {error}": "Không thể xóa dữ liệu của bạn: {error}"
 }

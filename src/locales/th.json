@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "บันทึกเป็นฉบับร่างไหม",
   "Too many drafts. Delete some first.": "ฉบับร่างมากเกินไป ลบบางส่วนก่อน",
   "Holiday themes": "ธีมเทศกาล",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast จะแต่งตัวรับฮาโลวีนและคริสต์มาส เว้นแต่คุณใช้ธีมของตัวเองอยู่"
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast จะแต่งตัวรับฮาโลวีนและคริสต์มาส เว้นแต่คุณใช้ธีมของตัวเองอยู่",
+  "Delete account": "ลบบัญชี",
+  "Delete everything?": "ลบทั้งหมดหรือไม่",
+  "Deleting…": "กำลังลบ…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast จะลบทุกอย่างที่เซิร์ฟเวอร์เก็บไว้สำหรับบัญชีนี้ (หน้าตาโปรไฟล์ การปิดเสียงและการบล็อก ฉบับร่าง รูปภาพและวิดีโอที่อัปโหลด) และลบคีย์ออกจากอุปกรณ์นี้ Farcaster ID และแคสต์ของคุณอยู่บนเครือข่ายสาธารณะ: หากต้องการให้หายไป ให้ลบแคสต์จากเมนู ⋯ ของแต่ละแคสต์ก่อน",
+  "Your data couldn't be deleted: {error}": "ลบข้อมูลของคุณไม่ได้: {error}"
 }

@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "Сохранить как черновик?",
   "Too many drafts. Delete some first.": "Слишком много черновиков. Сначала удалите несколько.",
   "Holiday themes": "Праздничные темы",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "На Хэллоуин и Рождество Quilcast наряжается, если у вас не стоит своя тема."
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "На Хэллоуин и Рождество Quilcast наряжается, если у вас не стоит своя тема.",
+  "Delete account": "Удалить аккаунт",
+  "Delete everything?": "Удалить всё?",
+  "Deleting…": "Удаление…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast удалит всё, что его сервер хранит для этого аккаунта (оформление профиля, скрытые и заблокированные, черновики, загруженные фото и видео), и сотрёт ключи с этого устройства. Ваш Farcaster ID и касты находятся в публичной сети: если хотите, чтобы они исчезли, сначала удалите касты через их меню ⋯.",
+  "Your data couldn't be deleted: {error}": "Не удалось удалить данные: {error}"
 }

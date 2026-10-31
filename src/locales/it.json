@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "Salvare come bozza?",
   "Too many drafts. Delete some first.": "Troppe bozze. Eliminane prima qualcuna.",
   "Holiday themes": "Temi delle feste",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast si traveste per Halloween e Natale, a meno che tu non usi un tema tuo."
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast si traveste per Halloween e Natale, a meno che tu non usi un tema tuo.",
+  "Delete account": "Elimina account",
+  "Delete everything?": "Eliminare tutto?",
+  "Deleting…": "Eliminazione…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast elimina tutto ciò che il suo server conserva per questo account (aspetto del profilo, silenziati e blocchi, bozze, foto e video caricati) e cancella le sue chiavi da questo dispositivo. Il tuo ID Farcaster e i tuoi cast vivono sulla rete pubblica: se vuoi che spariscano, elimina prima i cast dal loro menu ⋯.",
+  "Your data couldn't be deleted: {error}": "Impossibile eliminare i tuoi dati: {error}"
 }

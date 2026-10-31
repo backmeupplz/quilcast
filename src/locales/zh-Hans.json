@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "保存为草稿？",
   "Too many drafts. Delete some first.": "草稿太多了，请先删除一些。",
   "Holiday themes": "节日主题",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "万圣节和圣诞节时 Quilcast 会换上节日装扮，除非你在用自己的主题。"
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "万圣节和圣诞节时 Quilcast 会换上节日装扮，除非你在用自己的主题。",
+  "Delete account": "删除账号",
+  "Delete everything?": "全部删除？",
+  "Deleting…": "正在删除…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast 会删除其服务器为此账号保存的所有内容（主页外观、静音和屏蔽、草稿、上传的照片和视频），并从此设备上清除密钥。你的 Farcaster ID 和 cast 位于公共网络上：如果想让它们消失，请先通过各自的 ⋯ 菜单删除。",
+  "Your data couldn't be deleted: {error}": "无法删除你的数据：{error}"
 }

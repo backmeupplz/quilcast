@@ -16,13 +16,13 @@ import { loadTranslations, lookup as translations, translate } from './translate
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
 import { cached, unfurl } from './unfurl.mjs'
-import { chunk, done, EXT, MEDIA, start, status } from './upload.mjs'
+import { chunk, done, dropUploads, EXT, MEDIA, start, status } from './upload.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
-import { getDesign, getLook, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
-import { getMutes, loadMutes, putMutes } from './mutes.mjs'
-import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
+import { dropLook, getDesign, getLook, keySigned, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
+import { dropMutes, getMutes, loadMutes, putMutes } from './mutes.mjs'
+import { dropDrafts, getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
@@ -735,6 +735,19 @@ createServer(async (req, res) => {
       const err = r instanceof Error
       if (err && !r.status) console.error('look', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // Settings → Delete account: everything this server keeps for the FID goes at once (public/delete.html)
+    const account = path.match(/^\/api\/account\/([1-9]\d{0,9})$/)
+    if (account) {
+      const fid = Number(account[1])
+      if (req.method !== 'DELETE') return json(405, { error: 'only DELETE' })
+      if (limited(`account:${ip}`, 20, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      const r = await keySigned(req, 'quilcast-delete', fid, '', NODE)
+        .then(() => Promise.all([dropLook(fid), dropMutes(fid), dropDrafts(fid), dropUploads(fid)]))
+        .catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('account', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Deleting failed.' } : { deleted: fid })
     }
     // mutes and blocks (server/mutes.mjs)
     const mutes = path.match(/^\/api\/mutes\/([1-9]\d{0,9})$/)

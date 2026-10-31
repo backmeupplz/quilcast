@@ -1010,5 +1010,10 @@
   "Save this as a draft?": "Simpan sebagai draf?",
   "Too many drafts. Delete some first.": "Terlalu banyak draf. Hapus beberapa dulu.",
   "Holiday themes": "Tema hari raya",
-  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast berdandan untuk Halloween dan Natal, kecuali kamu memakai tema sendiri."
+  "Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.": "Quilcast berdandan untuk Halloween dan Natal, kecuali kamu memakai tema sendiri.",
+  "Delete account": "Hapus akun",
+  "Delete everything?": "Hapus semuanya?",
+  "Deleting…": "Menghapus…",
+  "Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.": "Quilcast menghapus semua yang disimpan servernya untuk akun ini (tampilan profil, bisukan dan blokir, draf, foto dan video yang diunggah) dan menghapus kuncinya dari perangkat ini. ID Farcaster dan cast kamu ada di jaringan publik: hapus cast dari menu ⋯ masing-masing terlebih dahulu jika ingin menghilangkannya.",
+  "Your data couldn't be deleted: {error}": "Datamu tidak dapat dihapus: {error}"
 }

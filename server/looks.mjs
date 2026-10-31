@@ -95,16 +95,19 @@ export async function keySigned(req, what, fid, body, node, stale = () => fail(4
   return { key, ts }
 }
 
+/** Forgets the account's look (a PUT of null, or Delete account). */
+export async function dropLook(fid) {
+  await rm(file(fid), { force: true })
+  looks.set(fid, Promise.resolve(null))
+  listed = null
+  return null
+}
+
 export async function putLook(req, fid, node) {
   const body = await readText(req, 20e3)
   await keySigned(req, 'quilcast-look', fid, body, node, () => fail(401, 'Sign in again to save your look.'))
   const raw = parseJson(body)
-  if (raw === null) {
-    await rm(file(fid), { force: true })
-    looks.set(fid, Promise.resolve(null))
-    listed = null
-    return null
-  }
+  if (raw === null) return dropLook(fid)
   const look = cleanLook(raw)
   await Promise.all(lookImages(look).map(([u, max]) => checkImage(u, max)))
   if (look.song) {
