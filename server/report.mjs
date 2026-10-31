@@ -1,7 +1,7 @@
 // Reports from the ⋯ menu (src/ui.tsx ReportSheet), so a report never leaves the app (App Review 1.2).
 //   POST /api/report   { fid, hash?, reason, text }: the account, or one of its casts, and why
-// Each report is appended to <data>/reports.jsonl first, then sent to Nikita on Telegram through @frdy_bot
-// (REPORT_BOT_TOKEN, REPORT_CHAT_ID), so every one is seen within 24 hours even if Telegram is down for a while.
+// Each report is appended to <data>/reports.jsonl first, then passed on to the moderators' chat (REPORT_BOT_TOKEN,
+// REPORT_CHAT_ID), so every one is seen within 24 hours even if that chat can't be reached for a while.
 // A signed-in reporter signs it with one of the account's keys (x-fid, x-key, x-ts, x-sig over
 // "quilcast-report:<fid>:<ts>:<body>"), so we know who sent it; signed out, it's anonymous.
 import { appendFile } from 'node:fs/promises'
