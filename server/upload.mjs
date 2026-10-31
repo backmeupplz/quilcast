@@ -274,13 +274,10 @@ export async function done(req, id, { site, node }) {
   return status(id)
 }
 
-/** Deletes the photos and videos `fid` uploaded to our volume (Delete account). Files from before 0.36.0 aren't in the
- *  index; the privacy page still offers deleting those by email. */
+/** Delete account forgets `fid`'s upload index but leaves the files: the index can't tell whether someone else uploaded
+ *  the same bytes, so deleting them let anyone delete any /m/ file (#309). Media goes by email until #115 lands. */
 export async function dropUploads(fid) {
-  const list = join(OWNERS, String(fid))
-  const names = (await readFile(list, 'utf8').catch(() => '')).split('\n').filter((n) => /^[0-9a-f]{24}\.\w+$/.test(n))
-  await Promise.all(names.map((n) => rm(join(MEDIA, n), { force: true })))
-  await rm(list, { force: true })
+  await rm(join(OWNERS, String(fid)), { force: true })
 }
 
 export function status(id) {
