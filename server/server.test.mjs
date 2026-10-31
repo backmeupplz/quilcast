@@ -24,6 +24,7 @@ const key = secp256k1.utils.randomSecretKey()
 const signer = ed25519.utils.randomSecretKey()
 const signerHex = '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex')
 const orAsked = []
+const telegramHits = []
 const node = createServer(async (q, r) => {
   const u = new URL(q.url, 'http://x')
   r.setHeader('content-type', 'application/json')
@@ -52,6 +53,7 @@ const node = createServer(async (q, r) => {
   // Quorum's skin gallery
   if (u.pathname === '/skins') return r.end(JSON.stringify({ has_more: true, total: 2, entries: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5, author_address: 'Qmx', manifest: 'big' }, { id: '../etc', name: 'bad' }] }))
   if (u.pathname === `/skins/${SKIN_ID}`) return r.end(JSON.stringify({ id: SKIN_ID, manifest: JSON.stringify(SKIN) }))
+  if (u.pathname.startsWith('/botTESTTOKEN/')) return telegramHits.push({ path: u.pathname, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
   if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : [] }))
   if (u.pathname === '/v2/farcaster/cast')
     return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: evil, timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: `http://127.0.0.1:${internalPort}/a.png` }], author: { fid: 1, username: 'x', display_name: evil, pfp_url: `http://127.0.0.1:${internalPort}/pfp.png` }, reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } }))
@@ -87,7 +89,7 @@ const port = 40000 + Math.floor(Math.random() * 20000)
 const base = `http://127.0.0.1:${port}`
 let srv
 before(async () => {
-  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat` }, stdio: 'ignore' })
+  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_BOT_TOKEN: 'TESTTOKEN', REPORT_CHAT_ID: '42', TELEGRAM_URL: `http://127.0.0.1:${nodePort}` }, stdio: 'ignore' })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -267,6 +269,26 @@ test('an upload signed by one of the account\'s keys works once; a key the node 
   for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
   assert.equal(st.state, 'ready')
   assert.match(st.url, /^https:\/\/quilcast\.test\/m\/[0-9a-f]{24}\.png$/)
+})
+
+test('reports: kept and sent to Telegram, anonymous or signed by the reporter\'s key', async () => {
+  const send = (r, headers = {}) => fetch(base + '/api/report', { method: 'POST', body: typeof r === 'string' ? r : JSON.stringify(r), headers })
+  const hash = '0x' + 'ab'.repeat(20)
+  assert.equal((await send({ fid: 9, hash, reason: 'nope' })).status, 400)
+  assert.equal((await send({ fid: 0, reason: 'spam' })).status, 400)
+  assert.equal((await send({ fid: 9, hash: 'x', reason: 'spam' })).status, 400)
+  assert.equal((await fetch(base + '/api/report')).status, 405)
+  assert.equal((await send({ fid: 9, hash, reason: 'abuse', text: 'mean' })).status, 200)
+  const body = JSON.stringify({ fid: 9, reason: 'spam' })
+  const ts = Date.now()
+  const signed = (key, what = 'quilcast-report') => ({ 'x-fid': '7', 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:7:${ts}:${body}`), key)).toString('hex') })
+  assert.equal((await send(body, signed(ed25519.utils.randomSecretKey()))).status, 403)
+  assert.equal((await send(body, signed(signer, 'quilcast-look'))).status, 401)
+  assert.equal((await send(body, signed(signer))).status, 200)
+  for (let i = 0; i < 50 && telegramHits.length < 2; i++) await new Promise((r) => setTimeout(r, 50))
+  assert.deepEqual(telegramHits.map((h) => [h.path, h.body.chat_id]), [['/botTESTTOKEN/sendMessage', '42'], ['/botTESTTOKEN/sendMessage', '42']])
+  assert.match(telegramHits[0].body.text, /Harassment or hate[\s\S]*\/c\/0xabab[\s\S]*From: signed out[\s\S]*mean/)
+  assert.match(telegramHits[1].body.text, /Spam[\s\S]*Account: https:\/\/quilcast\.test\/u\/9[\s\S]*From: https:\/\/quilcast\.test\/u\/7/)
 })
 
 test('Delete account removes the look, mutes, drafts and uploads kept for the FID, only with its key', async () => {

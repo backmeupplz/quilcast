@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "WalletConnect QR 코드",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "휴대폰의 지갑으로 스캔하거나 이 기기의 지갑 앱에서 여세요.",
   "The WalletConnect session ended. Connect your wallet again.": "WalletConnect 세션이 종료되었습니다. 지갑을 다시 연결하세요.",
-  "The wallet didn't connect that network.": "지갑이 해당 네트워크를 연결하지 않았습니다."
+  "The wallet didn't connect that network.": "지갑이 해당 네트워크를 연결하지 않았습니다.",
+  "Also block @{name}": "@{name}도 차단",
+  "Anything we should know? (optional)": "더 알려 주실 내용이 있나요? (선택)",
+  "Details": "자세히",
+  "Harassment or hate": "괴롭힘 또는 혐오",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "신고를 보냈고 @{name}을(를) 차단했습니다. 모든 신고는 24시간 안에 확인합니다.",
+  "Report sent. We look at every report within 24 hours.": "신고를 보냈습니다. 모든 신고는 24시간 안에 확인합니다.",
+  "Send report": "신고 보내기",
+  "Sexual content": "성적인 콘텐츠",
+  "Something else": "기타",
+  "Something illegal": "불법적인 내용",
+  "Spam": "스팸",
+  "Too many reports, try again in a few minutes.": "신고가 너무 많습니다. 몇 분 후에 다시 시도하세요.",
+  "Violence or threats": "폭력 또는 위협",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "모든 신고는 24시간 안에 확인하며, 이용 약관을 어기는 내용은 Quilcast의 모든 사람에게서 삭제합니다.",
+  "What's wrong with it?": "무엇이 문제인가요?"
 }

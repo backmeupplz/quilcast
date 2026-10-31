@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "QR-код WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Відскануйте це гаманцем на телефоні або відкрийте в застосунку гаманця на цьому пристрої.",
   "The WalletConnect session ended. Connect your wallet again.": "Сеанс WalletConnect завершився. Підключіть гаманець ще раз.",
-  "The wallet didn't connect that network.": "Гаманець не підключив цю мережу."
+  "The wallet didn't connect that network.": "Гаманець не підключив цю мережу.",
+  "Also block @{name}": "Також заблокувати @{name}",
+  "Anything we should know? (optional)": "Щось іще, що нам варто знати? (необов'язково)",
+  "Details": "Подробиці",
+  "Harassment or hate": "Цькування або ненависть",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "Скаргу надіслано, @{name} заблоковано. Ми розглядаємо кожну скаргу протягом 24 годин.",
+  "Report sent. We look at every report within 24 hours.": "Скаргу надіслано. Ми розглядаємо кожну скаргу протягом 24 годин.",
+  "Send report": "Надіслати скаргу",
+  "Sexual content": "Сексуальний вміст",
+  "Something else": "Інше",
+  "Something illegal": "Щось незаконне",
+  "Spam": "Спам",
+  "Too many reports, try again in a few minutes.": "Забагато скарг, спробуйте знову за кілька хвилин.",
+  "Violence or threats": "Насильство або погрози",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "Ми розглядаємо кожну скаргу протягом 24 годин і видаляємо для всіх у Quilcast те, що порушує Умови використання.",
+  "What's wrong with it?": "Що не так?"
 }

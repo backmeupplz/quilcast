@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "WalletConnect QR 碼",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "用手機上的錢包掃描，或在此裝置上的錢包應用程式中開啟。",
   "The WalletConnect session ended. Connect your wallet again.": "WalletConnect 工作階段已結束。請重新連接錢包。",
-  "The wallet didn't connect that network.": "錢包沒有連接該網路。"
+  "The wallet didn't connect that network.": "錢包沒有連接該網路。",
+  "Also block @{name}": "同時封鎖 @{name}",
+  "Anything we should know? (optional)": "還有什麼需要我們知道的嗎？（選填）",
+  "Details": "詳細資料",
+  "Harassment or hate": "騷擾或仇恨",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "檢舉已送出，並已封鎖 @{name}。我們會在 24 小時內查看每一則檢舉。",
+  "Report sent. We look at every report within 24 hours.": "檢舉已送出。我們會在 24 小時內查看每一則檢舉。",
+  "Send report": "送出檢舉",
+  "Sexual content": "色情內容",
+  "Something else": "其他",
+  "Something illegal": "違法內容",
+  "Spam": "垃圾訊息",
+  "Too many reports, try again in a few minutes.": "檢舉太多，請幾分鐘後再試。",
+  "Violence or threats": "暴力或威脅",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "我們會在 24 小時內查看每一則檢舉，並為 Quilcast 上的所有人移除違反使用條款的內容。",
+  "What's wrong with it?": "有什麼問題？"
 }

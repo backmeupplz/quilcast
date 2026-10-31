@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "Mã QR WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Quét mã này bằng ví trên điện thoại, hoặc mở trong ứng dụng ví trên thiết bị này.",
   "The WalletConnect session ended. Connect your wallet again.": "Phiên WalletConnect đã kết thúc. Hãy kết nối lại ví.",
-  "The wallet didn't connect that network.": "Ví chưa kết nối mạng đó."
+  "The wallet didn't connect that network.": "Ví chưa kết nối mạng đó.",
+  "Also block @{name}": "Chặn cả @{name}",
+  "Anything we should know? (optional)": "Có điều gì chúng tôi nên biết không? (không bắt buộc)",
+  "Details": "Chi tiết",
+  "Harassment or hate": "Quấy rối hoặc thù ghét",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "Đã gửi báo cáo và chặn @{name}. Chúng tôi xem xét mọi báo cáo trong vòng 24 giờ.",
+  "Report sent. We look at every report within 24 hours.": "Đã gửi báo cáo. Chúng tôi xem xét mọi báo cáo trong vòng 24 giờ.",
+  "Send report": "Gửi báo cáo",
+  "Sexual content": "Nội dung tình dục",
+  "Something else": "Điều khác",
+  "Something illegal": "Điều gì đó bất hợp pháp",
+  "Spam": "Spam",
+  "Too many reports, try again in a few minutes.": "Quá nhiều báo cáo, hãy thử lại sau vài phút.",
+  "Violence or threats": "Bạo lực hoặc đe dọa",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "Chúng tôi xem xét mọi báo cáo trong vòng 24 giờ và gỡ bỏ cho mọi người trên Quilcast những gì vi phạm Điều khoản sử dụng.",
+  "What's wrong with it?": "Có vấn đề gì?"
 }

@@ -402,6 +402,13 @@ export const saveLook = (look: object | null) => keyFetch(`/api/look/${account!.
  *  never adds one, so it can't ask for the recovery phrase). */
 export const fetchMutes = (a = account!) =>
   (a.pub || a.signer) && a.scopes === SCOPES_VERSION ? keyFetch(`/api/mutes/${a.fid}`, 'quilcast-mutes-read', 'GET', '', 1) : Promise.resolve(null)
+/** Sends a report to us (server/report.mjs). Signed in, the account's key signs it, so we know who reported. */
+export async function sendReport(r: { fid: number; hash?: string; reason: string; text: string }) {
+  const body = JSON.stringify(r)
+  const who = account?.done ? await keySigned('quilcast-report', body).then((h) => ({ ...h, 'x-fid': String(account!.fid) }), () => ({})) : {}
+  const res = await fetch('/api/report', { method: 'POST', body, headers: { 'content-type': 'application/json', ...who } })
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || "The report couldn't be sent. Try again.")
+}
 /** Deletes everything our server keeps for the account (Settings → Delete account, server/index.mjs). */
 export const deleteServerData = () => keyFetch(`/api/account/${account!.fid}`, 'quilcast-delete', 'DELETE')
 export const saveMutes = (m: object) => keyFetch(`/api/mutes/${account!.fid}`, 'quilcast-mutes', 'PUT', JSON.stringify(m))

@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "WalletConnect-QR-code",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Scan dit met de wallet op je telefoon, of open het in een wallet-app op dit apparaat.",
   "The WalletConnect session ended. Connect your wallet again.": "De WalletConnect-sessie is beëindigd. Verbind je wallet opnieuw.",
-  "The wallet didn't connect that network.": "De wallet heeft dat netwerk niet verbonden."
+  "The wallet didn't connect that network.": "De wallet heeft dat netwerk niet verbonden.",
+  "Also block @{name}": "@{name} ook blokkeren",
+  "Anything we should know? (optional)": "Moeten we nog iets weten? (optioneel)",
+  "Details": "Details",
+  "Harassment or hate": "Intimidatie of haat",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "Melding verstuurd en @{name} geblokkeerd. We bekijken elke melding binnen 24 uur.",
+  "Report sent. We look at every report within 24 hours.": "Melding verstuurd. We bekijken elke melding binnen 24 uur.",
+  "Send report": "Melding versturen",
+  "Sexual content": "Seksuele inhoud",
+  "Something else": "Iets anders",
+  "Something illegal": "Iets illegaals",
+  "Spam": "Spam",
+  "Too many reports, try again in a few minutes.": "Te veel meldingen, probeer het over een paar minuten opnieuw.",
+  "Violence or threats": "Geweld of bedreigingen",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "We bekijken elke melding binnen 24 uur en halen voor iedereen op Quilcast weg wat tegen de gebruiksvoorwaarden ingaat.",
+  "What's wrong with it?": "Wat is er mis mee?"
 }

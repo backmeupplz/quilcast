@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "QR-kod för WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Skanna den med plånboken i din telefon eller öppna den i en plånboksapp på den här enheten.",
   "The WalletConnect session ended. Connect your wallet again.": "WalletConnect-sessionen har tagit slut. Anslut din plånbok igen.",
-  "The wallet didn't connect that network.": "Plånboken anslöt inte det nätverket."
+  "The wallet didn't connect that network.": "Plånboken anslöt inte det nätverket.",
+  "Also block @{name}": "Blockera även @{name}",
+  "Anything we should know? (optional)": "Något vi bör veta? (valfritt)",
+  "Details": "Detaljer",
+  "Harassment or hate": "Trakasserier eller hat",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "Anmälan skickad och @{name} blockerad. Vi tittar på varje anmälan inom 24 timmar.",
+  "Report sent. We look at every report within 24 hours.": "Anmälan skickad. Vi tittar på varje anmälan inom 24 timmar.",
+  "Send report": "Skicka anmälan",
+  "Sexual content": "Sexuellt innehåll",
+  "Something else": "Något annat",
+  "Something illegal": "Något olagligt",
+  "Spam": "Spam",
+  "Too many reports, try again in a few minutes.": "För många anmälningar, försök igen om några minuter.",
+  "Violence or threats": "Våld eller hot",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "Vi tittar på varje anmälan inom 24 timmar och tar bort det som bryter mot användarvillkoren för alla på Quilcast.",
+  "What's wrong with it?": "Vad är fel med det?"
 }

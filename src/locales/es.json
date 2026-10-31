@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "Código QR de WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Escanéalo con la billetera de tu teléfono o ábrelo en una app de billetera en este dispositivo.",
   "The WalletConnect session ended. Connect your wallet again.": "La sesión de WalletConnect terminó. Vuelve a conectar tu billetera.",
-  "The wallet didn't connect that network.": "La billetera no conectó esa red."
+  "The wallet didn't connect that network.": "La billetera no conectó esa red.",
+  "Also block @{name}": "Bloquear también a @{name}",
+  "Anything we should know? (optional)": "¿Algo que debamos saber? (opcional)",
+  "Details": "Detalles",
+  "Harassment or hate": "Acoso u odio",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "Reporte enviado y @{name} bloqueado. Revisamos cada reporte en menos de 24 horas.",
+  "Report sent. We look at every report within 24 hours.": "Reporte enviado. Revisamos cada reporte en menos de 24 horas.",
+  "Send report": "Enviar reporte",
+  "Sexual content": "Contenido sexual",
+  "Something else": "Otra cosa",
+  "Something illegal": "Algo ilegal",
+  "Spam": "Spam",
+  "Too many reports, try again in a few minutes.": "Demasiados reportes, inténtalo de nuevo en unos minutos.",
+  "Violence or threats": "Violencia o amenazas",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "Revisamos cada reporte en menos de 24 horas y retiramos para todos en Quilcast lo que incumpla las Condiciones de uso.",
+  "What's wrong with it?": "¿Qué tiene de malo?"
 }

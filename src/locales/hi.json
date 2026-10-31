@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "WalletConnect QR कोड",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "इसे अपने फ़ोन के वॉलेट से स्कैन करें, या इस डिवाइस पर किसी वॉलेट ऐप में खोलें।",
   "The WalletConnect session ended. Connect your wallet again.": "WalletConnect सत्र समाप्त हो गया। अपना वॉलेट फिर से कनेक्ट करें।",
-  "The wallet didn't connect that network.": "वॉलेट ने वह नेटवर्क कनेक्ट नहीं किया।"
+  "The wallet didn't connect that network.": "वॉलेट ने वह नेटवर्क कनेक्ट नहीं किया।",
+  "Also block @{name}": "@{name} को भी ब्लॉक करें",
+  "Anything we should know? (optional)": "कुछ और जो हमें जानना चाहिए? (वैकल्पिक)",
+  "Details": "विवरण",
+  "Harassment or hate": "उत्पीड़न या नफ़रत",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "रिपोर्ट भेज दी गई और @{name} को ब्लॉक कर दिया गया। हम हर रिपोर्ट 24 घंटे के भीतर देखते हैं।",
+  "Report sent. We look at every report within 24 hours.": "रिपोर्ट भेज दी गई। हम हर रिपोर्ट 24 घंटे के भीतर देखते हैं।",
+  "Send report": "रिपोर्ट भेजें",
+  "Sexual content": "यौन सामग्री",
+  "Something else": "कुछ और",
+  "Something illegal": "कुछ गैरकानूनी",
+  "Spam": "स्पैम",
+  "Too many reports, try again in a few minutes.": "बहुत सारी रिपोर्ट, कुछ मिनट बाद फिर कोशिश करें।",
+  "Violence or threats": "हिंसा या धमकी",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "हम हर रिपोर्ट 24 घंटे के भीतर देखते हैं और उपयोग की शर्तों का उल्लंघन करने वाली चीज़ें Quilcast पर सभी के लिए हटा देते हैं।",
+  "What's wrong with it?": "इसमें क्या गलत है?"
 }

@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "WalletConnect の QR コード",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "スマホのウォレットでスキャンするか、この端末のウォレットアプリで開いてください。",
   "The WalletConnect session ended. Connect your wallet again.": "WalletConnect のセッションが終了しました。ウォレットをもう一度接続してください。",
-  "The wallet didn't connect that network.": "ウォレットはそのネットワークを接続していません。"
+  "The wallet didn't connect that network.": "ウォレットはそのネットワークを接続していません。",
+  "Also block @{name}": "@{name} もブロックする",
+  "Anything we should know? (optional)": "ほかに伝えたいことは？（任意）",
+  "Details": "詳細",
+  "Harassment or hate": "嫌がらせやヘイト",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "報告を送信し、@{name} をブロックしました。すべての報告を24時間以内に確認します。",
+  "Report sent. We look at every report within 24 hours.": "報告を送信しました。すべての報告を24時間以内に確認します。",
+  "Send report": "報告を送信",
+  "Sexual content": "性的なコンテンツ",
+  "Something else": "その他",
+  "Something illegal": "違法なもの",
+  "Spam": "スパム",
+  "Too many reports, try again in a few minutes.": "報告が多すぎます。数分後にもう一度お試しください。",
+  "Violence or threats": "暴力や脅迫",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "すべての報告を24時間以内に確認し、利用規約に反するものは Quilcast のすべての人に対して削除します。",
+  "What's wrong with it?": "何が問題ですか？"
 }

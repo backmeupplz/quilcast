@@ -128,6 +128,10 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .btn.small { padding: 6px 14px; font-size: 14px; }
 .btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
 .btn.danger { background: transparent; color: var(--like); box-shadow: inset 0 0 0 1px var(--line); }
+/* the ⋯ menu's Report sheet (ui.tsx ReportSheet) */
+.report-form .reasons { display: grid; gap: 8px; margin: 4px 0 12px; }
+.report-form textarea { width: 100%; margin-bottom: 10px; font-family: inherit; }
+.report-form .check input { margin: 0; }
 .btn.wide { width: 100%; padding: 12px; margin-top: 8px; }
 .link-btn { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 550; }
 .link-btn.danger { color: var(--muted); display: block; margin: 24px auto 0; font-size: 13px; }
@@ -396,7 +400,7 @@ a.searchbox { margin: 0; }
 
 /* ---------- forms ---------- */
 label { display: block; font-weight: 600; font-size: 14px; margin: 16px 0 0; }
-input:not([type='checkbox']):not([type='search']), textarea {
+input:not([type='checkbox']):not([type='radio']):not([type='search']), textarea {
   display: block; width: 100%; padding: 9px 12px;
   border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); background: var(--bg); color: var(--ink);
 }

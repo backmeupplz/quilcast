@@ -6,7 +6,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -1500,6 +1500,7 @@ function App() {
       {compose && <Composer {...compose} onClose={() => setCompose(null)} />}
       {viewer && <Lightbox {...viewer} close={() => setViewer(null)} />}
       <PhraseAsk />
+      <ReportSheet />
       <Toast />
     </div>
     </>

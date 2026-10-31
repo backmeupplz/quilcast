@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "WalletConnect 二维码",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "用手机上的钱包扫描，或在此设备上的钱包应用中打开。",
   "The WalletConnect session ended. Connect your wallet again.": "WalletConnect 会话已结束。请重新连接钱包。",
-  "The wallet didn't connect that network.": "钱包没有连接该网络。"
+  "The wallet didn't connect that network.": "钱包没有连接该网络。",
+  "Also block @{name}": "同时屏蔽 @{name}",
+  "Anything we should know? (optional)": "还有什么需要我们知道的吗？（可选）",
+  "Details": "详情",
+  "Harassment or hate": "骚扰或仇恨",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "举报已发送，并已屏蔽 @{name}。我们会在 24 小时内查看每一条举报。",
+  "Report sent. We look at every report within 24 hours.": "举报已发送。我们会在 24 小时内查看每一条举报。",
+  "Send report": "发送举报",
+  "Sexual content": "色情内容",
+  "Something else": "其他",
+  "Something illegal": "违法内容",
+  "Spam": "垃圾信息",
+  "Too many reports, try again in a few minutes.": "举报太多，请几分钟后再试。",
+  "Violence or threats": "暴力或威胁",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "我们会在 24 小时内查看每一条举报，并为 Quilcast 上的所有人移除违反使用条款的内容。",
+  "What's wrong with it?": "有什么问题？"
 }

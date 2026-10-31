@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "QR-код WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Отсканируйте это кошельком на телефоне или откройте в приложении кошелька на этом устройстве.",
   "The WalletConnect session ended. Connect your wallet again.": "Сессия WalletConnect закончилась. Подключите кошелёк ещё раз.",
-  "The wallet didn't connect that network.": "Кошелёк не подключил эту сеть."
+  "The wallet didn't connect that network.": "Кошелёк не подключил эту сеть.",
+  "Also block @{name}": "Также заблокировать @{name}",
+  "Anything we should know? (optional)": "Что-то ещё, что нам стоит знать? (необязательно)",
+  "Details": "Подробности",
+  "Harassment or hate": "Травля или ненависть",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "Жалоба отправлена, @{name} заблокирован. Мы рассматриваем каждую жалобу в течение 24 часов.",
+  "Report sent. We look at every report within 24 hours.": "Жалоба отправлена. Мы рассматриваем каждую жалобу в течение 24 часов.",
+  "Send report": "Отправить жалобу",
+  "Sexual content": "Сексуальный контент",
+  "Something else": "Другое",
+  "Something illegal": "Что-то незаконное",
+  "Spam": "Спам",
+  "Too many reports, try again in a few minutes.": "Слишком много жалоб, попробуйте снова через несколько минут.",
+  "Violence or threats": "Насилие или угрозы",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "Мы рассматриваем каждую жалобу в течение 24 часов и удаляем для всех в Quilcast то, что нарушает Условия использования.",
+  "What's wrong with it?": "Что не так?"
 }

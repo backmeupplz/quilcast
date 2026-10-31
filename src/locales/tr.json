@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "WalletConnect QR kodu",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Bunu telefonundaki cüzdanla tara ya da bu cihazdaki bir cüzdan uygulamasında aç.",
   "The WalletConnect session ended. Connect your wallet again.": "WalletConnect oturumu sona erdi. Cüzdanını yeniden bağla.",
-  "The wallet didn't connect that network.": "Cüzdan bu ağı bağlamadı."
+  "The wallet didn't connect that network.": "Cüzdan bu ağı bağlamadı.",
+  "Also block @{name}": "@{name} kullanıcısını da engelle",
+  "Anything we should know? (optional)": "Bilmemiz gereken bir şey var mı? (isteğe bağlı)",
+  "Details": "Ayrıntılar",
+  "Harassment or hate": "Taciz veya nefret",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "Bildirim gönderildi ve @{name} engellendi. Her bildirime 24 saat içinde bakıyoruz.",
+  "Report sent. We look at every report within 24 hours.": "Bildirim gönderildi. Her bildirime 24 saat içinde bakıyoruz.",
+  "Send report": "Bildirimi gönder",
+  "Sexual content": "Cinsel içerik",
+  "Something else": "Başka bir şey",
+  "Something illegal": "Yasa dışı bir şey",
+  "Spam": "Spam",
+  "Too many reports, try again in a few minutes.": "Çok fazla bildirim, birkaç dakika sonra yeniden dene.",
+  "Violence or threats": "Şiddet veya tehdit",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "Her bildirime 24 saat içinde bakıyor ve Kullanım Koşullarını çiğneyenleri Quilcast'teki herkes için kaldırıyoruz.",
+  "What's wrong with it?": "Sorun ne?"
 }

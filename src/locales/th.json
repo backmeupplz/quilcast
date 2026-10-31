@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "คิวอาร์โค้ด WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "สแกนด้วยวอลเล็ตบนโทรศัพท์ของคุณ หรือเปิดในแอปวอลเล็ตบนอุปกรณ์นี้",
   "The WalletConnect session ended. Connect your wallet again.": "เซสชัน WalletConnect สิ้นสุดแล้ว เชื่อมต่อวอลเล็ตอีกครั้ง",
-  "The wallet didn't connect that network.": "วอลเล็ตไม่ได้เชื่อมต่อเครือข่ายนั้น"
+  "The wallet didn't connect that network.": "วอลเล็ตไม่ได้เชื่อมต่อเครือข่ายนั้น",
+  "Also block @{name}": "บล็อก @{name} ด้วย",
+  "Anything we should know? (optional)": "มีอะไรที่เราควรรู้ไหม (ไม่บังคับ)",
+  "Details": "รายละเอียด",
+  "Harassment or hate": "การคุกคามหรือความเกลียดชัง",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "ส่งรายงานแล้วและบล็อก @{name} แล้ว เราตรวจสอบทุกรายงานภายใน 24 ชั่วโมง",
+  "Report sent. We look at every report within 24 hours.": "ส่งรายงานแล้ว เราตรวจสอบทุกรายงานภายใน 24 ชั่วโมง",
+  "Send report": "ส่งรายงาน",
+  "Sexual content": "เนื้อหาทางเพศ",
+  "Something else": "อย่างอื่น",
+  "Something illegal": "สิ่งผิดกฎหมาย",
+  "Spam": "สแปม",
+  "Too many reports, try again in a few minutes.": "รายงานมากเกินไป ลองอีกครั้งในอีกไม่กี่นาที",
+  "Violence or threats": "ความรุนแรงหรือการข่มขู่",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "เราตรวจสอบทุกรายงานภายใน 24 ชั่วโมง และนำสิ่งที่ละเมิดข้อกำหนดการใช้งานออกสำหรับทุกคนบน Quilcast",
+  "What's wrong with it?": "มีปัญหาอะไร"
 }

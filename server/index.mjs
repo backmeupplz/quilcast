@@ -22,6 +22,7 @@ import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
 import { dropLook, getDesign, getLook, keySigned, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
 import { dropMutes, getMutes, loadMutes, putMutes } from './mutes.mjs'
+import { loadReports, report } from './report.mjs'
 import { dropDrafts, getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
@@ -42,6 +43,7 @@ loadTranslations(DATA)
 // cast translations (server/translate.mjs): free OpenRouter models, set by OPENROUTER_API_KEY
 const TRANSLATOR = { key: process.env.OPENROUTER_API_KEY, url: process.env.OPENROUTER_URL, site: SITE, models: process.env.OPENROUTER_MODELS?.split(',').map((m) => m.trim()).filter(Boolean) }
 loadMutes(DATA)
+loadReports(DATA)
 loadDrafts(DATA)
 loadThemes(DATA)
 const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) => new URL(`fonts/${f}`, import.meta.url).pathname)
@@ -735,6 +737,15 @@ createServer(async (req, res) => {
       const err = r instanceof Error
       if (err && !r.status) console.error('look', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // the ⋯ menu's Report (server/report.mjs)
+    if (path === '/api/report') {
+      if (req.method !== 'POST') return json(405, { error: 'only POST' })
+      if (limited(`report:${ip}`, 20, 600e3)) return json(429, { error: 'Too many reports, try again in a few minutes.' })
+      const r = await report(req, { node: NODE, site: SITE }).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('report', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : "The report couldn't be sent. Try again." } : r)
     }
     // Settings → Delete account: everything this server keeps for the FID goes at once (public/delete.html)
     const account = path.match(/^\/api\/account\/([1-9]\d{0,9})$/)

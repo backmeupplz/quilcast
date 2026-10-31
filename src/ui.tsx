@@ -23,6 +23,8 @@ export const shell = {
   dock: { apps: [] as { id: number; url: string; name: string; icon?: string }[], shown: null as number | null, show: (_id: number) => {} },
   // opens the theme editor (themes.tsx) on a theme, or on the one being worn
   editTheme: (_?: Theme | null) => {},
+  // opens the Report sheet (ReportSheet) for a person, or one of their casts
+  report: (_u: User, _c?: Cast) => {},
   // set by a mini app window's search button (Quorum mode): /apps focuses its directory search, then clears it
   findApp: false,
 }
@@ -747,10 +749,48 @@ export const spans = (): [string, number | undefined][] => [[t('For a day'), 864
 export const untilText = (until?: number) =>
   until ? t('until {date}', { date: new Date(until).toLocaleString(lang, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }) : ''
 
-const report = (u: User, c?: Cast) => {
-  const link = c ? `https://quilcast.com/c/${c.hash}` : `https://quilcast.com${userPath(u)}`
-  const what = c ? `cast ${c.hash} by @${handle(u)} (fid ${u.fid})` : `@${handle(u)} (fid ${u.fid})`
-  return `mailto:support@borodutch.com?subject=${encodeURIComponent(`Quilcast report: ${what}`)}&body=${encodeURIComponent(`${link}\n\nWhat's wrong with it:\n`)}`
+
+const REASONS = (): [string, string][] => [['spam', t('Spam')], ['abuse', t('Harassment or hate')], ['sexual', t('Sexual content')], ['violence', t('Violence or threats')], ['illegal', t('Something illegal')], ['other', t('Something else')]]
+
+/** The ⋯ menu's Report: why, an optional note, and blocking them too. It goes to our server, which sends it to us
+ *  (server/report.mjs), so reporting works without leaving the app or having email set up. */
+export function ReportSheet() {
+  const [q, setQ] = useState<{ u: User; c?: Cast } | null>(null)
+  const [reason, setReason] = useState('')
+  const [text, setText] = useState('')
+  const [block, setBlock] = useState(false)
+  const [busy, setBusy] = useState(false)
+  shell.report = (u, c) => (setReason(''), setText(''), setBlock(false), setQ({ u, c }))
+  if (!q) return null
+  const close = () => (setQ(null), setBusy(false))
+  const send = async (e: Event) => {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      await (await w()).sendReport({ fid: q.u.fid, hash: q.c?.hash, reason, text })
+      if (block && account?.done) await setMute('blocks', q.u.fid, undefined)
+      toast(block ? t('Report sent, and @{name} is blocked. We look at every report within 24 hours.', { name: handle(q.u) }) : t('Report sent. We look at every report within 24 hours.'))
+      close()
+    } catch (err: any) {
+      toast(err.message)
+      setBusy(false)
+    }
+  }
+  return (
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && close()}>
+      <form class="sheet wallet-form report-form" onSubmit={send}>
+        <div class="move-top"><h2>{q.c ? t('Report this cast') : t('Report @{name}', { name: handle(q.u) })}</h2></div>
+        <p class="hint">{t("What's wrong with it?")}</p>
+        <div class="reasons" role="radiogroup">
+          {REASONS().map(([k, label]) => <label class="check"><input type="radio" name="reason" checked={reason === k} onChange={() => setReason(k)} /> {label}</label>)}
+        </div>
+        <textarea rows={3} maxLength={1000} value={text} onInput={(e) => setText(e.currentTarget.value)} placeholder={t('Anything we should know? (optional)')} aria-label={t('Details')} />
+        {account?.done && !blockOf(q.u.fid) && <label class="check"><input type="checkbox" checked={block} onChange={(e) => setBlock(e.currentTarget.checked)} /> {t('Also block @{name}', { name: handle(q.u) })}</label>}
+        <p class="hint">{t('We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.')}</p>
+        <div class="sheet-btns"><button type="button" class="btn ghost" onClick={close}>{t('Cancel')}</button><button class="btn danger" disabled={!reason || busy}>{busy ? t('Sending…') : t('Send report')}</button></div>
+      </form>
+    </div>
+  )
 }
 
 /** Menu items that mute or block someone, or lift it; picking one asks how long, in the same menu. Report emails us
@@ -780,7 +820,7 @@ export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => vo
     <>
       <button role="menuitem" onClick={() => ask('users', m)}><Icon d={P.mute} />{m ? t('Unmute @{name}', { name: handle(u) }) : t('Mute @{name}', { name: handle(u) })}</button>
       <button role="menuitem" class="danger" onClick={() => ask('blocks', b)}><Icon d={P.block} />{b ? t('Unblock @{name}', { name: handle(u) }) : t('Block @{name}', { name: handle(u) })}</button>
-      <a role="menuitem" class="danger" href={report(u, c)} onClick={done}><Icon d={P.flag} />{c ? t('Report this cast') : t('Report @{name}', { name: handle(u) })}</a>
+      <button role="menuitem" class="danger" onClick={() => (done(), shell.report(u, c))}><Icon d={P.flag} />{c ? t('Report this cast') : t('Report @{name}', { name: handle(u) })}</button>
     </>
   )
 }

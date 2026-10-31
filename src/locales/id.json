@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "Kode QR WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Pindai ini dengan dompet di ponselmu, atau buka di aplikasi dompet di perangkat ini.",
   "The WalletConnect session ended. Connect your wallet again.": "Sesi WalletConnect berakhir. Hubungkan dompetmu lagi.",
-  "The wallet didn't connect that network.": "Dompet tidak menghubungkan jaringan itu."
+  "The wallet didn't connect that network.": "Dompet tidak menghubungkan jaringan itu.",
+  "Also block @{name}": "Blokir juga @{name}",
+  "Anything we should know? (optional)": "Ada yang perlu kami ketahui? (opsional)",
+  "Details": "Detail",
+  "Harassment or hate": "Pelecehan atau kebencian",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "Laporan terkirim dan @{name} diblokir. Kami memeriksa setiap laporan dalam 24 jam.",
+  "Report sent. We look at every report within 24 hours.": "Laporan terkirim. Kami memeriksa setiap laporan dalam 24 jam.",
+  "Send report": "Kirim laporan",
+  "Sexual content": "Konten seksual",
+  "Something else": "Hal lain",
+  "Something illegal": "Sesuatu yang ilegal",
+  "Spam": "Spam",
+  "Too many reports, try again in a few minutes.": "Terlalu banyak laporan, coba lagi dalam beberapa menit.",
+  "Violence or threats": "Kekerasan atau ancaman",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "Kami memeriksa setiap laporan dalam 24 jam dan menghapus untuk semua orang di Quilcast apa pun yang melanggar Ketentuan Penggunaan.",
+  "What's wrong with it?": "Apa yang salah dengannya?"
 }

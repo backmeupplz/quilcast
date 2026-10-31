@@ -1019,5 +1019,20 @@
   "WalletConnect QR code": "رمز QR لـ WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "امسح هذا الرمز بالمحفظة على هاتفك، أو افتحه في تطبيق محفظة على هذا الجهاز.",
   "The WalletConnect session ended. Connect your wallet again.": "انتهت جلسة WalletConnect. اربط محفظتك مرة أخرى.",
-  "The wallet didn't connect that network.": "لم تربط المحفظة هذه الشبكة."
+  "The wallet didn't connect that network.": "لم تربط المحفظة هذه الشبكة.",
+  "Also block @{name}": "حظر @{name} أيضًا",
+  "Anything we should know? (optional)": "هل هناك ما يجب أن نعرفه؟ (اختياري)",
+  "Details": "التفاصيل",
+  "Harassment or hate": "تحرش أو كراهية",
+  "Report sent, and @{name} is blocked. We look at every report within 24 hours.": "تم إرسال البلاغ وحظر @{name}. نراجع كل بلاغ خلال 24 ساعة.",
+  "Report sent. We look at every report within 24 hours.": "تم إرسال البلاغ. نراجع كل بلاغ خلال 24 ساعة.",
+  "Send report": "إرسال البلاغ",
+  "Sexual content": "محتوى جنسي",
+  "Something else": "شيء آخر",
+  "Something illegal": "شيء غير قانوني",
+  "Spam": "رسائل مزعجة",
+  "Too many reports, try again in a few minutes.": "بلاغات كثيرة جدًا، حاول مرة أخرى بعد بضع دقائق.",
+  "Violence or threats": "عنف أو تهديدات",
+  "We look at every report within 24 hours and take down what breaks the Terms of Use for everyone on Quilcast.": "نراجع كل بلاغ خلال 24 ساعة ونزيل ما يخالف شروط الاستخدام للجميع على Quilcast.",
+  "What's wrong with it?": "ما المشكلة فيه؟"
 }
