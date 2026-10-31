@@ -66,6 +66,11 @@ const node = createServer(async (q, r) => {
     return r.end(JSON.stringify({ messages: fid7.casts.slice(page * 2, page * 2 + 2), nextPageToken: page === 0 && fid7.casts.length > 2 ? 'p2' : '' }))
   }
   if (u.pathname === '/v1/userDataByFid' && u.searchParams.get('fid') === '7') return r.end(JSON.stringify({ messages: fid7.profile }))
+  // a cast and a profile with characters XML can't hold (a bell, NUL, U+FFFF) in the name, bio and text
+  if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === '07'.repeat(20))
+    return r.end(JSON.stringify({ cast: { hash: '07'.repeat(20), text: 'ring\u0007 the bell\u0000\uffff', timestamp: '2026-01-01T00:00:00Z', embeds: [], author: { fid: 77, username: 'bell', display_name: '\u0007Bell' }, reactions: {}, replies: {} } }))
+  if (u.pathname === '/v2/farcaster/user' && u.searchParams.get('fid') === '77')
+    return r.end(JSON.stringify({ user: { fid: 77, username: 'bell', display_name: 'Bell\u0007', custody_address: address(key), profile: { bio: { text: 'ding\u0001 dong\ufffe' } } } }))
   if (u.pathname === '/v2/farcaster/cast')
     return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: evil, timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: `http://127.0.0.1:${internalPort}/a.png` }], author: { fid: 1, username: 'x', display_name: evil, pfp_url: `http://127.0.0.1:${internalPort}/pfp.png` }, reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } }))
   // the signed-out home page's feed: a cast, a reply (left out) and a farcaster.xyz Space (left out)
@@ -206,6 +211,19 @@ test('casts are mini app embeds with a 3:2 card', async () => {
   assert.equal(e.button.action.url, `https://quilcast.test/c/${hash}`)
   const png = Buffer.from(await (await fetch(e.imageUrl.replace('https://quilcast.test', base))).arrayBuffer())
   assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 800])
+})
+
+test('a control character in a name, bio or cast still gets the full card', async () => {
+  for (const path of [`/og/c/${'07'.repeat(20)}.png`, `/og/c/${'07'.repeat(20)}.3x2.png`, '/og/u/77.png']) {
+    const r = await fetch(base + path)
+    assert.equal(r.headers.get('content-type'), 'image/png', path)
+    const png = Buffer.from(await r.arrayBuffer())
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, path.includes('3x2') ? 800 : 630], path)
+  }
+  // the pages' own tags drop them too
+  const html = await (await fetch(`${base}/c/${'07'.repeat(20)}`)).text()
+  assert.ok(!/[\0-\x08\x0b\x0c\x0e-\x1f\uffff]/.test(html))
+  assert.match(html, /<meta property="og:title" content="Bell \(@bell\) on Quilcast"/)
 })
 
 test('any page opens itself as a mini app', async () => {

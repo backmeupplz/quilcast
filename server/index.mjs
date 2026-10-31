@@ -53,7 +53,10 @@ const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) =
 // a stray rejection somewhere must not take the whole server down
 process.on('unhandledRejection', (e) => console.error('unhandled rejection', e))
 
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+// characters XML can't hold (control codes other than tab and line breaks, lone surrogates, U+FFFE/U+FFFF) are dropped:
+// one in a name or cast would make resvg reject the whole card
+const clean = (s) => String(s).replace(/[\0-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]/gu, '')
+const esc = (s) => clean(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 // --- headers ---
 
@@ -238,7 +241,7 @@ async function card(c) {
   </defs>
   <rect width="1200" height="630" fill="#0d0c11"/><rect width="1200" height="630" fill="url(#g)"/>
   <circle cx="128" cy="120" r="44" fill="#2a2735"/>
-  ${pfp ? `<image href="${pfp}" x="84" y="76" width="88" height="88" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : `<text x="128" y="136" font-family="Inter" font-weight="700" font-size="40" fill="#9893a5" text-anchor="middle">${esc([...name][0]?.toUpperCase() || '?')}</text>`}
+  ${pfp ? `<image href="${pfp}" x="84" y="76" width="88" height="88" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : `<text x="128" y="136" font-family="Inter" font-weight="700" font-size="40" fill="#9893a5" text-anchor="middle">${esc([...clean(name)][0]?.toUpperCase() || '?')}</text>`}
   <text x="196" y="112" font-family="Inter, Noto Emoji" font-weight="700" font-size="34" fill="#edebf3">${esc(wrap(name, 34, (tile ? 680 : 1100) - 196, 1)[0] || '')}</text>
   <text x="196" y="150" font-family="Inter" font-size="26" fill="#9893a5">@${esc(String(a.username || a.fid).slice(0, 40))}</text>
   <text font-family="Inter, Noto Emoji" font-size="${size}" fill="#edebf3">${lines.map((l, i) => `<tspan x="84" y="${232 + i * size * 1.32}">${esc(l) || ' '}</tspan>`).join('')}</text>
@@ -511,7 +514,7 @@ async function profileCard(u) {
   </defs>
   <rect width="1200" height="630" fill="#0d0c11"/><rect width="1200" height="630" fill="url(#g)"/>
   <circle cx="172" cy="172" r="88" fill="#2a2735"/>
-  ${pfp ? `<image href="${pfp}" x="84" y="84" width="176" height="176" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : `<text x="172" y="198" font-family="Inter" font-weight="700" font-size="72" fill="#9893a5" text-anchor="middle">${esc([...name][0]?.toUpperCase() || '?')}</text>`}
+  ${pfp ? `<image href="${pfp}" x="84" y="84" width="176" height="176" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : `<text x="172" y="198" font-family="Inter" font-weight="700" font-size="72" fill="#9893a5" text-anchor="middle">${esc([...clean(name)][0]?.toUpperCase() || '?')}</text>`}
   <text x="300" y="160" font-family="Inter, Noto Emoji" font-weight="700" font-size="52" fill="#edebf3">${esc(wrap(name, 52, 816, 1)[0] || '')}</text>
   <text x="300" y="214" font-family="Inter" font-size="32" fill="#9893a5">@${esc(fname(u) || u.fid)}</text>
   <text font-family="Inter, Noto Emoji" font-size="34" fill="#edebf3">${bio.map((l, i) => `<tspan x="84" y="${336 + i * 45}">${esc(l) || ' '}</tspan>`).join('')}</text>
