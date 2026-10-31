@@ -1,7 +1,7 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { crashed, started } from './crash.ts'
-import { account, accounts, amFollowing, askUser, findUsers, follow, followsMe, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, askUser, findUsers, follow, followsMe, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
@@ -1050,13 +1050,143 @@ function MuteSettings() {
   )
 }
 
+// A deletion keeps going when Settings closes, so what it's doing and how it ended live here: Settings shows them again,
+// and a toast tells the outcome to someone who went elsewhere.
+// A finished one reloads the page (DeleteAccount), so its summary comes back once from sessionStorage.
+const DELETED = 'quilcast:deleted'
+const deletedSummary = () => {
+  try {
+    const s = sessionStorage.getItem(DELETED)
+    sessionStorage.removeItem(DELETED)
+    const v = s && JSON.parse(s)
+    return Array.isArray(v) ? v.map(String) : null
+  } catch {
+    return null
+  }
+}
+type Left = { fid: number; server: Awaited<ReturnType<typeof import('./write.ts').deleteServerData>>; fc: import('./write.ts').Erased }
+const deletion: { fid?: number; busy: boolean; failed: boolean; note: string; gone: string[] | null; left?: Left | null; keys?: boolean } = { busy: false, failed: false, note: '', gone: deletedSummary() }
+const setDeletion = (o: Partial<typeof deletion>) => (Object.assign(deletion, o), dispatchEvent(new Event('deletion')))
+function useDeletion() {
+  const [, force] = useState(0)
+  useEffect(() => {
+    const f = () => force((x) => x + 1)
+    addEventListener('deletion', f)
+    return () => removeEventListener('deletion', f)
+  }, [])
+  return deletion
+}
+
+/** Delete account, under Sign out: our server forgets the account, its casts, likes, recasts and follows go from
+ *  Farcaster and its profile is emptied (write.ts), then it signs out like Sign out does. The Farcaster ID itself stays
+ *  on Optimism, as the confirmation says. Anything that fails stops it before the keys go, so it can be run again; once
+ *  only the keys are left, a new try starts there, and the keys can also just be erased from this device, like Sign
+ *  out anyway. */
+function DeleteAccount() {
+  const d = useDeletion()
+  const [ask, setAsk] = useState(false)
+  const asked = useRef(0)
+  const a = account!
+  const busy = d.busy && d.fid === a.fid
+  const failed = d.failed && d.fid === a.fid
+  const doing = { find: (_d: number, _n: number) => t('Looking up your casts, likes and follows…'), casts: (d: number, n: number) => t('Removing casts: {done} of {total}', { done: d, total: n }), reactions: (d: number, n: number) => t('Removing likes and recasts: {done} of {total}', { done: d, total: n }), follows: (d: number, n: number) => t('Removing follows: {done} of {total}', { done: d, total: n }), profile: (d: number, n: number) => t('Emptying your profile: {done} of {total}', { done: d, total: n }) }
+  const away = () => location.pathname !== '/settings'
+  // the data steps already done for this account (an earlier try failed at the keys), so a new try only does the keys
+  const left = d.left?.fid === a.fid ? d.left : null
+  // `anyway`: the keys couldn't be revoked, and the person chose to erase them from this device all the same
+  const run = async (anyway = false) => {
+    if (d.busy) return
+    // like Sign out, the confirm sits where the button was, so it ignores clicks for a moment
+    if (!ask && !failed) return (asked.current = Date.now()), setAsk(true)
+    if (Date.now() - asked.current < 1000) return
+    setAsk(false)
+    setDeletion({ fid: a.fid, busy: true, failed: false, note: t("Deleting what Quilcast's server keeps…") })
+    // every step is for `a`, though another account may get selected meanwhile (Settings → Add account)
+    let atKeys = false
+    try {
+      const m = await w()
+      const erase = async () => {
+        const fc = await m.eraseFarcaster((s, n, total) => setDeletion({ note: doing[s](n, total) }), undefined, a)
+        if (fc.failed) throw new Error(t("{count} of your casts, likes, follows or profile fields couldn't be removed: {error}", { count: fc.failed, error: t(fc.error || '') }))
+        return fc
+      }
+      let done = left
+      if (!done) {
+        const server = await m.deleteServerData(a)
+        const fc = await erase()
+        setDeletion({ left: (done = { fid: a.fid!, server, fc }) })
+      }
+      const { server, fc } = done
+      if (!anyway) {
+        if (left) {
+          // a new try after a failure: anything cast, liked or followed since goes too
+          const more = await erase()
+          for (const k of ['casts', 'reactions', 'follows', 'profile'] as const) fc[k] += more[k]
+        }
+        // what was saved while the casts went (an upload, a draft) goes too, before the keys that could save more
+        setDeletion({ note: t("Deleting what Quilcast's server keeps…") })
+        const again = await m.deleteServerData(a)
+        server.media += again.media
+        // the first run took the account off every owner list, so these are files recorded since
+        server.kept += again.kept
+        setDeletion({ note: t('Removing the signing keys…') })
+        atKeys = true
+        // the account as it's stored now: a key replaced along the way is the one to revoke
+        await m.removeAppKey(a)
+        await m.revokeSigner(a)
+      }
+      const gone = [
+        t('Casts removed: {n}', { n: fc.casts }), t('Likes and recasts removed: {n}', { n: fc.reactions }), t('Follows removed: {n}', { n: fc.follows }),
+        t('Profile fields emptied: {n}', { n: fc.profile }), t('Photos and videos deleted from our server: {n}', { n: server.media }),
+        ...(server.kept ? [t("{n} photos or videos you uploaded or linked were kept, because another account or a theme uses them or they were on our server before we started recording who uploaded what. Email support@borodutch.com to have them removed.", { n: server.kept })] : []),
+        anyway
+          ? t("Quilcast's server also deleted your profile look, mutes, drafts and kept translations. The signing keys couldn't be revoked, but this device no longer holds the account or its keys.")
+          : t("Quilcast's server also deleted your profile look, mutes, drafts and kept translations, and this device no longer holds the account or its keys."),
+        t('Your Farcaster ID stays registered on Optimism, along with its username and verified addresses. Other Farcaster apps may show copies of public messages for a while.'),
+      ]
+      // the keys are erased, then a reload drops everything the deleted account still had in memory (its feeds, likes
+      // and message listeners); the summary waits for it in this tab's sessionStorage
+      await removeAccount(a)
+      try {
+        sessionStorage.setItem(DELETED, JSON.stringify(gone))
+      } catch {}
+      location.assign('/settings')
+    } catch (e: any) {
+      asked.current = Date.now()
+      // only the keys are left when the data steps are done and the keys failed (not a later data step)
+      const keysLeft = atKeys && deletion.left?.fid === a.fid
+      setDeletion({ busy: false, failed: true, keys: keysLeft, note: `${t(e.message)} ${keysLeft ? t("Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.") : t('Your keys are still here, so you can try again.')}` })
+      if (away()) toast(deletion.note)
+    }
+  }
+  return (
+    <>
+      <div class="setting"><span>{t('Delete account')}</span><button class="btn danger small" disabled={d.busy} onClick={() => run()}>{busy ? t('Deleting…') : ask ? t('Delete everything?') : failed ? t('Try again') : t('Delete')}</button></div>
+      {failed && left && d.keys && <div class="setting"><span /><button class="btn danger small" disabled={d.busy} onClick={() => run(true)}>{t('Erase from this device anyway')}</button></div>}
+      {ask && (
+        <>
+          <p class="hint">{t("This removes your casts, likes, recasts and follows from Farcaster, empties your profile and deletes what Quilcast's server keeps for this account (profile look, mutes, drafts, and the photos and videos only it uploaded there). Then it signs out and erases the account's keys from this device. It can't be undone.")}</p>
+          <p class="hint">{a.wallet ? t('Your Farcaster ID itself stays registered on Optimism, since nobody can delete it, and your wallet still controls it.') : t('Your Farcaster ID itself stays registered on Optimism, since nobody can delete it, and whoever has the recovery phrase still controls it. Export your keys first if you want to keep it.')}</p>
+          <p class="hint">{t("Its username, verified wallet addresses and GitHub name stay with it (the app that verified an address can remove it). Other Farcaster apps and indexers may keep copies of public messages, and files uploaded to Farcaster's own image service stay there.")}</p>
+          <div class="actions"><button class="btn ghost small" onClick={() => setAsk(false)}>{t('Cancel')}</button></div>
+        </>
+      )}
+      {busy && <p class="hint" role="status">{d.note} {t('Keep Quilcast open until this finishes.')}</p>}
+      {failed && <p class="hint warn" role="alert">{d.note}</p>}
+    </>
+  )
+}
+
 function Settings() {
   const [, force] = useState(0)
   const [prof, setProf] = useState<Record<number, string>>({})
   const [orig, setOrig] = useState<Record<number, string>>({})
   const [phrase, setPhrase] = useState(false)
   const [out, setOut] = useState<false | 'ask' | 'busy' | 'stuck'>(false)
-  const [del, setDel] = useState<false | 'ask' | 'busy'>(false)
+  // what Delete account did, shown here once the account is gone, scrolled to (it starts from the Keys section)
+  const { gone, busy: deleting } = useDeletion()
+  const summary = useRef<HTMLElement>(null)
+  useEffect(() => void (gone && summary.current?.scrollIntoView({ block: 'start' })), [gone])
   const asked = useRef(0)
   const [forgetting, setForgetting] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -1117,24 +1247,6 @@ function Settings() {
     await setAccount(null)
     location.assign('/')
   }
-  // Delete account (App Review 5.1.1(v)): our server forgets the account, then it signs out the way Sign out does. The
-  // Farcaster ID and casts live on the network, which nobody can erase for everyone; the hint says so.
-  const deleteAccount = async () => {
-    if (!del) return (asked.current = Date.now()), setDel('ask')
-    if (del === 'busy' || Date.now() - asked.current < 1000) return
-    setDel('busy')
-    try {
-      const m = await w()
-      await m.deleteServerData()
-      await m.removeAppKey(account!).catch(() => {})
-      await m.revokeSigner(account!).catch(() => {})
-    } catch (e: any) {
-      toast(t("Your data couldn't be deleted: {error}", { error: e.message }))
-      return setDel('ask')
-    }
-    await setAccount(null)
-    location.assign('/')
-  }
   // the signing key can't leave the browser (the vault won't give it out, and a new one is a sign-in away), so the
   // file holds what the account itself is: its recovery phrase and custody key
   // like signing out: the confirm sits where Remove was, so it ignores clicks for a moment
@@ -1165,6 +1277,13 @@ function Settings() {
     <>
       <Header title={t('Settings')} />
       <div class="settings">
+        {gone && (
+          <section role="status" ref={summary}>
+            <h2>{t('Account deleted')}</h2>
+            {gone.map((line) => <p class="hint">{line}</p>)}
+            <div class="actions"><button class="btn small" onClick={() => (setDeletion({ gone: null }), location.assign('/'))}>{t('Done')}</button></div>
+          </section>
+        )}
         {accounts.length > 0 && (
           <section>
             <h2>{t('Accounts')}</h2>
@@ -1276,10 +1395,9 @@ function Settings() {
             )}
             {account.phrase && <div class="setting"><span>{t('All keys as a file')}</span><button class="btn ghost small" onClick={exportKeys}>{t('Export')}</button></div>}
             {account.dm && <div class="setting"><span>{t('Key to your messages on farcaster.xyz')}</span><button class="btn ghost small" onClick={() => (setAccount({ ...account!, dm: undefined }), import('./dms.ts').then((m) => m.stop()))}>{t('Forget')}</button></div>}
-            <div class="setting"><span>{account.username ? t('Sign out of @{username}', { username: account.username }) : t('Sign out')}</span><button class="btn danger small" disabled={out === 'busy'} onClick={signOut}>{out === 'busy' ? t('Signing out…') : out === 'stuck' ? t('Sign out anyway') : out ? t('Erase keys?') : t('Sign out')}</button></div>
-            <div class="setting"><span>{t('Delete account')}</span><button class="btn danger small" disabled={del === 'busy'} onClick={deleteAccount}>{del === 'busy' ? t('Deleting…') : del ? t('Delete everything?') : t('Delete')}</button></div>
-            {del && <p class="hint">{t('Quilcast deletes everything its server keeps for this account (profile look, mutes and blocks, drafts, uploaded photos and videos) and erases its keys from this device. Your Farcaster ID and casts live on the public network: delete casts from their ⋯ menu first if you want them gone.')}</p>}
+            <div class="setting"><span>{account.username ? t('Sign out of @{username}', { username: account.username }) : t('Sign out')}</span><button class="btn danger small" disabled={out === 'busy' || deleting} onClick={signOut}>{out === 'busy' ? t('Signing out…') : out === 'stuck' ? t('Sign out anyway') : out ? t('Erase keys?') : t('Sign out')}</button></div>
             {out && <p class="hint">{account.wallet ? t('This removes the account and its signing key from this browser. Your wallet is not affected.') : t('This erases the recovery phrase from this browser. Export your keys first if it\'s your only copy.')}</p>}
+            {account.done && <DeleteAccount key={idOf(account)} />}
           </section>
         )}
         <section>

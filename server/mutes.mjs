@@ -12,12 +12,13 @@ let dir = ''
 export const loadMutes = (dataDir) => mkdir((dir = join(dataDir, 'mutes')), { recursive: true })
 const file = (fid) => join(dir, `${fid}.json`)
 
-export const dropMutes = (fid) => rm(file(fid), { force: true })
-
 export async function getMutes(req, fid, node) {
   await keySigned(req, 'quilcast-mutes-read', fid, '', node)
   return cleanMutes(await readFile(file(fid), 'utf8').then(JSON.parse, () => null))
 }
+
+/** The account's list goes; whether it had one. */
+export const dropMutes = (fid) => rm(file(fid)).then(() => true, () => false)
 
 export async function putMutes(req, fid, node) {
   const body = await readText(req, 300e3)

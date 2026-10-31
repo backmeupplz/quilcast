@@ -13,6 +13,7 @@ import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/p
 import { join } from 'node:path'
 import { cleanDesign, cleanLook, lookImages } from '../src/shared.ts'
 import { fail, fetchJson, gate, imageInfo, keep, parseJson, readText, safeGet } from './net.mjs'
+import { ownThemes } from './upload.mjs'
 
 let dir = ''
 let designs = ''
@@ -28,6 +29,8 @@ export async function putDesign(req) {
   await writeFile(join(designs, `${id}.json`), body, { flag: 'wx' }).catch((e) => {
     if (e.code !== 'EEXIST') throw e
   })
+  // its pictures stay when the account that uploaded them is deleted (upload.mjs)
+  await ownThemes(body)
   return { id }
 }
 export const getDesign = (id) => readFile(join(designs, `${id}.json`), 'utf8').then(JSON.parse, () => null)
@@ -46,6 +49,15 @@ export function listLooks() {
   listed = { at: Date.now(), list }
   list.catch(() => (listed = null))
   return list
+}
+
+/** The account's look goes (back to plain, and off Search's list); whether it had one. */
+export async function dropLook(fid) {
+  const had = !!(await stat(file(fid)).catch(() => null))
+  await rm(file(fid), { force: true })
+  looks.set(fid, Promise.resolve(null))
+  listed = null
+  return had
 }
 
 export const getLook = (fid) => looks.get(fid) || keep(looks, 5000, fid, readFile(file(fid), 'utf8').then(JSON.parse, () => null))
@@ -95,19 +107,11 @@ export async function keySigned(req, what, fid, body, node, stale = () => fail(4
   return { key, ts }
 }
 
-/** Forgets the account's look (a PUT of null, or Delete account). */
-export async function dropLook(fid) {
-  await rm(file(fid), { force: true })
-  looks.set(fid, Promise.resolve(null))
-  listed = null
-  return null
-}
-
 export async function putLook(req, fid, node) {
   const body = await readText(req, 20e3)
   await keySigned(req, 'quilcast-look', fid, body, node, () => fail(401, 'Sign in again to save your look.'))
   const raw = parseJson(body)
-  if (raw === null) return dropLook(fid)
+  if (raw === null) return await dropLook(fid), null
   const look = cleanLook(raw)
   await Promise.all(lookImages(look).map(([u, max]) => checkImage(u, max)))
   if (look.song) {

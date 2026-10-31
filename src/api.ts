@@ -118,6 +118,18 @@ export const setAccount = (a: Account | null) => {
   dispatchEvent(new Event('account'))
   return saved
 }
+/** Remove `a` from this browser, selected or not (an account just deleted while another one got selected); the
+ *  selected one goes as with setAccount(null). */
+export const removeAccount = (a: Account) => {
+  if (account && idOf(a) === idOf(account)) return setAccount(null)
+  const fresh = read<Account[]>('quilcast:accounts', [])
+  if (fresh.length || !legacy) accounts = fresh.map(withSecrets)
+  const gone = accounts.filter((x) => idOf(x) === idOf(a))
+  accounts = accounts.filter((x) => idOf(x) !== idOf(a))
+  const saved = persist(gone.length ? gone : [a])
+  dispatchEvent(new Event('account'))
+  return saved
+}
 // another tab changed the accounts: take its list, and start over if it signed this account out
 addEventListener('storage', (e) => {
   if (e.key !== 'quilcast:accounts') return

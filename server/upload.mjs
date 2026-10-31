@@ -11,7 +11,7 @@ import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
-import { appendFile, mkdir, readdir, readFile, rename, rm, stat, statfs, truncate } from 'node:fs/promises'
+import { appendFile, mkdir, readdir, readFile, rename, rm, stat, statfs, truncate, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { keySigned } from './looks.mjs'
 import { fail, fetchJson, gate, imageInfo } from './net.mjs'
@@ -21,8 +21,6 @@ export const FC = process.env.FC_URL || 'https://client.farcaster.xyz'
 export const FC_HEADERS = { origin: 'https://farcaster.xyz', referer: 'https://farcaster.xyz/', accept: 'application/json' }
 export const MEDIA = process.env.MEDIA_DIR || '/data/media'
 const TMP = join(MEDIA, '..', 'incoming')
-// which files each FID kept on our volume, one name a line, so Delete account can find them (/m/ only serves media names)
-const OWNERS = join(MEDIA, 'owners')
 export const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' }
 const LIMIT = { image: 10e6, video: 100e6 }
 const CHUNK = 8 * 1024 * 1024
@@ -107,6 +105,95 @@ let mediaBytes = 0
 readdir(MEDIA).then(async (names) => {
   for (const n of names) mediaBytes += (await stat(join(MEDIA, n)).catch(() => ({ size: 0 }))).size
 }, () => {})
+// who put each file on the volume: <media>/owners/<fid> lists an account's uploads, one name a line (since 0.36.0), so
+// deleting an account (account.mjs) takes the files only it put here. owners/themes holds Quorum skins' pictures, and
+// owners/legacy every file that was here before 0.40.0, written once at start: nobody can tell whose those are, so they
+// always stay (deleting an account says so). The same file uploaded again just gets another owner.
+const owners = join(MEDIA, 'owners')
+// owner lists change one at a time, the first change after the legacy list is written
+let queue = Promise.resolve()
+const inTurn = (f) => (queue = queue.then(f, f))
+const NAME = /^[0-9a-f]{24}\.[a-z0-9]{3,4}$/
+const legacyFile = join(owners, 'legacy')
+let legacyOk = false
+/** The legacy list, written once (in turn). Until it has been, no file may be taken as anyone's alone: a 0.36–0.39
+ *  record can name the last uploader of someone else's file. A failure is logged and tried again by the next owner
+ *  change; whether it's there now is the answer. */
+async function legacyReady() {
+  if (legacyOk) return true
+  try {
+    await mkdir(owners, { recursive: true })
+    if (!(await stat(legacyFile).catch(() => null))) {
+      // every file, recorded or not: before 0.40.0 an upload replaced a file that was already here and became its only
+      // owner, so a record from then says nothing for sure. A volume that can't be listed is an error, not "empty";
+      // one that isn't there yet has no files.
+      const names = (await readdir(MEDIA).catch((e) => (e.code === 'ENOENT' ? [] : Promise.reject(e)))).filter((n) => NAME.test(n))
+      await writeFile(legacyFile + '.tmp', names.map((n) => n + '\n').join(''))
+      await rename(legacyFile + '.tmp', legacyFile)
+    }
+    return (legacyOk = true)
+  } catch (e) {
+    console.error('owners: legacy list', e)
+    return false
+  }
+}
+export const loadOwners = () => inTurn(legacyReady)
+export const own = (who, name) => inTurn(async () => (await legacyReady(), appendFile(join(owners, String(who)), name + '\n')))
+// files already recorded as the themes' this run
+const themed = new Set()
+/** A shared theme or design (or a Quorum skin's picture) links these files: they belong to the themes too, so deleting
+ *  the account that uploaded one doesn't break it for everyone who wears it. Only files on the volume count. */
+export async function ownThemes(text) {
+  for (const [, name] of String(text).matchAll(/\/m\/([0-9a-f]{24}\.[a-z0-9]{3,4})(?![\w.])/g))
+    if (!themed.has(name) && (await stat(join(MEDIA, name)).catch(() => null))) themed.add(name), await own('themes', name)
+}
+/** Every recorded file and who put it here: name → Set of FIDs (or 'themes', 'legacy'). */
+export async function ownerMap() {
+  // a write that failed (a full disk) doesn't hold up the rest
+  await queue.catch(() => {})
+  return readOwners()
+}
+async function readOwners() {
+  const map = new Map()
+  for (const f of await readdir(owners).catch(() => [])) {
+    const m = f.match(/^([1-9]\d*|themes|legacy)$/)
+    if (!m) continue
+    const who = /^\d/.test(m[1]) ? Number(m[1]) : m[1]
+    // a list removed since readdir (its account just deleted) holds nothing
+    const text = await readFile(join(owners, f), 'utf8').catch((e) => (e.code === 'ENOENT' ? '' : Promise.reject(e)))
+    for (const name of text.split('\n')) name && (map.get(name) || map.set(name, new Set()).get(name)).add(who)
+  }
+  return map
+}
+/** An account being deleted: `gone` (files only it put here) leave the volume, unless someone uploaded one meanwhile
+ *  (`skipped`), and `seen` (all ownerMap listed for it) leave its list; an upload of its own that finished meanwhile
+ *  stays on it. Without the legacy list nothing goes: every one of `gone` is `skipped`, its list stays for a later
+ *  try, and `unready` says so. */
+export function dropMedia(fid, gone, seen) {
+  return inTurn(async () => {
+    if (!(await legacyReady())) return { media: 0, skipped: gone.length, unready: true }
+    const now = await readOwners()
+    let n = 0
+    let skipped = 0
+    for (const name of gone) {
+      const who = now.get(name)
+      if (!NAME.test(name) || who?.size !== 1 || !who.has(fid)) {
+        skipped++
+        continue
+      }
+      const s = await stat(join(MEDIA, name)).catch(() => null)
+      if (!s) continue
+      await rm(join(MEDIA, name), { force: true })
+      mediaBytes = Math.max(0, mediaBytes - s.size)
+      n++
+    }
+    const file = join(owners, String(fid))
+    const rest = (await readFile(file, 'utf8').catch(() => '')).split('\n').filter((l) => l && !seen.has(l))
+    rest.length ? await writeFile(file, rest.map((l) => l + '\n').join('')) : await rm(file, { force: true })
+    return { media: n, skipped }
+  })
+}
+
 const today = () => Math.floor(Date.now() / 86400e3)
 const used = (fid) => (quota.get(fid)?.day === today() ? quota.get(fid).bytes : 0)
 const active = (j) => j.state === 'receiving' || j.state === 'sending' || j.state === 'processing'
@@ -252,11 +339,18 @@ export async function done(req, id, { site, node }) {
       if (used(job.fid) + body.length > DAILY_LOCAL_PER_FID || mediaBytes + body.length > MEDIA_CAP) throw fail(429, 'Upload limit reached for today.')
       const name = `${createHash('sha256').update(body).digest('hex').slice(0, 24)}.${EXT[job.type]}`
       await mkdir(MEDIA, { recursive: true })
-      await rename(job.file, join(MEDIA, name))
-      await mkdir(OWNERS, { recursive: true })
-      await appendFile(join(OWNERS, String(job.fid)), name + '\n')
+      // the same file is already here (someone posted it before): it isn't replaced, only gets one more owner; in turn
+      // with deleting accounts, so one can't take it between the two
+      const had = await inTurn(async () => {
+        // the legacy list is taken before this file lands, or it would count as one from before 0.40.0 (or as someone's alone)
+        await legacyReady()
+        const had = await stat(join(MEDIA, name)).catch(() => null)
+        if (!had) await rename(job.file, join(MEDIA, name))
+        await appendFile(join(owners, String(job.fid)), name + '\n')
+        return had
+      })
       quota.set(job.fid, { day: today(), bytes: used(job.fid) + body.length })
-      mediaBytes += body.length
+      if (!had) mediaBytes += body.length
       job.url = `${site}/m/${name}`
     }
     job.state = 'ready'
@@ -272,12 +366,6 @@ export async function done(req, id, { site, node }) {
       return rm(job.file, { force: true }).catch(() => {})
     })
   return status(id)
-}
-
-/** Delete account forgets `fid`'s upload index but leaves the files: the index can't tell whether someone else uploaded
- *  the same bytes, so deleting them let anyone delete any /m/ file (#309). Media goes by email until #115 lands. */
-export async function dropUploads(fid) {
-  await rm(join(OWNERS, String(fid)), { force: true })
 }
 
 export function status(id) {

@@ -11,7 +11,7 @@ const PAGES = [
   { file: 'privacy', title: 'Privacy Policy', line: 'No accounts, no ads, no analytics. Here is everything that leaves your device.', glyph: '🔒' },
   { file: 'terms', title: 'Terms of Use', line: 'The rules for using Quilcast on the web and in the Quilcast apps.', glyph: '📜' },
   { file: 'safety', title: 'Child Safety Standards', line: 'Zero tolerance for child sexual abuse and exploitation on Quilcast.', glyph: '🛡️' },
-  { file: 'delete', title: 'Delete your data', line: 'Quilcast has no accounts of its own. Here is how to remove what it keeps.', glyph: '🗑️' },
+  { file: 'delete', title: 'Delete your account', line: 'Delete it from Settings: what it removes from Farcaster, our server and your device.', glyph: '🗑️' },
 ]
 
 const chrome = [

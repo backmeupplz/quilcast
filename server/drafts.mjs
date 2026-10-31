@@ -13,13 +13,19 @@ let dir = ''
 export const loadDrafts = (dataDir) => mkdir((dir = join(dataDir, 'drafts')), { recursive: true })
 const ID = /^[0-9a-f-]{36}$/
 
-export const dropDrafts = (fid) => rm(join(dir, String(fid)), { recursive: true, force: true })
-
 export async function getDrafts(req, fid, node) {
   await keySigned(req, 'quilcast-drafts-read', fid, '', node)
   const ids = await readdir(join(dir, String(fid))).catch(() => [])
   const all = await Promise.all(ids.filter((id) => ID.test(id)).map(async (id) => ({ id, box: await readFile(join(dir, String(fid), id), 'utf8').catch(() => '') })))
   return all.filter((d) => d.box)
+}
+
+/** Every draft of the account goes; how many there were. */
+export async function dropDrafts(fid) {
+  const at = join(dir, String(fid))
+  const n = (await readdir(at).catch(() => [])).filter((id) => ID.test(id)).length
+  await rm(at, { recursive: true, force: true })
+  return n
 }
 
 export async function putDraft(req, fid, node) {

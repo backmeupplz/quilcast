@@ -4,7 +4,7 @@ import { account, accounts, askUser, byName, forget, get, idOf, LINK_RE, myUser,
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
-import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, rawEd, reactionBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
+import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { MAX_EMBEDS } from './shared.ts'
 
@@ -93,9 +93,11 @@ async function custodyTx(a: Account, to: string, data: (c: Custody) => Promise<s
   return sendTx(settings.rpc, key, to, await data(keyCustody(key)))
 }
 
-const onChain = async (fid: number, key: Uint8Array) =>
-  ((await get('/v1/onChainSignersByFid', { fid }, true).catch(() => ({ events: [] }))).events as { signerEventBody?: { key?: string } }[])
+// whether the node lists `key` among the account's on-chain keys (throws when it can't be asked)
+const onChainNow = async (fid: number, key: Uint8Array) =>
+  ((await get('/v1/onChainSignersByFid', { fid }, true)).events as { signerEventBody?: { key?: string } }[])
     .some((e) => e.signerEventBody?.key?.toLowerCase() === '0x' + hex(key))
+const onChain = (fid: number, key: Uint8Array) => onChainNow(fid, key).catch(() => false)
 
 /** The key mini app webhook events are signed with. Apps check it against Farcaster's KeyRegistry, which the
  *  Hypersnap signer isn't in, so this one is added on chain (KeyGateway.add from the custody), once per browser. */
@@ -129,18 +131,32 @@ export async function signEvent(payload: object, onWait?: (what: string) => void
 }
 
 /** Sign out, step one: the on-chain app key is removed (KeyRegistry.remove from the custody), and the
- *  notification inbox on our server is dropped. */
+ *  notification inbox on our server is dropped. Once the key is off chain the account forgets it, so trying again
+ *  (the signer's revoke failed after this) doesn't send a remove that can only revert; one the node already doesn't
+ *  list is forgotten without a transaction. */
 export async function removeAppKey(a: Account) {
+  a = fresh(a)
   if (a.inbox) await fetch('/api/notify/drop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ inbox: a.inbox }) }).catch(() => {})
   const pub = a.appPub ? unhex(a.appPub) : a.appKey && ed25519.getPublicKey(unhex(a.appKey))
-  if (pub && a.fid) await custodyTx(a, KEY_REGISTRY, async () => keyRegistryRemove(pub))
+  if (!pub || !a.fid) return
+  // a node that can't be asked: send the remove, as before
+  if (await onChainNow(a.fid, pub).catch(() => true)) await custodyTx(a, KEY_REGISTRY, async () => keyRegistryRemove(pub))
+  await updateAccount({ ...fresh(a), appPub: undefined, appKey: undefined })
+  dropEd(hex(pub)).catch(() => {})
 }
 
-/** Sign out: this browser's signer revokes itself, so a copy of the key stops working too. */
+/** Sign out: this browser's signer revokes itself, so a copy of the key stops working too. It uses the key the account
+ *  holds now: one replaced while deleting the account is the one that's still valid. */
 export async function revokeSigner(a: Account) {
+  a = fresh(a)
   // a key this browser doesn't have can't be used by anyone, so there's nothing to revoke
   const key = a.fid && (await signerOf(a).catch(() => undefined))
-  if (key) await submit(await keyRemoveSelf(a.fid!, key, Math.floor(Date.now() / 1000)))
+  if (!key) return
+  await submit(await keyRemoveSelf(a.fid!, key, Math.floor(Date.now() / 1000))).catch(async (e) => {
+    // revoked already (an earlier try landed, its answer didn't): the node no longer lists the key
+    if (/invalid signer|unknown signer/i.test(e.message) && !(await signerListed(a))) return
+    throw e
+  })
 }
 
 // the stored copy of an account, which ensureSigner may have just updated
@@ -202,11 +218,11 @@ export type Progress = (stage: 'uploading' | 'processing', fraction?: number, se
 
 /** Headers that prove this browser's key signed "<what>:<fid>:<ts>:<body>" for the account just now; our server checks the
  *  key against the node (server/looks.mjs keySigned). */
-async function keySigned(what: string, body = '') {
-  await ensureSigner()
-  const key = await signerOf(account!).catch(() => replaceSigner().then(() => signerOf(account!)))
+async function keySigned(what: string, body = '', as = account!) {
+  await ensureSigner(fresh(as))
+  const key = await signerOf(fresh(as)).catch(() => replaceSigner(fresh(as)).then(() => signerOf(fresh(as))))
   const ts = Date.now()
-  const sig = await key.sign(new TextEncoder().encode(`${what}:${account!.fid}:${ts}:${body}`))
+  const sig = await key.sign(new TextEncoder().encode(`${what}:${as.fid}:${ts}:${body}`))
   return { 'x-key': '0x' + hex(key.pub), 'x-ts': String(ts), 'x-sig': hex(sig) }
 }
 
@@ -387,12 +403,128 @@ export const setUserData = (type: number, value: string) => send(MT.USER_DATA_AD
 
 /** A request to our server signed with the account's Farcaster key. A key ensureSigner just added takes the node a
  *  few seconds to list; one the node doesn't list at all is replaced (`tries` > 1). */
-async function keyFetch(url: string, what: string, method: string, body = '', tries = 3): Promise<any> {
-  const r = await fetch(url, { method, headers: { ...(method !== 'GET' && { 'content-type': 'application/json' }), ...(await keySigned(what, body)) }, body: method === 'GET' ? undefined : body })
+async function keyFetch(url: string, what: string, method: string, body = '', tries = 3, as = account!): Promise<any> {
+  const r = await fetch(url, { method, headers: { ...(method !== 'GET' && { 'content-type': 'application/json' }), ...(await keySigned(what, body, as)) }, body: method === 'GET' ? undefined : body })
   const j = await r.json().catch(() => null)
-  if (r.status === 403 && tries > 1) return ((await signerListed()) ? sleep(3000) : replaceSigner()).then(() => keyFetch(url, what, method, body, tries - 1))
+  if (r.status === 403 && tries > 1) return ((await signerListed(fresh(as))) ? sleep(3000) : replaceSigner(fresh(as))).then(() => keyFetch(url, what, method, body, tries - 1, as))
   if (!r.ok) throw new Error(j?.error || t('Saving failed ({status})', { status: r.status }))
   return j
+}
+
+// --- deleting the account (Settings → Delete account) ---
+
+/** Our server forgets the account (server/account.mjs): look, mutes, drafts, uploads. It works in the background there,
+ *  reading the account's casts from the node, so this asks again until it's done. Run it before the casts go. It signs
+ *  as `a` (the account being deleted), whichever account is selected meanwhile. */
+export async function deleteServerData(a = account!): Promise<{ media: number; kept: number; look: boolean; mutes: boolean; drafts: number; translations: number }> {
+  // one id for this deletion: asking again (a reply lost on the way) gets the same answer, a later deletion a new one
+  const run = crypto.randomUUID()
+  for (let i = 0; i < 60; i++) {
+    const r = await patient(() => keyFetch(`/api/account/${a.fid}?run=${run}`, 'quilcast-delete', 'DELETE', '', 3, a))
+    if (r?.state === 'done') return r
+  }
+  throw new Error("Quilcast's server is still deleting your data. Try again in a few minutes.")
+}
+
+export type EraseStep = 'casts' | 'reactions' | 'follows' | 'profile'
+export type Erased = Record<EraseStep, number> & { failed: number; error?: string }
+// profile fields the node takes empty, by the names it lists them under (GitHub can't be emptied; the username stays
+// with the ID, whose fname is still registered to it)
+const CLEAR: Record<string, number> = {
+  USER_DATA_TYPE_PFP: 1, USER_DATA_TYPE_DISPLAY: 2, USER_DATA_TYPE_BIO: 3, USER_DATA_TYPE_URL: 5, USER_DATA_TYPE_LOCATION: 7,
+  USER_DATA_TYPE_TWITTER: 8, USER_DATA_TYPE_BANNER: 10, USER_DATA_PRIMARY_ADDRESS_ETHEREUM: 11, USER_DATA_PRIMARY_ADDRESS_SOLANA: 12,
+}
+// a busy node, a rate limit or a dropped connection is worth waiting out; a cast removed already is done (whatever the
+// node says, eraseFarcaster checks its lists again at the end)
+const passing = (e: any) => /rate.?limit|too many|\b(429|50[0-4])\b|timed? ?out|unavailable|busy|network|fetch|load failed|try again/i.test(String(e?.message))
+const already = (e: any) => /conflict|duplicate|already/i.test(String(e?.message))
+// about a minute and a half of waiting, at most
+async function patient<T>(f: () => Promise<T>, tries = 8): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await f()
+    } catch (e) {
+      if (i >= tries - 1 || !passing(e)) throw e
+      await sleep(Math.min(30e3, 1000 * 2 ** i))
+    }
+  }
+}
+/** Every message on a node list (`/v1/castsByFid` and the like), all pages. */
+async function everything(path: string, q: Record<string, string | number>) {
+  const all: any[] = []
+  for (let token: string | undefined, i = 0; ; i++) {
+    if (i >= 1000) throw new Error('This account has too many casts to delete here. Write to support@borodutch.com.')
+    const r = await patient(() => get(path, { ...q, pageSize: 1000, pageToken: token }, true))
+    all.push(...(r.messages || []))
+    if (!r.nextPageToken || !r.messages?.length) return all
+    token = r.nextPageToken
+  }
+}
+/** What the node lists for the account: its casts, likes, recasts, follows and the profile fields that can be emptied. */
+async function listed(fid: number) {
+  const [casts, likes, recasts, follows, profile] = await Promise.all([
+    everything('/v1/castsByFid', { fid }),
+    everything('/v1/reactionsByFid', { fid, reaction_type: 'Like' }),
+    everything('/v1/reactionsByFid', { fid, reaction_type: 'Recast' }),
+    everything('/v1/linksByFid', { fid, link_type: 'follow' }),
+    patient(() => get('/v1/userDataByFid', { fid }, true)).then((r) => r.messages || []),
+  ])
+  return {
+    casts: casts.map((m) => m.hash as string),
+    reactions: [...likes, ...recasts].filter((m) => m.data?.reactionBody),
+    follows: follows.filter((m) => m.data?.linkBody?.targetFid),
+    profile: profile.filter((m: any) => m.data?.userDataBody?.value && CLEAR[m.data.userDataBody.type]),
+  }
+}
+
+/** The account's casts, likes, recasts and follows go from Farcaster, and its profile is emptied: a remove message for
+ *  each (an empty value for a profile field), four at a time, waiting out a busy node. Then the node's lists are read
+ *  again, and whatever they still hold is `failed`; running it again only goes after that. */
+export async function eraseFarcaster(progress: (step: EraseStep | 'find', done: number, total: number) => void, settle = 3000, me = account!): Promise<Erased> {
+  const fid = me.fid!
+  await ensureSigner(fresh(me))
+  progress('find', 0, 0)
+  const { casts, reactions, follows, profile } = await listed(fid)
+  // several at once may all find the key gone: one replaces it (a wallet is asked once), the others wait for it
+  let replacing: Promise<void> | null = null
+  // a like, follow or profile field is whatever its newest message says, so each remove is newer than what it removes
+  const remove = (type: number, body: Uint8Array, after = 0) => {
+    const go = async () => submit(await envelope(type, fid, body, await signerOf(fresh(me)), after))
+    return patient(() => go().catch(async (e) => {
+      if (!/invalid signer|last_used_at expired/.test(e.message)) throw e
+      await (replacing ||= replaceSigner(fresh(me)).finally(() => (replacing = null)))
+      return go()
+    }))
+  }
+  const out: Erased = { casts: 0, reactions: 0, follows: 0, profile: 0, failed: 0 }
+  const run = async <T,>(step: EraseStep, items: T[], f: (x: T) => Promise<unknown>) => {
+    let done = 0
+    progress(step, 0, items.length)
+    const next = items.values()
+    await Promise.all(Array.from({ length: Math.min(4, items.length) }, async () => {
+      for (const x of next) {
+        await f(x).then(() => out[step]++, (e) => (step === 'casts' && already(e) ? out[step]++ : (out.error ||= e.message)))
+        progress(step, ++done, items.length)
+      }
+    }))
+  }
+  await run('casts', casts, (h) => remove(MT.CAST_REMOVE, castRemoveBody(h)))
+  await run('reactions', reactions, (m) => {
+    const b = m.data.reactionBody
+    const type = b.type === 'REACTION_TYPE_RECAST' ? 2 : 1
+    return remove(MT.REACTION_REMOVE, b.targetCastId ? reactionBody(type, b.targetCastId.fid, b.targetCastId.hash) : reactionUrlBody(type, b.targetUrl), m.data.timestamp)
+  })
+  await run('follows', follows, (m) => remove(MT.LINK_REMOVE, followBody(m.data.linkBody.targetFid), m.data.timestamp))
+  await run('profile', profile, (m: any) => remove(MT.USER_DATA_ADD, userDataBody(CLEAR[m.data.userDataBody.type], ''), m.data.timestamp))
+  // the node takes a message before it lands, so what's still listed is asked again a few times before it counts
+  for (let i = 0; i < 4; i++) {
+    if (i) await sleep(settle)
+    const left = await listed(fid)
+    out.failed = left.casts.length + left.reactions.length + left.follows.length + left.profile.length
+    if (!out.failed) return delete out.error, out
+  }
+  out.error ||= t('The Farcaster node still lists them.')
+  return out
 }
 
 /** Save the account's profile look on our server (null goes back to plain), signed with its Farcaster key. */
@@ -409,8 +541,6 @@ export async function sendReport(r: { fid: number; hash?: string; reason: string
   const res = await fetch('/api/report', { method: 'POST', body, headers: { 'content-type': 'application/json', ...who } })
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || "The report couldn't be sent. Try again.")
 }
-/** Deletes everything our server keeps for the account (Settings → Delete account, server/index.mjs). */
-export const deleteServerData = () => keyFetch(`/api/account/${account!.fid}`, 'quilcast-delete', 'DELETE')
 export const saveMutes = (m: object) => keyFetch(`/api/mutes/${account!.fid}`, 'quilcast-mutes', 'PUT', JSON.stringify(m))
 
 // --- drafts ---

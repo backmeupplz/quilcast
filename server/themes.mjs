@@ -13,7 +13,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanTheme, DEFAULTS } from '../src/shared.ts'
 import { fail, gate, keep, parseJson, readText } from './net.mjs'
-import { looksLike, MEDIA } from './upload.mjs'
+import { looksLike, MEDIA, ownThemes } from './upload.mjs'
 
 export const QUORUM = process.env.QUORUM_URL || 'https://api.quorummessenger.com'
 
@@ -28,6 +28,8 @@ export async function putTheme(req) {
   await writeFile(join(dir, `${id}.json`), body, { flag: 'wx' }).catch((e) => {
     if (e.code !== 'EEXIST') throw e
   })
+  // its pictures stay when the account that uploaded them is deleted (upload.mjs)
+  await ownThemes(body)
   return { id }
 }
 export const getTheme = (id) => readFile(join(dir, `${id}.json`), 'utf8').then(JSON.parse, () => null)
@@ -96,6 +98,8 @@ async function store(uri) {
   await writeFile(join(MEDIA, name), b, { flag: 'wx' }).catch((e) => {
     if (e.code !== 'EEXIST') throw e
   })
+  // the themes' own too (once per run), so deleting an account that uploaded the same picture doesn't take it (account.mjs)
+  await ownThemes(`/m/${name}`)
   return `https://quilcast.com/m/${name}`
 }
 

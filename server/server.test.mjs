@@ -4,7 +4,8 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -23,6 +24,9 @@ const key = secp256k1.utils.randomSecretKey()
 // fid 7's one Farcaster key, for profile looks
 const signer = ed25519.utils.randomSecretKey()
 const signerHex = '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex')
+// fid 9's, for a second account
+const signer9 = ed25519.utils.randomSecretKey()
+const fid7 = { casts: [], profile: [] }
 const orAsked = []
 const hookHits = []
 const node = createServer(async (q, r) => {
@@ -54,7 +58,14 @@ const node = createServer(async (q, r) => {
   if (u.pathname === '/skins') return r.end(JSON.stringify({ has_more: true, total: 2, entries: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5, author_address: 'Qmx', manifest: 'big' }, { id: '../etc', name: 'bad' }] }))
   if (u.pathname === `/skins/${SKIN_ID}`) return r.end(JSON.stringify({ id: SKIN_ID, manifest: JSON.stringify(SKIN) }))
   if (u.pathname === '/report-hook') return hookHits.push({ path: u.pathname + u.search, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
-  if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : [] }))
+  if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : u.searchParams.get('fid') === '9' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer9)).toString('hex') }] : [] }))
+  // fid 7's casts (two pages) and profile, as the account-deletion test sets them
+  if (u.pathname === '/v1/castsByFid' && u.searchParams.get('fid') === '7') {
+    if (!fid7.casts) return (r.statusCode = 500), r.end('{}')
+    const page = u.searchParams.get('pageToken') === 'p2' ? 1 : 0
+    return r.end(JSON.stringify({ messages: fid7.casts.slice(page * 2, page * 2 + 2), nextPageToken: page === 0 && fid7.casts.length > 2 ? 'p2' : '' }))
+  }
+  if (u.pathname === '/v1/userDataByFid' && u.searchParams.get('fid') === '7') return r.end(JSON.stringify({ messages: fid7.profile }))
   if (u.pathname === '/v2/farcaster/cast')
     return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: evil, timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: `http://127.0.0.1:${internalPort}/a.png` }], author: { fid: 1, username: 'x', display_name: evil, pfp_url: `http://127.0.0.1:${internalPort}/pfp.png` }, reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } }))
   // the signed-out home page's feed: a cast, a reply (left out) and a farcaster.xyz Space (left out)
@@ -85,6 +96,15 @@ const SKIN = {
 const nodePort = await listen(node)
 const media = await mkdtemp(join(tmpdir(), 'qc-media-'))
 await writeFile(join(media, '0123456789abcdef01234567.png'), Buffer.from('0123456789'))
+// a real picture someone uploaded before uploads were recorded (0.36.0), named after its content as uploads are
+const OLD_PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 1]), Buffer.alloc(40, 99)])
+const OLD_NAME = `${createHash('sha256').update(OLD_PNG).digest('hex').slice(0, 24)}.png`
+await writeFile(join(media, OLD_NAME), OLD_PNG)
+// and one 0.36–0.39 recorded as fid 7's alone (a re-upload then replaced someone else's file and kept only its uploader)
+const PRE_NAME = `${'6'.repeat(24)}.png`
+await writeFile(join(media, PRE_NAME), OLD_PNG)
+await mkdir(join(media, 'owners'))
+await writeFile(join(media, 'owners', '7'), PRE_NAME + '\n')
 const port = 40000 + Math.floor(Math.random() * 20000)
 const base = `http://127.0.0.1:${port}`
 let srv
@@ -289,37 +309,6 @@ test('reports: kept and sent to the webhook, anonymous or signed by the reporter
   assert.deepEqual(hookHits.map((h) => h.path), ['/report-hook?to=mods', '/report-hook?to=mods'])
   assert.match(hookHits[0].body.text, /Harassment or hate[\s\S]*\/c\/0xabab[\s\S]*From: signed out[\s\S]*mean/)
   assert.match(hookHits[1].body.text, /Spam[\s\S]*Account: https:\/\/quilcast\.test\/u\/9[\s\S]*From: https:\/\/quilcast\.test\/u\/7/)
-})
-
-test('Delete account removes the look, mutes, drafts and uploads kept for the FID, only with its key', async () => {
-  const signed = (what, body = '', key = signer) => {
-    const ts = Date.now()
-    return { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:7:${ts}:${body}`), key)).toString('hex') }
-  }
-  const put = (kind, what, body) => fetch(`${base}/api/${kind}/7`, { method: 'PUT', body, headers: signed(what, body) })
-  assert.equal((await put('mutes', 'quilcast-mutes', JSON.stringify({ words: [], users: [{ v: 3 }], blocks: [] }))).status, 200)
-  assert.equal((await put('drafts', 'quilcast-drafts', JSON.stringify({ id: crypto.randomUUID(), box: 'aXY=.c2VhbGVk' }))).status, 200)
-  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 3]), Buffer.alloc(40)])
-  const { id } = await (await fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(png.length), 'x-fid': '7', ...signed('quilcast-upload') } })).json()
-  await fetch(`${base}/api/upload/${id}?offset=0`, { method: 'PUT', body: png })
-  let st = await (await fetch(`${base}/api/upload/${id}/done`, { method: 'POST' })).json()
-  for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
-  const media = st.url.replace('https://quilcast.test', base)
-  assert.equal((await fetch(media)).status, 200)
-  const del = (headers) => fetch(`${base}/api/account/7`, { method: 'DELETE', headers })
-  assert.equal((await del({})).status, 401)
-  assert.equal((await del(signed('quilcast-mutes'))).status, 401)
-  assert.equal((await del(signed('quilcast-delete', '', ed25519.utils.randomSecretKey()))).status, 403)
-  assert.equal((await fetch(media)).status, 200)
-  const r = await del(signed('quilcast-delete'))
-  assert.equal(r.status, 200)
-  assert.deepEqual(await r.json(), { deleted: 7 })
-  // media stays until uploads have per-file owners (#309)
-  assert.equal((await fetch(media)).status, 200)
-  assert.deepEqual(await (await fetch(`${base}/api/mutes/7`, { headers: signed('quilcast-mutes-read') })).json(), { words: [], users: [], blocks: [] })
-  assert.deepEqual(await (await fetch(`${base}/api/drafts/7`, { headers: signed('quilcast-drafts-read') })).json(), [])
-  assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
-  assert.equal((await fetch(`${base}/api/account/7`)).status, 405)
 })
 
 test('the DM relay carries the token to the direct-cast endpoints and nowhere else', async () => {
@@ -538,6 +527,83 @@ test('translations: asked once per cast and language, from the node\'s words, fr
   assert.deepEqual(await (await tr({ hash, to: 'en' })).json(), { from: 'ja', text: 'Hello from Japan' })
   assert.equal(orAsked.length, 1)
   assert.deepEqual(await (await tr({ to: 'en', hashes: [hash, 'cd'.repeat(20)] }, '/api/translations')).json(), { [hash]: { from: 'ja', text: 'Hello from Japan' } })
+})
+
+test('deleting an account: only with its own key, and only files it alone put here go', async () => {
+  const sign = (what, fid, key, ts = Date.now(), body = '') => ({ 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex') })
+  const del = (fid, { key = signer, what = 'quilcast-delete', ts, run = '' } = {}) => fetch(`${base}/api/account/${fid}?run=${run}`, { method: 'DELETE', headers: sign(what, fid, key, ts) })
+  // a different PNG each time: same header, its own trailing bytes
+  let pngs = 0
+  const png = () => Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 1]), Buffer.alloc(40, ++pngs + 100)])
+  let ts = Date.now() + 1000
+  const upload = async (fid, key, body) => {
+    const r = await fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(body.length), 'x-fid': String(fid), ...sign('quilcast-upload', fid, key, ts++) } })
+    assert.equal(r.status, 200)
+    const { id } = await r.json()
+    assert.equal((await fetch(`${base}/api/upload/${id}?offset=0`, { method: 'PUT', body })).status, 200)
+    let st = await (await fetch(`${base}/api/upload/${id}/done`, { method: 'POST' })).json()
+    for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
+    assert.equal(st.state, 'ready')
+    return st.url.split('/m/')[1]
+  }
+  // fid 7's own upload (as well as the one from the test above), a file both uploaded, and fid 9's
+  const mine = await upload(7, signer, png())
+  const same = png()
+  const both = await upload(7, signer, same)
+  assert.equal(await upload(9, signer9, same), both)
+  const theirs = await upload(9, signer9, png())
+  // a file from before uploads were recorded: uploading its bytes again doesn't replace it or make it fid 7's alone
+  const { mtimeMs } = await stat(join(media, OLD_NAME))
+  assert.equal(await upload(7, signer, OLD_PNG), OLD_NAME)
+  assert.equal((await stat(join(media, OLD_NAME))).mtimeMs, mtimeMs)
+  // a picture fid 7 alone uploaded, worn in a theme it shared: it stays for everyone who wears the theme
+  const themePic = await upload(7, signer, png())
+  assert.equal((await fetch(base + '/api/theme', { method: 'POST', body: JSON.stringify({ base: 'dark', bgImg: `https://quilcast.com/m/${themePic}` }) })).status, 200)
+  // and one nobody recorded at all
+  const stray = `${'5'.repeat(24)}.png`
+  await writeFile(join(media, stray), png())
+  const cast = (hash, urls, text = '') => ({ hash, data: { fid: 7, castAddBody: { text, embeds: urls.map((n) => ({ url: `https://quilcast.test/m/${n}` })) } } })
+  const hash = '0x' + '7a'.repeat(20)
+  fid7.casts = [cast(hash, [theirs, stray]), cast('0x' + '7b'.repeat(20), [both]), cast('0x' + '7c'.repeat(20), [], `see https://quilcast.test/m/${mine}`)]
+  fid7.profile = [{ data: { userDataBody: { type: 'USER_DATA_TYPE_PFP', value: `https://quilcast.test/m/${OLD_NAME}` } } }]
+  // the rest of what's kept for fid 7: its look, mutes, a draft and a translation of one of its casts
+  const body = JSON.stringify({ bg: '#123456' })
+  assert.equal((await fetch(`${base}/api/look/7`, { method: 'PUT', body, headers: sign('quilcast-look', 7, signer, Date.now(), body) })).status, 200)
+  const mutes = JSON.stringify({ words: [{ v: 'gm' }], users: [], blocks: [] })
+  assert.equal((await fetch(`${base}/api/mutes/7`, { method: 'PUT', body: mutes, headers: sign('quilcast-mutes', 7, signer, Date.now(), mutes) })).status, 200)
+  const draft = JSON.stringify({ id: crypto.randomUUID(), box: 'aXY=.c2VhbGVk' })
+  assert.equal((await fetch(`${base}/api/drafts/7`, { method: 'PUT', body: draft, headers: sign('quilcast-drafts', 7, signer, Date.now(), draft) })).status, 200)
+  await writeFile(join(media, 'translations', 'de', `${'7a'.repeat(20)}.json`), '{"from":"en","text":"x"}')
+  await writeFile(join(media, 'translations', 'de', `${'9a'.repeat(20)}.json`), '{"from":"en","text":"y"}')
+
+  // someone else's key, fid 9's own key for fid 7, an old or missing signature, another kind of signature: nothing happens
+  assert.equal((await del(7, { key: ed25519.utils.randomSecretKey() })).status, 403)
+  assert.equal((await del(7, { key: signer9 })).status, 403)
+  assert.equal((await del(8)).status, 403)
+  assert.equal((await del(7, { ts: Date.now() - 600e3 })).status, 401)
+  assert.equal((await del(7, { what: 'quilcast-mutes' })).status, 401)
+  assert.equal((await fetch(`${base}/api/account/7`, { method: 'DELETE' })).status, 401)
+  assert.equal((await fetch(`${base}/api/account/7`)).status, 405)
+  assert.ok(existsSync(join(media, mine)) && existsSync(join(media, 'mutes', '7.json')))
+
+  const r = await del(7, { run: 'one' })
+  assert.equal(r.status, 200)
+  const out = await r.json()
+  // its two uploads go; the one it shares with fid 9, the theme's picture, the old one and the one recorded before the
+  // legacy list stay (counted as maybe its own), as do fid 9's it linked and the stray
+  assert.deepEqual(out, { state: 'done', media: 2, kept: 4, look: true, mutes: true, drafts: 1, translations: 1 })
+  assert.ok(!existsSync(join(media, mine)))
+  for (const n of [both, theirs, OLD_NAME, PRE_NAME, themePic, stray, '0123456789abcdef01234567.png']) assert.ok(existsSync(join(media, n)), n)
+  assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
+  assert.ok(!existsSync(join(media, 'mutes', '7.json')) && !existsSync(join(media, 'drafts', '7')) && !existsSync(join(media, 'owners', '7')))
+  assert.ok(!existsSync(join(media, 'translations', 'de', `${'7a'.repeat(20)}.json`)) && existsSync(join(media, 'translations', 'de', `${'9a'.repeat(20)}.json`)))
+  // asked again (a lost reply), the same answer; a new deletion finds nothing more: the shared file is fid 9's alone now
+  assert.deepEqual(await (await del(7, { run: 'one' })).json(), out)
+  assert.deepEqual(await (await del(7, { run: 'two' })).json(), { state: 'done', media: 0, kept: 1, look: false, mutes: false, drafts: 0, translations: 0 })
+  assert.ok(existsSync(join(media, both)))
+  // a node that can't list the casts stops it before anything goes
+  fid7.casts = null
+  assert.equal((await del(7, { run: 'three' })).status, 502)
 })
 
 test('standalone pages inline their stylesheet, allowed by its hash, and ask Cloudflare not to rewrite them', async () => {

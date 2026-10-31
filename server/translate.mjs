@@ -6,7 +6,7 @@
 // The cast's words come from the node, never from the browser, so a translation can only ever be of the real cast.
 // Free means free: only ":free" models, and every request caps the price at zero, so OpenRouter refuses rather
 // than bills.
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fail, gate, keep } from './net.mjs'
 
@@ -29,6 +29,16 @@ export const loadTranslations = async (data) => {
 const kept = new Map()
 const file = (to, hash) => join(dir, to, `${hash}.json`)
 const get = (to, hash) => kept.get(`${to}:${hash}`) || keep(kept, 20000, `${to}:${hash}`, readFile(file(to, hash), 'utf8').then(JSON.parse, () => null))
+
+/** The kept translations of these casts go (an account being deleted); how many files that was. */
+export async function dropTranslations(hashes) {
+  const want = new Set(hashes.map((h) => `${norm(String(h))}.json`))
+  let n = 0
+  for (const to of Object.keys(TO))
+    for (const f of await readdir(join(dir, to)).catch(() => []))
+      if (want.has(f)) await rm(join(dir, to, f), { force: true }), kept.delete(`${to}:${f.slice(0, -5)}`), n++
+  return n
+}
 
 export async function lookup(body) {
   const { to, hashes } = body || {}

@@ -3,38 +3,47 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Delete your data · Quilcast</title>
-    <meta name="description" content="Quilcast has no accounts of its own. How to remove what it keeps on your device and on its server." />
+    <title>Delete your account · Quilcast</title>
+    <meta name="description" content="How to delete your account in Quilcast, and what that removes from Farcaster, from our server and from your device." />
     <link rel="canonical" href="https://quilcast.com/delete" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Quilcast" />
     <meta property="og:url" content="https://quilcast.com/delete" />
-    <meta property="og:title" content="Delete your data · Quilcast" />
-    <meta property="og:description" content="Quilcast has no accounts of its own. How to remove what it keeps on your device and on its server." />
+    <meta property="og:title" content="Delete your account · Quilcast" />
+    <meta property="og:description" content="How to delete your account in Quilcast, and what that removes from Farcaster, from our server and from your device." />
     <meta property="og:image" content="https://quilcast.com/og-delete.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Delete your Quilcast data" />
+    <meta property="og:image:alt" content="Delete your Quilcast account" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Delete your data · Quilcast" />
-    <meta name="twitter:description" content="Quilcast has no accounts of its own. How to remove what it keeps on your device and on its server." />
+    <meta name="twitter:title" content="Delete your account · Quilcast" />
+    <meta name="twitter:description" content="How to delete your account in Quilcast, and what that removes from Farcaster, from our server and from your device." />
     <meta name="twitter:image" content="https://quilcast.com/og-delete.png" />
-    <meta name="twitter:image:alt" content="Delete your Quilcast data" />
+    <meta name="twitter:image:alt" content="Delete your Quilcast account" />
     <link rel="icon" href="/favicon.svg" />
     <link rel="stylesheet" href="/legal.css" />
   </head>
   <body>
     <main>
-      <h1>Delete your Quilcast data</h1>
+      <h1>Delete your Quilcast account</h1>
       <p class="muted">Quilcast, by Borodutch Labs Inc.</p>
-      <p>Quilcast has no accounts of its own: you use a Farcaster account, which lives on the public Farcaster network and the Optimism blockchain, not with us. Here is how to remove what Quilcast keeps.</p>
-      <h2>In the app: Delete account</h2>
-      <p>In Quilcast, open Settings, choose <b>Delete account</b> and confirm. Quilcast deletes everything our server keeps for that account at once: your profile look, mute and block lists, drafts, and the photos and videos you uploaded to our server. It then signs out, removing the account's keys and the signing key Quilcast added for this device (the network is told to stop accepting it). Uninstalling the app removes everything else it stored on the device. Sign out, also in Settings, removes the keys without touching our server.</p>
+      <p>The account you use in Quilcast is a Farcaster account, which lives on the public Farcaster network and the Optimism blockchain rather than with us. You can delete it from inside the app, and this page explains what that removes and what stays.</p>
+      <h2>In the app</h2>
+      <p>Open Settings with the account selected and tap <strong>Delete account</strong>, under Sign out. Once you confirm, Quilcast does the following, showing its progress as it goes:</p>
+      <ol>
+        <li>Our server deletes everything it keeps for the account: its profile look, mute and block lists, drafts, saved translations of its casts, and the photos and videos that only this account uploaded to our server.</li>
+        <li>Your casts, likes, recasts and follows are removed from the Farcaster network, and your profile (picture, name, bio, website, location, X username and banner) is emptied. The app checks the network afterwards and tells you about anything still there.</li>
+        <li>Quilcast then signs out the way Sign out does: the key it added on Optimism for mini app notifications is removed, its signing key is revoked so the network stops accepting it, the notification inbox on our server is dropped, and the recovery phrase and keys are erased from your device.</li>
+      </ol>
+      <p>If any step fails, nothing after it happens and the app tells you what went wrong, so you can simply run it again.</p>
+      <h2>What stays</h2>
+      <p>Your Farcaster ID stays registered on the Optimism blockchain, because nobody can delete it, and its username, verified wallet addresses and GitHub name stay with it (the app that verified an address can remove it). Whoever holds its recovery phrase, or the wallet that owns it, still controls that ID. Other Farcaster apps and indexers may keep copies of public messages they have already seen, and photos uploaded to Farcaster's own image service stay there.</p>
+      <p>On our server, a photo or video stays when another account uploaded the same file or a theme uses it, and so does any that was on our server before we started recording who uploaded each file (with the update that brought full account deletion, at the end of October 2026), since we can't tell for sure whose those are. The app tells you how many of yours were kept; email us and we remove them. Themes you shared by link aren't tied to your account either, so email us if you want one taken down.</p>
+      <h2>Only this device</h2>
+      <p>To remove an account from one device without deleting it, open Settings and sign out. That removes its keys and the signing key Quilcast added for this device (the network is told to stop accepting it). Uninstalling the app removes everything else it stored.</p>
       <h2>By email</h2>
-      <p>If you can't open the app any more, email <a href="mailto:support@borodutch.com?subject=Delete%20my%20Quilcast%20data">support@borodutch.com</a> with your Farcaster username or ID, and within 30 days we delete the same data, plus saved themes and photos uploaded before October 31, 2026. You can also ask for only some of it to be deleted.</p>
-      <h2>On Farcaster</h2>
-      <p>Casts, likes and follows are public messages on the Farcaster network, which nobody, us included, can erase for everyone. You can delete your own casts from the ⋯ menu, which tells the network to drop them. Your Farcaster ID stays registered on the blockchain.</p>
+      <p>If you can't use the app, email <a href="mailto:support@borodutch.com?subject=Delete%20my%20Quilcast%20data">support@borodutch.com</a> with your Farcaster username or ID. Within 30 days we delete everything stored on our server for that account: your profile look, saved themes, mute and block lists, drafts, photos and videos uploaded to our server, and mini app notification tokens. You can also ask for only some of it to be deleted. Messages on Farcaster itself can only be removed with the account's keys, from Quilcast or another Farcaster app.</p>
       <p><a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of use</a></p>
     </main>
   </body>
