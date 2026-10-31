@@ -508,6 +508,7 @@ small.warn { color: var(--warn); }
 .count.warn { color: var(--warn); }
 /* the GIF search (src/gifs.tsx) takes the posts' place in the composer until one is picked */
 .sheet .lk-gifs { max-height: 65vh; padding: 8px 0 4px; }
+.sheet .lk-emoji { max-height: 65vh; padding: 8px 0 4px; }
 @media (max-width: 600px) {
   .modal { padding: 0; align-items: stretch; }
   .sheet { border-radius: 0; max-width: none; display: flex; flex-direction: column; }
@@ -821,6 +822,14 @@ small.warn { color: var(--warn); }
 .lk-found span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lk-reset { margin: 14px 0 8px; }
 .lk-gifs { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
+/* the emoji picker (src/emoji.tsx) sits where the GIF search does, with the list under its categories */
+.lk-emoji { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; min-height: 0; }
+.emoji-tabs { display: flex; gap: 2px; padding-bottom: 6px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+.emoji-tabs button { flex: 1; padding: 4px 0; border: 0; background: none; font-size: 20px; line-height: 1; border-radius: calc(8px * var(--rs, 1)); }
+.emoji-body { overflow-y: auto; min-height: 0; }
+.emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); }
+.emoji-tabs button:hover, .emoji-grid button:hover { background: var(--soft); }
+.emoji-grid button { padding: 4px 0; border: 0; background: none; font-size: 24px; line-height: 1.25; border-radius: calc(8px * var(--rs, 1)); }
 .lk-gifs-head { display: flex; gap: 8px; }
 .lk-gifs-head input { flex: 1; min-width: 0; padding: 8px 12px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(99px * var(--rs, 1)); background: var(--soft); }
 .lk-gif-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }

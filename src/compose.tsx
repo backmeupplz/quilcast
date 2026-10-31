@@ -265,6 +265,30 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
         .then((url) => patch({ url }), (e) => patch({ err: e.message }))
     }
   }
+  // The emoji list is the heavy part, so the module only loads when the picker is opened.
+  const [emoji, setEmoji] = useState<typeof import('./emoji.tsx') | null>(null)
+  // Where the caret was, read on mousedown: by the time the click lands the focus has left the textarea, so an
+  // emoji would otherwise go on the end. The textarea is only hidden while the picker is up, never unmounted,
+  // so holding on to it is safe.
+  const spot = useRef<{ el: HTMLTextAreaElement; start: number; end: number } | null>(null)
+  const grabCaret = () => {
+    const el = document.activeElement
+    spot.current = el instanceof HTMLTextAreaElement ? { el, start: el.selectionStart, end: el.selectionEnd } : null
+  }
+  const openEmoji = () => import('./emoji.tsx').then(setEmoji, () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.'))
+  const insert = (ch: string) => {
+    const s = spot.current
+    const from = Math.min(s ? s.start : cur.text.length, cur.text.length)
+    const to = Math.min(s ? s.end : cur.text.length, cur.text.length)
+    update(cur.id, (x) => ({ text: x.text.slice(0, from) + ch + x.text.slice(to) }))
+    setEmoji(null)
+    // back to the post with the caret after what was just put in
+    if (s) {
+      const caret = from + ch.length
+      requestAnimationFrame(() => (s.el.focus(), s.el.setSelectionRange(caret, caret)))
+    }
+  }
+
   // a GIF is attached as it is, already at its URL
   const gif = (url: string) => {
     const part = cur
@@ -308,7 +332,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   return (
     <div class="modal" onClick={leave}>
       <div class="sheet" tabIndex={-1} role="dialog" aria-label={parent ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => (e.key === 'Escape' && (gifs ? setGifs(false) : drafts ? setDrafts(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
+        onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
         <div class="sheet-top">
           <span class="sheet-left">
             <button class="link-btn" onClick={leave}>{t('Cancel')}</button>
@@ -332,18 +356,20 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
           </div>
         )}
         {gifs && <GifPicker cast start="trending" pick={gif} close={() => setGifs(false)} />}
-        <div class="parts" hidden={gifs || drafts}>
+        {emoji && <emoji.EmojiPicker pick={insert} close={() => setEmoji(null)} />}
+        <div class="parts" hidden={gifs || drafts || !!emoji}>
           {parts.map((p, i) => (
-            <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs && !drafts}
+            <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs && !drafts && !emoji}
               onFocus={() => setActive(i)} attach={attach}
               remove={i > 0 ? () => (setParts((ps) => ps.filter((x) => x.id !== p.id)), setActive(i - 1)) : undefined}
               placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : quote ? t('Add a comment') : t("What's happening?")} />
           ))}
         </div>
-        <div class="toolbar" hidden={gifs || drafts}>
+        <div class="toolbar" hidden={gifs || drafts || !!emoji}>
           <input ref={pick} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
           <button class="icon-btn" aria-label={t('Add photo or video')} disabled={!room} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
           <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs(true)}><Icon d={P.gif} /></button>
+          <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
           {!parent && <ChannelPicker value={channel} set={setChannel} />}
           <span class={`count${left < 50 ? ' warn' : ''}`} title={bytes(cur.text) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
             {bytes(cur.text) > 280 ? left : ''}
