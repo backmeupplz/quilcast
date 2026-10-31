@@ -12,7 +12,7 @@ export const read = <T,>(k: string, d: T): T => {
 }
 export const save = (k: string, v: unknown) => localStorage.setItem(k, JSON.stringify(v))
 
-export const settings: { node: string; rpc: string; theme: string; looks?: boolean; lang?: string; jp?: boolean; quorum?: boolean; holidays?: boolean } = { node: 'https://haatz.quilibrium.com', rpc: 'https://mainnet.optimism.io', theme: 'system', ...read('quilcast:settings', {}) }
+export const settings: { node: string; rpc: string; theme: string; looks?: boolean; lang?: string; jp?: boolean; quorum?: boolean; holidays?: boolean; custodyWallet?: boolean } = { node: 'https://haatz.quilibrium.com', rpc: 'https://mainnet.optimism.io', theme: 'system', ...read('quilcast:settings', {}) }
 export const saveSettings = () => save('quilcast:settings', settings)
 
 // a phrase account is known by its custody address and keeps its recovery phrase in the vault (keys.ts); a wallet

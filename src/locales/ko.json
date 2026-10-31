@@ -1063,5 +1063,8 @@
   "{n} photos or videos you uploaded or linked were kept, because another account or a theme uses them or they were on our server before we started recording who uploaded what. Email support@borodutch.com to have them removed.": "업로드하거나 링크한 사진 또는 동영상 {n}개는 다른 계정이나 테마에서 사용 중이거나, 누가 무엇을 업로드했는지 기록하기 전부터 저희 서버에 있던 것이라 남겨 두었어요. 삭제를 원하시면 support@borodutch.com으로 이메일을 보내 주세요.",
   "Erase from this device anyway": "그래도 이 기기에서 지우기",
   "Quilcast's server also deleted your profile look, mutes, drafts and kept translations. The signing keys couldn't be revoked, but this device no longer holds the account or its keys.": "Quilcast 서버에서 프로필 꾸미기, 뮤트, 임시 저장 글, 보관된 번역도 삭제했어요. 서명 키는 폐기하지 못했지만, 이 기기에는 더 이상 계정과 키가 남아 있지 않아요.",
-  "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "캐스트와 Quilcast 데이터는 삭제됐고 키 제거만 남았어요. 다시 시도하거나, 그래도 이 기기에서 계정을 지우세요."
+  "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "캐스트와 Quilcast 데이터는 삭제됐고 키 제거만 남았어요. 다시 시도하거나, 그래도 이 기기에서 계정을 지우세요.",
+  "Custody wallet": "커스터디 지갑",
+  "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "계정의 커스터디 지갑을 지갑 탭과 미니 앱에 표시합니다. 이 지갑이 Farcaster 계정의 소유자이기 때문에 기본값은 꺼짐입니다. 미니 앱이 서명을 요청한 악성 요청 하나로 계정이나 그 안의 자산을 빼앗길 수 있습니다. Quilcast는 서명할 때마다 확인하지만, 켜는 것은 본인 책임입니다.",
+  "{name} (custody)": "{name} (커스터디)"
 }

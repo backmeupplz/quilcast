@@ -1063,5 +1063,8 @@
   "{n} photos or videos you uploaded or linked were kept, because another account or a theme uses them or they were on our server before we started recording who uploaded what. Email support@borodutch.com to have them removed.": "アップロードまたはリンクした写真・動画のうち {n} 件は、別のアカウントやテーマで使われているか、誰が何をアップロードしたかを記録し始める前からサーバーにあったため残しています。削除をご希望の場合は support@borodutch.com までメールでご連絡ください。",
   "Erase from this device anyway": "それでもこの端末から消去",
   "Quilcast's server also deleted your profile look, mutes, drafts and kept translations. The signing keys couldn't be revoked, but this device no longer holds the account or its keys.": "Quilcast のサーバーからプロフィールの見た目、ミュート、下書き、保存された翻訳も削除しました。署名鍵は無効にできませんでしたが、この端末にはもうアカウントも鍵も残っていません。",
-  "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "キャストと Quilcast のデータは削除済みで、残りは鍵の削除だけです。もう一度試すか、それでもこの端末からアカウントを消去してください。"
+  "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "キャストと Quilcast のデータは削除済みで、残りは鍵の削除だけです。もう一度試すか、それでもこの端末からアカウントを消去してください。",
+  "Custody wallet": "カストディウォレット",
+  "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "アカウントのカストディウォレットをウォレットタブとミニアプリに表示します。このウォレットは Farcaster アカウントの所有者なので、初期設定ではオフです。ミニアプリに求められた悪意あるリクエストに一度でも署名すると、アカウントや中身を奪われるおそれがあります。Quilcast は署名のたびに確認しますが、オンにするのは自己責任でお願いします。",
+  "{name} (custody)": "{name}（カストディ）"
 }

@@ -1063,5 +1063,8 @@
   "{n} photos or videos you uploaded or linked were kept, because another account or a theme uses them or they were on our server before we started recording who uploaded what. Email support@borodutch.com to have them removed.": "你上傳或連結的 {n} 張相片或影片已保留，因為其他帳號或某個主題正在使用它們，或它們在我們開始記錄上傳者之前就已在我們的伺服器上。如需移除，請寄信至 support@borodutch.com。",
   "Erase from this device anyway": "仍然從此裝置清除",
   "Quilcast's server also deleted your profile look, mutes, drafts and kept translations. The signing keys couldn't be revoked, but this device no longer holds the account or its keys.": "Quilcast 伺服器也刪除了你的個人檔案外觀、靜音清單、草稿和保存的翻譯。簽署金鑰未能撤銷，但此裝置已不再保存該帳號及其金鑰。",
-  "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "你的 cast 和 Quilcast 上的資料已刪除，只剩移除金鑰這一步。請重試，或仍然從此裝置清除該帳號。"
+  "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "你的 cast 和 Quilcast 上的資料已刪除，只剩移除金鑰這一步。請重試，或仍然從此裝置清除該帳號。",
+  "Custody wallet": "託管錢包",
+  "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "在錢包頁和小程式中列出你帳號的託管錢包。預設關閉，因為這個錢包擁有你的 Farcaster 帳號：小程式請你簽署的一個惡意請求就可能奪走帳號或其中的資產。Quilcast 會在每次簽署前詢問，但開啟它的風險由你自行承擔。",
+  "{name} (custody)": "{name}（託管）"
 }

@@ -2,13 +2,13 @@
 // Wallets section of Settings (create, import, rename, back up, remove). Keys live in src/vault.ts; mini apps sign
 // with them through src/miniapp.tsx. Balances and NFTs come from Blockscout's public explorers, read in the browser.
 import { useEffect, useState } from 'preact/hooks'
-import { read, save, safeUrl } from './api.ts'
+import { read, save, safeUrl, settings } from './api.ts'
 import { matches, newest, toActivity, type Activity } from './activity.ts'
 import { t } from './i18n.ts'
 import { ago, Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
 import { logoOf, tokensOn } from './tokens.ts'
 import { explorer, pending, SendSheet, SwapSheet } from './walletmove.tsx'
-import { activeWallet, addWallet, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, walletList, type WalletEntry } from './vault.ts'
+import { activeWallet, addWallet, custodyAccounts, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, setCustodyWallet, walletList, type WalletEntry } from './vault.ts'
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
@@ -440,9 +440,20 @@ export function WalletSettings() {
   const [adding, setAdding] = useState(false)
   return (
     <div class="wallet-list">
-      {list.map((w) => <WalletRow w={w} />)}
+      {list.filter((w) => !w.custody).map((w) => <WalletRow w={w} />)}
       <button class="btn ghost small" onClick={() => setAdding(true)}><Icon d={P.plus} />{t('Add a wallet')}</button>
       <p class="hint">{t('Mini apps can use these alongside any wallet extension; Quilcast asks you before each signature or transaction.')}</p>
+      {custodyAccounts().length > 0 && (
+        <>
+          <div class="setting">
+            <h2>{t('Custody wallet')}</h2>
+            <div class="seg">
+              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.custodyWallet === v ? 'on' : ''} onClick={() => setCustodyWallet(v as boolean)}>{label}</button>)}
+            </div>
+          </div>
+          <p class="hint warn">{t("Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.")}</p>
+        </>
+      )}
       {adding && <AddWallet close={() => setAdding(false)} />}
     </div>
   )
