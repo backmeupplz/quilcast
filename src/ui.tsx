@@ -69,12 +69,14 @@ export const Logo = ({ size = 28 }: { size?: number }) => (
 export const WalletIcon = ({ w }: { w?: { icon: string } }) => (w?.icon ? <img class="wallet-icon" src={w.icon} alt="" /> : <Icon d={P.wallet} size={16} />)
 /** A list to choose a wallet from: the mini app connect prompts and "Use a wallet" both show it. */
 export function Choose<W extends { name: string; icon: string }>({ list, value, set }: { list: W[]; value?: W; set: (w: W) => void }) {
-  const [, force] = useState(0)
+  // the mini app prompts don't re-render on a pick, so the pick is kept here too; `value` alone would stay stale
+  const [picked, setPicked] = useState<W>()
+  const cur = picked ?? value
   return (
     <div class="accounts">
       {list.map((w) => (
-        <button class={`acct${w === value ? ' on' : ''}`} aria-pressed={w === value} onClick={() => (set(w), force((x) => x + 1))}>
-          <WalletIcon w={w} /><span><b>{w.name}</b></span>{w === value && list.length > 1 && <Icon d={P.check} />}
+        <button class={`acct${w === cur ? ' on' : ''}`} aria-pressed={w === cur} onClick={() => (set(w), setPicked(w))}>
+          <WalletIcon w={w} /><span><b>{w.name}</b></span>{w === cur && list.length > 1 && <Icon d={P.check} />}
         </button>
       ))}
     </div>
