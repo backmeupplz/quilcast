@@ -1018,5 +1018,6 @@
   "Your data couldn't be deleted: {error}": "Không thể xóa dữ liệu của bạn: {error}",
   "WalletConnect QR code": "Mã QR WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Quét mã này bằng ví trên điện thoại, hoặc mở trong ứng dụng ví trên thiết bị này.",
-  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "Phiên WalletConnect đã kết thúc. Đăng nhập lại bằng ví để kết nối lại."
+  "The WalletConnect session ended. Connect your wallet again.": "Phiên WalletConnect đã kết thúc. Hãy kết nối lại ví.",
+  "The wallet didn't connect that network.": "Ví chưa kết nối mạng đó."
 }

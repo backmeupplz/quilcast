@@ -1018,5 +1018,6 @@
   "Your data couldn't be deleted: {error}": "Deine Daten konnten nicht gelöscht werden: {error}",
   "WalletConnect QR code": "WalletConnect-QR-Code",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Scanne das mit der Wallet auf deinem Handy oder öffne es in einer Wallet-App auf diesem Gerät.",
-  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "Die WalletConnect-Sitzung ist beendet. Melde dich erneut mit deiner Wallet an, um sie wieder zu verbinden."
+  "The WalletConnect session ended. Connect your wallet again.": "Die WalletConnect-Sitzung ist beendet. Verbinde deine Wallet erneut.",
+  "The wallet didn't connect that network.": "Die Wallet hat dieses Netzwerk nicht verbunden."
 }

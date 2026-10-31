@@ -10,6 +10,7 @@ import { arbitrum, base, baseSepolia, celo, degen, mainnet, monad, optimism, pol
 import { lang, t } from './i18n.ts'
 import { account, getUser, go, myUser, read, safeUrl, save, setAccount, settings, type Cast, type User } from './api.ts'
 import { base58, hex } from './fc.ts'
+import { choices, pair, qr, WC, wcChoice, wcLive } from './wallet.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
 import { castText, LOGO } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
@@ -31,7 +32,9 @@ const wallets: Wallet[] = []
 const add = (name: string, icon: string, key: string, provider: Provider) => {
   if (wallets.some((w) => w.provider === provider)) return
   const w: Wallet = { name: name.slice(0, 40) || 'Wallet', icon: /^data:image\//.test(icon) ? icon : '', key, provider }
-  wallets.push(w)
+  // WalletConnect stays last
+  const wc = wallets.findIndex((x) => x.key === WC)
+  wc < 0 ? wallets.push(w) : wallets.splice(wc, 0, w)
   // the person switched accounts in the wallet: apps using it follow
   provider.on?.('accountsChanged', (list: string[]) => {
     w.address = typeof list?.[0] === 'string' ? list[0].toLowerCase() : undefined
@@ -45,10 +48,12 @@ addEventListener('eip6963:announceProvider', (e) => {
   if (typeof provider?.request === 'function' && info) add(String(info.name || ''), String(info.icon || ''), String(info.rdns || info.name || ''), provider)
 })
 dispatchEvent(new Event('eip6963:requestProvider'))
+// a wallet on another device, after the browser's own (wallet.ts hides it when Quilcast has no WalletConnect project)
+if (choices().some((c) => c === wcChoice)) wallets.push({ name: wcChoice.name, icon: '', key: WC, provider: wcChoice.provider as Provider })
 // wallets older than EIP-6963 only set window.ethereum
 const anyWallet = () => {
   const p = (window as any).ethereum
-  if (!wallets.length && typeof p?.request === 'function') add(p.isRabby ? 'Rabby' : p.isMetaMask ? 'MetaMask' : t('Browser wallet'), '', 'injected', p)
+  if (wallets.every((w) => w.key === WC) && typeof p?.request === 'function') add(p.isRabby ? 'Rabby' : p.isMetaMask ? 'MetaMask' : t('Browser wallet'), '', 'injected', p)
   return wallets.length > 0
 }
 
@@ -98,7 +103,7 @@ type App = {
   cast?: Cast; embed?: string; from?: string; notification?: Notice; frame?: HTMLIFrameElement; ready: boolean
   wallet?: Wallet; connected: boolean; chain: number; sol?: { wallet: SolWallet; account: { address: string } }; media: boolean
   button?: { text: string; loading: boolean; disabled: boolean; hidden: boolean }; back: boolean
-  ask?: Ask; waiting?: string; uuid: string
+  ask?: Ask; waiting?: string; uuid: string; pair?: { uri: string; img: string; cancel: () => void }
 }
 const apps: App[] = []
 let shown: number | null = null
@@ -180,7 +185,25 @@ const declined = () => rpcError(4001, 'You declined.')
 
 // --- the Ethereum wallet the app sees ---
 
+/** Show a WalletConnect QR code over the app until the wallet pairs, or the person cancels. */
+async function scan(app: App) {
+  foreground(app)
+  let cancel = () => {}
+  const stop = new Promise<never>((_, no) => (cancel = () => no(declined())))
+  // a cancelled pairing carries on unseen until it expires, so its failure is caught here
+  const paired = pair(async (uri) => ((app.pair = uri ? { uri, img: await qr(uri), cancel } : undefined), update()))
+  paired.catch(() => {})
+  try {
+    await Promise.race([paired, stop])
+  } finally {
+    app.pair = undefined
+    update()
+  }
+}
+
 async function useWallet(app: App, w: Wallet) {
+  // ponytail: a new pairing replaces the old session, so a WalletConnect sign-in on another address loses its wallet
+  if (w.key === WC && !(await wcLive(app.chain))) await scan(app)
   const [a] = await waitFor(app, t('Check {wallet}', { wallet: w.name }), () => serial(() => w.provider.request({ method: 'eth_requestAccounts' })))
   if (typeof a !== 'string') throw rpcError(4001, 'The wallet shared no address.')
   w.address = a.toLowerCase()
@@ -207,7 +230,8 @@ const pick = (app: App, w: Wallet) => (app.connected ? useWallet(app, w).catch((
 async function accounts(app: App) {
   // an app allowed before gets the address back without a prompt, if the wallet still shares it with us
   const w = !app.connected && remembered(app)
-  if (w) {
+  // a WalletConnect session that can't reach the app's chain waits for the connect, which pairs a new one
+  if (w && (w.key !== WC || (await wcLive(app.chain)))) {
     const [a] = await serial(() => w.provider.request({ method: 'eth_accounts' })).catch(() => [])
     if (typeof a === 'string') (w.address = a.toLowerCase()), (app.wallet = w), (app.connected = true), update()
   }
@@ -944,6 +968,18 @@ function Window({ app }: { app: App }) {
         {!app.ready && <div class="splash" style={{ background: app.bg }}>{app.icon ? <Img src={app.icon} /> : <span class="spinner" />}</div>}
         {app.waiting && <div class="mini-wait" role="status"><span class="spinner small" />{app.waiting}</div>}
         {app.ask && <AskCard app={app} />}
+        {app.pair && (
+          <div class="mini-ask" role="dialog" aria-label={t('WalletConnect QR code')}>
+            <div class="ask-card pair">
+              <img src={app.pair.img} alt={t('WalletConnect QR code')} />
+              <p>{t('Scan this with the wallet on your phone, or open it in a wallet app on this device.')}</p>
+              <div class="btns">
+                <button class="btn ghost small" onClick={app.pair.cancel}>{t('Cancel')}</button>
+                <a class="btn small" href={app.pair.uri}>{t('Open in a wallet app')}</a>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {b && !b.hidden && <button class="btn mini-primary" disabled={b.disabled || b.loading} onClick={() => emit(app, { event: 'primary_button_clicked' })}>{b.loading ? <span class="spinner small" /> : b.text}</button>}
     </section>

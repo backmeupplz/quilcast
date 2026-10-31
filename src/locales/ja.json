@@ -1018,5 +1018,6 @@
   "Your data couldn't be deleted: {error}": "データを削除できませんでした: {error}",
   "WalletConnect QR code": "WalletConnect の QR コード",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "スマホのウォレットでスキャンするか、この端末のウォレットアプリで開いてください。",
-  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "WalletConnect のセッションが終了しました。ウォレットでもう一度サインインして再接続してください。"
+  "The WalletConnect session ended. Connect your wallet again.": "WalletConnect のセッションが終了しました。ウォレットをもう一度接続してください。",
+  "The wallet didn't connect that network.": "ウォレットはそのネットワークを接続していません。"
 }

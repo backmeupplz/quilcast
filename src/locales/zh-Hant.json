@@ -1018,5 +1018,6 @@
   "Your data couldn't be deleted: {error}": "無法刪除你的資料：{error}",
   "WalletConnect QR code": "WalletConnect QR 碼",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "用手機上的錢包掃描，或在此裝置上的錢包應用程式中開啟。",
-  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "WalletConnect 工作階段已結束。請再次用錢包登入以重新連線。"
+  "The WalletConnect session ended. Connect your wallet again.": "WalletConnect 工作階段已結束。請重新連接錢包。",
+  "The wallet didn't connect that network.": "錢包沒有連接該網路。"
 }

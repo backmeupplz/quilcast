@@ -1018,5 +1018,6 @@
   "Your data couldn't be deleted: {error}": "Verilerin silinemedi: {error}",
   "WalletConnect QR code": "WalletConnect QR kodu",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Bunu telefonundaki cüzdanla tara ya da bu cihazdaki bir cüzdan uygulamasında aç.",
-  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "WalletConnect oturumu sona erdi. Yeniden bağlamak için cüzdanınla tekrar giriş yap."
+  "The WalletConnect session ended. Connect your wallet again.": "WalletConnect oturumu sona erdi. Cüzdanını yeniden bağla.",
+  "The wallet didn't connect that network.": "Cüzdan bu ağı bağlamadı."
 }

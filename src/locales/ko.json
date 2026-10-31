@@ -1018,5 +1018,6 @@
   "Your data couldn't be deleted: {error}": "데이터를 삭제할 수 없습니다: {error}",
   "WalletConnect QR code": "WalletConnect QR 코드",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "휴대폰의 지갑으로 스캔하거나 이 기기의 지갑 앱에서 여세요.",
-  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "WalletConnect 세션이 종료되었습니다. 지갑으로 다시 로그인해 다시 연결하세요."
+  "The WalletConnect session ended. Connect your wallet again.": "WalletConnect 세션이 종료되었습니다. 지갑을 다시 연결하세요.",
+  "The wallet didn't connect that network.": "지갑이 해당 네트워크를 연결하지 않았습니다."
 }

@@ -26,8 +26,10 @@ window.dispatchEvent?.(new Event('eip6963:requestProvider'))
 // WalletConnect: a wallet on another device, usually a phone, reached through Reown's relay after scanning a QR code.
 // The project id is public (it only names Quilcast to the relay); with none set, the option stays hidden.
 const WC_PROJECT = 'b41717a1a3d91a46633e2ec5983515f8'
-const WC = 'walletconnect'
-const WC_CHAINS = ['eip155:10', 'eip155:1']
+export const WC = 'walletconnect'
+// one session serves sign-in (Optimism, mainnet) and mini apps, so it asks for every chain miniapp.tsx knows
+const WC_CHAINS = [10, 1, 8453, 42161, 137, 42220, 7777777, 130, 143, 666666666, 84532].map((id) => `eip155:${id}`)
+const WC_METHODS = ['personal_sign', 'eth_signTypedData_v4', 'eth_sendTransaction', 'wallet_sendCalls', 'wallet_getCallsStatus', 'wallet_getCapabilities', 'wallet_watchAsset']
 let up: Promise<any> | undefined
 const universal = () =>
   (up ??= import('@walletconnect/universal-provider').then(async ({ UniversalProvider }) => {
@@ -36,23 +38,32 @@ const universal = () =>
     if (p.session) p.client.extend({ topic: p.session.topic }).catch(() => {})
     return p
   }))
-// viem talks EIP-1193; the session answers per chain, so the chain viem switches to is kept here and passed along
+// viem and mini apps talk EIP-1193; the session answers per chain, so the chain they switch to is kept here and
+// passed along. One bridge per session object, so a switch holds for the requests after it.
+const bridges = new WeakMap<object, Injected>()
 export function bridge(p: any): Injected {
+  const b = bridges.get(p)
+  if (b) return b
   let chain = 10
-  return {
+  const made = {
     request: async ({ method, params }: { method: string; params?: any }) => {
       if (method === 'eth_chainId') return `0x${chain.toString(16)}`
       if (method === 'wallet_switchEthereumChain') {
         const id = parseInt(params[0].chainId)
-        // a chain the wallet didn't approve stays on the current one; the wallet signs there or says why not
-        if (p.session.namespaces.eip155?.accounts.some((a: string) => a.startsWith(`eip155:${id}:`))) chain = id
+        // a chain the wallet didn't approve can't be reached, and a transaction must never land on another one
+        if (!p.session.namespaces.eip155?.accounts.some((a: string) => a.startsWith(`eip155:${id}:`))) throw Object.assign(new Error("The wallet didn't connect that network."), { code: 4901 })
+        chain = id
         return null
       }
       return p.request({ method, params }, `eip155:${chain}`)
     },
   } as Injected
+  bridges.set(p, made)
+  return made
 }
-const wcChoice: Choice = { name: 'WalletConnect', icon: '', key: WC, provider: { request: async (a: any) => (await provider(WC)).request(a) } as Injected }
+/** Whether a WalletConnect session is up and reaches `chain`, so a mini app can use it without a new QR code. */
+export const wcLive = async (chain: number) => !!(await universal()).session?.namespaces.eip155?.accounts.some((a: string) => a.startsWith(`eip155:${chain}:`))
+export const wcChoice: Choice = { name: 'WalletConnect', icon: '', key: WC, provider: { request: async (a: any) => (await provider(WC)).request(a) } as Injected }
 
 /** The wallets that announced themselves, for the picker on "Use a wallet", and WalletConnect after them. */
 export const choices = () => [...announced, ...(WC_PROJECT ? [wcChoice] : [])]
@@ -82,8 +93,8 @@ const keyFor = (address: string) => used()[address.toLowerCase()]
 async function provider(key?: string): Promise<Injected> {
   if (key === WC) {
     const p = await universal()
-    // ponytail: an ended session can't be picked up again from a signature prompt; reconnecting means signing in again
-    if (!p.session) throw new Error('The WalletConnect session ended. Sign in with your wallet again to reconnect it.')
+    // ponytail: an ended session can't be picked up again from a signature prompt; connecting again pairs a new one
+    if (!p.session) throw new Error('The WalletConnect session ended. Connect your wallet again.')
     return bridge(p)
   }
   const w = window as unknown as { ethereum?: Injected; okxwallet?: Injected }
@@ -115,13 +126,13 @@ export async function connect(key?: string, show?: (uri: string) => void) {
 }
 
 // ponytail: one session per browser, so a second WalletConnect account replaces the first one's connection
-async function pair(show?: (uri: string) => void) {
+export async function pair(show?: (uri: string) => void) {
   const p = await universal()
   if (p.session) await p.disconnect().catch(() => {})
   const uri = (u: string) => show?.(u)
   p.on('display_uri', uri)
   try {
-    await tidy(p.connect({ optionalNamespaces: { eip155: { chains: WC_CHAINS, methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData_v4'], events: ['accountsChanged', 'chainChanged'] } } }))
+    await tidy(p.connect({ optionalNamespaces: { eip155: { chains: WC_CHAINS, methods: WC_METHODS, events: ['accountsChanged', 'chainChanged'] } } }))
   } finally {
     p.off?.('display_uri', uri)
     show?.('')

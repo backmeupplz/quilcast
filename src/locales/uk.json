@@ -1018,5 +1018,6 @@
   "Your data couldn't be deleted: {error}": "Не вдалося видалити дані: {error}",
   "WalletConnect QR code": "QR-код WalletConnect",
   "Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Відскануйте це гаманцем на телефоні або відкрийте в застосунку гаманця на цьому пристрої.",
-  "The WalletConnect session ended. Sign in with your wallet again to reconnect it.": "Сеанс WalletConnect завершився. Увійдіть із гаманцем ще раз, щоб підключити його знову."
+  "The WalletConnect session ended. Connect your wallet again.": "Сеанс WalletConnect завершився. Підключіть гаманець ще раз.",
+  "The wallet didn't connect that network.": "Гаманець не підключив цю мережу."
 }
