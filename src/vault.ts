@@ -12,7 +12,23 @@ import { drop, seal, unseal } from './keys.ts'
 // ask it to sign away the Farcaster account itself)
 export type WalletEntry = { id: string; name: string; address: `0x${string}`; kind: 'phrase' | 'key'; index?: number; custody?: true }
 
-const stored = () => read<WalletEntry[]>('quilcast:wallets', [])
+const LIST = 'quilcast:wallets'
+const isEntry = (v: any): v is WalletEntry => !!v && typeof v === 'object' && typeof v.id === 'string' && typeof v.address === 'string' && (v.kind === 'phrase' || v.kind === 'key')
+const stored = (): WalletEntry[] => {
+  const v = read<unknown>(LIST, [])
+  if (Array.isArray(v)) return v
+  // wallet.ts once kept which wallet each address connected with under this same key, and a connect spread this list
+  // into that map (#313): {"0": entry, "0xabc…": "io.metamask"}. Take the wallets back out (their secrets never left
+  // the vault) and give the map its own key (spelled out, not imported: wallet.ts loads only for a connect).
+  const o = v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
+  const list = Object.values(o).filter(isEntry)
+  const map = Object.fromEntries(Object.entries(o).filter(([, x]) => typeof x === 'string'))
+  try {
+    if (Object.keys(map).length) save('quilcast:connectedWith', { ...map, ...read<Record<string, string>>('quilcast:connectedWith', {}) })
+    save(LIST, list)
+  } catch {}
+  return list
+}
 /** Phrase accounts in this browser (wallet accounts sign with their own wallet, which mini apps already see). */
 export const custodyAccounts = () => accounts.filter((a) => a.custody && !a.wallet)
 const custodyId = (a: Account) => `custody:${a.custody}`

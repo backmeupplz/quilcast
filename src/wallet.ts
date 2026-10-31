@@ -74,18 +74,24 @@ export const qr = async (uri: string) => `data:image/svg+xml,${encodeURIComponen
 // Which wallet an address connected with, by rdns. Later signatures have to go back to that same wallet: another
 // one doesn't hold the address and would refuse, and with several wallets the guess below could land on either.
 // api.ts has read/save, but importing it here would pull the account store and its listeners into this chunk,
-// which only a connect needs, so these two lines stay local.
-const WALLETS = 'quilcast:wallets'
-const used = (): Record<string, string> => {
+// which only a connect needs, so these lines stay local.
+// This map once sat under quilcast:wallets, the key vault.ts keeps its own wallet list in, and a connect folded that
+// list into it so created wallets vanished (#313). vault.ts moves those pairs here when it next reads its list;
+// until then they are read from the old key too.
+const CONNECTED_WITH = 'quilcast:connectedWith'
+const map = (k: string): Record<string, unknown> => {
   try {
-    return JSON.parse(localStorage.getItem(WALLETS)!) ?? {}
+    const v = JSON.parse(localStorage.getItem(k)!)
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : {}
   } catch {
     return {}
   }
 }
+const pairs = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).filter(([, v]) => typeof v === 'string')) as Record<string, string>
+const used = () => ({ ...pairs(map('quilcast:wallets')), ...pairs(map(CONNECTED_WITH)) })
 const remember = (address: string, key: string) => {
   try {
-    localStorage.setItem(WALLETS, JSON.stringify({ ...used(), [address]: key }))
+    localStorage.setItem(CONNECTED_WITH, JSON.stringify({ ...pairs(map(CONNECTED_WITH)), [address]: key }))
   } catch {}
 }
 const keyFor = (address: string) => used()[address.toLowerCase()]
