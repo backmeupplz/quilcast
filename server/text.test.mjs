@@ -555,6 +555,10 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   for (const c of 'ĩīĭïїȋḯ') for (const [x, y] of [['T', 'T'], ['f', 'T'], ['Ҥ', 'Ҡ']]) runs.push(x + c + y, x + c + y + c + y)
   for (const m of [0x303, 0x304, 0x306, 0x308]) for (const x of ['T', 'f']) runs.push(`${x}${cp(0x131, m)}T`, `${x}${cp(0x131, m)}T${cp(0x131, m)}T`)
   runs.push('aď)', '(loď)', '„ДЛЯ', '„д,', '„ӆ₄', 'vȴƑ', 'ưʯƑ', 'ɬḬƑ', 'ƎḻĐ', 'ưɨ₄', 'ưɉ₄', 'ưṱ₄', 'ƒɳƑ', 'ƒɋƑ')
+  // the runs once guessed short in #336: a tone mark before a variation selector and a dot or a space, a mark whose ink
+  // reaches past its letter after a right-to-left override, "i" and a diaeresis drawn as a wider "ï" between digits, a
+  // digit before a Mende Kikakui combining mark no font has, and Hebrew before a Devanagari vowel sign drawn before its letter
+  runs.push(cp(0x340, 0xfe00, 0x2e), cp(0x6c, 0x341, 0xfe0f, 0x20), cp(0x6c, 0x344, 0xfe0f, 0x20), cp(0x202e, 0x6c, 0x35e, 0x31), cp(0x202e, 0x69, 0x308, 0x31), cp(0x31, 0x69, 0x308, 0x31), cp(0x31, 0x1e8d0), cp(0x5d0, 0x93f, 0x20), cp(0x5d0, 0x93f), cp(0x5d0, 0x94b, 0x20))
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
