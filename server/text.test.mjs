@@ -689,6 +689,70 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
     }
   }
   runs.push(`ĩ${cp(0x69, 0xfe00, 0x308)}`.repeat(3) + 'ĩ', `ï${cp(0x69, 0xfe00, 0x308)}`.repeat(2) + 'ï', `ĩ${cp(0x69, 0xfe00, 0x308, 0x362)}ĩ`)
+  // and the runs once guessed short in #371: a variation selector keeps U+0340 (or U+0341, U+0343, U+0344) a box, not a
+  // mark composed onto the letter before, beside a letter that composes wider ("ľ", "Ώ"), in an isolate too; the shaper
+  // still composes the letter with a mark in such a cluster ("ϒ" U+0301 U+FE05 is "ϓ"), and U+0341 past a variation
+  // selector, even one after it in its cluster, stays a box beside "ϒ" rather than the acute of "ϓ"
+  runs.push(cp(0x61, 0x340, 0xfe00, 0x20, 0x6c, 0x30c, 0x628), cp(0x2067, 0x340, 0xfe00, 0x6c, 0x30c, 0x2069, 0x628), cp(0x3d2, 0x341, 0x64, 0x30c, 0x6c, 0x30c, 0xfe05, 0x3a9, 0x341, 0xfe00))
+  runs.push(cp(0x6f, 0x344, 0xfe00, 0x3d2, 0x301, 0xfe05, 0x41, 0x20), cp(0x3a5, 0x301, 0xfe00, 0x49, 0x344, 0xfe00, 0x5d0, 0x64, 0x30c, 0x6f, 0xfe0f, 0x344), cp(0x2e, 0x343, 0xfe0f, 0x6c, 0x30c, 0xfe00, 0x5d0))
+  runs.push(cp(0x3a9, 0x341, 0x3d2, 0xfe00, 0x341), cp(0x3a9, 0x341, 0x3d2, 0x200d, 0x341, 0xfe00), cp(0x6c, 0x30c, 0x2066, 0x3d2, 0xe0100, 0x341, 0x2069), cp(0x200d, 0x2068, 0x3a9, 0x341, 0x3a9, 0x341, 0x2069, 0x69, 0x308, 0x3d2, 0xfe00, 0x341))
+  // (a variation selector just before U+0341 on "i" keeps it a box, not the acute of the dotless "í"; and the Tibetan
+  // U+0F73, U+0F75 and U+0F81 are of class 0, so nothing after them composes with the letter before them)
+  runs.push(cp(0x69, 0xfe01, 0x341, 0x6c, 0x307, 0xdc), cp(0x69, 0x200d, 0xfe01, 0x341, 0x6c, 0x307, 0xdc), cp(0x456, 0x34f, 0xfe00, 0x341, 0x6c, 0x307, 0xdc))
+  runs.push(cp(0x6c, 0x30c, 0x391, 0xf73, 0x345, 0xfe01), cp(0x6c, 0x30c, 0x391, 0xf81, 0x345, 0xfe01), cp(0x64, 0x2060, 0x30c, 0x3b7, 0xf75, 0x345, 0xfe00))
+  // (and a seeded sweep of them: box marks with a variation selector before or after, letters that compose, a variation
+  // selector on those too, right-to-left letters and brackets after, in an isolate or embedding or not)
+  let seed = 371
+  const random = () => {
+    seed = (seed + 0x6d2b79f5) >>> 0
+    let t = Math.imul(seed ^ (seed >>> 15), seed | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+  const pick = (a) => a[Math.floor(random() * a.length)]
+  const vs = [0xfe00, 0xfe05, 0xfe0f, 0xe0100]
+  const composing = [[0x6c, 0x30c], [0x64, 0x30c], [0x74, 0x30c], [0x3d2, 0x301], [0x3d2, 0x341], [0x3a9, 0x341], [0x61, 0x301], [0x69, 0x308], [0x6c, 0x307], [0x3a5, 0x301]]
+  const piece = () => {
+    const r = random()
+    if (r < 0.35) {
+      const [b, m, v, x] = [random() < 0.2 ? [] : [pick([0x61, 0x49, 0x6c, 0x69, 0x20, 0x2e, 0x3a9, 0x3d2, 0x6f, 0x64])], pick([0x340, 0x341, 0x343, 0x344]), pick(vs), random() < 0.3 ? [pick([0x301, 0x300, 0x308, 0x30c])] : []]
+      return pick([[...b, m, v, ...x], [...b, v, m, ...x], [...b, m, ...x, v], [...b, ...x, m, v]])
+    }
+    if (r < 0.7) {
+      const [l, m] = pick(composing), t = random()
+      return t < 0.15 ? [l, pick(vs), m] : t < 0.3 ? [l, m, pick(vs)] : [l, m]
+    }
+    return r < 0.85 ? [pick([0x628, 0x5d0, 0x78, 0x5d, 0x29, 0x41, 0x20])] : [pick([0x20, 0x200d, 0x34f, 0xad])]
+  }
+  for (let k = 0; k < 150; k++) {
+    let ps = Array.from({ length: 2 + Math.floor(random() * 4) }, piece)
+    if (random() < 0.5) {
+      const [open, close] = pick([[0x2067, 0x2069], [0x2066, 0x2069], [0x2068, 0x2069], [0x202b, 0x202c], [0x202a, 0x202c], [0x202e, 0x202c]])
+      const i = Math.floor(random() * ps.length), j = i + 1 + Math.floor(random() * (ps.length - i))
+      ps = [...ps.slice(0, i), [open], ...ps.slice(i, j), ...(random() < 0.85 ? [[close]] : []), ...ps.slice(j)]
+    }
+    if (!ps.flat().some((c) => c >= 0x340 && c <= 0x344 && c !== 0x342)) ps.unshift([0x61, 0x340, 0xfe00])
+    runs.push(cp(...ps.flat()))
+  }
+  // (and a variation selector among the Arabic-script marks a stretch shaped right to left starts with, which come after
+  // the grapheme after them and keep its U+0340 a box, so that grapheme isn't composed or ligated either: "a" U+0340
+  // past U+06DB U+FE00, with or without an isolate or embedding around them, beside "ľ", "ď", "ϓ" or "ŀ"; and a seeded
+  // sweep of those leaders, a box mark on the letter after them and letters that compose wider)
+  runs.push(cp(0x2068, 0x6db, 0xfe00, 0x61, 0x340, 0x20, 0x6c, 0x30c, 0x2069, 0x5d0), cp(0x2068, 0x6e1, 0xe0100, 0x20, 0x340, 0x64, 0x30c, 0x3d2, 0x341, 0x2069, 0x5d0))
+  runs.push(cp(0x6db, 0xfe00, 0x61, 0x340, 0x20, 0x6c, 0x30c, 0x628), cp(0x202d, 0x6e1, 0xfe01, 0x61, 0x340, 0x3d2, 0xfe0f, 0x341, 0x3d2, 0xfe01, 0x301, 0x202c, 0x20, 0x628))
+  runs.push(cp(0x6d6, 0xfe0f, 0x69, 0x341, 0x6c, 0xfe05, 0x307, 0x200d, 0x628), cp(0x2068, 0x6e1, 0xfe01, 0x69, 0x344, 0x2e, 0x6c, 0xfe05, 0x307, 0x2069, 0x5d0))
+  seed = 3711
+  for (let k = 0; k < 100; k++) {
+    const lead = [pick([0x6d6, 0x6db, 0x6e1, 0x610]), ...(random() < 0.8 ? [pick(vs)] : []), ...(random() < 0.3 ? [pick([0x6db, 0x301])] : [])]
+    const first = [pick([0x61, 0x49, 0x69, 0x3b9, 0x3c5, 0x6f, 0x6c, 0x3d2, 0x20, 0x2e]), pick([0x340, 0x341, 0x343, 0x344]), ...(random() < 0.3 ? [pick([0x301, 0x308, 0x30c])] : [])]
+    const rest = Array.from({ length: 1 + Math.floor(random() * 3) }, () => {
+      if (random() < 0.4) return [pick([0x20, 0x2e, 0x41, 0x200d])]
+      const [l, m] = pick(composing), t = random()
+      return t < 0.2 ? [l, pick(vs), m] : t < 0.35 ? [l, m, pick(vs)] : [l, m]
+    })
+    const body = [...lead, ...first, ...rest.flat()], tail = pick([[], [0x628], [0x5d0], [0x20, 0x628]])
+    runs.push(cp(...pick([[...body, ...tail], [0x2068, ...body, 0x2069, 0x5d0], [0x5e9, 0x20, 0x2066, ...body, 0x2069], [0x202d, ...body, 0x202c, ...tail], [0x628, 0x20, 0x202a, ...body, 0x202c]])))
+  }
   // and the arrows Inter's contextual alternates join dashes and an angle bracket into, wider than what they join ("–>"
   // is "⟶", "--->" a longer arrow; and with Inter's private-use case forms), alone, after letters, next to each other,
   // past the ignorables the shaper skips, and in right-to-left text, where bidi mirrors the bracket ("م–<" is "⟵")

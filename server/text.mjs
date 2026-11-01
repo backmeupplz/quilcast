@@ -1389,6 +1389,17 @@ const SPLIT = new RegExp(String.raw`(?!${IGNORED.source})\P{M}((?:${IGNORED.sour
 const WHOLLY = new RegExp(`^(?:${EMPTIED})$`, 'u')
 const carons = (skipped) => new RegExp(String.raw`[dlt]${skipped}\u{30c}|\u{3d2}${skipped}[\u{301}\u{341}]`, 'gu')
 const APART = [carons(SKIPPED), carons(EMPTIED)]
+// (but U+0341 in a cluster with a variation selector, from the character before it that isn't a mark through the marks
+// after it, isn't decomposed into the acute, so it stays a box beside "ϒ": "ϒ" U+FE00 U+0341 and "ϒ" U+200D U+0341 U+FE00
+// are "ϒ" and a box, "ϒ" U+FE00 U+200D U+0341 is "ϓ"; measured)
+const MARKS_AFTER = new RegExp(`^(?:${MARK.source})*`, 'u')
+const undecomposed = (p, at, s) => {
+  if (!p.endsWith('\u{341}')) return false
+  const cs = [...p]
+  let i = cs.length - 1
+  while (i > 1 && MARK.test(cs[i - 1])) i--
+  return VARIANT.test(cs.slice(i).join('') + s.slice(at + p.length).match(MARKS_AFTER)[0])
+}
 // After composing, Inter's ccmp also joins a letter and the first mark on it (in the shaper's order, marks of a lower
 // combining class first) into a character where NFC doesn't: "l" with a dot above is drawn "ŀ", "ı" with a tilde "ĩ",
 // "O" with a long solidus "Ø", "e" with U+1DC6 "ḕ" (past the same ignorables as the caron above). The letter, mark and
@@ -1410,20 +1421,77 @@ const DOTLESS = { i: 'ı', і: 'ı' }
 const LIGATED = [MARK.source, String.raw`\p{M}`].map((mark) =>
   [SKIPPED, EMPTIED].map((skipped) => new RegExp(String.raw`(\P{M})(${skipped})?((?:${mark}|[\u{ee90}\u{f6c3}])(?:${mark})*)`, 'gu')),
 )
+// In a cluster with a variation selector the shaper decomposes nothing, so NFC (which decomposes first) is wrong there:
+// U+0340 stays itself, a box, not U+0300 composed onto the letter ("a" U+0340 U+FE00 isn't "à"). It still puts the marks
+// in combining-class order and composes the letter with each mark after it that isn't blocked, as the shaper does with
+// no decomposing first: "ϒ" U+0301 U+FE05 is still "ϓ", "l" U+030C U+FE00 "ľ". (JavaScript has no combining classes:
+// NFD puts a mark of a higher class after one of a lower class, and above tells which; a decomposing mark is taken at its
+// first part's class, U+0340 as U+0300's. The Tibetan U+0F73, U+0F75 and U+0F81 are the only marks of class 0 whose
+// first part, U+0F71, isn't: they're taken as "a", so nothing is reordered or composed past them.)
+const STARTERS = /[\u{f73}\u{f75}\u{f81}]/u
+const head = (c) => (STARTERS.test(c) ? 'a' : String.fromCodePoint(c.normalize('NFD').codePointAt(0)))
+// (whether c's combining class is above p's, which is above 0; and whether c's is 0, U+0334's being 1 and U+0345's 240)
+const above = (p, c) => {
+  const [x, y] = [head(p), head(c)]
+  return x !== y && `a${y}${x}`.normalize('NFD') === `a${x}${y}`
+}
+const zero = (c) => !above('\u{334}', c) && !above(c, '\u{345}')
+const varied = (g, font) => {
+  const cs = [...g]
+  for (let i = 2; i < cs.length; i++) for (let j = i; j > 1 && above(cs[j], cs[j - 1]); j--) [cs[j - 1], cs[j]] = [cs[j], cs[j - 1]]
+  const out = [cs[0]]
+  let starter = 0, composed = false
+  for (const c of cs.slice(1)) {
+    if (starter === out.length - 1 || above(out[out.length - 1], c)) {
+      const s = out[starter], n = (s + c).normalize('NFC')
+      if ([...n].length === 1 && n.normalize('NFD') === s.normalize('NFD') + c && font.glyph(n.codePointAt(0))) {
+        out[starter] = n
+        composed = true
+        continue
+      }
+    }
+    out.push(c)
+    if (zero(c)) starter = out.length - 1
+  }
+  return composed ? out.join('') : g
+}
+// (whether the text from code unit at to at + length has a mark of a turned stretch's leading cluster in it, see leading:
+// the shaper decomposes nothing there either, as with a variation selector of its own)
+const led = (text) => {
+  const marks = leading([...text])
+  if (!marks.size) return () => false
+  return (at, length) => {
+    const from = [...text.slice(0, at)].length
+    return [...text.slice(at, at + length)].some((_, k) => marks.has(from + k))
+  }
+}
 // (any: a newer mark taken as a mark, see guess)
-const together = (run, font, empty, any) => run.replace(APART[empty], (p) => p.replace(HIDDEN, '').normalize('NFC')).replace(COMPOSABLE[+any], (g) => {
-  const n = g.normalize('NFC')
-  return n !== g && [...n].every((x) => IGNORED.test(x) || font.glyph(x.codePointAt(0)) || (/\p{M}/u.test(x) && g.includes(x))) ? n : g
-})
-const ligated = (run, font, empty, any) => run.replace(LIGATED[+any][empty], (all, letter, skipped, marks) => {
-  // (a variation selector among the marks keeps the shaper from decomposing them)
-  const ms = VARIANT.test(marks) ? marks : marks.normalize('NFD')
-  const first = String.fromCodePoint(ms.codePointAt(0))
-  const c = LIGATURES.get((DOTLESS[letter] ?? letter) + first)
-  // (but a joiner anywhere between them keeps U+1DC4 off "e" and "o": resvg draws it at its own advance after one, past
-  // whatever other ignorables are there, on any letter; measured for every row past a joiner and each other ignorable)
-  return c && font.glyph(c.codePointAt(0)) && !(first === '\u{1dc4}' && skipped?.includes('\u{200d}')) ? c + ms.slice(first.length) : all
-})
+const together = (text, font, empty, any) => {
+  const run = text.replace(APART[empty], (p, at, s) => (undecomposed(p, at, s) ? p : p.replace(HIDDEN, '').normalize('NFC')))
+  const kept = led(run)
+  return run.replace(COMPOSABLE[+any], (g, at) => {
+    if (VARIANT.test(g) || kept(at, g.length)) return varied(g, font)
+    const n = g.normalize('NFC')
+    return n !== g && [...n].every((x) => IGNORED.test(x) || font.glyph(x.codePointAt(0)) || (/\p{M}/u.test(x) && g.includes(x))) ? n : g
+  })
+}
+const ligated = (run, font, empty, any) => {
+  const kept = led(run)
+  return run.replace(LIGATED[+any][empty], (all, letter, skipped, marks, at) => {
+    // (a variation selector among the marks, or among the marks just before them, keeps the shaper from decomposing them:
+    // "i" U+FE01 U+0341 and "i" U+200D U+FE01 U+0341 are "i" and a box, "i" U+FE01 U+200D U+0341 is "í"; measured; so
+    // does being in a turned stretch's leading cluster)
+    const before = [...(skipped ?? '')]
+    let k = before.length
+    while (k > 0 && MARK.test(before[k - 1])) k--
+    const ms = VARIANT.test(before.slice(k).join('') + marks) || kept(at, all.length) ? marks : marks.normalize('NFD')
+    const first = String.fromCodePoint(ms.codePointAt(0))
+    const c = LIGATURES.get((DOTLESS[letter] ?? letter) + first)
+    // (but a joiner anywhere between them keeps U+1DC4 off "e" and "o": resvg draws it at its own advance after one, past
+    // whatever other ignorables are there, on any letter; measured for every row past a joiner and each other ignorable)
+    return c && font.glyph(c.codePointAt(0)) && !(first === '\u{1dc4}' && skipped?.includes('\u{200d}')) ? c + ms.slice(first.length) : all
+  })
+}
 // A stretch set left to right but shaped right to left (one whose script is Arabic from a mark like U+06D6) is turned
 // around a grapheme at a time, so the marks it starts with, a grapheme on no letter, come after the grapheme after them.
 // The shaper then decomposes them with the marks that grapheme ends with, from its last character that isn't one, and
