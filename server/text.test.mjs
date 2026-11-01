@@ -408,6 +408,14 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // and a number after a letter resvg's Unicode hadn't assigned in a newer Arabic block, which it takes as right to left,
   // not Arabic, so the number stays a European one
   runs.push(cp(0x10ec2, 0x36, 0xb0, 0xe33, 0x1ed01), cp(0x897, 0x36, 0xb0, 0xe33, 0x1ed01), cp(0x88f, 0x36, 0xb0, 0xe33, 0x10d28))
+  // marks no font has opening a run resvg shapes right to left (the first of any script is Arabic, Samaritan, Hebrew):
+  // each letter drawn past its own boxes, and a letter composed with its mark ("ĺ") past the opening boxes too, which
+  // a precomposed letter ("ï" as one character) is as well: it's shaped as its letter and marks, which can be wider
+  // than it ("î")
+  for (const lead of [[0x6d6, 0xe48], [0x64b, 0x6d6], [0x336, 0x6d6], [0x6d6, 0x336], [0x6d6], [0x816], [0x5b4, 0x5b4], [0x6d6, 0x5b4]]) {
+    for (const t of [`i${cp(0x308)}`, `l${cp(0x301)}`, `a${cp(0x301)}`, `l${cp(0x301)}x`, `c${cp(0xe48)}`, `f${cp(0x331)}`, `a${cp(0xe48)}a${cp(0xe48)}`, `a${cp(0xe48, 0x301)}`, cp(0xef), cp(0x13a), cp(0xe1), cp(0xe9), `${cp(0x13a)}x`, cp(0x1d8), cp(0xee), cp(0x1f0), cp(0x135), cp(0xce), cp(0x1cf), cp(0x1fd2)]) runs.push(cp(...lead) + t)
+  }
+  runs.push(`1${cp(0x6d6)}c${cp(0xe48)}`)
   // a skin tone outside an emoji: one more box after sara am's or a struck-through letter's, two after a symbol under a
   // box, and Noto Emoji's glyphs for it and the digits, spaces and symbols around it
   for (const t of [0x1f3fb, 0x1f3ff]) {
@@ -505,6 +513,8 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   for (const run of [' gm ', ' this ', ' 2024 ', ' hello world ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) * 1.05, run)
   // and Thai with sara am, one box of advance however many boxes of ink, isn't taken as a box wider for each one
   for (const run of ['น้ำ', 'น้ำใจ', 'ทำงาน', 'ความจำ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.1, run)
+  // and right-to-left text, its own letters first (with points no font has too), isn't taken as turned around
+  for (const run of ['عربي', 'שלום', `ע${cp(0x5b4)}ב${cp(0x5b0)}ר${cp(0x5b4)}ית`, 'abc عربي']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.1, run)
   // a mark at a run's end gets room for its ink once, and a decomposed arrow's slash none
   for (const [run, over] of [[`cafe${cp(0x301)}`, 0.55], ['a↮', 0.1]]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + over, run)
   // and Hebrew and Arabic, with their points and harakat (drawn within Hebrew's letters), mixed with English and
