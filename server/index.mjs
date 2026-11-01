@@ -190,6 +190,8 @@ const pictureOf = (v, w) =>
   v?.design ? designPng(v.design, v.d).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null)
     : v?.theme ? themePng(v.theme, v.th).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null) : v?.src ? dataUri(sized(v.src, w)) : null
 
+// card text's colors: words, links and mentions, code, quotes
+const INK = { fill: '#edebf3', accent: '#a99bff', code: '#f0c48a', muted: '#9893a5' }
 async function card(c) {
   const a = c.author || {}
   const replies = Number(c.replies?.count) || 0
@@ -221,7 +223,7 @@ async function card(c) {
   ${pfp ? `<image href="${pfp}" x="84" y="76" width="88" height="88" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : initial(name, 128, 136, 40, '#9893a5')}
   ${textSvg([wrap(name, 34, (tile ? 680 : 1100) - 196, 1)[0] || ''], { x: 196, y: 112, size: 34, bold: true, fill: '#edebf3' })}
   ${textSvg([`@${cut(a.username || a.fid, 40)}`], { x: 196, y: 150, size: 26, fill: '#9893a5' })}
-  ${richSvg(md.text, md.marks, lines, { x: 84, y: 232, lh: size * 1.32, size, fill: '#edebf3', accent: '#a99bff', code: '#f0c48a', muted: '#9893a5' })}
+  ${richSvg(md.text, md.marks, lines, { x: 84, y: 232, lh: size * 1.32, size, ...INK })}
   ${tile ? `<rect x="712" y="${ty}" width="420" height="${th}" rx="28" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>` : ''}
   ${pic ? `<image href="${pic}" x="712" y="${ty}" width="420" height="${th}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pic)"/>` : ''}
   ${v?.video ? `<circle cx="922" cy="282" r="46" fill="#000" fill-opacity="0.55"/><path d="M908 258v48l40-24z" fill="#fff"/>` : ''}
@@ -525,8 +527,9 @@ const dateOf = (c) => new Date(c.timestamp).toLocaleDateString('en-US', { month:
 async function collectible(c) {
   const a = c.author || {}
   const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
-  const text = cut(unmarkdown(castText(c)), 1000)
-  const short = text.replace(/https?:\/\/(www\.)?(\S{28})\S+/g, '$2…').replace(/https?:\/\/(www\.)?/g, '').trim()
+  // its Markdown drawn, as on the share card (card); links already show short
+  const md = styled(castText(c))
+  const short = cut(md.text, 1000)
   const v = await visualOf(c)
   const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=240')) : null, pictureOf(v, 'w=1100')])
   const box = !!(pic || v?.video || v?.tweet)
@@ -537,11 +540,11 @@ async function collectible(c) {
   if (short) {
     const size = box ? (short.length < 90 ? 48 : short.length < 200 ? 40 : 34) : short.length < 60 ? 72 : short.length < 140 ? 60 : short.length < 280 ? 48 : short.length < 500 ? 40 : 34
     const lh = Math.round(size * 1.3)
-    const lines = wrap(short, size, W, box ? Math.floor(280 / lh) : Math.floor((BOTTOM - TOP) / lh))
+    const lines = wrap(short, size, W, box ? Math.floor(280 / lh) : Math.floor((BOTTOM - TOP) / lh), { bold: md.marks.some((m) => m & 17) })
     const h = lines.length * lh
     // alone, the text is centered in the space; the first baseline is about one size below the line's top
     const top = box ? TOP : TOP + Math.max(0, (BOTTOM - TOP - h) / 2)
-    body += textSvg(lines, { x: X, y: top + size, lh, size, fill: '#edebf3' })
+    body += richSvg(md.text, md.marks, lines, { x: X, y: top + size, lh, size, ...INK })
     y = top + h + 36
   }
   if (box) {
