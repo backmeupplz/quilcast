@@ -571,6 +571,11 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // a dotless "ı" with a mark above on it, anchored there in a Latin run, is drawn and kerned as the dotted letter with
   // that mark ("ı" U+0308 as "ï", wider against "ĩ" or "T"), repeated too; and "ȷ" with the same marks (ĵ, ǰ joined)
   for (const d of [0x131, 0x237]) for (const m of [0x308, 0x303, 0x304, 0x306, 0x302, 0x301, 0x30c]) runs.push(`H${cp(d, m)}ĩH`, `H${cp(d, m)}TH`, `H${cp(d, m, d, m, d, m)}ĩH`, `${cp(d, m)}ĩH`)
+  // (and a dotted "i" or "j" with an ignorable before that mark, which keeps NFC from composing them, though Inter
+  // still draws them dotless and joins them: "i", a grapheme joiner and a tilde are "ĩ" between the letters that kern it
+  // wider; past each ignorable it joins past, repeated too, and "ĵ", "ǰ")
+  for (const g of [0x34f, 0x200d, 0x200b, 0xad, 0x2060, 0xfe0f, 0x200e, 0x202c, 0x2069]) for (const m of [0x303, 0x304, 0x306, 0x308, 0x30f]) for (const [x, y] of [['f', 'T'], ['T', 'T'], ['7', '7'], ['1', '1']]) runs.push(`${x}${cp(0x69, g, m)}${y}`, `${x}${cp(0x69, g, m, 0x69, g, m)}${y}`)
+  for (const m of [0x302, 0x30c]) for (const [x, y] of [['f', 'T'], ['T', 'T'], ['H', 'H']]) runs.push(`${x}${cp(0x6a, 0x34f, m)}${y}`, `${x}${cp(0x6a, 0x200d, m)}ĩ${y}`)
   runs.push('aď)', '(loď)', '„ДЛЯ', '„д,', '„ӆ₄', 'vȴƑ', 'ưʯƑ', 'ɬḬƑ', 'ƎḻĐ', 'ưɨ₄', 'ưɉ₄', 'ưṱ₄', 'ƒɳƑ', 'ƒɋƑ')
   // the runs once guessed short in #336: a tone mark before a variation selector and a dot or a space, a mark whose ink
   // reaches past its letter after a right-to-left override, "i" and a diaeresis drawn as a wider "ï" between digits, a
