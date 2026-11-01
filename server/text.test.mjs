@@ -554,6 +554,9 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // does that for, each between the characters that kern it most
   for (const c of 'ĩīĭïїȋḯ') for (const [x, y] of [['T', 'T'], ['f', 'T'], ['Ҥ', 'Ҡ']]) runs.push(x + c + y, x + c + y + c + y)
   for (const m of [0x303, 0x304, 0x306, 0x308]) for (const x of ['T', 'f']) runs.push(`${x}${cp(0x131, m)}T`, `${x}${cp(0x131, m)}T${cp(0x131, m)}T`)
+  // a dotless "ı" with a mark above on it, anchored there in a Latin run, is drawn and kerned as the dotted letter with
+  // that mark ("ı" U+0308 as "ï", wider against "ĩ" or "T"), repeated too; and "ȷ" with the same marks (ĵ, ǰ joined)
+  for (const d of [0x131, 0x237]) for (const m of [0x308, 0x303, 0x304, 0x306, 0x302, 0x301, 0x30c]) runs.push(`H${cp(d, m)}ĩH`, `H${cp(d, m)}TH`, `H${cp(d, m, d, m, d, m)}ĩH`, `${cp(d, m)}ĩH`)
   runs.push('aď)', '(loď)', '„ДЛЯ', '„д,', '„ӆ₄', 'vȴƑ', 'ưʯƑ', 'ɬḬƑ', 'ƎḻĐ', 'ưɨ₄', 'ưɉ₄', 'ưṱ₄', 'ƒɳƑ', 'ƒɋƑ')
   // the runs once guessed short in #336: a tone mark before a variation selector and a dot or a space, a mark whose ink
   // reaches past its letter after a right-to-left override, "i" and a diaeresis drawn as a wider "ï" between digits, a
