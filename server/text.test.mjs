@@ -490,6 +490,10 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // an acute, a diaeresis, sara am or two strikes after a right-to-left control (with "i" between too), found short by
   // other tickets' sweeps
   runs.push(`_${cp(0x2067, 0x301)}®`, `W${cp(0x202e, 0x301)}52`, `A1${cp(0x2067, 0x301)}W`, `g${cp(0x2067, 0x308)}®`)
+  // marks no font has with nothing under them, a Hebrew point (U+05C1, U+059A, U+05AD) first, before a bidi control, a
+  // left-to-right mark, a word joiner, a soft hyphen, a non-joiner or an isolate at the run's end: resvg draws each box a
+  // whole box past the last
+  for (const z of [0x202a, 0x202c, 0x200e, 0x2060, 0xad, 0x200c, 0x2066, 0x2069]) runs.push(cp(0x5c1, 0x941, 0x93f, z), cp(0x5c1, 0x941, z), cp(0x5c1, 0x93f, z), cp(0x59a, 0x941, z), cp(0x5ad, 0x93f, z), cp(0x5c1, 0x941, 0x941, 0x941, z), `a${cp(0x200b, 0x5c1, 0x941, z)}`)
   for (const o of [0x202e, 0x2067, 0x202b, 0x200f, 0x61c]) runs.push(`1${cp(o, 0xe48, 0xe33)}73`, `*${cp(o, 0xe33)}73`)
   for (const o of [0x202e, 0x202b, 0x2067]) runs.push(`${cp(o, 0x336, 0x336)}i`, `a${cp(o, 0x336, 0x336)}i`, `a${cp(o)}i${cp(0x336, 0x336)}`)
   runs.push(`${cp(0x2067, 0x335, 0x335)}i`)

@@ -377,7 +377,9 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
     // resvg sets a mark after a box against the box)
     // (shaped right to left, a letter's boxes start past its ink, not its advance: up to a box further, unless it's a
     // box itself or a space, which has no ink)
-    const boxes = w + base + r + 0.5 + BOX * (marks - 1) + own + (far && has(letter, font) && !/\p{Zs}/u.test(letter) ? BOX : 0)
+    // (with no letter under them, the boxes' ink can end a whole box past the pen each, not half of one for the first:
+    // U+05C1 and a Devanagari vowel sign before a bidi control or a word joiner are drawn as two full boxes; measured)
+    const boxes = w + base + r + (letter ? 0.5 : BOX) + BOX * (marks - 1) + own + (far && has(letter, font) && !/\p{Zs}/u.test(letter) ? BOX : 0)
     // (shaped as Hebrew, Hebrew points no font has are drawn within a letter no font has)
     if (hebrew && box && !am && points && letter && !has(letter, font)) w += base + r + own
     else if (am) end = Math.max(end, boxes), (w += Math.max(base, BOX) + r + own)
