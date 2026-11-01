@@ -453,6 +453,12 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   for (const z of [0x2060, 0x200b, 0x200c, 0xad, 0xfeff, 0x180e, 0xe0001, 0x200e, 0x202a, 0x202d, 0x2066, 0x2069]) {
     for (const s of [' ', cp(0x205f), cp(0x2009), cp(0x3000), cp(0xa0), '#', '-', '*', '→', '']) runs.push(`${s}${cp(z, 0x336, 0xfe0f, 0xfe0f, 0x2009)}`, `${s}${cp(z, 0x336, 0x336)}i`, `${s}${cp(z, 0xfe0f, 0x336)}x`)
   }
+  // a tone mark Inter draws as its grave or acute, or an arrow as one with a slash through, in a cluster with a variation
+  // selector anywhere in it: the shaper decomposes nothing there, so the mark is a box widening a narrow letter
+  for (const v of [0xfe00, 0xfe05, 0xfe0f, 0xe0100, 0xe0124, 0xe01ec]) {
+    for (const m of [0x340, 0x341, 0x344]) for (const p of ['I', 'a', 'l', '']) runs.push(`${p}${cp(m, v)}x`, `${p}${cp(v, m)}x`, `${p}${cp(m, 0x301, v)}x`, `${p}${cp(0x301, v, m)}i`)
+    runs.push(`a${cp(0x343, v)}i`, `I${cp(0x21ae, v)}x`)
+  }
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)

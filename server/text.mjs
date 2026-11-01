@@ -719,7 +719,8 @@ const apart = (c, font) => {
 // which Noto can't draw after a space, so the run isn't Noto's whole. A keycap mark or a skin tone after one of those spaces (even
 // past an ignorable) can have resvg drop Noto's shaping too and draw Inter's wider spaces, so each character is priced at
 // the wider of the two fonts.
-const SPACE_VARIANT = /[\u{a0}\u{2000}-\u{200a}\u{202f}\u{205f}\u{3000}][\u{fe00}-\u{fe0f}\u{e0100}-\u{e01ef}]/u
+const VARIANT = /[\u{fe00}-\u{fe0f}\u{e0100}-\u{e01ef}]/u
+const SPACE_VARIANT = new RegExp(`[\\u{a0}\\u{2000}-\\u{200a}\\u{202f}\\u{205f}\\u{3000}]${VARIANT.source}`, 'u')
 const NOTO_SPACES = new Map([[0xa0, 1.2695], [0x2000, 0.5], [0x2001, 1], [0x2002, 0.5], [0x2003, 1], [0x2004, 0.3335], [0x2005, 0.25], [0x2006, 0.1665], [0x2007, 1.2695], [0x2008, 1.2695], [0x2009, 0.2002], [0x200a, 0.0625], [0x202f, 0.6348], [0x205f, 0.2222], [0x3000, 1]])
 const notoWhole = (run, font) => {
   if (SPACE_VARIANT.test(run)) return null
@@ -736,7 +737,17 @@ export const guess = (run, bold = false) => {
   const within = new Set()
   // (marks Inter has in the order the shaper puts them, by combining class: U+035E over U+0302 goes after it)
   const ordered = run.replace(/\p{M}{2,}/gu, (ms) => ([...ms].every((c) => font.glyph(c.codePointAt(0))) ? ms.normalize('NFD') : ms))
-  for (const c of ordered) for (const [j, x] of [...apart(c, font)].entries()) j && within.add(cs.length), cs.push(x)
+  // (but the shaper decomposes nothing in a cluster, a character and the marks after it, with a variation selector in
+  // it: "I" U+0340 U+FE05 has U+0340 as a box widening the "I", not U+0300 on it, and "↮" U+FE05 is a box)
+  const chars = [...ordered]
+  let whole = false
+  for (const [i, c] of chars.entries()) {
+    if (!i || !MARK.test(c)) {
+      whole = false
+      for (let k = i; k < chars.length && (k === i || MARK.test(chars[k])); k++) whole ||= VARIANT.test(chars[k])
+    }
+    for (const [j, x] of [...(whole ? c : apart(c, font))].entries()) j && within.add(cs.length), cs.push(x)
+  }
   // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base); a space no font
   // has is as wide as resvg draws it (the ideographic space is a full em, not a box)
   const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? SPACES.get(c.codePointAt(0)) ?? BOX) + (MARK.test(c) ? extra(c) + 0.03 : 0)
