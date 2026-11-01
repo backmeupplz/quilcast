@@ -671,6 +671,14 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(cp(0x35e, 0x308, 0xfe00, 0x7d), cp(0x35e, 0x303, 0xe0100, 0x20), cp(0x35e, 0x344, 0x7d))
   // (and U+0344 in a cluster with a variation selector, which the shaper doesn't decompose: a box, its marks left as they are)
   runs.push(cp(0x35e, 0x344, 0xfe00, 0x20))
+  // and the runs once guessed short in #370 (stretches() models these since #342, so they're kept as regression runs): a
+  // right-to-left stretch shaped as Thai (U+10D69, which resvg doesn't know, is a right-to-left letter to it) is turned
+  // around a grapheme at a time, past an embedding; and past an isolate in an embedding, before U+0897
+  runs.push(cp(0x202b, 0x340, 0x341, 0x341, 0xe48, 0x10d69, 0xe0100, 0x35e), cp(0x202b, 0x340, 0x341, 0x341, 0xe48, 0x10d69, 0xe0100))
+  runs.push(cp(0x202a, 0x2067, 0x200b, 0xe49, 0x341, 0x341, 0x340, 0x897, 0x35e, 0xe0100, 0x202c))
+  // and one that leading() reaches with stretches() null: an override forces a left-to-right letter with marks right to
+  // left (forced), which stretches() doesn't model, so leading() takes every stretch as possibly turned around
+  runs.push(cp(0x202e, 0x341, 0x341, 0x341, 0x456, 0xe0100))
   // a dotted "i" or Cyrillic "і" and a mark above past an ignorable that keeps NFC from composing them (a variation
   // selector, a zero-width space, a word joiner, a joiner), which Inter still draws dotless and kerns as "ĩ" or "ï",
   // between letters it kerns those with, repeated too

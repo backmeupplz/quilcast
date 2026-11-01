@@ -1432,11 +1432,29 @@ const ligated = (run, font, empty, any) => run.replace(LIGATED[+any][empty], (al
 // again), and nothing of those marks of that grapheme either (U+FE00 and U+06DB starting it keep U+0341 after a PDI
 // a box). Measured. leading gives the indices of all those marks. (A grapheme goes on past a joiner before an emoji
 // symbol, and over a pair of regional indicators, too: not modelled, and guessed well over what resvg draws anyway.)
+// (A stretch set right to left whose script is written left to right, like U+202B U+0340 U+0341 U+0E48 U+10D69 U+E0100
+// shaped as Thai, is turned around too; stretches() lays those out itself, so leading() skips them.) For a run whose
+// stretches aren't modelled (stretches() is null: a paragraph separator with explicit controls, a forced stretch, a
+// dash with an angle bracket, or a letter and a mark split by controls; see stretches()), any stretch is taken as
+// turned around, whatever its script, and one can start at the run's start or right after an embedding, override,
+// isolate or end of one and what rule X9 takes out after it: U+202E U+0341 U+0341 U+0341 U+0456 U+E0100, an override
+// forcing a left-to-right letter with marks right to left, is guessed short otherwise (measured).
 const CONTINUES = new RegExp(`${MARK.source}|[\\u{200d}\\u{e0020}-\\u{e007f}\\u{1f3fb}-\\u{1f3ff}]`, 'u')
+const opened = (chars) => {
+  const way = [[]]
+  let past = false
+  for (const [i, c] of chars.entries()) {
+    const t = bidi(c)
+    if (past && t !== 'X' && t !== 'BN' && way.at(-1).length) way.push([])
+    past = t === 'X' || (past && t === 'BN')
+    way.at(-1).push(i)
+  }
+  return way.map((s) => ({ orders: [{ order: s }], back: true }))
+}
 const leading = (chars) => {
   const out = new Set()
-  if (!chars.some((c) => VARIANT.test(c)) || !chars.some((c) => RTL.test(c))) return out
-  for (const way of stretches(chars) ?? []) {
+  if (!chars.some((c) => VARIANT.test(c)) || !chars.some((c) => RTL.test(c) || RIGHT.test(c))) return out
+  for (const way of stretches(chars) ?? [opened(chars)]) {
     for (const { orders, back } of way) {
       const s = orders[0].order
       if (!back || !MARK.test(chars[s[0]])) continue
