@@ -1036,12 +1036,14 @@ const together = (run, font, empty) => run.replace(APART[empty], (p) => p.replac
   const n = g.normalize('NFC')
   return n !== g && [...n].every((x) => IGNORED.test(x) || font.glyph(x.codePointAt(0)) || (/\p{M}/u.test(x) && g.includes(x))) ? n : g
 })
-const ligated = (run, font, empty) => run.replace(LIGATED[empty], (all, letter, _, marks) => {
+const ligated = (run, font, empty) => run.replace(LIGATED[empty], (all, letter, skipped, marks) => {
   // (a variation selector among the marks keeps the shaper from decomposing them)
   const ms = VARIANT.test(marks) ? marks : marks.normalize('NFD')
   const first = String.fromCodePoint(ms.codePointAt(0))
   const c = LIGATURES.get((DOTLESS[letter] ?? letter) + first)
-  return c && font.glyph(c.codePointAt(0)) ? c + ms.slice(first.length) : all
+  // (but a joiner anywhere between them keeps U+1DC4 off "e" and "o": resvg draws it at its own advance after one, past
+  // whatever other ignorables are there, on any letter; measured for every row past a joiner and each other ignorable)
+  return c && font.glyph(c.codePointAt(0)) && !(first === '\u{1dc4}' && skipped?.includes('\u{200d}')) ? c + ms.slice(first.length) : all
 })
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
