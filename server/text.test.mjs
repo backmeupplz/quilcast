@@ -356,6 +356,9 @@ test("Inter's kerning read from the font is the room resvg gives a pair", () => 
       assert.ok(Math.abs(measure(`${a}${z}H`, i === 1) - sum) < 0.001, `${i} ${a}${z}`)
     }
     assert.ok(font.kern('1', 'ï') > 0.05 && font.kern('T', 'o') < 0)
+    // and the forms Inter's contextual lookups draw a glyph as kern too: "(" after a capital is its case form, kerned
+    // wider before "Ï" than "(" is
+    assert.ok(font.kern('(', 'Ï', true) > font.kern('(', 'Ï') + 0.02 && font.kern('T', 'o', true) >= font.kern('T', 'o'))
   }
 })
 
@@ -549,6 +552,14 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   const chars = Array.from({ length: 0x600 - 0x21 }, (_, i) => cp(0x21 + i)).filter((c) => inter.glyph(c.codePointAt(0)) && /[\p{L}\p{N}\p{P}\p{S}]/u.test(c))
   for (const a of chars) for (const z of chars) if (inter.kern(a, z) > 0.05) kerned.push([a, z])
   for (const [a, z] of kerned.filter((_, i) => i % 50 === 0)) runs.push(a + cp(0x308) + z, `Ж${a}${cp(0x302)}${z}`, a + cp(0x200d, 0x360) + z)
+  // two letters Inter kerns wider than the room the first gets ("ď" before closing brackets +0.13 em, "ȴ" before "j"),
+  // alone, after a capital and among others, and a bracket next to a capital, which Inter draws as its case form and
+  // kerns wider before "Ï" than the bracket; and a sample of those pairs, alone and after a capital
+  runs.push('ď]', 'ď)', 'ď}', 'ȴj', 'ȴȷ', 'ȴј', 'Ŧῒ', 'Ɋǰ', 'ɖĵ', '1ИȋṰῒ', 'αȴʃ', 'Жȴɲ', 'HƫɏЋH', 'H(Ï', `H(${cp(0x308)}Ï`, 'H[Ï', 'H{Ï')
+  for (const [a, z] of kerned.filter((_, i) => i % 7 === 0)) runs.push(a + z, `H${a}${z}`)
+  // (repeated in a right-to-left embedding, override or isolate, past the room such a run gets for its clusters)
+  for (const o of [0x202b, 0x202e, 0x2067]) runs.push(cp(o) + 'ď]'.repeat(30), cp(o) + 'ȴj'.repeat(17))
+  runs.push(cp(0x202a) + 'ď]'.repeat(15) + 'א', cp(0x202b) + cp(0x131, 0x308).repeat(40), cp(0x202b) + `l${cp(0x30c)}]`.repeat(20))
   // a letter Inter kerns wider on both sides at once, between letters that get no room of their own ("ĩ" after "f" and
   // before "T"), repeated too, also spelled as a dotless "ı" and the mark Inter's ccmp joins it with; and the others it
   // does that for, each between the characters that kern it most

@@ -11,6 +11,10 @@ import { keep } from './net.mjs'
 
 export const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) => new URL(`fonts/${f}`, import.meta.url).pathname)
 
+// The GSUB features the shaper applies to horizontal text unless it's told not to (rustybuzz's defaults; the kerning
+// and mark positioning ones are GPOS's)
+const DEFAULT_FEATURES = new Set(['rvrn', 'ccmp', 'locl', 'rlig', 'rclt', 'calt', 'clig', 'liga'])
+
 /** Which characters a TrueType font has a glyph for, and a glyph's advance in em (undefined when the font has none). */
 export function metrics(file) {
   const b = readFileSync(file)
@@ -86,16 +90,40 @@ export function metrics(file) {
     const [size, x] = [2 * (bits(f1) + bits(f2)), f1 & 4 ? 2 * bits(f1 & 3) : -1]
     const index = new Map(covered(o + u16(o + 2)).map((id, i) => [id, i]))
     if (u16(o) === 1) {
-      return (a, z) => {
+      return Object.assign((a, z) => {
         if (!index.has(a)) return undefined
         const set = o + u16(o + 10 + 2 * index.get(a))
-        for (let i = 0; i < u16(set); i++) if (u16(set + 2 + i * (2 + size)) === z) return x < 0 ? 0 : s16(set + 4 + i * (2 + size) + x)
+        // (its pairs are in the order of the second glyph)
+        let [lo, hi] = [0, u16(set) - 1]
+        while (lo <= hi) {
+          const m = (lo + hi) >> 1
+          const g = u16(set + 2 + m * (2 + size))
+          if (g === z) return x < 0 ? 0 : s16(set + 4 + m * (2 + size) + x)
+          if (g < z) lo = m + 1
+          else hi = m - 1
+        }
         return undefined
-      }
+      }, {
+        index,
+        // (the most it adjusts the glyph by, before any other)
+        most: (a) => {
+          const set = o + u16(o + 10 + 2 * index.get(a))
+          let m = -Infinity
+          for (let i = 0; i < u16(set); i++) m = Math.max(m, x < 0 ? 0 : s16(set + 4 + i * (2 + size) + x))
+          return m
+        },
+      })
     }
     const [one, two, n2] = [classes(o + u16(o + 8)), classes(o + u16(o + 10)), u16(o + 14)]
-    return (a, z) => (!index.has(a) ? undefined : x < 0 ? 0 : s16(o + 16 + ((one.get(a) ?? 0) * n2 + (two.get(z) ?? 0)) * size + x))
+    const at = (a, k) => (x < 0 ? 0 : s16(o + 16 + ((one.get(a) ?? 0) * n2 + k) * size + x))
+    return Object.assign((a, z) => (!index.has(a) ? undefined : at(a, two.get(z) ?? 0)), {
+      index,
+      most: (a) => Math.max(...Array.from({ length: n2 }, (_, k) => at(a, k))),
+    })
   }
+  // (by lookup, the subtables that have pairs a glyph is the first of: only those are looked through for its kerning)
+  const firsts = new Map()
+  const kerns = (g) => firsts.get(g) ?? firsts.set(g, pairs.map((subtables) => subtables.filter((p) => p.index.has(g))).filter((s) => s.length)).get(g)
   if (t.GPOS) {
     const list = t.GPOS + u16(t.GPOS + 8)
     for (let l = 0; l < u16(list); l++) {
@@ -109,6 +137,99 @@ export function metrics(file) {
       }
       if (subtables.length) pairs.push(subtables)
     }
+  }
+  // and the glyphs the substitutions the shaper applies by default can swap a glyph for (GSUB single substitutions (1)
+  // of the default features' lookups, or of the lookups a contextual (5) or chained contextual (6) one of them applies,
+  // through extensions (7)): Inter's contextual alternates draw "(" next to a capital as its case form, which it kerns
+  // wider before "Ï" than "(" (+0.028 em, bold +0.051), so a guess can take a pair as kerned as the widest of the forms
+  // either glyph can take, wherever it is (so "(j" counts the case form's kerning too: a little wider, never short).
+  // Not the features text has to ask for, like small capitals', nor the fraction forms the shaper puts around "⁄" by
+  // itself, which are narrower than the digits (swept: no guess with them was short)
+  const alternates = new Map()
+  if (t.GSUB) {
+    const list = t.GSUB + u16(t.GSUB + 8)
+    const subtables = (l) => {
+      const lookup = list + u16(list + 2 + 2 * l)
+      return Array.from({ length: u16(lookup + 4) }, (_, s) => {
+        const o = lookup + u16(lookup + 6 + 2 * s)
+        return u16(lookup) === 7 ? [u16(o + 2), o + b.readUInt32BE(o + 4)] : [u16(lookup), o]
+      })
+    }
+    const applied = new Set()
+    const features = t.GSUB + u16(t.GSUB + 6)
+    for (let i = 0; i < u16(features); i++) {
+      if (!DEFAULT_FEATURES.has(b.toString('latin1', features + 2 + 6 * i, features + 6 + 6 * i))) continue
+      const f = features + u16(features + 6 + 6 * i)
+      for (let k = 0; k < u16(f + 2); k++) applied.add(u16(f + 4 + 2 * k))
+    }
+    const records = (n, p) => {
+      for (let i = 0; i < n; i++) applied.add(u16(p + 2 + 4 * i))
+    }
+    // (a chained rule: the glyphs before, the input past its first glyph, the glyphs after, then the lookups it applies;
+    // format 3 has coverages instead of glyphs, and the whole input)
+    const chained = (p, whole) => {
+      p += 2 + 2 * u16(p)
+      p += (whole ? 2 : 0) + 2 * u16(p)
+      p += 2 + 2 * u16(p)
+      records(u16(p), p + 2)
+    }
+    // (and the lookups those apply, as they're found)
+    for (const l of applied) {
+      for (const [type, o] of subtables(l)) {
+        const f = u16(o)
+        if (type === 5 && f === 3) records(u16(o + 4), o + 6 + 2 * u16(o + 2))
+        else if (type === 5 && (f === 1 || f === 2)) {
+          // (a rule: the input past its first glyph, the lookups it applies)
+          const sets = f === 1 ? o + 4 : o + 6
+          for (let i = 0; i < u16(sets); i++) {
+            const set = u16(sets + 2 + 2 * i) && o + u16(sets + 2 + 2 * i)
+            for (let r = 0; set && r < u16(set); r++) {
+              const p = set + u16(set + 2 + 2 * r)
+              records(u16(p + 2), p + 4 + 2 * (u16(p) - 1))
+            }
+          }
+        } else if (type === 6 && f === 3) chained(o + 2, true)
+        else if (type === 6 && (f === 1 || f === 2)) {
+          const sets = f === 1 ? o + 4 : o + 10
+          for (let i = 0; i < u16(sets); i++) {
+            const set = u16(sets + 2 + 2 * i) && o + u16(sets + 2 + 2 * i)
+            for (let r = 0; set && r < u16(set); r++) chained(set + u16(set + 2 + 2 * r), false)
+          }
+        }
+      }
+    }
+    const add = (from, to) => (alternates.get(from) ?? alternates.set(from, new Set()).get(from)).add(to)
+    for (const l of applied) {
+      for (const [type, o] of subtables(l)) {
+        if (type !== 1) continue
+        if (u16(o) === 1) for (const id of covered(o + u16(o + 2))) add(id, (id + u16(o + 4)) & 0xffff)
+        else if (u16(o) === 2) covered(o + u16(o + 2)).forEach((id, i) => add(id, u16(o + 6 + 2 * i)))
+      }
+    }
+  }
+  const kernOf = (ga, gz) => {
+    let k = 0
+    for (const subtables of kerns(ga)) {
+      for (const p of subtables) {
+        const v = p(ga, gz)
+        if (v !== undefined) {
+          k += v
+          break
+        }
+      }
+    }
+    return k
+  }
+  // (kern(a, z, true) by glyph pair, as they're asked for, up to a limit; and most() by glyph)
+  const anyKern = new Map()
+  const mosts = new Map()
+  // (a form of a form too)
+  const formed = new Map()
+  const forms = (g) => {
+    if (formed.has(g)) return formed.get(g)
+    const all = new Set([g])
+    for (const x of all) for (const y of alternates.get(x) ?? []) all.add(y)
+    return formed.set(g, all).get(g)
   }
   // the glyphs GDEF calls marks (class 3): a mark is attached to the last glyph before it that isn't one
   const marked = new Set()
@@ -138,22 +259,29 @@ export function metrics(file) {
     },
     mark: (cp) => marked.has(glyphs.get(cp)),
     // how much wider the pair adjustments make the first of two characters drawn next to each other, in em: each lookup
-    // adjusts it by its first subtable that has the pair
-    kern: (a, z) => {
-      const [ga, gz] = [glyphs.get(a.codePointAt(0)), glyphs.get(z.codePointAt(0))]
-      let k = 0
-      if (ga && gz) {
-        for (const subtables of pairs) {
-          for (const p of subtables) {
-            const v = p(ga, gz)
-            if (v !== undefined) {
-              k += v
-              break
-            }
-          }
-        }
+    // adjusts it by its first subtable that has the pair. any: the most for any forms the contextual lookups can draw
+    // them as, not only their own glyphs ("(" "Ï" after a capital)
+    kern: (a, z, any = false) => {
+      const ga = glyphs.get(a.codePointAt(0))
+      const gz = glyphs.get(z.codePointAt(0))
+      if (!ga || !gz) return 0
+      if (!any) return kernOf(ga, gz) / upm
+      const key = ga * 0x10000 + gz
+      if (!anyKern.has(key)) {
+        let most = -Infinity
+        for (const fa of forms(ga)) for (const fz of forms(gz)) most = Math.max(most, kernOf(fa, fz))
+        if (anyKern.size >= 1e5) anyKern.clear()
+        anyKern.set(key, most / upm)
       }
-      return k / upm
+      return anyKern.get(key)
+    },
+    // the most the pair adjustments can make a character (any of its forms) wider before any other, in em: each lookup
+    // by the most any of its subtables that have pairs it's the first of adjusts it, or none
+    most: (a) => {
+      const ga = glyphs.get(a.codePointAt(0))
+      if (!ga) return 0
+      if (!mosts.has(ga)) mosts.set(ga, Math.max(...[...forms(ga)].map((f) => kerns(f).reduce((k, subtables) => k + Math.max(0, ...subtables.map((p) => p.most(f))), 0))) / upm)
+      return mosts.get(ga)
     },
   }
 }
@@ -334,7 +462,11 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
     return n !== c && [...n].length === 1 && font.glyph(n.codePointAt(0)) ? n : c
   }
   const widest = (d) => Math.max(0, ...[...d].map(adv))
-  const kerned = (a, z) => Math.max(0, ...[...a].flatMap((x) => [...z].map((y) => font.kern(x, y))))
+  const kerned = (a, z) => {
+    let k = 0
+    for (const x of a) for (const y of z) k = Math.max(k, font.kern(x, y, true))
+    return k
+  }
   // The shaper takes the run's script from its first letter, and Inter positions no marks in Cyrillic or Greek text
   // ("Ж̂" has the mark after the letter, "aЖ̂" over it); every other script, or none, gets its default (Latin) marks
   const marked = hang && !UNMARKED.test(run.match(SCRIPTED)?.[0] ?? '')
@@ -373,6 +505,12 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
     // (a letter's room for kerning and wider forms is on top of the box its boxes widen it to: resvg kerns the widened
     // letter as it kerns the letter, "l" and "ΐ" with a box on it as "lΐ")
     const r = letter && room ? room(letter, marks > 0) : 0
+    // (the letter before is kerned wider with this one, as this one is drawn, than the room counted after it for a few
+    // pairs: "ď]" +0.088 em, bold +0.131, "ȴj"; that puts this cluster further right. Only with room counted: a run
+    // without it is guessed at its advance, the room added by whoever asks)
+    const d = letter && marks && drawn === letter ? singleton(letter) : drawn
+    const k = letter ? kerned(before, d) : 0
+    if (letter && room) w += Math.max(0, k - roomed)
     // (a mark's overhang is past the letter as its boxes widen it, or past the boxes' ink when it ends further, as
     // resvg sets a mark after a box against the box)
     // (shaped right to left, a letter's boxes start past its ink, not its advance: up to a box further, unless it's a
@@ -392,8 +530,7 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
     // (the unanchored marks of the letter before are moved right by its kerning with this one, as this one is drawn; the
     // marks after a break with no letter of their own are drawn after that letter too)
     if (letter) {
-      const d = marks && drawn === letter ? singleton(letter) : drawn
-      if (reach > -Infinity) end = Math.max(end, reach + kerned(before, d))
+      if (reach > -Infinity) end = Math.max(end, reach + k)
       ;(before = d), (reach = loose), (roomed = r)
     } else reach = Math.max(reach, loose)
     base = marks = own = ends = 0
@@ -959,14 +1096,25 @@ const guessed = (run, font) => {
   // A run with right-to-left embeddings, overrides or isolates, or any with right-to-left text (contrived), gets room
   // for every cluster in any order and direction: each mark no font has a box of its own, sara am two, and the most one
   // cluster's ink can end past them (boxes set past a letter's ink, a mark's overhang on nothing) and one character's
-  // ink past its advance (or one of Inter's marks past the pen, where nothing anchors it).
+  // ink past its advance (or one of Inter's marks past the pen, where nothing anchors it). Each letter gets the more of
+  // its room and the most Inter kerns it before anything, whatever comes after it ("ď]" sixteen times in an embedding),
+  // as it's drawn with the marks after it too (composed with them, a dotless "ı" as "i")
   if (!ways) {
     const drawn = cs.filter((c) => !IGNORED.test(c))
-    for (const c of drawn) w += AM.test(c) ? 2 * BOX : boxed(c, font) ? BOX : adv(c) + (MARK.test(c) ? 0 : room(c, true))
+    // (past the letter's advance: the room and kerning of each letter it can be drawn as)
+    const most = (c, i) => {
+      let marks = ''
+      for (let k = i + 1; k < drawn.length && MARK.test(drawn[k]); k++) marks += drawn[k]
+      const as = [c, ...(marks ? [(c + marks).normalize('NFC'), DOTTED[c] && (DOTTED[c] + marks).normalize('NFC')] : [])]
+      const one = as.filter((x) => x && [...x].length === 1 && font.glyph(x.codePointAt(0)))
+      return Math.max(room(c, true), ...one.map((x) => Math.max(font.most(x), adv(x) + extra(x) - adv(c))))
+    }
+    for (const [i, c] of drawn.entries()) w += AM.test(c) ? 2 * BOX : boxed(c, font) ? BOX : adv(c) + (MARK.test(c) ? 0 : most(c, i))
     w += BOX + OVERHANG + 0.2 + Math.max(0, ...drawn.map(past), ...drawn.map((c) => (MARK.test(c) && font.reach(c.codePointAt(0))) || 0))
   }
-  // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em; a skin tone outside an emoji as wide as
-  // toned has it (which counts a letter's extra room in its advance, as it did before laid() took it as room)
+  // and a little for Inter's positive kerning ("ty", "d)"; a pair kerned wider than the room its first letter gets is
+  // counted where it's laid out: "ď]", "ȴj"); a skin tone outside an emoji as wide as toned has it (which counts a
+  // letter's extra room in its advance, as it did before laid() took it as room)
   return (TONE.test(run) ? Math.max(w, toned(cs, (c) => adv(c) + (MARK.test(c) ? 0 : extra(c)))) : w) + 0.04
 }
 // A skin tone outside an emoji. Card text never has one in a run of text (pieces() takes tones off as pictures), so only
