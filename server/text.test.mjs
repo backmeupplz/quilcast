@@ -418,6 +418,12 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // a box mark on a letter Inter kerns wider after "l" (resvg kerns the box-wide letter too), also as a character drawn
   // as that letter once a mark is on it ("ΐ" as "ΐ", the Greek varia as a wider "`")
   runs.push(cp(0x6c, 0x1fd3, 0x345, 0x20), cp(0x6c, 0x390, 0x345, 0x20), cp(0x6c, 0x3ca, 0x345, 0x20), cp(0x6c, 0xef, 0x345, 0x20), cp(0x6c, 0x390, 0x345), cp(0x6c, 0x1fef, 0x345), cp(0x69, 0x1ffd, 0x336))
+  // a strike after an ignorable that cuts it off a space or symbol, with variation selectors after it and a narrow
+  // space or letter next: a whole box after the space, not the box widening it
+  runs.push(cp(0x205f, 0x2060, 0x336, 0xfe0f, 0xfe0f, 0x2009))
+  for (const z of [0x2060, 0x200b, 0x200c, 0xad, 0xfeff, 0x180e, 0xe0001, 0x200e, 0x202a, 0x202d, 0x2066, 0x2069]) {
+    for (const s of [' ', cp(0x205f), cp(0x2009), cp(0x3000), cp(0xa0), '#', '-', '*', '→', '']) runs.push(`${s}${cp(z, 0x336, 0xfe0f, 0xfe0f, 0x2009)}`, `${s}${cp(z, 0x336, 0x336)}i`, `${s}${cp(z, 0xfe0f, 0x336)}x`)
+  }
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
