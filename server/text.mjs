@@ -397,6 +397,10 @@ const RIGHT = new RegExp(`${BIDI.AL.source}|${BIDI.R.source}|${BIDI.AN.source}|$
 // the right-to-left embedding, override and isolate; and the embeddings, overrides and isolates that open a level
 const RLX = /[\u202b\u202e\u2067]/u
 const OPENS = /[\u202a\u202d\u2066\u2068]/u
+// The paired brackets (BidiBrackets.txt, as unicode-bidi has them): each opening one by the code point it pairs by, and
+// each closing one by minus that ("〈" pairs with "〉" and "〉")
+const BRACKETS = new Map()
+for (const [o, c, as = o] of [[0x28, 0x29], [0x5b, 0x5d], [0x7b, 0x7d], [0xf3a, 0xf3b], [0xf3c, 0xf3d], [0x169b, 0x169c], [0x2045, 0x2046], [0x207d, 0x207e], [0x208d, 0x208e], [0x2308, 0x2309], [0x230a, 0x230b], [0x2329, 0x232a, 0x3008], [0x2768, 0x2769], [0x276a, 0x276b], [0x276c, 0x276d], [0x276e, 0x276f], [0x2770, 0x2771], [0x2772, 0x2773], [0x2774, 0x2775], [0x27c5, 0x27c6], [0x27e6, 0x27e7], [0x27e8, 0x27e9], [0x27ea, 0x27eb], [0x27ec, 0x27ed], [0x27ee, 0x27ef], [0x2983, 0x2984], [0x2985, 0x2986], [0x2987, 0x2988], [0x2989, 0x298a], [0x298b, 0x298c], [0x298d, 0x2990], [0x298f, 0x298e], [0x2991, 0x2992], [0x2993, 0x2994], [0x2995, 0x2996], [0x2997, 0x2998], [0x29d8, 0x29d9], [0x29da, 0x29db], [0x29fc, 0x29fd], [0x2e22, 0x2e23], [0x2e24, 0x2e25], [0x2e26, 0x2e27], [0x2e28, 0x2e29], [0x2e55, 0x2e56], [0x2e57, 0x2e58], [0x2e59, 0x2e5a], [0x2e5b, 0x2e5c], [0x3008, 0x3009], [0x300a, 0x300b], [0x300c, 0x300d], [0x300e, 0x300f], [0x3010, 0x3011], [0x3014, 0x3015], [0x3016, 0x3017], [0x3018, 0x3019], [0x301a, 0x301b], [0xfe59, 0xfe5a], [0xfe5b, 0xfe5c], [0xfe5d, 0xfe5e], [0xff08, 0xff09], [0xff3b, 0xff3d], [0xff5b, 0xff5d], [0xff5f, 0xff60], [0xff62, 0xff63]]) BRACKETS.set(o, as).set(c, -as)
 const STRONG = new Set(['L', 'R', 'AL'])
 const NUMBER = new Set(['EN', 'AN'])
 /** resvg lays a run out in stretches of one direction, unicode-bidi's level runs for text set left to right, and
@@ -486,6 +490,36 @@ const stretches = (cs) => {
     if (['ES', 'ET', 'CS'].includes(t[i])) t[i] = 'ON'
     if (t[i] === 'EN' && strong === 'L') t[i] = 'L'
     if (STRONG.has(t[i])) strong = t[i]
+  }
+  // N0: a pair of brackets takes the direction of what's in it, when that's left to right; when it's right to left or a
+  // number, the direction of what's before them (left to right, or right to left after right-to-left text or a number:
+  // "عَ (12)" is drawn "(12) عَ", the box mark at its end); and the marks right after a bracket with it. BD16 pairs
+  // them, at most 63 open at once, as unicode-bidi does.
+  const open = []
+  const pairs = []
+  for (const [k, i] of at.entries()) {
+    const b = t[i] === 'ON' && BRACKETS.get(cs[i].codePointAt(0))
+    if (!b) continue
+    if (b > 0) {
+      if (open.length === 63) break
+      open.push([b, k])
+    } else {
+      const j = open.findLastIndex(([o]) => o === -b)
+      if (j >= 0) pairs.push([open[j][1], k]), (open.length = j)
+    }
+  }
+  for (const [o, e] of pairs.sort(([a], [b]) => a - b)) {
+    const inside = at.slice(o + 1, e).map((i) => t[i])
+    let d = inside.includes('L') ? 'L' : inside.some((x) => x === 'R' || NUMBER.has(x)) ? null : undefined
+    if (d === undefined) continue
+    if (d === null) {
+      const before = at.slice(0, o).map((i) => t[i]).findLast((x) => x === 'L' || x === 'R' || NUMBER.has(x))
+      d = before && before !== 'L' ? 'R' : 'L'
+    }
+    for (const k of [o, e]) {
+      t[at[k]] = d
+      for (let j = k + 1; j < at.length && bidi(cs[at[j]]) === 'NSM'; j++) t[at[j]] = d
+    }
   }
   // N1, N2: neutrals between two of one direction take it (numbers count as right to left), others the text's
   const dir = (x) => (x === 'L' || x === 'sos' || x === undefined ? 'L' : 'R')

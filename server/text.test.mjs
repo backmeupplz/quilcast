@@ -345,6 +345,8 @@ test('a card measures a bounded number of new runs at once; past that, a guess t
 const SARA_AM_BEFORE_RTL = [cp(0xe14, 0xe37, 0xe48, 0xe21, 0xe19, 0xe49, 0xe33, 0x20, 0x5e9, 0x5dc, 0x5d5, 0x5dd), cp(0xe19, 0xe49, 0xe33, 0x20, 0x627, 0x644, 0x633, 0x644, 0x627, 0x645), cp(0x5e9, 0x5dc, 0x5d5, 0x5dd, 0x20, 0xe19, 0xe49, 0xe33, 0x20, 0x627, 0x644, 0x633, 0x644, 0x627, 0x645, 0x20, 0xe19, 0xe49, 0xe33)]
 const BOX_ON_RTL_SPACE = [cp(0x20, 0x6db), cp(0x631, 0x64e, 0x64a, 0x652, 0x628, 0x64e, 0x20, 0x6db)]
 // left-to-right isolates and embeddings in text with nothing right to left in it (a mention isolated in a cast)
+// a number after Arabic with harakat or Hebrew with points (a word and a count), bare or in brackets
+const RTL_BEFORE_NUMBERS = ['كَتَبَ 12', 'عَ 12', 'عَ 1', 'عَ12', 'عَ ١٢', 'عَ 1.5', 'عَ #1', 'كَتَبَ 2024!', 'שָׁלוֹם 12', 'בְּ 12', 'عَ (12)', 'عَ [12]', 'عَ (١٢)', 'عَ ((12))', 'عَ (1)(2)', `عَ ${cp(0x2329)}12${cp(0x3009)}`, 'עִ (12)', 'x (12) عَ', 'عَ (12)َ']
 const LTR_ISOLATED = [`gm ${cp(0x2068)}@alice${cp(0x2069)} how are you`, `A1${cp(0x2069, 0x336)}®`, `ดื่มน้ำ ${cp(0x2068)}x${cp(0x2069)}`, `${cp(0x202a)}Thai ${cp(0x2066)}น้ำ${cp(0x2069)} ok${cp(0x202c)}`, `${cp(0x202d)}a${cp(0x336, 0x202c)}b`]
 test("a run past the budget is guessed, and the guess is never less than resvg's own advance", async () => {
   const inter = metrics(FONTS[0])
@@ -410,6 +412,9 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // and a number after a letter resvg's Unicode hadn't assigned in a newer Arabic block, which it takes as right to left,
   // not Arabic, so the number stays a European one
   runs.push(cp(0x10ec2, 0x36, 0xb0, 0xe33, 0x1ed01), cp(0x897, 0x36, 0xb0, 0xe33, 0x1ed01), cp(0x88f, 0x36, 0xb0, 0xe33, 0x10d28))
+  // and a number after Arabic letters with harakat, which bidi draws before them, so a haraka's box ends the run: a
+  // number on its own, and in brackets, which take the direction of the letters before them; Hebrew with points too
+  runs.push(...RTL_BEFORE_NUMBERS)
   // marks no font has opening a run resvg shapes right to left (the first of any script is Arabic, Samaritan, Hebrew):
   // each letter drawn past its own boxes, and a letter composed with its mark ("ĺ") past the opening boxes too, which
   // a precomposed letter ("ï" as one character) is as well: it's shaped as its letter and marks, which can be wider
@@ -545,6 +550,8 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   // after it, not added to it, and a box mark on a space shaped right to left isn't set past ink the space doesn't have
   for (const run of SARA_AM_BEFORE_RTL) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
   for (const run of BOX_ON_RTL_SPACE) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.3, run)
+  // and a number after Arabic with harakat or Hebrew with points, bare or in brackets, is as close as other text
+  for (const run of RTL_BEFORE_NUMBERS) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.15, run)
   // and isolates and embeddings that only set text left to right are guessed as the stretches they cut, not as room for
   // every cluster in any order
   for (const run of LTR_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
