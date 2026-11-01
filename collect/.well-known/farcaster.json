@@ -35,6 +35,7 @@
       "wallet.getEthereumProvider",
       "actions.composeCast"
     ],
-    "canonicalDomain": "collect.quilcast.com"
+    "canonicalDomain": "collect.quilcast.com",
+    "castShareUrl": "https://collect.quilcast.com/"
   }
 }

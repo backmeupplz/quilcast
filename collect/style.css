@@ -20,3 +20,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid #fff; outline-offset:
 .muted { color: var(--muted); margin: 4px 0; }
 .small { font-size: 14px; margin-top: 16px; }
 a { color: #b3a6ff; }
+form.find { margin: 0 0 8px; }
+.find input { display: block; width: 100%; min-height: 52px; margin: 0 0 10px; padding: 0 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--fg); font: inherit; }
+.find input:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 1px; }
+#find-status { min-height: 1.5em; margin: 8px 0 0; }
+#find-status.err { color: #ff8f8f; }
+#count { margin-top: 16px; }

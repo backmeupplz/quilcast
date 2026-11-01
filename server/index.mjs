@@ -627,7 +627,7 @@ const COLLECT_DIR = new URL('../collect/', import.meta.url).pathname
 // the app reads Base, the node (who owns it) and quilcast.com (the NFT's metadata); Farcaster clients and Quilcast frame it
 const COLLECT_CSP = `default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ${BASE_RPC} ${SITE} ${NODE}; img-src 'self' data: https:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *`
 const collectIndex = readFileSync(join(COLLECT_DIR, 'index.html'), 'utf8')
-// who holds a cast's NFT: an address and their Farcaster account, or null while nobody does; asked again after 5 minutes
+// who holds a cast's NFT: an address and their Farcaster account (kept 5 minutes), or null while nobody does (asked every time)
 const owners = new Map()
 function ownerOf(hash) {
   const hit = owners.get(hash)
@@ -636,7 +636,8 @@ function ownerOf(hash) {
   const p = fetch(BASE_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(5000) })
     .then((r) => r.json())
     .then(async (r) => {
-      if (!/^0x[0-9a-f]{64}$/i.test(r?.result || '')) return null // ownerOf reverts for a cast nobody has
+      // ownerOf reverts for a cast nobody has; that isn't kept, so a link shared right after collecting shows the collector
+      if (!/^0x[0-9a-f]{64}$/i.test(r?.result || '')) return owners.get(hash)?.p === p && owners.delete(hash), null
       const address = '0x' + r.result.slice(-40).toLowerCase()
       const u = (await nodeJson(`/v2/farcaster/user/bulk-by-address?addresses=${address}`).catch(() => null))?.users?.[0]
       return { address, user: u?.username ? u : null }
@@ -711,6 +712,31 @@ async function collectPage(hash) {
     h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: embed, button: { title: button, action: { type, name: 'Quilcast Collect', url: COLLECT + path, splashImageUrl: `${COLLECT}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
   }
   return h.replace(/(<link rel="canonical" href=")[^"]*/, (_, p) => p + esc(COLLECT + path))
+}
+// A pasted cast link → its full hash, which is its token id, so every link to a cast collects the same NFT: anything
+// carrying all 40 hex digits (quilcast.com/c/<hash>, a bare hash, farcaster.xyz/~/conversations/0x…), or
+// farcaster.xyz / warpcast.com /<name>/0x<first digits>, found among that account's casts, newest first.
+// ponytail: at most 30 pages of 1000 casts are searched; an older cast of a very busy account needs its full hash
+const resolved = new Map()
+async function castFromLink(text) {
+  const s = String(text || '').trim().slice(0, 500)
+  const full = s.match(/(?:^|[^0-9a-f])(?:0x)?([0-9a-f]{40})(?![0-9a-f])/i)?.[1]?.toLowerCase()
+  if (full) return (await getCast(full)) ? full : null
+  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?(?:farcaster\.xyz|warpcast\.com)\/([^/?#~][^/?#]*)\/0x([0-9a-f]{6,39})(?:[/?#]|$)/i)
+  if (!m) return null
+  const k = `${m[1]}/${m[2]}`.toLowerCase()
+  if (resolved.has(k)) return resolved.get(k)
+  const u = await findUser(decodeURIComponent(m[1]))
+  if (!u) return null
+  const prefix = '0x' + m[2].toLowerCase()
+  let token = ''
+  for (let i = 0; i < 30; i++) {
+    const r = await nodeJson(`/v1/castsByFid?fid=${u.fid}&pageSize=1000&reverse=true${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`)
+    const hit = r?.messages?.find((x) => x.hash?.toLowerCase().startsWith(prefix))
+    if (hit) return keep(resolved, 1000, k, hit.hash.slice(2).toLowerCase())
+    if (!(token = r?.nextPageToken)) break
+  }
+  return null
 }
 // collect/'s files, listed once: nothing else under it is served
 const collectFiles = new Set(readdirSync(COLLECT_DIR, { recursive: true, withFileTypes: true }).filter((d) => d.isFile() && d.name !== 'index.html').map((d) => '/' + relative(COLLECT_DIR, join(d.parentPath, d.name))))
@@ -884,7 +910,15 @@ createServer(async (req, res) => {
     // collect.quilcast.com: the Collect mini app, a page per cast (/c/<hash>, or ?cast=<hash> as Quilcast first opened it)
     if (String(req.headers.host || '').split(':')[0] === COLLECT_HOST) {
       res.setHeader('content-security-policy', COLLECT_CSP)
-      const hash = (path.match(/^\/c\/(?:0x)?([0-9a-f]{40})$/i)?.[1] || (path === '/' ? url.searchParams.get('cast')?.match(/^(?:0x)?([0-9a-f]{40})$/i)?.[1] : undefined))?.toLowerCase()
+      if (path === '/api/cast') {
+        // the mini app words the errors itself
+        if (limited(`resolve:${ip}`, 30)) return json(429, {})
+        const hash = await castFromLink(url.searchParams.get('url'))
+        return hash ? json(200, { hash }) : json(404, {})
+      }
+      // ?castHash= is how Farcaster clients hand over a cast shared to the app (the manifest's castShareUrl)
+      const asked = path === '/' ? url.searchParams.get('cast') || url.searchParams.get('castHash') : undefined
+      const hash = (path.match(/^\/c\/(?:0x)?([0-9a-f]{40})$/i)?.[1] || asked?.match(/^(?:0x)?([0-9a-f]{40})$/i)?.[1])?.toLowerCase()
       if (hash || path === '/') {
         if (hash && !cache.has(hash) && limited(`look:${ip}`, 120)) return res.writeHead(429).end()
         return html(await collectPage(hash))

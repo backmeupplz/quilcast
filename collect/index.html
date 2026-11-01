@@ -38,13 +38,18 @@
       <button id="collect" type="button" hidden>Collect for free</button>
       <button id="share" type="button" hidden>Share it</button>
       <p id="status" role="status"></p>
-      <p class="muted small"><a id="cast-link" target="_blank" rel="noopener">View the cast</a> · <a id="opensea" target="_blank" rel="noopener">OpenSea</a> · <a id="contract" target="_blank" rel="noopener">Contract</a></p>
+      <p class="muted small"><a id="cast-link" target="_blank" rel="noopener">View the cast</a> · <a id="opensea" target="_blank" rel="noopener">OpenSea</a> · <a id="contract" target="_blank" rel="noopener">Contract</a> · <a href="/">Another cast</a></p>
     </section>
     <section id="home" hidden>
       <img class="logo" src="/icon.png" width="96" height="96" alt="" />
       <h1>Quilcast Collect</h1>
-      <p class="lead">Every Farcaster cast can be collected once, for free, as a 1/1 NFT on Base. Open a cast on Quilcast and tap the Collect button under it to collect it or see who owns it.</p>
-      <p><a class="button" href="https://quilcast.com" target="_blank" rel="noopener">Open Quilcast</a></p>
+      <p class="lead">Every Farcaster cast can be collected once, for free, as a 1/1 NFT on Base. Paste a link to a cast from Farcaster or Quilcast to collect it or see who owns it.</p>
+      <form id="find" class="find">
+        <input id="link" type="text" inputmode="url" autocomplete="off" required placeholder="https://farcaster.xyz/name/0x…" aria-label="Cast link" />
+        <button id="find-go" type="submit">Find this cast</button>
+      </form>
+      <p id="find-status" role="status"></p>
+      <p class="muted small">In Quilcast, the gem button under every cast opens it here.</p>
       <p id="count" class="muted"></p>
       <p class="muted small"><a id="collection" target="_blank" rel="noopener">The collection on OpenSea</a> · <a id="contract2" target="_blank" rel="noopener">Contract</a></p>
     </section>

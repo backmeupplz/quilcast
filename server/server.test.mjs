@@ -60,6 +60,10 @@ const node = createServer(async (q, r) => {
   if (u.pathname === `/skins/${SKIN_ID}`) return r.end(JSON.stringify({ id: SKIN_ID, manifest: JSON.stringify(SKIN) }))
   if (u.pathname === '/report-hook') return hookHits.push({ path: u.pathname + u.search, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
   if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : u.searchParams.get('fid') === '9' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer9)).toString('hex') }] : [] }))
+  // @eight's casts, two pages, for finding a cast from a farcaster.xyz link's first digits (the Collect mini app)
+  if (u.pathname === '/v2/farcaster/user/by-username' && u.searchParams.get('username') === 'eight') return r.end(JSON.stringify({ user: { fid: 8, username: 'eight' } }))
+  if (u.pathname === '/v1/castsByFid' && u.searchParams.get('fid') === '8')
+    return r.end(JSON.stringify(u.searchParams.get('pageToken') === 'e2' ? { messages: [{ hash: '0x' + 'e8'.repeat(20) }], nextPageToken: '' } : { messages: [{ hash: '0x' + 'e1'.repeat(20) }], nextPageToken: 'e2' }))
   // fid 7's casts (two pages) and profile, as the account-deletion test sets them
   if (u.pathname === '/v1/castsByFid' && u.searchParams.get('fid') === '7') {
     if (!fid7.casts) return (r.statusCode = 500), r.end('{}')
@@ -249,6 +253,19 @@ test('collect.quilcast.com: the mini app, a page per cast whose link shows its N
     const png = Buffer.from(await (await fetch(`${base}/nft/0x${hash}.${kind}.png`)).arrayBuffer())
     assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, h], kind)
   }
+})
+
+test('collect.quilcast.com finds a pasted cast link: a full hash anywhere in it, or a farcaster.xyz link by its first digits', async () => {
+  const find = (link) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path: `/api/cast?url=${encodeURIComponent(link)}`, headers: { host: 'collect.quilcast.com' } }, (r) => {
+    let b = ''
+    r.on('data', (d) => (b += d)).on('end', () => ok(JSON.parse(b).hash))
+  }).on('error', no).end())
+  assert.equal(await find(`https://quilcast.com/c/${'cd'.repeat(20)}`), 'cd'.repeat(20))
+  assert.equal(await find(`0x${'cd'.repeat(20)}`), 'cd'.repeat(20))
+  // on the second page of @eight's casts; warpcast.com links are the same
+  assert.equal(await find(`https://farcaster.xyz/eight/0x${'e8'.repeat(4)}`), 'e8'.repeat(20))
+  assert.equal(await find(`https://warpcast.com/eight/0x${'e8'.repeat(4)}?x=1`), 'e8'.repeat(20))
+  for (const link of [`https://farcaster.xyz/eight/0x${'ab'.repeat(4)}`, 'https://example.com/eight/0xe8e8e8e8', 'hello']) assert.equal(await find(link), undefined, link)
 })
 
 test('a control character in a name, bio or cast still gets the full card', async () => {
