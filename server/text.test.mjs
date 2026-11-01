@@ -505,6 +505,8 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   for (const o of [0x202e, 0x2067, 0x202b, 0x200f, 0x61c]) runs.push(`1${cp(o, 0xe48, 0xe33)}73`, `*${cp(o, 0xe33)}73`)
   for (const o of [0x202e, 0x202b, 0x2067]) runs.push(`${cp(o, 0x336, 0x336)}i`, `a${cp(o, 0x336, 0x336)}i`, `a${cp(o)}i${cp(0x336, 0x336)}`)
   runs.push(`${cp(0x2067, 0x335, 0x335)}i`)
+  // (a spacing mark after a right-to-left letter in an embedding or isolate is a box of its own, not one widening it)
+  runs.push(cp(0x202b) + cp(0x5e2, 0x93f).repeat(8), cp(0x2067) + cp(0x628, 0x940).repeat(8), cp(0x5e2, 0x202b) + cp(0x5e2, 0x903).repeat(4))
   // a box mark on a letter Inter kerns wider after "l" (resvg kerns the box-wide letter too), also as a character drawn
   // as that letter once a mark is on it ("ΐ" as "ΐ", the Greek varia as a wider "`")
   runs.push(cp(0x6c, 0x1fd3, 0x345, 0x20), cp(0x6c, 0x390, 0x345, 0x20), cp(0x6c, 0x3ca, 0x345, 0x20), cp(0x6c, 0xef, 0x345, 0x20), cp(0x6c, 0x390, 0x345), cp(0x6c, 0x1fef, 0x345), cp(0x69, 0x1ffd, 0x336))
@@ -567,6 +569,8 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // (repeated in a right-to-left embedding, override or isolate, past the room such a run gets for its clusters)
   for (const o of [0x202b, 0x202e, 0x2067]) runs.push(cp(o) + 'ď]'.repeat(30), cp(o) + 'ȴj'.repeat(17))
   runs.push(cp(0x202a) + 'ď]'.repeat(15) + 'א', cp(0x202b) + cp(0x131, 0x308).repeat(40), cp(0x202b) + `l${cp(0x30c)}]`.repeat(20))
+  // (and long, where each cluster laid out apart would lose the kerning to the next one: bold "ľ]" eighty times)
+  runs.push(cp(0x202b) + 'ľ]'.repeat(80), cp(0x202e) + 'ľ]'.repeat(100), cp(0x2067) + 'ľ)'.repeat(80), cp(0x202b) + 'H(Ï'.repeat(120))
   // a letter Inter kerns wider on both sides at once, between letters that get no room of their own ("ĩ" after "f" and
   // before "T"), repeated too, also spelled as a dotless "ı" and the mark Inter's ccmp joins it with; and the others it
   // does that for, each between the characters that kern it most
@@ -673,9 +677,10 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   // and isolates and embeddings that only set text left to right are guessed as the stretches they cut, not as room for
   // every cluster in any order
   for (const run of LTR_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
-  // and right-to-left text with its marks (pointed Arabic and Hebrew) isn't guessed far wider
-  // for each letter carrying marks
-  const pointed = ['مَرْحَبًا بِالْعَالَمِ', 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', 'שָׁלוֹם עוֹלָם', 'בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ']
+  // and right-to-left text with its marks (pointed Arabic and Hebrew), or text struck through after a right-to-left
+  // override (each box widening its letter, not a box beside it), isn't guessed far wider for each letter carrying marks
+  const struck = [...'strike this'].map((c) => c + cp(0x336)).join('')
+  const pointed = ['مَرْحَبًا بِالْعَالَمِ', 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', 'שָׁלוֹם עוֹלָם', 'בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ', `a${cp(0x202e)}${struck}`]
   for (const run of pointed) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) * 1.3, `${bold} ${run}: ${guess(run, bold)} vs ${measure(run, bold)}`)
 })
 

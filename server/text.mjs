@@ -1110,21 +1110,46 @@ const guessed = (run, font) => {
   // A run with right-to-left embeddings, overrides or isolates, or any with right-to-left text (contrived), gets room
   // for every cluster in any order and direction: each mark no font has a box of its own, sara am two, and the most one
   // cluster's ink can end past them (boxes set past a letter's ink, a mark's overhang on nothing) and one character's
-  // ink past its advance (or one of Inter's marks past the pen, where nothing anchors it). Each letter gets the more of
-  // its room and the most Inter kerns it before anything, whatever comes after it ("ď]" sixteen times in an embedding),
-  // as it's drawn with the marks after it too (composed with them, a dotless "ı" as "i")
+  // ink past its advance (or one of Inter's marks past the pen, where nothing anchors it). But a letter and the marks
+  // right after it (nothing between them) that take its direction are one cluster in whatever order and direction it's
+  // drawn: its boxes widen it as in any run ("s̶t̶r̶i̶k̶e̶" after U+202E is a box wide a letter, not a letter and a box),
+  // and their ink past that, shaped right to left, is that cluster's most. (A spacing mark, like U+093F, is left to
+  // right whatever comes before it: after a right-to-left letter in an embedding it's a stretch of its own, a box on
+  // nothing.) Laid out a cluster at a time, nothing kerns one cluster's letter with the next, so each letter gets the
+  // more of its room and the most Inter kerns it before anything, whatever comes after it ("ď]" sixteen times in an
+  // embedding), as it's drawn with the marks after it too (composed with them, a dotless "ı" as "i")
   if (!ways) {
-    const drawn = cs.filter((c) => !IGNORED.test(c))
+    let most = BOX
     // (past the letter's advance: the room and kerning of each letter it can be drawn as)
-    const most = (c, i) => {
+    const kerns = (c, i) => {
       let marks = ''
-      for (let k = i + 1; k < drawn.length && MARK.test(drawn[k]); k++) marks += drawn[k]
+      for (let k = i + 1; k < cs.length && (IGNORED.test(cs[k]) || MARK.test(cs[k])); k++) if (!IGNORED.test(cs[k])) marks += cs[k]
       const as = [c, ...(marks ? [(c + marks).normalize('NFC'), DOTTED[c] && (DOTTED[c] + marks).normalize('NFC')] : [])]
       const one = as.filter((x) => x && [...x].length === 1 && font.glyph(x.codePointAt(0)))
       return Math.max(room(c, true), ...one.map((x) => Math.max(font.most(x), adv(x) + extra(x) - adv(c))))
     }
-    for (const [i, c] of drawn.entries()) w += AM.test(c) ? 2 * BOX : boxed(c, font) ? BOX : adv(c) + (MARK.test(c) ? 0 : most(c, i))
-    w += BOX + OVERHANG + 0.2 + Math.max(0, ...drawn.map(past), ...drawn.map((c) => (MARK.test(c) && font.reach(c.codePointAt(0))) || 0))
+    const cluster = (u, i) => {
+      const r = kerns(cs[i], i)
+      const roomed = (c, marked) => Math.max(room(c, marked), r)
+      const a = laid(u, adv, font, false, undefined, { room: roomed })
+      most = Math.max(most, laid(u, adv, font, true, undefined, { far: true, room: roomed, over: past }) - a)
+      return a
+    }
+    let u = '', at = 0
+    for (const [i, c] of cs.entries()) {
+      if (u && MARK.test(c) && bidi(c) === 'NSM') {
+        u += c
+        continue
+      }
+      if (u) (w += cluster(u, at)), (u = '')
+      if (IGNORED.test(c)) continue
+      if (AM.test(c)) w += 2 * BOX
+      else if (!MARK.test(c)) (u = c), (at = i)
+      else w += boxed(c, font) ? BOX : adv(c)
+    }
+    if (u) w += cluster(u, at)
+    const drawn = cs.filter((c) => !IGNORED.test(c))
+    w += most + OVERHANG + 0.2 + Math.max(0, ...drawn.map(past), ...drawn.map((c) => (MARK.test(c) && font.reach(c.codePointAt(0))) || 0))
   }
   // and a little for Inter's positive kerning ("ty", "d)"; a pair kerned wider than the room its first letter gets is
   // counted where it's laid out: "ď]", "ȴj"); a skin tone outside an emoji as wide as toned has it (which counts a
