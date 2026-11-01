@@ -354,8 +354,10 @@ export const guess = (run, bold = false) => {
 const advance = (run, bold) => (!run ? 0 : laidOut.has(key(run, bold)) || spend() ? measure(run, bold) : guess(run, bold))
 
 /** Lines of card text with their emoji in color: a <text> of pieces, each placed where the one before it ends, then
- *  Twemoji's pictures in the gaps left for them. Whitespace collapses the way SVG text's does. */
-export function textSvg(lines, { x, y, lh = 0, size, bold = false, fill }) {
+ *  Twemoji's pictures in the gaps left for them. Whitespace collapses the way SVG text's does. `paint` (attributes, or a
+ *  list of them for layers drawn bottom up, like a glow under the name) replaces the fill; it paints the text only, the
+ *  pictures go on top once. */
+export function textSvg(lines, { x, y, lh = 0, size, bold = false, weight = bold ? 700 : 400, fill, paint = `fill="${fill}"` }) {
   let spans = ''
   let pics = ''
   lines.forEach((l, i) => {
@@ -365,7 +367,7 @@ export function textSvg(lines, { x, y, lh = 0, size, bold = false, fill }) {
     // the text so far; only text with something after it is measured
     const flush = (last) => {
       if (run) spans += `<tspan x="${num(cx)}" y="${by}">${esc(run)}</tspan>`
-      if (!last) cx += advance(run, bold) * size
+      if (!last) cx += advance(run, weight >= 600) * size
       run = ''
     }
     // only what SVG collapses: no-break and other wide spaces stay as they are
@@ -385,7 +387,8 @@ export function textSvg(lines, { x, y, lh = 0, size, bold = false, fill }) {
     }
     flush(true)
   })
-  return `<text font-family="Inter, Noto Emoji" font-size="${size}"${bold ? ' font-weight="700"' : ''} fill="${fill}" xml:space="preserve">${spans}</text>${pics}`
+  const layer = (attrs) => `<text font-family="Inter, Noto Emoji" font-size="${size}"${weight !== 400 ? ` font-weight="${weight}"` : ''} ${attrs} xml:space="preserve">${spans}</text>`
+  return [paint].flat().map(layer).join('') + pics
 }
 
 /** A name's first letter in a circle (centered on cx), without its marks, or its first emoji when it starts with one

@@ -381,13 +381,14 @@ async function themeCard(id, raw) {
   }
   // a name in the theme's name effect
   const fxColor = th.nameColor || c.accent
+  // (emoji in it are Twemoji's pictures, on top of the effect)
   const named = (x, y, size, s, base = c.ink) => {
-    const t = (attrs) => `<text x="${x}" y="${y}" font-family="Inter, Noto Emoji" font-weight="800" font-size="${size}" ${attrs}>${esc(s)}</text>`
+    const t = (...paint) => textSvg([s], { x, y, size, weight: 800, paint })
     const fx = th.nameFx
     if (fx === 'rainbow') return t('fill="url(#rainbow)"')
     if (fx === 'glitter') return t('fill="url(#glitter)"') + `<path d="M0 -1C.1 -.3 .3 -.1 1 0C.3 .1 .1 .3 0 1C-.1 .3 -.3 .1 -1 0C-.3 -.1 -.1 -.3 0 -1z" fill="#ffc928" transform="translate(${x + width(s, size) * 1.04 + size * 0.5} ${y - size * 0.35}) scale(${size * 0.3})"/>`
-    if (fx === 'glow') return t(`fill="${fxColor}" filter="url(#glow)"`) + t(`fill="${base}"`)
-    if (fx === 'shadow') return `<g transform="translate(3 3)">${t(`fill="${base}"`)}</g>` + t(`fill="${fxColor}"`)
+    if (fx === 'glow') return t(`fill="${fxColor}" filter="url(#glow)"`, `fill="${base}"`)
+    if (fx === 'shadow') return t(`fill="${base}" transform="translate(3 3)"`, `fill="${fxColor}"`)
     if (fx === 'outline') return t(`fill="none" stroke="${fxColor}" stroke-width="1.6"`)
     return t(`fill="${th.nameColor || base}"`)
   }
@@ -408,7 +409,7 @@ async function themeCard(id, raw) {
     const hue = [c.accent, c.like, c.recast][i]
     return `<circle cx="${X + 44}" cy="${ay}" r="26" fill="${hue}"/><text x="${X + 44}" y="${ay + 9}" font-family="Inter" font-weight="800" font-size="24" fill="${c.onAccent}" text-anchor="middle">${name[0]}</text>
     ${named(X + 84, y + 34, 21, name)}<text x="${X + 92 + width(name, 21) * 1.06 + (th.nameFx === 'glitter' ? 20 : 0)}" y="${y + 34}" font-family="Inter" font-size="19" fill="${c.muted}">@${user} · ${i + 2}h</text>
-    <text font-family="Inter, Noto Emoji" font-size="21" fill="${c.ink}">${lines.map((l, j) => `<tspan x="${X + 84}" y="${y + 66 + j * 28}">${esc(l)}</tspan>`).join('')}</text>
+    ${textSvg(lines, { x: X + 84, y: y + 66, lh: 28, size: 21, fill: c.ink })}
     ${[[ICONS.reply, rep, c.muted], [ICONS.recast, rc, c.recast], [ICONS.like, lk, c.like]].map(([d, k, col], j) => `<g transform="translate(${X + 84 + j * 110} ${y + 112}) scale(0.85)"><path d="${d}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g><text x="${X + 112 + j * 110}" y="${y + 130}" font-family="Inter" font-size="18" fill="${col}">${k}</text>`).join('')}
     <rect x="${X}" y="${y + 154}" width="${W}" height="${bw}" fill="${c.line}"/>`
   }).join('')
@@ -434,7 +435,7 @@ async function themeCard(id, raw) {
     <text x="796" y="205" font-family="Inter" font-weight="800" font-size="16" letter-spacing="1.6" fill="${c.accent}">QUILCAST THEME</text>
     ${tl.map((l, i) => named(780, 266 + i * ts * 1.1, ts, l)).join('')}
     ${swatches}
-    <text font-family="Inter" font-size="20" fill="${c.muted}">${fl.map((l, i) => `<tspan x="780" y="${380 + ty + i * 26}">${esc(l)}</tspan>`).join('')}</text>
+    ${textSvg(fl, { x: 780, y: 380 + ty, lh: 26, size: 20, fill: c.muted })}
     <rect x="780" y="${412 + ty}" width="340" height="60" rx="${R(30)}" fill="${btnFill}"/>
     <text x="950" y="${451 + ty}" font-family="Inter" font-weight="800" font-size="24" ${btnText} text-anchor="middle">Apply theme</text>
   </g>`

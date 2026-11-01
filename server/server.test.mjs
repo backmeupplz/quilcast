@@ -9,6 +9,7 @@ import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { inflateSync } from 'node:zlib'
 import { after, before, test } from 'node:test'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
@@ -523,6 +524,38 @@ test('shared themes: cleaned, stored under a stable id, with their page and shar
   const png = await fetch(`${base}/og/theme/${id}.png`)
   assert.equal(png.headers.get('content-type'), 'image/png')
   assert.equal(Buffer.from(await png.arrayBuffer()).readUInt32BE(16), 1200)
+})
+
+// a PNG's RGBA pixels (8-bit RGBA, non-interlaced, as resvg writes them)
+function pixels(png) {
+  const [w, h] = [png.readUInt32BE(16), png.readUInt32BE(20)]
+  assert.deepEqual([png[24], png[25], png[28]], [8, 6, 0])
+  const idat = []
+  for (let o = 8; o < png.length; o += 12 + png.readUInt32BE(o)) if (png.toString('latin1', o + 4, o + 8) === 'IDAT') idat.push(png.subarray(o + 8, o + 8 + png.readUInt32BE(o)))
+  const raw = inflateSync(Buffer.concat(idat))
+  const row = w * 4
+  const px = Buffer.alloc(h * row)
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (row + 1)]
+    for (let x = 0; x < row; x++) {
+      const a = x >= 4 ? px[y * row + x - 4] : 0, b = y ? px[(y - 1) * row + x] : 0, c = x >= 4 && y ? px[(y - 1) * row + x - 4] : 0
+      const p = a + b - c, [pa, pb, pc] = [Math.abs(p - a), Math.abs(p - b), Math.abs(p - c)]
+      const pred = [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][f]
+      px[y * row + x] = raw[y * (row + 1) + 1 + x] + pred
+    }
+  }
+  return { w, h, at: (x, y) => px.readUInt32BE((y * w + x) * 4) >>> 8 }
+}
+
+test('a theme card draws the emoji in a theme name in color, under every name effect', async () => {
+  for (const nameFx of [undefined, 'rainbow', 'glitter', 'glow', 'shadow', 'outline']) {
+    const { id } = await (await fetch(base + '/api/theme', { method: 'POST', body: JSON.stringify({ name: 'Sunny \u2600\uFE0F \u{1F44D}\u{1F3FD}', base: 'dark', nameFx }) })).json()
+    const { w, h, at } = pixels(Buffer.from(await (await fetch(`${base}/og/theme/${id}.png`)).arrayBuffer()))
+    // Twemoji's sun and the thumb's medium skin tone, in the panel
+    const count = (rgb) => { let n = 0; for (let y = 0; y < h; y++) for (let x = 748; x < w; x++) n += at(x, y) === rgb; return n }
+    assert.ok(count(0xffac33) > 100, `${nameFx} sun`)
+    assert.ok(count(0xd4ab88) > 50, `${nameFx} thumb`)
+  }
 })
 
 test('translations: asked once per cast and language, from the node\'s words, from free models only, then kept', async () => {

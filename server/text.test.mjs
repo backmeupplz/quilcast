@@ -198,6 +198,18 @@ test('a picture never lands on text whose marks no font has (their boxes stick o
   }
 })
 
+test('paint layers: each paints the text, the pictures are drawn once on top', () => {
+  const s = textSvg([`Sunny ${THUMB}`], { x: 10, y: 40, size: 30, weight: 800, paint: ['fill="#f00" filter="url(#glow)"', 'fill="#fff"'] })
+  assert.equal((s.match(/<text /g) || []).length, 2)
+  assert.equal(uses(s), 1)
+  assert.ok(s.lastIndexOf('<text ') < s.indexOf('<use '))
+  assert.match(s, /^<text font-family="Inter, Noto Emoji" font-size="30" font-weight="800" fill="#f00" filter="url\(#glow\)" xml:space="preserve">/)
+  // weight 800 lays out with Inter Bold's widths, as bold does
+  const at = (o) => +textSvg([`Wide ${THUMB}`], { x: 0, y: 40, size: 30, ...o }).match(/<use [^>]*translate\(([\d.]+) /)[1]
+  assert.equal(at({ weight: 800, paint: 'fill="#fff"' }), at({ bold: true, fill: '#fff' }))
+  assert.notEqual(at({ fill: '#fff' }), at({ bold: true, fill: '#fff' }))
+})
+
 test('a card line draws: pictures for emoji, Noto Emoji for text-style pictographs, whitespace collapsed, markup escaped', async () => {
   const s = textSvg([`<b>  hi ${FAMILY}${UA} & ${CHECK}`, 'second'], { x: 84, y: 232, lh: 50, size: 38, fill: '#edebf3' })
   assert.equal(uses(s), 2)
