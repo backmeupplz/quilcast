@@ -195,20 +195,24 @@ const THAI = /^[\p{sc=Zyyy}\p{sc=Zinh}\p{sc=Zzzz}]*[\p{sc=Thai}\p{sc=Laoo}]/u
 // rest (the joiner, variation selectors, tags) keep them on the character before. Measured against resvg for every
 // default-ignorable.
 const BREAKS = /[\u{ad}\u{61c}\u{180e}\u{200b}\u{200c}\u{200e}\u{200f}\u{202a}-\u{202e}\u{2060}-\u{206f}\u{feff}\u{fff0}-\u{fff8}\u{1d173}-\u{1d17a}\u{e0000}-\u{e001f}\u{e0080}-\u{e00ff}\u{e01f0}-\u{e0fff}]/u
-const layAt = (run, adv, font, ink, thai, hang, over, breaks) => {
-  let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, ends = 0
+const layAt = (run, adv, font, ink, thai, hang, over, room, breaks) => {
+  let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, ends = 0, letter = ''
   const flush = () => {
+    // (a letter's room for kerning and wider forms is on top of the box its boxes widen it to: resvg kerns the widened
+    // letter as it kerns the letter, "l" and "ΐ" with a box on it as "lΐ")
+    const r = letter && room ? room(letter, marks > 0) : 0
     // (a mark's overhang is past the letter as its boxes widen it, or past the boxes' ink when it ends further, as
     // resvg sets a mark after a box against the box)
-    const boxes = w + base + 0.5 + BOX * (marks - 1) + own
-    if (am) end = Math.max(end, boxes), (w += Math.max(base, BOX) + own)
-    else if (box) end = Math.max(end, boxes), (w += base + own + Math.max(BOX - base, marks === 1 ? 0 : 0.62 + BOX * (marks - 2)))
-    else w += base + own
+    const boxes = w + base + r + 0.5 + BOX * (marks - 1) + own
+    if (am) end = Math.max(end, boxes), (w += Math.max(base, BOX) + r + own)
+    else if (box) end = Math.max(end, boxes), (w += base + r + own + Math.max(BOX - base, marks === 1 ? 0 : 0.62 + BOX * (marks - 2)))
+    else w += base + r + own
     if (hung) end = Math.max(end, (box ? Math.max(w, boxes) : w) + OVERHANG)
     // (and a letter whose ink ends past its advance reaches past what comes after it when that's narrower: "\u{e2c2} ")
     end = Math.max(end, w + ends)
     base = marks = own = ends = 0
     box = am = hung = false
+    letter = ''
   }
   for (const c of run) {
     i++
@@ -219,16 +223,16 @@ const layAt = (run, adv, font, ink, thai, hang, over, breaks) => {
     else if (MARK.test(c)) {
       marks++, (own += adv(c)), (started = true)
       if (hang?.(i) && !font.advance(c.codePointAt(0))) hung = true
-    } else flush(), (base = adv(c)), (ends = over?.(c) ?? 0), (started = true)
+    } else flush(), (base = adv(c)), (letter = c), (ends = over?.(c) ?? 0), (started = true)
   }
   flush()
   return ink ? Math.max(w, end) : w
 }
 // A run with a break in it takes the wider of laying it out cut at its breaks and not: resvg doesn't always cut there
 // (a mark with no base after an Arabic letter mark stays on the box mark past a zero-width non-joiner after it)
-const laidAs = (run, adv, font, ink, thai, hang, over) => {
-  const whole = layAt(run, adv, font, ink, thai, hang, over, false)
-  return BREAKS.test(run) ? Math.max(whole, layAt(run, adv, font, ink, thai, hang, over, true)) : whole
+const laidAs = (run, adv, font, ink, thai, hang, over, room) => {
+  const whole = layAt(run, adv, font, ink, thai, hang, over, room, false)
+  return BREAKS.test(run) ? Math.max(whole, layAt(run, adv, font, ink, thai, hang, over, room, true)) : whole
 }
 // resvg shapes each stretch of one direction apart, so Thai after right-to-left text is shaped as Thai whatever came first
 const RTL = /[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Nkoo}\p{sc=Adlm}\p{sc=Rohg}\p{sc=Samr}\p{sc=Mand}]/u
@@ -236,13 +240,14 @@ const RTL = /[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Nkoo}\p{sc=Adlm}
  *  added as resvg adds them; ink: where the boxes' ink ends counts too, as it does at the end of a run. hang: given for
  *  a run drawn alone, as it is, and true for the characters (by index in it) of a mark fonts have with no advance whose
  *  ink can end up to OVERHANG past its letter (a diaeresis on "l" before a space). Without it, the run may be a word of
- *  a line resvg shapes as Thai or not, and takes the wider of the two. */
-const laid = (run, adv, font, ink, hang, over) => {
-  if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang, over)
-  if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, over)
+ *  a line resvg shapes as Thai or not, and takes the wider of the two. room(letter, marked): the room a letter (with
+ *  marks on it, or not) gets past its advance, which a box widening it doesn't take up. */
+const laid = (run, adv, font, ink, hang, over, room) => {
+  if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang, over, room)
+  if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, over, room)
   // (nor in one with a break in it: after a left-to-right mark, resvg shapes a sara am as Thai in a Latin run)
-  if (hang && !RTL.test(run) && !BREAKS.test(run)) return laidAs(run, adv, font, ink, false, hang, over)
-  return Math.max(laidAs(run, adv, font, ink, false, hang, over), laidAs(run, adv, font, ink, true, hang, over))
+  if (hang && !RTL.test(run) && !BREAKS.test(run)) return laidAs(run, adv, font, ink, false, hang, over, room)
+  return Math.max(laidAs(run, adv, font, ink, false, hang, over, room), laidAs(run, adv, font, ink, true, hang, over, room))
 }
 
 // the spaces other than " ", as resvg draws them (measured): the ideographic space Japanese text uses is a full em
@@ -472,10 +477,17 @@ export const guess = (run, bold = false) => {
   for (const c of run) for (const [j, x] of [...apart(c, font)].entries()) j && within.add(cs.length), cs.push(x)
   // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base); a space no font
   // has is as wide as resvg draws it (the ideographic space is a full em, not a box)
-  const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? SPACES.get(c.codePointAt(0)) ?? BOX) + extra(c) + (MARK.test(c) ? 0.03 : 0)
+  const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? SPACES.get(c.codePointAt(0)) ?? BOX) + (MARK.test(c) ? extra(c) + 0.03 : 0)
+  // a letter's extra room is its own, past a box that widens it; with marks on it, resvg draws the character it
+  // normalizes to instead ("ΐ" as "ΐ", which Inter kerns after "l"; the Greek varia as a wider "`"), so the room is
+  // what that takes past the letter's advance, when it's more
+  const room = (c, marked) => {
+    const n = marked ? c.normalize('NFC') : c
+    return n === c || [...n].length > 1 || !font.glyph(n.codePointAt(0)) ? extra(c) : Math.max(extra(c), adv(n) + extra(n) - adv(c))
+  }
   // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em; past: the ink of the characters that end
   // past their advance, wherever it reaches past the run's end
-  return laid(cs.join(''), adv, font, true, (i) => !within.has(i), past) + 0.04
+  return laid(cs.join(''), adv, font, true, (i) => !within.has(i), past, room) + 0.04
 }
 let exact = 0
 const advance = (run, bold) => (!run ? 0 : exact || laidOut.has(key(run, bold)) || spend() ? measure(run, bold) : guess(run, bold))

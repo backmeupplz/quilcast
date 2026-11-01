@@ -391,6 +391,9 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(cp(0x61c, 0x301, 0x200c, 0xe49), cp(0x61c, 0x362, 0x200b, 0xe4a), cp(0x61c, 0x301, 0x200b, 0xe4a, 0x62))
   // and sara am after them
   for (const k of [1, 2, 3, 5, 7]) runs.push(`${cp(0xe48).repeat(k)}${AM}`, `${cp(0xe48).repeat(k)}${AM}ba`, `${cp(0x200b)}${cp(0x336).repeat(k)}${AM}`, `ค${cp(0x200b)}${cp(0xe48).repeat(k)}${AM}`, `${cp(0x336).repeat(k)}${AM}ก`)
+  // a box mark on a letter Inter kerns wider after "l" (resvg kerns the box-wide letter too), also as a character drawn
+  // as that letter once a mark is on it ("ΐ" as "ΐ", the Greek varia as a wider "`")
+  runs.push(cp(0x6c, 0x1fd3, 0x345, 0x20), cp(0x6c, 0x390, 0x345, 0x20), cp(0x6c, 0x3ca, 0x345, 0x20), cp(0x6c, 0xef, 0x345, 0x20), cp(0x6c, 0x390, 0x345), cp(0x6c, 0x1fef, 0x345), cp(0x69, 0x1ffd, 0x336))
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
