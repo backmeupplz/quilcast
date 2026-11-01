@@ -1540,6 +1540,16 @@ const varied = (g, font) => {
   }
   return composed ? out.join('') : g
 }
+// (The marks are in that order even where nothing composes: "a", U+035E, U+0343, U+0308 and U+FE0F are drawn as "a",
+// U+0343, U+0308, U+035E and U+FE0F; measured.) reorder() sorts the marks between characters of class 0 as NFD does,
+// without decomposing them (a mark newer than resvg's Unicode is a letter to it, so it stays where it is, unless it's
+// taken as a mark, any). sorted() does it for each run of marks.
+const reorder = (cs, any = false) => {
+  const moves = (a, b) => above(a, b) && (any || !(NEWER.test(a) || NEWER.test(b)))
+  for (let i = 1; i < cs.length; i++) for (let j = i; j > 0 && moves(cs[j], cs[j - 1]); j--) [cs[j - 1], cs[j]] = [cs[j], cs[j - 1]]
+  return cs
+}
+const sorted = (run, any) => run.replace(/\p{M}{2,}/gu, (ms) => reorder([...ms], any).join(''))
 // (whether the text from code unit at to at + length has a mark of a turned stretch's leading cluster in it, see leading:
 // the shaper decomposes nothing there either, as with a variation selector of its own)
 const led = (text) => {
@@ -1550,31 +1560,87 @@ const led = (text) => {
     return [...text.slice(at, at + length)].some((_, k) => marks.has(from + k))
   }
 }
+// (kept: the ignorables a letter and its mark join past stay, after what they're drawn as, as the shaper keeps them, so
+// the text has as many characters as the shaper has glyphs; guessed() is given it without them, as it has always been.
+// And it's not only the carons above: the shaper composes any letter with the mark after it past the same ignorables,
+// keeping them, "a", a joiner and a caron as "ǎ" and the joiner; it's only that "ǎ" is no wider than "a" and its caron,
+// so the width never showed it, but the glyphs are one fewer, which moves the indices drifted() lines up. Measured
+// against resvg for "a", "e", "l", "o", "u" and "ϒ" with an acute, a caron, a diaeresis, a tilde or a grave past
+// ignorables in PASSED and not, and an empty isolate or embedding, before a space, a digit or "®", a mark no font has
+// and U+0344 or "↮", at both weights.
+// It composes as NFC would with the ignorables gone: the marks decomposed (not with a variation selector among them or
+// among the marks just before them, as in ligated: "W" U+E0100 U+200D U+0340 is "Ẁ" and the two) and put in order
+// first, so the letter joins the first mark of the lowest class ("l", a joiner, U+035E and a caron are "ľ", the joiner
+// and U+035E). But only that one mark: past the ignorables the shaper joins no second, of a higher class or not ("o", a
+// soft hyphen, a tilde and an acute are "õ", the soft hyphen and the acute, not "ṍ"; "a", a joiner, a dot below and a
+// circumflex are "ạ", the joiner and the circumflex), and none when that first one doesn't compose ("e", a joiner, a
+// long solidus and a tilde stay as they are, not "ẽ" past the solidus). Not past a PDI or PDF that closes an isolate or
+// embedding opened before the letter, which keeps the letter and mark apart (see guess).)
+const JOINED = [MARK.source, String.raw`\p{M}`].map((mark) => [SKIPPED, EMPTIED].map((skipped) => new RegExp(String.raw`(\P{M})(${skipped})((?:${mark})+)`, 'gu')))
+const CLOSED = new RegExp(`(?:${EMPTY})`, 'gu')
+// The isolates and embeddings left open after text, as a stack (UAX #9 X5–X7: a PDI closes the last isolate opened and
+// everything opened inside it, a PDF the embedding opened last inside the current isolate; one that matches nothing is
+// ignored, as resvg ignores it: "a" U+2069 U+030C is drawn "ǎ"). low: the fewest left open at any point instead, so a
+// letter and mark aren't joined past a closer of something opened before the letter, but are past a stray one.
+const unclosed = (text, open = [], low = false) => {
+  let least = open.length
+  for (const c of text) {
+    if (/[\u{2066}-\u{2068}]/u.test(c)) open.push('i')
+    else if (/[\u{202a}\u{202b}\u{202d}\u{202e}]/u.test(c)) open.push('e')
+    else if (c === '\u{2069}' && open.includes('i')) open.length = open.lastIndexOf('i')
+    else if (c === '\u{202c}' && open.at(-1) === 'e') open.pop()
+    least = Math.min(least, open.length)
+  }
+  return low ? least : open
+}
+const joined = (run, font, empty, any) =>
+  run.replace(JOINED[+any][empty], (all, letter, skipped, marks, at) => {
+    const open = unclosed(run.slice(0, at))
+    const depth = open.length
+    if (unclosed(skipped.replace(CLOSED, ''), open, true) < depth) return all
+    let base = letter
+    const rest = []
+    const prior = [...skipped]
+    let k = prior.length
+    while (k > 0 && MARK.test(prior[k - 1])) k--
+    for (const m of reorder([...(VARIANT.test(prior.slice(k).join('') + marks) ? marks : marks.normalize('NFD'))], any)) {
+      // (a mark is blocked by one left before it of its class or higher, or by a character of class 0)
+      const free = !zero(m) && !(rest.length && !above(rest.at(-1), m)) && !rest.some(zero)
+      const n = (base + m).normalize('NFC')
+      if (free && base === letter && m.normalize('NFC') === m && [...n].length === 1 && font.glyph(n.codePointAt(0))) base = n
+      else if (base === letter) return all
+      else rest.push(m)
+    }
+    return base === letter ? all : base + skipped.match(HIDDEN).join('') + rest.join('')
+  })
 // (any: a newer mark taken as a mark, see guess)
-const together = (text, font, empty, any) => {
-  const run = text.replace(APART[empty], (p, at, s) => (undecomposed(p, at, s) ? p : p.replace(HIDDEN, '').normalize('NFC')))
-  const kept = led(run)
+// The marks are put in order first, so a caron after "d" and a variation selector, past U+035E, is drawn as in "ď".
+const together = (text, font, empty, any, kept = false) => {
+  const sorts = sorted(text, any)
+  const apart = sorts.replace(APART[empty], (p, at, s) => (undecomposed(p, at, s) ? p : p.replace(HIDDEN, '').normalize('NFC') + (kept ? p.match(HIDDEN).join('') : '')))
+  const run = kept ? joined(apart, font, empty, any) : apart
+  const decomposes = led(run)
   return run.replace(COMPOSABLE[+any], (g, at) => {
-    if (VARIANT.test(g) || kept(at, g.length)) return varied(g, font)
+    if (VARIANT.test(g) || decomposes(at, g.length)) return varied(g, font)
     const n = g.normalize('NFC')
     return n !== g && [...n].every((x) => IGNORED.test(x) || font.glyph(x.codePointAt(0)) || (/\p{M}/u.test(x) && g.includes(x))) ? n : g
   })
 }
-const ligated = (run, font, empty, any) => {
-  const kept = led(run)
+const ligated = (run, font, empty, any, kept = false) => {
+  const decomposes = led(run)
   return run.replace(LIGATED[+any][empty], (all, letter, skipped, marks, at) => {
     // (a variation selector among the marks, or among the marks just before them, keeps the shaper from decomposing them:
     // "i" U+FE01 U+0341 and "i" U+200D U+FE01 U+0341 are "i" and a box, "i" U+FE01 U+200D U+0341 is "í"; measured; so
     // does being in a turned stretch's leading cluster)
-    const before = [...(skipped ?? '')]
-    let k = before.length
-    while (k > 0 && MARK.test(before[k - 1])) k--
-    const ms = VARIANT.test(before.slice(k).join('') + marks) || kept(at, all.length) ? marks : marks.normalize('NFD')
+    const prior = [...(skipped ?? '')]
+    let k = prior.length
+    while (k > 0 && MARK.test(prior[k - 1])) k--
+    const ms = VARIANT.test(prior.slice(k).join('') + marks) || decomposes(at, all.length) ? marks : marks.normalize('NFD')
     const first = String.fromCodePoint(ms.codePointAt(0))
     const c = LIGATURES.get((DOTLESS[letter] ?? letter) + first)
     // (but a joiner anywhere between them keeps U+1DC4 off "e" and "o": resvg draws it at its own advance after one, past
     // whatever other ignorables are there, on any letter; measured for every row past a joiner and each other ignorable)
-    return c && font.glyph(c.codePointAt(0)) && !(first === '\u{1dc4}' && skipped?.includes('\u{200d}')) ? c + ms.slice(first.length) : all
+    return c && font.glyph(c.codePointAt(0)) && !(first === '\u{1dc4}' && skipped?.includes('\u{200d}')) ? c + (kept ? (skipped ?? '') : '') + ms.slice(first.length) : all
   })
 }
 // A stretch set left to right but shaped right to left (one whose script is Arabic from a mark like U+06D6) is turned
@@ -1632,13 +1698,15 @@ export const guess = (run, bold = false) => {
   const unreached = !reaches(run, font)
   // the ligated text is a guess of its own, not a replacement: a pair past a PDF or PDI that closes an embedding or
   // isolate opened before the letter is drawn apart, and the composed text alone may be what keeps the run covered
+  // (each with the glyphs Inter shapes it into, for drifted(), which adds nothing when Inter has every character)
+  const lacks = [...run].some((c) => lacking(c, font))
   const ways = (any) => {
-    const texts = new Set([run])
+    const texts = new Map([[run, run]])
     for (const empty of [0, 1]) {
-      const composed = together(run, font, empty, any)
-      texts.add(composed).add(ligated(composed, font, empty, any))
+      const [composed, kept] = [together(run, font, empty, any), together(run, font, empty, any, true)]
+      texts.set(composed, kept).set(ligated(composed, font, empty, any), ligated(kept, font, empty, any, true))
     }
-    return [...texts].map((t) => guessed(t, font, any, unreached))
+    return [...texts].map(([t, kept]) => guessed(t, font, any, unreached) + (lacks ? drifted(shaped(kept, font, any).cs, run, font) : 0))
   }
   // With a mark newer than resvg's Unicode, the run is also guessed taking that mark as a mark (composed and ordered
   // across it as Node's NFC does), and the guess is the wider of the two: resvg draws some runs with one wider than either
@@ -1659,9 +1727,52 @@ const ligating = (font) => {
   }
   return LIGATING.get(font)
 }
-const guessed = (run, font, any, unreached) => {
-  const noto = notoWhole(run, font)
-  if (noto !== null) return noto + 0.04
+// resvg draws what Inter lacks by shaping the whole run again in another font: Inter's other weight (which lacks what
+// Inter lacks), then Noto Emoji, when Noto has a character of the cluster the first glyph Inter lacks is in (a space, a
+// digit, "#", "*", "©" or "®" under a mark no font has). If Noto's shaping has as many glyphs as Inter's, each
+// glyph Inter lacks takes Noto's glyph at the same index, when Noto has it: by index, not by character. Noto shapes each
+// character as a glyph of its own (it has no letters or marks to compose or decompose, and runs of card text have no
+// emoji sequences in them for it to join), but Inter composes and decomposes ("l" and a caron are "ľ", U+0344 is U+0308
+// U+0301), so the two can come out the same length with their indices apart, and a box then takes Noto's glyph of
+// another character, such as its emoji-wide space. That glyph keeps its own cluster, the character's Noto drew it for:
+// it's drawn there, as wide as that cluster's widest glyph or a cluster of its own, not in the box's (measured: "l"
+// U+030C " " U+05A3 widens the space's cluster to Noto's space; with "®" before the mark, Noto's space at the box's
+// index joins the space after it). So each glyph Inter lacks gets Noto's whole advance for the character Noto has at
+// its index in the run as written, when that's another character (where it's the same one, the guess already has
+// Noto's advance for it). cs: the run's glyphs in Inter, as shaped() has them; none of this happens when Noto draws the
+// run whole (notoWhole).
+const drifted = (cs, run, font) => {
+  const ns = [...run]
+  if (cs.length !== ns.length || notoWhole(run, font) !== null) return 0
+  const lacks = cs.map((c) => lacking(c, font))
+  // (which glyph Inter lacks comes first depends on the order resvg draws the run in, so any of them can be the one
+  // whose cluster, it and the marks and ignorables before it back to the character they're on, has Noto shape the run)
+  const noto = (i) => {
+    let k = i
+    while (k > 0 && (MARK.test(cs[k]) || IGNORED.test(cs[k]))) k--
+    return cs.slice(k, i + 1).some((c) => NOTO.glyph(c.codePointAt(0)))
+  }
+  if (!lacks.some((x, i) => x && noto(i))) return 0
+  const took = (is, os) => os.reduce((w, c, i) => (lacking(is[i], font) && c !== is[i] && NOTO.glyph(c.codePointAt(0)) ? w + NOTO.advance(c.codePointAt(0)) : w), 0)
+  // (with anything right to left in it, resvg puts each font's glyphs in the order it draws them, stretches turned
+  // around, so which of Noto's a glyph Inter lacks takes isn't by its index in the run: each takes the widest Noto has
+  // for any of the run's characters, unless Inter's glyphs are the run's characters, one for one, and so line up)
+  if (ns.some((c) => RIGHT.test(c))) {
+    if (ns.every((c, i) => c === cs[i])) return 0
+    const widest = Math.max(0, ...ns.map((c) => NOTO.advance(c.codePointAt(0)) ?? 0))
+    return lacks.filter(Boolean).length * widest
+  }
+  // (in a stretch the shaper takes for a script of the other direction, a mark no font has under a space makes the run
+  // Hebrew's, each cluster's glyphs come out turned around in both fonts, the mark's before the space's, and Noto's at
+  // a glyph's index is another; either way round, the run takes the more)
+  return Math.max(took(cs, ns), took(turned(cs), turned(ns)))
+}
+const lacking = (c, font) => !font.glyph(c.codePointAt(0)) && !IGNORED.test(c)
+// each cluster (a character and the marks and joiners after it) turned around in place
+const turned = (cs) => cs.reduce((all, c, i) => (i && (MARK.test(c) || /[\u{200c}\u{200d}]/u.test(c)) ? all.at(-1).unshift(c) : all.push([c]), all), []).flat()
+// The characters a run is drawn as in Inter, one glyph each: marks Inter has in the order the shaper puts them, and what
+// Inter lacks decomposed into what it has (apart). within: the indices of a decomposed character's own marks.
+const shaped = (run, font, any) => {
   // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
   const cs = []
   const within = new Set()
@@ -1694,6 +1805,12 @@ const guessed = (run, font, any, unreached) => {
     whole ||= led.has(i)
     for (const [j, x] of [...(whole ? c : apart(c, font))].entries()) j && within.add(cs.length), cs.push(x)
   }
+  return { cs, within }
+}
+const guessed = (run, font, any, unreached) => {
+  const noto = notoWhole(run, font)
+  if (noto !== null) return noto + 0.04
+  const { cs, within } = shaped(run, font, any)
   // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base); a space no font
   // has is as wide as resvg draws it (the ideographic space is a full em, not a box)
   const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? SPACES.get(c.codePointAt(0)) ?? BOX) + (MARK.test(c) ? extra(c) + 0.03 : 0)
