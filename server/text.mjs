@@ -245,26 +245,34 @@ const boxed = (c, font) => MARK.test(c) && !font.glyph(c.codePointAt(0)) && !NOT
 // are drawn one after another, so their ink ends a box further for each one: "น้ำ" is four boxes of ink on one box of
 // advance, and at a run's end draws far past it. In any other run it's one box like any letter no font has.
 const AM = /[\u0e33\u0eb3]/u
-const THAI = /^[\p{sc=Zyyy}\p{sc=Zinh}\p{sc=Zzzz}]*[\p{sc=Thai}\p{sc=Laoo}]/u
+// Hebrew's points (niqqud, cantillation)
+const POINTS = /[\u{591}-\u{5c7}]/u
+// The characters newer than resvg's scripts (Unicode 16 and 17's): it has none for them, so they don't decide how a
+// run is shaped ("\u{113b8}ຳ" after a right-to-left letter is shaped as Lao). From DerivedAge.txt; regenerate it if resvg
+// is updated.
+const UNKNOWN = /[\u{88f}\u{897}\u{c5c}\u{cdc}\u{1acf}-\u{1add}\u{1ae0}-\u{1aeb}\u{1b4e}-\u{1b4f}\u{1b7f}\u{1c89}-\u{1c8a}\u{20c1}\u{2427}-\u{2429}\u{2b96}\u{31e4}-\u{31e5}\u{a7cb}-\u{a7cf}\u{a7d2}\u{a7d4}\u{a7da}-\u{a7dc}\u{a7f1}\u{fbc3}-\u{fbd2}\u{fd90}-\u{fd91}\u{fdc8}-\u{fdce}\u{105c0}-\u{105f3}\u{10940}-\u{10959}\u{10d40}-\u{10d65}\u{10d69}-\u{10d85}\u{10d8e}-\u{10d8f}\u{10ec2}-\u{10ec7}\u{10ed0}-\u{10ed8}\u{10efa}-\u{10efc}\u{11380}-\u{11389}\u{1138b}\u{1138e}\u{11390}-\u{113b5}\u{113b7}-\u{113c0}\u{113c2}\u{113c5}\u{113c7}-\u{113ca}\u{113cc}-\u{113d5}\u{113d7}-\u{113d8}\u{113e1}-\u{113e2}\u{116d0}-\u{116e3}\u{11b60}-\u{11b67}\u{11bc0}-\u{11be1}\u{11bf0}-\u{11bf9}\u{11db0}-\u{11ddb}\u{11de0}-\u{11de9}\u{11f5a}\u{13460}-\u{143fa}\u{16100}-\u{16139}\u{16d40}-\u{16d79}\u{16ea0}-\u{16eb8}\u{16ebb}-\u{16ed3}\u{16ff2}-\u{16ff6}\u{187f8}-\u{187ff}\u{18cff}\u{18d09}-\u{18d1e}\u{18d80}-\u{18df2}\u{1cc00}-\u{1ccfc}\u{1cd00}-\u{1ceb3}\u{1ceba}-\u{1ced0}\u{1cee0}-\u{1cef0}\u{1e5d0}-\u{1e5fa}\u{1e5ff}\u{1e6c0}-\u{1e6de}\u{1e6e0}-\u{1e6f5}\u{1e6fe}-\u{1e6ff}\u{1f6d8}\u{1f777}-\u{1f77a}\u{1f8b2}-\u{1f8bb}\u{1f8c0}-\u{1f8c1}\u{1f8d0}-\u{1f8d8}\u{1fa54}-\u{1fa57}\u{1fa89}-\u{1fa8a}\u{1fa8e}-\u{1fa8f}\u{1fabe}\u{1fac6}\u{1fac8}\u{1facd}\u{1fadc}\u{1fadf}\u{1fae9}-\u{1faea}\u{1faef}\u{1fbcb}-\u{1fbef}\u{1fbfa}\u{2b73a}-\u{2b73f}\u{2cea2}-\u{2cead}\u{323b0}-\u{33479}]/u
+const THAI = new RegExp(`^(?:[\\p{sc=Zyyy}\\p{sc=Zinh}\\p{sc=Zzzz}]|${UNKNOWN.source})*[\\p{sc=Thai}\\p{sc=Laoo}]`, 'u')
 // The default-ignorables resvg starts a new cluster at (a soft hyphen, the zero-width space and non-joiner, the word
 // joiner, the BOM, direction marks…): the marks after one have no base, like marks opening a run, and take a box. The
 // rest (the joiner, variation selectors, tags) keep them on the character before. Measured against resvg for every
 // default-ignorable.
 const BREAKS = /[\u{ad}\u{61c}\u{180e}\u{200b}\u{200c}\u{200e}\u{200f}\u{202a}-\u{202e}\u{2060}-\u{206f}\u{feff}\u{fff0}-\u{fff8}\u{1d173}-\u{1d17a}\u{e0000}-\u{e001f}\u{e0080}-\u{e00ff}\u{e01f0}-\u{e0fff}]/u
+const starts = (c) => (IGNORED.test(c) ? BREAKS.test(c) : !MARK.test(c))
 const SCRIPTED = /[^\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u
 const UNMARKED = /[\p{Script=Cyrillic}\p{Script=Greek}]/u
 const JOINS = /[\u{200d}\u{180b}-\u{180d}\u{e0020}-\u{e007f}]/u
-const layAt = (run, adv, font, ink, thai, hang, over, room, breaks) => {
-  let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, ends = 0, letter = ''
+// whole: a break doesn't start a cluster (resvg doesn't always cut there)
+const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, over, room }, whole) => {
+  let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, letter = '', points = true, ends = 0
   // A mark the font has that nothing anchors (it has no letter under it, or one with no place for it: a digit, "#", a
   // letter of another font or none) is drawn where the pen is, after its base and the marks before it, and its ink
   // reaches right of there, as resvg draws it (measured); a mark stacked on such a mark goes where that one's anchor
   // puts it. For a run drawn alone (hang). of: the cluster's base; below: the marks on it the font has, with how far
   // right of the pen each is (null: anchored); and whether a joiner or another invisible character came after the base.
-  // far: how far right of its pen such a mark's ink reaches, at most: in a run bidi turns around (right-to-left letters,
-  // or a right-to-left mark, embedding, override or isolate, as U+200F U+0308 "1" is drawn "1" then the mark), it can
-  // be drawn anywhere in it, up to its end.
-  let of = '', below = new Map(), joined = false, hidden = false, far = 0
+  // drift: how far right of its pen such a mark's ink reaches, at most: in a run bidi turns around (a stretch shaped
+  // right to left, right-to-left letters, or a right-to-left mark, embedding, override or isolate, as U+200F U+0308 "1"
+  // is drawn "1" then the mark), it can be drawn anywhere in it, up to its end.
+  let of = '', below = new Map(), joined = false, hidden = false, drift = 0
   // The shaper takes the run's script from its first letter, and Inter positions no marks in Cyrillic or Greek text
   // ("Ж̂" has the mark after the letter, "aЖ̂" over it); every other script, or none, gets its default (Latin) marks
   const marked = hang && !UNMARKED.test(run.match(SCRIPTED)?.[0] ?? '')
@@ -282,7 +290,7 @@ const layAt = (run, adv, font, ink, thai, hang, over, room, breaks) => {
     }
     const right = x === null ? -Infinity : x + (font.reach(m) ?? 0)
     end = Math.max(end, w + base + own + right)
-    far = Math.max(far, right)
+    drift = Math.max(drift, right)
     // (one the font doesn't call a mark, like the Cyrillic "҈", is the base of the marks after it; a mark repeated on
     // the letter counts once, where it goes furthest right: what goes on it depends only on that)
     if (font.glyph(m) && !font.mark(m)) (of = c), (below = new Map())
@@ -294,11 +302,16 @@ const layAt = (run, adv, font, ink, thai, hang, over, room, breaks) => {
     const r = letter && room ? room(letter, marks > 0) : 0
     // (a mark's overhang is past the letter as its boxes widen it, or past the boxes' ink when it ends further, as
     // resvg sets a mark after a box against the box)
-    const boxes = w + base + r + 0.5 + BOX * (marks - 1) + own
-    if (am) end = Math.max(end, boxes), (w += Math.max(base, BOX) + r + own)
+    // (shaped right to left, a letter's boxes start past its ink, not its advance: up to a box further, unless it's a
+    // box itself or a space, which has no ink)
+    const boxes = w + base + r + 0.5 + BOX * (marks - 1) + own + (far && has(letter, font) && !/\p{Zs}/u.test(letter) ? BOX : 0)
+    // (shaped as Hebrew, Hebrew points no font has are drawn within a letter no font has)
+    if (hebrew && box && !am && points && letter && !has(letter, font)) w += base + r + own
+    else if (am) end = Math.max(end, boxes), (w += Math.max(base, BOX) + r + own)
     else if (box) end = Math.max(end, boxes), (w += base + r + own + Math.max(BOX - base, marks === 1 ? 0 : 0.62 + BOX * (marks - 2)))
     else w += base + r + own
-    if (hung) end = Math.max(end, (box ? Math.max(w, boxes) : w) + OVERHANG)
+    // (and shaped right to left, any mark on nothing, after a direction mark, up to 0.17 further; measured)
+    if (hung) end = Math.max(end, (box ? Math.max(w, boxes) : w) + OVERHANG + (far && !letter ? 0.2 : 0))
     // (and a letter whose ink ends past its advance reaches past what comes after it when that's narrower: "\u{e2c2} ")
     end = Math.max(end, w + ends)
     base = marks = own = ends = 0
@@ -306,35 +319,40 @@ const layAt = (run, adv, font, ink, thai, hang, over, room, breaks) => {
     of = ''
     below = new Map()
     letter = ''
+    points = true
   }
   for (const c of run) {
     i++
-    if (breaks && BREAKS.test(c)) flush()
+    if (!whole && BREAKS.test(c)) flush()
     // the invisible characters the cluster goes on after keep a letter and a mark after them from making one character
     // ("Ж" U+FE0F U+0308 isn't "Ӝ"), and a joiner, a Mongolian variation selector or a tag leaves the marks after it
     // nothing to go on ("x" U+200D U+0302 has the mark after the pen; one that would make a character with the letter
     // can be over it, "a" U+200D U+0308 is drawn as "ä", which a guess doesn't count on). Measured for every one.
     else if (IGNORED.test(c)) JOINS.test(c) ? (joined = true) && (below = new Map()) : (hidden = true)
     else if (thai && AM.test(c)) started ? (marks += 2) : ((base = BOX), marks++), (box = am = started = true), (of = ''), (below = new Map())
-    else if (boxed(c, font)) marks++, (box = started = true), (of = ''), (below = new Map())
+    else if (boxed(c, font)) marks++, (box = started = true), (of = ''), (below = new Map()), (points &&= POINTS.test(c))
     else if (MARK.test(c)) {
       if (hang) pen(c)
       marks++, (own += adv(c)), (started = true)
-      if (hang?.(i) && !font.advance(c.codePointAt(0))) hung = true
+      if (hang?.(i) && (!font.advance(c.codePointAt(0)) || (far && !letter))) hung = true
     } else flush(), (base = adv(c)), (letter = c), (ends = over?.(c) ?? 0), (started = true), (of = c)
   }
   flush()
-  if (far > 0 && LEFTWARD.test(run)) end = Math.max(end, w + far)
+  if (drift > 0 && (far || LEFTWARD.test(run))) end = Math.max(end, w + drift)
   return ink ? Math.max(w, end) : w
 }
-// A run with a break in it takes the wider of laying it out cut at its breaks and not: resvg doesn't always cut there
-// (a mark with no base after an Arabic letter mark stays on the box mark past a zero-width non-joiner after it)
-const laidAs = (run, adv, font, ink, thai, hang, over, room) => {
-  const whole = layAt(run, adv, font, ink, thai, hang, over, room, false)
-  return BREAKS.test(run) ? Math.max(whole, layAt(run, adv, font, ink, thai, hang, over, room, true)) : whole
+// A run with a break in it, unless it's said where resvg cuts (o.whole), takes the wider of laying it out cut at its
+// breaks and not (a mark with no base after an Arabic letter mark stays on the box mark past a zero-width non-joiner)
+const laidAs = (run, adv, font, ink, thai, hang, o) => {
+  if (o.whole !== undefined) return layAt(run, adv, font, ink, thai, hang, o, o.whole)
+  const whole = layAt(run, adv, font, ink, thai, hang, o, true)
+  return BREAKS.test(run) ? Math.max(whole, layAt(run, adv, font, ink, thai, hang, o, false)) : whole
 }
-// resvg shapes each stretch of one direction apart, so Thai after right-to-left text is shaped as Thai whatever came first
-const RTL = /[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Nkoo}\p{sc=Adlm}\p{sc=Rohg}\p{sc=Samr}\p{sc=Mand}]/u
+// resvg shapes each stretch of one direction apart, so Thai after right-to-left text is shaped as Thai whatever came first.
+// The scripts written right to left (the shaper's list)
+const RTL = new RegExp(`(?!${UNKNOWN.source})${/[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Cprt}\p{sc=Khar}\p{sc=Phnx}\p{sc=Nkoo}\p{sc=Lydi}\p{sc=Avst}\p{sc=Armi}\p{sc=Phli}\p{sc=Prti}\p{sc=Sarb}\p{sc=Orkh}\p{sc=Samr}\p{sc=Mand}\p{sc=Merc}\p{sc=Mero}\p{sc=Mani}\p{sc=Mend}\p{sc=Nbat}\p{sc=Narb}\p{sc=Palm}\p{sc=Phlp}\p{sc=Hatr}\p{sc=Hung}\p{sc=Adlm}\p{sc=Rohg}\p{sc=Sogo}\p{sc=Sogd}\p{sc=Elym}\p{sc=Chrs}\p{sc=Yezi}\p{sc=Ougr}]/u.source}`, 'u')
+const SCRIPT = new RegExp(`(?!${UNKNOWN.source})[^\\p{sc=Zyyy}\\p{sc=Zinh}\\p{sc=Zzzz}]`, 'u')
+const HEBREW = /\p{sc=Hebr}/u
 // and what turns a stretch of a run around: those letters, and the right-to-left mark, Arabic letter mark, embedding,
 // override and isolate
 const LEFTWARD = new RegExp(`${RTL.source}|[\\u{200f}\\u{61c}\\u{202b}\\u{202e}\\u{2067}]`, 'u')
@@ -342,14 +360,150 @@ const LEFTWARD = new RegExp(`${RTL.source}|[\\u{200f}\\u{61c}\\u{202b}\\u{202e}\
  *  added as resvg adds them; ink: where the boxes' ink ends counts too, as it does at the end of a run. hang: given for
  *  a run drawn alone, as it is, and true for the characters (by index in it) of a mark fonts have with no advance whose
  *  ink can end up to OVERHANG past its letter (a diaeresis on "l" before a space). Without it, the run may be a word of
- *  a line resvg shapes as Thai or not, and takes the wider of the two. room(letter, marked): the room a letter (with
- *  marks on it, or not) gets past its advance, which a box widening it doesn't take up. */
-const laid = (run, adv, font, ink, hang, over, room) => {
-  if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang, over, room)
-  if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, over, room)
+ *  a line resvg shapes as Thai or not, and takes the wider of the two. o.far: the run is a stretch shaped right to left;
+ *  o.hebrew: shaped as Hebrew; o.over: a letter's ink past its advance; o.room(letter, marked): the room a letter (with
+ *  marks on it, or not) gets past its advance, which a box widening it doesn't take up; o.whole: whether a break starts
+ *  a cluster (true: it doesn't; unset: either). */
+const laid = (run, adv, font, ink, hang, o = {}) => {
+  if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang, o)
+  if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, o)
   // (nor in one with a break in it: after a left-to-right mark, resvg shapes a sara am as Thai in a Latin run)
-  if (hang && !RTL.test(run) && !BREAKS.test(run)) return laidAs(run, adv, font, ink, false, hang, over, room)
-  return Math.max(laidAs(run, adv, font, ink, false, hang, over, room), laidAs(run, adv, font, ink, true, hang, over, room))
+  if (hang && !RTL.test(run) && !BREAKS.test(run)) return laidAs(run, adv, font, ink, false, hang, o)
+  return Math.max(laidAs(run, adv, font, ink, false, hang, o), laidAs(run, adv, font, ink, true, hang, o))
+}
+
+// The bidi classes (UAX #9) of the characters that aren't left-to-right (L), as resvg has them: Unicode 15.0's
+// DerivedBidiClass.txt, with its defaults for what it hadn't assigned yet, but for the Arabic letters it defaults to
+// past the Arabic blocks Unicode 6 had (U+0860-08FF, Hanifi Rohingya, Arabic Extended-C, Sogdian, the Siyaq numbers):
+// resvg takes those as right to left, not Arabic (a European number after U+0897 stays one), and U+2FFC as left to
+// right (measured). Generated, not tuned; regenerate it if resvg is updated. ON stands for all the neutrals (B, S, WS,
+// ON), X for the explicit embeddings, overrides and isolates.
+const BIDI = {
+  AL: /[\u{608}\u{60b}\u{60d}\u{61b}-\u{64a}\u{66d}-\u{66f}\u{671}-\u{6d5}\u{6e5}-\u{6e6}\u{6ee}-\u{6ef}\u{6fa}-\u{710}\u{712}-\u{72f}\u{74b}-\u{7a5}\u{7b1}-\u{7bf}\u{860}-\u{86a}\u{870}-\u{88e}\u{8a0}-\u{8c9}\u{fb50}-\u{fd3d}\u{fd50}-\u{fdce}\u{fdf0}-\u{fdfc}\u{fe70}-\u{fefe}\u{10d00}-\u{10d23}\u{10f30}-\u{10f45}\u{10f51}-\u{10f59}\u{1ec71}-\u{1ecb4}\u{1ed01}-\u{1ed3d}\u{1ee00}-\u{1eeef}\u{1eef2}-\u{1eeff}]/u,
+  R: /[\u{590}\u{5be}\u{5c0}\u{5c3}\u{5c6}\u{5c8}-\u{5ff}\u{7c0}-\u{7ea}\u{7f4}-\u{7f5}\u{7fa}-\u{7fc}\u{7fe}-\u{815}\u{81a}\u{824}\u{828}\u{82e}-\u{858}\u{85c}-\u{85f}\u{86b}-\u{86f}\u{88f}\u{892}-\u{897}\u{200f}\u{fb1d}\u{fb1f}-\u{fb28}\u{fb2a}-\u{fb4f}\u{10800}-\u{1091e}\u{10920}-\u{10a00}\u{10a04}\u{10a07}-\u{10a0b}\u{10a10}-\u{10a37}\u{10a3b}-\u{10a3e}\u{10a40}-\u{10ae4}\u{10ae7}-\u{10b38}\u{10b40}-\u{10cff}\u{10d28}-\u{10d2f}\u{10d3a}-\u{10e5f}\u{10e7f}-\u{10eaa}\u{10ead}-\u{10efc}\u{10f00}-\u{10f2f}\u{10f5a}-\u{10f81}\u{10f86}-\u{10fff}\u{1e800}-\u{1e8cf}\u{1e8d7}-\u{1e943}\u{1e94b}-\u{1ec70}\u{1ecb5}-\u{1ed00}\u{1ed3e}-\u{1edff}\u{1ef00}-\u{1efff}]/u,
+  AN: /[\u{600}-\u{605}\u{660}-\u{669}\u{66b}\u{66c}\u{6dd}\u{890}\u{891}\u{8e2}\u{10d30}-\u{10d39}\u{10e60}-\u{10e7e}]/u,
+  EN: /[\u{30}-\u{39}\u{b2}\u{b3}\u{b9}\u{6f0}-\u{6f9}\u{2070}\u{2074}-\u{2079}\u{2080}-\u{2089}\u{2488}-\u{249b}\u{ff10}-\u{ff19}\u{102e1}-\u{102fb}\u{1d7ce}-\u{1d7ff}\u{1f100}-\u{1f10a}\u{1fbf0}-\u{1fbf9}]/u,
+  ES: /[\u{2b}\u{2d}\u{207a}\u{207b}\u{208a}\u{208b}\u{2212}\u{fb29}\u{fe62}\u{fe63}\u{ff0b}\u{ff0d}]/u,
+  CS: /[\u{2c}\u{2e}\u{2f}\u{3a}\u{a0}\u{60c}\u{202f}\u{2044}\u{fe50}\u{fe52}\u{fe55}\u{ff0c}\u{ff0e}\u{ff0f}\u{ff1a}]/u,
+  ET: /[\u{23}-\u{25}\u{a2}-\u{a5}\u{b0}\u{b1}\u{58f}\u{609}\u{60a}\u{66a}\u{9f2}\u{9f3}\u{9fb}\u{af1}\u{bf9}\u{e3f}\u{17db}\u{2030}-\u{2034}\u{20a0}-\u{20cf}\u{212e}\u{2213}\u{a838}\u{a839}\u{fe5f}\u{fe69}\u{fe6a}\u{ff03}-\u{ff05}\u{ffe0}\u{ffe1}\u{ffe5}\u{ffe6}\u{11fdd}-\u{11fe0}\u{1e2ff}]/u,
+  ON: /[\u{9}-\u{d}\u{1c}-\u{22}\u{26}-\u{2a}\u{3b}-\u{40}\u{5b}-\u{60}\u{7b}-\u{7e}\u{85}\u{a1}\u{a6}-\u{a9}\u{ab}\u{ac}\u{ae}\u{af}\u{b4}\u{b6}-\u{b8}\u{bb}-\u{bf}\u{d7}\u{f7}\u{2b9}\u{2ba}\u{2c2}-\u{2cf}\u{2d2}-\u{2df}\u{2e5}-\u{2ed}\u{2ef}-\u{2ff}\u{374}\u{375}\u{37e}\u{384}\u{385}\u{387}\u{3f6}\u{58a}\u{58d}\u{58e}\u{606}\u{607}\u{60e}\u{60f}\u{6de}\u{6e9}\u{7f6}-\u{7f9}\u{bf3}-\u{bf8}\u{bfa}\u{c78}-\u{c7e}\u{f3a}-\u{f3d}\u{1390}-\u{1399}\u{1400}\u{1680}\u{169b}\u{169c}\u{17f0}-\u{17f9}\u{1800}-\u{180a}\u{1940}\u{1944}\u{1945}\u{19de}-\u{19ff}\u{1fbd}\u{1fbf}-\u{1fc1}\u{1fcd}-\u{1fcf}\u{1fdd}-\u{1fdf}\u{1fed}-\u{1fef}\u{1ffd}\u{1ffe}\u{2000}-\u{200a}\u{2010}-\u{2029}\u{2035}-\u{2043}\u{2045}-\u{205f}\u{207c}-\u{207e}\u{208c}-\u{208e}\u{2100}\u{2101}\u{2103}-\u{2106}\u{2108}\u{2109}\u{2114}\u{2116}-\u{2118}\u{211e}-\u{2123}\u{2125}\u{2127}\u{2129}\u{213a}\u{213b}\u{2140}-\u{2144}\u{214a}-\u{214d}\u{2150}-\u{215f}\u{2189}-\u{218b}\u{2190}-\u{2211}\u{2214}-\u{2335}\u{237b}-\u{2394}\u{2396}-\u{2426}\u{2440}-\u{244a}\u{2460}-\u{2487}\u{24ea}-\u{26ab}\u{26ad}-\u{27ff}\u{2900}-\u{2b73}\u{2b76}-\u{2b95}\u{2b97}-\u{2bff}\u{2ce5}-\u{2cea}\u{2cf9}-\u{2cff}\u{2e00}-\u{2e5d}\u{2e80}-\u{2e99}\u{2e9b}-\u{2ef3}\u{2f00}-\u{2fd5}\u{2ff0}-\u{2ffb}\u{3000}-\u{3004}\u{3008}-\u{3020}\u{3030}\u{3036}\u{3037}\u{303d}-\u{303f}\u{309b}\u{309c}\u{30a0}\u{30fb}\u{31c0}-\u{31e3}\u{321d}\u{321e}\u{3250}-\u{325f}\u{327c}-\u{327e}\u{32b1}-\u{32bf}\u{32cc}-\u{32cf}\u{3377}-\u{337a}\u{33de}\u{33df}\u{33ff}\u{4dc0}-\u{4dff}\u{a490}-\u{a4c6}\u{a60d}-\u{a60f}\u{a673}\u{a67e}\u{a67f}\u{a700}-\u{a721}\u{a788}\u{a828}-\u{a82b}\u{a874}-\u{a877}\u{ab6a}\u{ab6b}\u{fd3e}-\u{fd4f}\u{fdcf}\u{fdfd}-\u{fdff}\u{fe10}-\u{fe19}\u{fe30}-\u{fe4f}\u{fe51}\u{fe54}\u{fe56}-\u{fe5e}\u{fe60}\u{fe61}\u{fe64}-\u{fe66}\u{fe68}\u{fe6b}\u{ff01}\u{ff02}\u{ff06}-\u{ff0a}\u{ff1b}-\u{ff20}\u{ff3b}-\u{ff40}\u{ff5b}-\u{ff65}\u{ffe2}-\u{ffe4}\u{ffe8}-\u{ffee}\u{fff9}-\u{fffd}\u{10101}\u{10140}-\u{1018c}\u{10190}-\u{1019c}\u{101a0}\u{1091f}\u{10b39}-\u{10b3f}\u{11052}-\u{11065}\u{11660}-\u{1166c}\u{11fd5}-\u{11fdc}\u{11fe1}-\u{11ff1}\u{16fe2}\u{1d1e9}\u{1d1ea}\u{1d200}-\u{1d241}\u{1d245}\u{1d300}-\u{1d356}\u{1d6db}\u{1d715}\u{1d74f}\u{1d789}\u{1d7c3}\u{1eef0}\u{1eef1}\u{1f000}-\u{1f02b}\u{1f030}-\u{1f093}\u{1f0a0}-\u{1f0ae}\u{1f0b1}-\u{1f0bf}\u{1f0c1}-\u{1f0cf}\u{1f0d1}-\u{1f0f5}\u{1f10b}-\u{1f10f}\u{1f12f}\u{1f16a}-\u{1f16f}\u{1f1ad}\u{1f260}-\u{1f265}\u{1f300}-\u{1f6d7}\u{1f6dc}-\u{1f6ec}\u{1f6f0}-\u{1f6fc}\u{1f700}-\u{1f776}\u{1f77b}-\u{1f7d9}\u{1f7e0}-\u{1f7eb}\u{1f7f0}\u{1f800}-\u{1f80b}\u{1f810}-\u{1f847}\u{1f850}-\u{1f859}\u{1f860}-\u{1f887}\u{1f890}-\u{1f8ad}\u{1f8b0}\u{1f8b1}\u{1f900}-\u{1fa53}\u{1fa60}-\u{1fa6d}\u{1fa70}-\u{1fa7c}\u{1fa80}-\u{1fa88}\u{1fa90}-\u{1fabd}\u{1fabf}-\u{1fac5}\u{1face}-\u{1fadb}\u{1fae0}-\u{1fae8}\u{1faf0}-\u{1faf8}\u{1fb00}-\u{1fb92}\u{1fb94}-\u{1fbca}]/u,
+  BN: /[\u{0}-\u{8}\u{e}-\u{1b}\u{7f}-\u{84}\u{86}-\u{9f}\u{ad}\u{180e}\u{200b}-\u{200d}\u{2060}-\u{2065}\u{206a}-\u{206f}\u{fdd0}-\u{fdef}\u{feff}\u{fff0}-\u{fff8}\u{fffe}\u{ffff}\u{1bca0}-\u{1bca3}\u{1d173}-\u{1d17a}\u{1fffe}\u{1ffff}\u{2fffe}\u{2ffff}\u{3fffe}\u{3ffff}\u{4fffe}\u{4ffff}\u{5fffe}\u{5ffff}\u{6fffe}\u{6ffff}\u{7fffe}\u{7ffff}\u{8fffe}\u{8ffff}\u{9fffe}\u{9ffff}\u{afffe}\u{affff}\u{bfffe}\u{bffff}\u{cfffe}\u{cffff}\u{dfffe}-\u{e00ff}\u{e01f0}-\u{e0fff}\u{efffe}\u{effff}\u{ffffe}\u{fffff}\u{10fffe}\u{10ffff}]/u,
+  X: /[\u{202a}-\u{202e}\u{2066}-\u{2069}]/u,
+  NSM: /(?![\u{897}\u{cbf}\u{cc6}\u{1acf}-\u{1add}\u{1ae0}-\u{1aeb}\u{10d69}-\u{10d6d}\u{10efa}-\u{10efc}\u{113bb}-\u{113c0}\u{113ce}\u{113d0}\u{113d2}\u{113e1}\u{113e2}\u{11a07}\u{11a08}\u{11b60}\u{11b62}-\u{11b64}\u{11b66}\u{11c3f}\u{11f5a}\u{1611e}-\u{16129}\u{1612d}-\u{1612f}\u{1e5ee}\u{1e5ef}\u{1e6e3}\u{1e6e6}\u{1e6ee}\u{1e6ef}\u{1e6f5}])[\p{Mn}\p{Me}\u{1171e}]/u,
+}
+const CLASSES = Object.entries(BIDI)
+const bidi = (c) => CLASSES.find(([, r]) => r.test(c))?.[0] ?? 'L'
+const RIGHT = new RegExp(`${BIDI.AL.source}|${BIDI.R.source}|${BIDI.AN.source}|${BIDI.X.source}`, 'u')
+// the right-to-left embedding, override and isolate; and the embeddings, overrides and isolates that open a level
+const RLX = /[\u202b\u202e\u2067]/u
+const OPENS = /[\u202a\u202d\u2066\u2068]/u
+const STRONG = new Set(['L', 'R', 'AL'])
+const NUMBER = new Set(['EN', 'AN'])
+/** resvg lays a run out in stretches of one direction, unicode-bidi's level runs for text set left to right, and
+ *  shapes each apart. The ways it may be cut into stretches (null for a run with explicit embeddings, overrides or
+ *  isolates and right-to-left text, or a right-to-left one of them), each a list of stretches: their characters'
+ *  indices, a right-to-left stretch's in the order its clusters are drawn (its first letter's marks no font has, boxes
+ *  set past the letter, end up at its right); far: shaped right to left, as a right-to-left stretch is, and one whose
+ *  script is (a stretch set left to right that starts with an Arabic digit is shaped right to left and turned around);
+ *  hebrew: a right-to-left stretch shaped as Hebrew (its first character of any script is Hebrew). Measured. */
+const stretches = (cs) => {
+  const all = cs.map((_, i) => i)
+  const stretch = (s, rtl) => {
+    const first = cs[s.find((i) => SCRIPT.test(cs[i]))]
+    const far = rtl || RTL.test(first ?? '')
+    // (a break may or may not start a cluster where it's laid out: the stretch is guessed both ways, by whole)
+    const ways = s.some((i) => BREAKS.test(cs[i])) ? [false, true] : [false]
+    if (!rtl) {
+      // (and one set left to right but shaped right to left by its script may have the marks before its first cluster
+      // turned around into the cluster after them: guessed both ways too)
+      const orders = ways.map((whole) => ({ order: s, whole }))
+      let k = 0
+      while (k < s.length && !starts(cs[s[k]])) k++
+      if (!far || !k || k === s.length) return { orders, far }
+      let e = k + 1
+      while (e < s.length && !starts(cs[s[e]])) e++
+      const turned = [...s.slice(k, e), ...s.slice(0, k), ...s.slice(e)]
+      return { orders: [...orders, ...ways.map((whole) => ({ order: turned, whole }))], far }
+    }
+    const hebrew = HEBREW.test(first ?? '')
+    const orders = ways.map((whole) => {
+      const clusters = []
+      for (const i of s) !clusters.length || (whole ? !IGNORED.test(cs[i]) && starts(cs[i]) : starts(cs[i])) ? clusters.push([i]) : clusters.at(-1).push(i)
+      return { order: clusters.reverse().flat(), whole }
+    })
+    return { orders, far, hebrew }
+  }
+  if (!cs.some((c) => RIGHT.test(c))) return [[stretch(all, false)]]
+  const t = cs.map(bidi)
+  if (t.includes('X')) {
+    // (left-to-right embeddings, overrides and isolates in text with nothing right to left in it reorder nothing, but
+    // may cut it into stretches at every level: guessed cut there and not)
+    if (t.some((x) => x === 'R' || x === 'AL' || x === 'AN') || cs.some((c) => RLX.test(c))) return null
+    const stack = []
+    const level = []
+    for (const i of all) {
+      const c = cs[i]
+      if (OPENS.test(c)) {
+        level[i] = 2 * stack.length
+        // (past unicode-bidi's deepest level, it ignores them: not modelled)
+        if (stack.length === 62) return null
+        stack.push(c === '\u2066' || c === '\u2068')
+      } else if (c === '\u2069') stack.includes(true) && stack.splice(stack.lastIndexOf(true)), (level[i] = 2 * stack.length)
+      else if (c === '\u202c') (level[i] = i ? level[i - 1] : 0), stack.length && !stack.at(-1) && stack.pop()
+      else level[i] = 2 * stack.length
+    }
+    const out = []
+    for (const i of all) i && level[i] === level[i - 1] ? out.at(-1).push(i) : out.push([i])
+    return [[stretch(all, false)], out.map((s) => stretch(s, false))]
+  }
+  // (boundary neutrals are left out, and take the level of the character before them)
+  const at = all.filter((i) => t[i] !== 'BN')
+  const near = (k, d) => t[at[k + d]] ?? 'sos'
+  // W1-W3: a mark takes its letter's class, a European number after Arabic letters is an Arabic one
+  let strong = 'L'
+  at.forEach((i, k) => {
+    if (t[i] === 'NSM') t[i] = k ? t[at[k - 1]] : 'L'
+    if (t[i] === 'EN' && strong === 'AL') t[i] = 'AN'
+    if (STRONG.has(t[i])) strong = t[i]
+  })
+  for (const i of at) if (t[i] === 'AL') t[i] = 'R'
+  // W4-W7: a separator inside a number and terminators beside one join it, a European number after left-to-right text
+  // is left to right
+  at.forEach((i, k) => {
+    const [a, b] = [near(k, -1), near(k, 1)]
+    if (t[i] === 'ES' && a === 'EN' && b === 'EN') t[i] = 'EN'
+    else if (t[i] === 'CS' && a === b && NUMBER.has(a)) t[i] = a
+  })
+  for (let k = 0; k < at.length; k++) {
+    if (t[at[k]] !== 'ET') continue
+    let e = k
+    while (t[at[e + 1]] === 'ET') e++
+    if (near(k, -1) === 'EN' || t[at[e + 1]] === 'EN') for (let j = k; j <= e; j++) t[at[j]] = 'EN'
+    k = e
+  }
+  strong = 'L'
+  for (const i of at) {
+    if (['ES', 'ET', 'CS'].includes(t[i])) t[i] = 'ON'
+    if (t[i] === 'EN' && strong === 'L') t[i] = 'L'
+    if (STRONG.has(t[i])) strong = t[i]
+  }
+  // N1, N2: neutrals between two of one direction take it (numbers count as right to left), others the text's
+  const dir = (x) => (x === 'L' || x === 'sos' || x === undefined ? 'L' : 'R')
+  for (let k = 0; k < at.length; k++) {
+    if (t[at[k]] !== 'ON') continue
+    let e = k
+    while (t[at[e + 1]] === 'ON') e++
+    const d = dir(near(k, -1)) === dir(t[at[e + 1]]) ? dir(t[at[e + 1]]) : 'L'
+    for (let j = k; j <= e; j++) t[at[j]] = d
+    k = e
+  }
+  // I1: levels 0, 1 and 2
+  const level = []
+  let last = 0
+  for (const i of all) last = level[i] = t[i] === 'BN' ? last : t[i] === 'L' ? 0 : t[i] === 'R' ? 1 : 2
+  const out = []
+  for (const i of all) i && level[i] === level[i - 1] ? out.at(-1).push(i) : out.push([i])
+  return [out.map((s) => ({ ...stretch(s, level[s[0]] === 1), level: level[s[0]] }))]
 }
 
 // the spaces other than " ", as resvg draws them (measured): the ideographic space Japanese text uses is a full em
@@ -593,10 +747,39 @@ export const guess = (run, bold = false) => {
     const n = marked ? c.normalize('NFC') : c
     return n === c || [...n].length > 1 || !font.glyph(n.codePointAt(0)) ? extra(c) : Math.max(extra(c), adv(n) + extra(n) - adv(c))
   }
-  // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em; past: the ink of the characters that end
-  // past their advance, wherever it reaches past the run's end
-  const w = laid(cs.join(''), adv, font, true, (i) => !within.has(i), past, room)
-  // (toned counts a letter's extra room in its advance, as it did before laid() took it as room)
+  // each stretch of one direction is guessed apart, as resvg shapes it: its advance, and where its ink ends (past: the
+  // ink of the characters that end past their advance, wherever it reaches past the stretch's end). They're laid out in
+  // the order they're drawn (each sequence of right-to-left and number stretches turned around; two next to each other
+  // are never of one level, so this is all of rule L2), so ink past one stretch's end, like sara am's, is under the
+  // next one's text rather than added to it, and the run takes the furthest any of it reaches.
+  // Where the run may be cut into stretches more than one way, it takes the widest.
+  const lay = (ss) => {
+    const drawn = ss.map(({ orders, far, hebrew, level }) => {
+      const at = (ink) => Math.max(...orders.map(({ order, whole }) => laid(order.map((i) => cs[i]).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, hebrew, over: past, room, whole })))
+      return { a: at(false), ink: at(true), level }
+    })
+    for (let k = 0; k < drawn.length; k++) {
+      let e = k
+      while (drawn[e]?.level) e++
+      if (e > k) drawn.splice(k, e - k, ...drawn.slice(k, e).reverse()), (k = e - 1)
+    }
+    let w = 0, end = 0
+    for (const { a, ink } of drawn) end = Math.max(end, w + ink), (w += a)
+    return Math.max(w, end)
+  }
+  const ways = stretches(cs)
+  let w = ways ? Math.max(...ways.map(lay)) : 0
+  // A run with right-to-left embeddings, overrides or isolates, or any with right-to-left text (contrived), gets room
+  // for every cluster in any order and direction: each mark no font has a box of its own, sara am two, and the most one
+  // cluster's ink can end past them (boxes set past a letter's ink, a mark's overhang on nothing) and one character's
+  // ink past its advance (or one of Inter's marks past the pen, where nothing anchors it).
+  if (!ways) {
+    const drawn = cs.filter((c) => !IGNORED.test(c))
+    for (const c of drawn) w += AM.test(c) ? 2 * BOX : boxed(c, font) ? BOX : adv(c) + (MARK.test(c) ? 0 : room(c, true))
+    w += BOX + OVERHANG + 0.2 + Math.max(0, ...drawn.map(past), ...drawn.map((c) => (MARK.test(c) && font.reach(c.codePointAt(0))) || 0))
+  }
+  // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em; a skin tone outside an emoji as wide as
+  // toned has it (which counts a letter's extra room in its advance, as it did before laid() took it as room)
   return (TONE.test(run) ? Math.max(w, toned(cs, (c) => adv(c) + (MARK.test(c) ? 0 : extra(c)))) : w) + 0.04
 }
 // A skin tone outside an emoji. Card text never has one in a run of text (pieces() takes tones off as pictures), so only

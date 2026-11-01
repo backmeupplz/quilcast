@@ -342,6 +342,10 @@ test('a card measures a bounded number of new runs at once; past that, a guess t
   })
 })
 
+const SARA_AM_BEFORE_RTL = [cp(0xe14, 0xe37, 0xe48, 0xe21, 0xe19, 0xe49, 0xe33, 0x20, 0x5e9, 0x5dc, 0x5d5, 0x5dd), cp(0xe19, 0xe49, 0xe33, 0x20, 0x627, 0x644, 0x633, 0x644, 0x627, 0x645), cp(0x5e9, 0x5dc, 0x5d5, 0x5dd, 0x20, 0xe19, 0xe49, 0xe33, 0x20, 0x627, 0x644, 0x633, 0x644, 0x627, 0x645, 0x20, 0xe19, 0xe49, 0xe33)]
+const BOX_ON_RTL_SPACE = [cp(0x20, 0x6db), cp(0x631, 0x64e, 0x64a, 0x652, 0x628, 0x64e, 0x20, 0x6db)]
+// left-to-right isolates and embeddings in text with nothing right to left in it (a mention isolated in a cast)
+const LTR_ISOLATED = [`gm ${cp(0x2068)}@alice${cp(0x2069)} how are you`, `A1${cp(0x2069, 0x336)}®`, `ดื่มน้ำ ${cp(0x2068)}x${cp(0x2069)}`, `${cp(0x202a)}Thai ${cp(0x2066)}น้ำ${cp(0x2069)} ok${cp(0x202c)}`, `${cp(0x202d)}a${cp(0x336, 0x202c)}b`]
 test("a run past the budget is guessed, and the guess is never less than resvg's own advance", async () => {
   const inter = metrics(FONTS[0])
   // wide punctuation, fancy-text letters, arrows, numerals, digraphs, marks alone, Inter's widened forms, scripts no
@@ -365,6 +369,25 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   for (const c of [0x20db, 0x20dc, 0x20e8]) for (const box of [0xe31, 0xe48, 0x336]) runs.push(`a${cp(box, c)}`, ` ${cp(box, c)}`)
   // or after sara am's boxes, and bold "ɀ" after marks
   runs.push(`ก${cp(0xe33, 0x20dc)}`, `${cp(0xe33, 0x20dc)}x`, `ท${cp(0xe33, 0x20dc)}ก`, `${cp(0x313, 0xe31)}a${cp(0x240)}`, `${cp(0x336, 0x362, 0x240)}`)
+  // right-to-left letters with marks no font has or sara am: resvg shapes each stretch of one direction apart (a
+  // Devanagari vowel sign is a left-to-right letter, a box of its own after Hebrew; sara am is shaped as Thai on one side
+  // of Hebrew and not on the other), by Unicode 15.0's bidi classes (U+0897 an Arabic letter, U+2FFC left to right); a
+  // right-to-left stretch's first letter's boxes end at its right, a stretch shaped right to left (an Arabic digit
+  // first) sets them past a letter's ink, and a mark Inter has on nothing there sticks out further. Explicit embeddings
+  // and overrides, and Hebrew and Arabic with their points and harakat, too.
+  runs.push(`ع${cp(0xe31)}ע`, `ע${cp(0x93f)}`, `a${cp(0xe33)} עברית น้ำ`, `ע${cp(0x93f)} a`, `a${cp(0x897)}ع${cp(0xe31)}`, `ع${cp(0xe31, 0x2ffc)}ע`, `ع${cp(0xe31, 0x2ff0)}ע`)
+  runs.push(`${cp(0x6f4)}2${cp(0x940)}`, `${cp(0x66a)}ɀ${cp(0x940)}`, `${cp(0x6f4)}Ƈ${cp(0x651)}`, `${cp(0x200f)}.${cp(0x64b)}ع`, `${cp(0x200f)}.${cp(0x64b, 0x64b)}ع`, `${cp(0x200f, 0x323)}ב`, `${cp(0x200f, 0x1dff)}ב`, `${cp(0x20dd, 0x200f)}!${cp(0x730)}م${cp(0x336)}`)
+  runs.push(`ع${cp(0x202e)}a${cp(0x336)}b${cp(0x202c)}`, `ר${cp(0x2067, 0x902)}،${cp(0x93e, 0x66a)}`, 'שָׁלוֹם', 'מִשְׁפָּט טוֹב', 'مَرْحَبًا بِكُمْ', `שָׁ${cp(0x941)}ל`)
+  // and a mark no font has after a character resvg leaves out (other than a joiner) is a box on nothing
+  runs.push(`a${cp(0x200b, 0x902)}`, `ไ${cp(0x200e, 0x902)}ใ`, `a${cp(0xfeff, 0x336, 0x336)}`, `ท${cp(0x200b)}ำ`, `a${cp(0x200c, 0x902)}`)
+  // two or more of them on nothing are at least a box; shaped right to left (Samaritan, Syriac or Arabic marks or
+  // Persian digits first), such a character may or may not start a cluster, and marks before a stretch's first cluster
+  // may or may not join the cluster after them
+  runs.push(cp(0x82a, 0x3b1, 0xfeff, 0xe48, 0x823), cp(0x817, 0x3b1, 0x41, 0x4d, 0x642), cp(0x336, 0x6f5, 0x57), cp(0x1ab0, 0x6f7, 0x2029), cp(0x817, 0xfeff, 0x336), cp(0x740, 0x56, 0x44f, 0x200d, 0x56), cp(0x817, 0x41, 0x42))
+  runs.push(cp(0x817, 0x336, 0xfeff, 0x64c, 0x826), cp(0x652, 0x819, 0x200c, 0x747), cp(0x736, 0x59a, 0x200e, 0x5ac), cp(0x82b, 0xe48, 0xfe0f, 0x2060, 0x1ab0), cp(0x327, 0x200c, 0x34f, 0x737), cp(0x20e8, 0x200c, 0x82c), cp(0x1ab0, 0x659, 0x5b8, 0xad, 0x5ab, 0x5ab, 0x200f))
+  runs.push(cp(0x1dff, 0x6f5, 0x7eb, 0x2801), cp(0x336, 0x81c, 0x69, 0x301), cp(0x323, 0x6f4, 0x302f, 0x2f, 0x597, 0x34, 0x6f4, 0x3b1, 0x5e0), cp(0x1dff, 0x66a, 0x5a8, 0x6f4, 0x240, 0x21, 0x35, 0x31, 0x5d9, 0x66c, 0x64a, 0x200d))
+  // and turned runs with sara am, which the shaper turns into letters before the stretch is laid out
+  runs.push(cp(0x31, 0x66, 0x628, 0xeb3, 0x20dd, 0x35c, 0x360, 0x360), cp(0x69, 0x5d0, 0x7b, 0x37, 0xeb3, 0x20dc), cp(0x29, 0x915, 0x5d0, 0xeb3, 0x74), cp(0x41, 0x57, 0x6a, 0xe01, 0x202c, 0x1e900, 0xe33, 0x69))
   // and two boxes opening a run, which take a box's width, before narrow characters and a mark Inter has at the end
   runs.push(`${cp(0xe31, 0xe48)} ${cp(0x308)}`, `${cp(0x940, 0x940)}4${cp(0x200d)} ${cp(0x308)}`, `${cp(0xe38, 0xe38)}%${cp(0x360)}`, `${cp(0x94d, 0x902)}+${cp(0x360)}`, `${cp(0x93e, 0x6d6)}l${cp(0xe81)},%${cp(0x308)}`)
   // an enclosing mark Inter has under boxes, sara am before a letter whose ink reaches left, and a keycap mark opening a
@@ -379,6 +402,12 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(cp(...n(0x2001, 13), 0x1f3fb), cp(0x2001, 0x20e3, ...n(0x2001, 12)), cp(...n(0x2001, 12), 0x2000, 0x1f3fb, ...n(0x2000, 12)), cp(...n(0x2001, 13), 0x200d, 0x20e3), cp(...n(0x2000, 13), 0x200b, 0x1f3ff), cp(0x20e3, 0x37, ...n(0xa0, 13), 0x20e3))
   // a box mark before an orphaned private-use glyph, and a keycap mark after a symbol past a bidi isolate
   runs.push('Tf' + cp(0x360, 0xee90), '*' + cp(0x2066, 0x20e3))
+  // sara am before right-to-left text, its ink under the next stretch's text; a box mark on a space in right-to-left
+  // text; and characters newer than resvg's scripts (Unicode 16's), which don't decide how a stretch is shaped;
+  runs.push(...SARA_AM_BEFORE_RTL, ...BOX_ON_RTL_SPACE, ...LTR_ISOLATED, cp(0x2068, 0x41, 0xe33, 0xe33, 0x20, 0x2069, 0xeb3, 0x336), cp(0x6cc, 0x113b8, 0xeb3), cp(0x5d0, 0x897, 0x11f5a, 0xe33, 0xeb3, 0xe33), cp(0x113b8, 0xe33))
+  // and a number after a letter resvg's Unicode hadn't assigned in a newer Arabic block, which it takes as right to left,
+  // not Arabic, so the number stays a European one
+  runs.push(cp(0x10ec2, 0x36, 0xb0, 0xe33, 0x1ed01), cp(0x897, 0x36, 0xb0, 0xe33, 0x1ed01), cp(0x88f, 0x36, 0xb0, 0xe33, 0x10d28))
   // a skin tone outside an emoji: one more box after sara am's or a struck-through letter's, two after a symbol under a
   // box, and Noto Emoji's glyphs for it and the digits, spaces and symbols around it
   for (const t of [0x1f3fb, 0x1f3ff]) {
@@ -463,6 +492,16 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   for (const run of ['น้ำ', 'น้ำใจ', 'ทำงาน', 'ความจำ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.1, run)
   // a mark at a run's end gets room for its ink once, and a decomposed arrow's slash none
   for (const [run, over] of [[`cafe${cp(0x301)}`, 0.55], ['a↮', 0.1]]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + over, run)
+  // and Hebrew and Arabic, with their points and harakat (drawn within Hebrew's letters), mixed with English and
+  // numbers, are as close
+  for (const run of ['שלום עולם', 'שָׁלוֹם', 'מִשְׁפָּט טוֹב', 'مَرْحَبًا بِكُمْ', 'gm مرحبا friends', 'שנת 2024 טובה', 'قیمت: ۵۰٪', `ดีครับ שלום น้ำ`]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.15, run)
+  // Thai's sara am right before right-to-left text: its boxes' ink past the end of its stretch is under the text drawn
+  // after it, not added to it, and a box mark on a space shaped right to left isn't set past ink the space doesn't have
+  for (const run of SARA_AM_BEFORE_RTL) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
+  for (const run of BOX_ON_RTL_SPACE) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.3, run)
+  // and isolates and embeddings that only set text left to right are guessed as the stretches they cut, not as room for
+  // every cluster in any order
+  for (const run of LTR_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
 })
 
 test('past the budget, exactly() still measures: a tightly kerned line ends where resvg ends it, not at the guess', () => {
