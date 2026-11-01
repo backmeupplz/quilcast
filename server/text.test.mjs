@@ -379,6 +379,12 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(cp(...n(0x2001, 13), 0x1f3fb), cp(0x2001, 0x20e3, ...n(0x2001, 12)), cp(...n(0x2001, 12), 0x2000, 0x1f3fb, ...n(0x2000, 12)), cp(...n(0x2001, 13), 0x200d, 0x20e3), cp(...n(0x2000, 13), 0x200b, 0x1f3ff), cp(0x20e3, 0x37, ...n(0xa0, 13), 0x20e3))
   // a box mark before an orphaned private-use glyph, and a keycap mark after a symbol past a bidi isolate
   runs.push('Tf' + cp(0x360, 0xee90), '*' + cp(0x2066, 0x20e3))
+  // a skin tone outside an emoji: one more box after sara am's or a struck-through letter's, two after a symbol under a
+  // box, and Noto Emoji's glyphs for it and the digits, spaces and symbols around it
+  for (const t of [0x1f3fb, 0x1f3ff]) {
+    runs.push(`ท${cp(0xe33, t)}`, `27${cp(0xfe82c, 0x336, t)}`, `น้${cp(0xe33, t, 0x336)}`, `ท${cp(0xe33, t, 0xe33)}`, `a${cp(0x336, 0x336, t, 0x336)}`, cp(0x2764, 0x336, t))
+    runs.push(cp(0x2764, 0xe33, t), cp(0x2764, t), `27${cp(t)}`, ` ${cp(t)}`, `${cp(t)}   `, `${cp(t)}777`, `a${cp(0x200b, t)}`, `7${cp(0xfe0f, t)}`)
+  }
   // marks no font has with no base before them: after an invisible character resvg starts a new cluster at (a box of
   // their own, not one on the letter before), once and repeated, and two or more opening a run
   const AM = cp(0xe33)

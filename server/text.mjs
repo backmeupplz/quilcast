@@ -500,7 +500,9 @@ export function measure(run, bold = false) {
 // a little room for what that leaves out: Inter's wider contextual forms ("*" after a capital, "_" between letters), its
 // few positive kerning pairs, the ink of a mark with no advance that ends the run, the ink of Inter's marks that nothing
 // anchors (after the pen, wherever they are in the run), and the ink of a character that reaches past the run's end (a
-// space after it can be narrower than its overhang). It stays close to resvg's own advance, and never under it.
+// space after it can be narrower than its overhang). It stays close to resvg's own advance, and never under it (a run
+// with a skin tone outside an emoji, which card text never has, is guessed wider: see toned, unless Noto Emoji draws the
+// run whole: see notoWhole).
 const MEASURED = 32
 let fresh = 0
 let refill = false
@@ -593,8 +595,21 @@ export const guess = (run, bold = false) => {
   }
   // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em; past: the ink of the characters that end
   // past their advance, wherever it reaches past the run's end
-  return laid(cs.join(''), adv, font, true, (i) => !within.has(i), past, room) + 0.04
+  const w = laid(cs.join(''), adv, font, true, (i) => !within.has(i), past, room)
+  // (toned counts a letter's extra room in its advance, as it did before laid() took it as room)
+  return (TONE.test(run) ? Math.max(w, toned(cs, (c) => adv(c) + (MARK.test(c) ? 0 : extra(c)))) : w) + 0.04
 }
+// A skin tone outside an emoji. Card text never has one in a run of text (pieces() takes tones off as pictures), so only
+// a run guessed on its own does, and how resvg draws it depends on what's around it (measured): a box on the letter
+// before it, one more box after that letter's boxes (past the ink of "ทำ" or a struck-through letter), two boxes after
+// a symbol under a box, or, when Noto Emoji has the letter too, the letter, the tone and the digits and spaces next to
+// them reshaped in Noto Emoji, each as wide as its glyphs. So a run with one is guessed as wide as each of its characters
+// could be drawn: its advance, a Noto Emoji glyph (every one is NOTO_EM or narrower), or, for the tone, two boxes, and
+// sara am's two boxes twice that; its ink past them as for any run. (A run Noto Emoji draws whole, such as "27🏻" or
+// " 🏻", never gets here: guess() returns notoWhole's sum of its Noto glyphs for it first.)
+const TONE = /[\u{1F3FB}-\u{1F3FF}]/u
+const NOTO_EM = 1.27
+const toned = (cs, adv) => cs.reduce((w, c) => w + (AM.test(c) ? 2 : 1) * Math.max(adv(c), NOTO_EM, TONE.test(c) ? 2 * BOX : 0), 0) + cs.reduce((m, c) => Math.max(m, past(c)), 0)
 let exact = 0
 const advance = (run, bold) => (!run ? 0 : exact || laidOut.has(key(run, bold)) || spend() ? measure(run, bold) : guess(run, bold))
 /** f(), with every run of text it lays out measured, past the card's budget too. For a few short lines with something
