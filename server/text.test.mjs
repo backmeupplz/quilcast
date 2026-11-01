@@ -344,9 +344,12 @@ test('a card measures a bounded number of new runs at once; past that, a guess t
 
 const SARA_AM_BEFORE_RTL = [cp(0xe14, 0xe37, 0xe48, 0xe21, 0xe19, 0xe49, 0xe33, 0x20, 0x5e9, 0x5dc, 0x5d5, 0x5dd), cp(0xe19, 0xe49, 0xe33, 0x20, 0x627, 0x644, 0x633, 0x644, 0x627, 0x645), cp(0x5e9, 0x5dc, 0x5d5, 0x5dd, 0x20, 0xe19, 0xe49, 0xe33, 0x20, 0x627, 0x644, 0x633, 0x644, 0x627, 0x645, 0x20, 0xe19, 0xe49, 0xe33)]
 const BOX_ON_RTL_SPACE = [cp(0x20, 0x6db), cp(0x631, 0x64e, 0x64a, 0x652, 0x628, 0x64e, 0x20, 0x6db)]
-// left-to-right isolates and embeddings in text with nothing right to left in it (a mention isolated in a cast)
 // a number after Arabic with harakat or Hebrew with points (a word and a count), bare or in brackets
 const RTL_BEFORE_NUMBERS = ['كَتَبَ 12', 'عَ 12', 'عَ 1', 'عَ12', 'عَ ١٢', 'عَ 1.5', 'عَ #1', 'كَتَبَ 2024!', 'שָׁלוֹם 12', 'בְּ 12', 'عَ (12)', 'عَ [12]', 'عَ (١٢)', 'عَ ((12))', 'عَ (1)(2)', `عَ ${cp(0x2329)}12${cp(0x3009)}`, 'עִ (12)', 'x (12) عَ', 'عَ (12)َ']
+// isolates and embeddings in text with right-to-left text in it: a mention isolated in a Hebrew or Arabic cast, a
+// phrase embedded right to left (with a price in it), a Hebrew word isolated in English, and an override
+const RTL_ISOLATED = [`gm ${cp(0x2068)}@alice${cp(0x2069)} שלום עולם`, `${cp(0x202b)}שלום world${cp(0x202c)}`, `שלום ${cp(0x2068)}@bob${cp(0x2069)}!`, `مرحبا ${cp(0x2066)}@alice${cp(0x2069)} كيف حالك`, `שלום ${cp(0x2068)}עולם${cp(0x2069)} gm`, `${cp(0x202b)}מחיר 25$${cp(0x202c)}`, `${cp(0x2067)}שלום${cp(0x2069)} world`, `hi ${cp(0x202e)}abc${cp(0x202c)} there`]
+// left-to-right isolates and embeddings in text with nothing right to left in it (a mention isolated in a cast)
 // (lines with harakat or points and an arrow)
 const ARROW_LINES = ['مَرْحَبًا بِكُمْ فِي الْعَالَمِ الْجَدِيدِ –> نَعَمْ', 'مَرْحَبًا –> عَالَم', 'שָׁלוֹם עוֹלָם –> כֵּן']
 const LTR_ISOLATED = [`gm ${cp(0x2068)}@alice${cp(0x2069)} how are you`, `A1${cp(0x2069, 0x336)}®`, `ดื่มน้ำ ${cp(0x2068)}x${cp(0x2069)}`, `${cp(0x202a)}Thai ${cp(0x2066)}น้ำ${cp(0x2069)} ok${cp(0x202c)}`, `${cp(0x202d)}a${cp(0x336, 0x202c)}b`]
@@ -423,8 +426,30 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // a box mark before an orphaned private-use glyph, and a keycap mark after a symbol past a bidi isolate
   runs.push('Tf' + cp(0x360, 0xee90), '*' + cp(0x2066, 0x20e3))
   // sara am before right-to-left text, its ink under the next stretch's text; a box mark on a space in right-to-left
-  // text; and characters newer than resvg's scripts (Unicode 16's), which don't decide how a stretch is shaped;
-  runs.push(...SARA_AM_BEFORE_RTL, ...BOX_ON_RTL_SPACE, ...LTR_ISOLATED, cp(0x2068, 0x41, 0xe33, 0xe33, 0x20, 0x2069, 0xeb3, 0x336), cp(0x6cc, 0x113b8, 0xeb3), cp(0x5d0, 0x897, 0x11f5a, 0xe33, 0xeb3, 0xe33), cp(0x113b8, 0xe33))
+  // text; isolates and embeddings, with right-to-left text in them or around them or none; and characters newer than
+  // resvg's scripts (Unicode 16's), which don't decide how a stretch is shaped;
+  runs.push(...SARA_AM_BEFORE_RTL, ...BOX_ON_RTL_SPACE, ...RTL_ISOLATED, ...LTR_ISOLATED, cp(0x2068, 0x41, 0xe33, 0xe33, 0x20, 0x2069, 0xeb3, 0x336), cp(0x6cc, 0x113b8, 0xeb3), cp(0x5d0, 0x897, 0x11f5a, 0xe33, 0xeb3, 0xe33), cp(0x113b8, 0xe33))
+  // brackets after an isolate, with left-to-right then right-to-left text before it: unicode-bidi looks back for the
+  // direction they take over the level run before the isolate read forwards (the "a"), so they're set left to right
+  runs.push(`gm ש ${cp(0x2068)}@bob${cp(0x2069)} (שלום)${cp(0x336)}`, `aש${cp(0x2066)}x${cp(0x2069)}(ב)${cp(0x336)}`, `aש${cp(0x2066)}x${cp(0x2069)}(בָ)${cp(0x6db)}`, `aש${cp(0x2066)}x${cp(0x2069)}(1)${cp(0x902)}`)
+  // a mark newer than resvg's Unicode data (U+0897) before a fatha, which it doesn't reorder past it, so the fatha stays
+  // apart from the letter (in an override or embedding, and with none), and a tab past an isolate, which resvg draws as
+  // a space before bidi rather than as a segment separator
+  runs.push(cp(0x6c, 0x897, 0x64e, 0x202d, 0x6c, 0x30c), cp(0x6c, 0x897, 0x64e, 0x202b, 0x6c, 0x30c), cp(0x61, 0x897, 0x64e, 0x202d, 0x6c, 0x30c), cp(0x6c, 0x30c, 0xad, 0x20, 0x897, 0x670, 0x7ca), cp(0x2068, 0x3009, 0x336, 0x20, 0x6db, 0x9, 0x5d0))
+  // a mark resvg doesn't know between a dot above and a mark NFD would put first, which keeps the dot on the "l" (drawn
+  // "ŀ"), with an embedding and without; left-to-right letters overridden right to left after Arabic or a digit, whose
+  // kerning and composing resvg takes from the stretch's first script; and a caron past an empty isolate in Hebrew text
+  runs.push(cp(0x6c, 0x307, 0x897, 0x334, 0x6c), cp(0x202a, 0x6c, 0x307, 0x897, 0x334, 0x6c), cp(0x628, 0x202e, 0x234, 0x6a), cp(0x628, 0x202e, 0x76, 0x234, 0x191), cp(0x202e, 0x639, 0x64e, 0x234, 0x6a), cp(0x661, 0x202e, 0x30c, 0x6c))
+  // and brackets in them, which resvg mirrors; and left-to-right letters after a digit or a letter that has resvg shape the
+  // stretch they're in right to left, in an embedding, an isolate or an override, kerned in the shaper's order
+  runs.push(cp(0x202e, 0x48, 0x5b, 0xcf, 0x5d), cp(0x202e, 0xcf, 0x5d), cp(0x202e, 0x48, 0x7b, 0xcf, 0x7d), cp(0x202b, 0x661, 0x6a, 0x234), `ש ${cp(0x2067, 0x661, 0x6a, 0x234, 0x2069)}`, `ש${cp(0x202b, 0x661, 0x662, 0x6a, 0x234, 0x202c)} ok`, cp(0x202d, 0x628, 0x6a, 0x234), cp(0x661, 0x202d, 0x6a, 0x234), cp(0x202d, 0x5e9, 0x6a, 0x234))
+  runs.push(cp(0x6c, 0x2066, 0x2069, 0x30c, 0x6c, 0x5e9), cp(0x64, 0x2066, 0x2069, 0x30c, 0x5d, 0x5e9), cp(0x6c, 0x2066, 0x2069, 0x307, 0x6c, 0x5e9))
+  // a vertical tab and U+001F, which measure() strips, so they don't separate segments; and an en dash with an angle
+  // bracket in a stretch shaped right to left, which mirrors the bracket into Inter's long arrow
+  runs.push(cp(0x2067, 0x2c, 0xe33, 0x30c, 0xb, 0x5e9, 0x2c), cp(0x2067, 0x2c, 0xe33, 0x30c, 0x1f, 0x5e9, 0x2c), cp(0x202b, 0x2c, 0xe33, 0x30c, 0xb, 0x5e9, 0x5e9))
+  // and a caron joined to an "l" past an unmatched PDF and an LRE, in an RLI, which leave both at the same level
+  runs.push(cp(0x2067, 0x6c, 0x202c, 0x202a, 0x30c, 0x6c, 0x5e9), cp(0x5e9, 0x20, 0x6c, 0x202c, 0x202a, 0x30c, 0x6c))
+  runs.push(cp(0x202d, 0x5d1, 0x2013, 0x3c, 0x5e9), cp(0x202b, 0x661, 0x3e, 0x2013), cp(0x5e9, 0x2067, 0x661, 0x2013, 0x3c, 0x5e9), cp(0x202d, 0x628, 0x2013, 0x3c), cp(0x202d, 0x661, 0x3e, 0x2013))
   // and a number after a letter resvg's Unicode hadn't assigned in a newer Arabic block, which it takes as right to left,
   // not Arabic, so the number stays a European one
   runs.push(cp(0x10ec2, 0x36, 0xb0, 0xe33, 0x1ed01), cp(0x897, 0x36, 0xb0, 0xe33, 0x1ed01), cp(0x88f, 0x36, 0xb0, 0xe33, 0x10d28))
@@ -735,6 +760,8 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   // and isolates and embeddings that only set text left to right are guessed as the stretches they cut, not as room for
   // every cluster in any order
   for (const run of LTR_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
+  // and so are those in right-to-left text, laid out at the levels resvg's bidi gives them: as close as other text
+  for (const run of RTL_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.15, run)
   // and right-to-left text with its marks (pointed Arabic and Hebrew), or text struck through after a right-to-left
   // override (each box widening its letter, not a box beside it), isn't guessed far wider for each letter carrying marks
   const struck = [...'strike this'].map((c) => c + cp(0x336)).join('')

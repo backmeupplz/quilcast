@@ -653,12 +653,14 @@ const LEFTWARD = new RegExp(`${RTL.source}|[\\u{200f}\\u{61c}\\u{202b}\\u{202e}\
  *  o.back: shaped right to left but laid out left to right, so kerned the other way round ("}" U+06DB "ď" as "ď}");
  *  o.hebrew: shaped as Hebrew; o.over: a letter's ink past its advance; o.room(letter, marked): the room a letter (with
  *  marks on it, or not) gets past its advance, which a box widening it doesn't take up; o.whole: whether a break starts
- *  a cluster (true: it doesn't; unset: either). */
+ *  a cluster (true: it doesn't; unset: either); o.reversed: the run is a right-to-left stretch with its clusters in the
+ *  order they're drawn, so what it starts with isn't what decides how it's shaped (an override can put a sara am in
+ *  one shaped as Hebrew). */
 const laid = (run, adv, font, ink, hang, o = {}) => {
   if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang, o)
-  if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, o)
+  if (hang && !o.reversed && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, o)
   // (nor in one with a break in it: after a left-to-right mark, resvg shapes a sara am as Thai in a Latin run)
-  if (hang && !RTL.test(run) && !BREAKS.test(run)) return laidAs(run, adv, font, ink, false, hang, o)
+  if (hang && !o.reversed && !RTL.test(run) && !BREAKS.test(run)) return laidAs(run, adv, font, ink, false, hang, o)
   return Math.max(laidAs(run, adv, font, ink, false, hang, o), laidAs(run, adv, font, ink, true, hang, o))
 }
 
@@ -684,25 +686,292 @@ const BIDI = {
 const CLASSES = Object.entries(BIDI)
 const bidi = (c) => CLASSES.find(([, r]) => r.test(c))?.[0] ?? 'L'
 const RIGHT = new RegExp(`${BIDI.AL.source}|${BIDI.R.source}|${BIDI.AN.source}|${BIDI.X.source}`, 'u')
-// the right-to-left embedding, override and isolate; and the embeddings, overrides and isolates that open a level
-const RLX = /[\u202b\u202e\u2067]/u
-const OPENS = /[\u202a\u202d\u2066\u2068]/u
-// the isolates and the end of one, which rule X9 doesn't take out
-const ISOLATES = /[\u2066-\u2069]/u
 // The paired brackets (BidiBrackets.txt, as unicode-bidi has them): each opening one by the code point it pairs by, and
 // each closing one by minus that ("〈" pairs with "〉" and "〉")
 const BRACKETS = new Map()
 for (const [o, c, as = o] of [[0x28, 0x29], [0x5b, 0x5d], [0x7b, 0x7d], [0xf3a, 0xf3b], [0xf3c, 0xf3d], [0x169b, 0x169c], [0x2045, 0x2046], [0x207d, 0x207e], [0x208d, 0x208e], [0x2308, 0x2309], [0x230a, 0x230b], [0x2329, 0x232a, 0x3008], [0x2768, 0x2769], [0x276a, 0x276b], [0x276c, 0x276d], [0x276e, 0x276f], [0x2770, 0x2771], [0x2772, 0x2773], [0x2774, 0x2775], [0x27c5, 0x27c6], [0x27e6, 0x27e7], [0x27e8, 0x27e9], [0x27ea, 0x27eb], [0x27ec, 0x27ed], [0x27ee, 0x27ef], [0x2983, 0x2984], [0x2985, 0x2986], [0x2987, 0x2988], [0x2989, 0x298a], [0x298b, 0x298c], [0x298d, 0x2990], [0x298f, 0x298e], [0x2991, 0x2992], [0x2993, 0x2994], [0x2995, 0x2996], [0x2997, 0x2998], [0x29d8, 0x29d9], [0x29da, 0x29db], [0x29fc, 0x29fd], [0x2e22, 0x2e23], [0x2e24, 0x2e25], [0x2e26, 0x2e27], [0x2e28, 0x2e29], [0x2e55, 0x2e56], [0x2e57, 0x2e58], [0x2e59, 0x2e5a], [0x2e5b, 0x2e5c], [0x3008, 0x3009], [0x300a, 0x300b], [0x300c, 0x300d], [0x300e, 0x300f], [0x3010, 0x3011], [0x3014, 0x3015], [0x3016, 0x3017], [0x3018, 0x3019], [0x301a, 0x301b], [0xfe59, 0xfe5a], [0xfe5b, 0xfe5c], [0xfe5d, 0xfe5e], [0xff08, 0xff09], [0xff3b, 0xff3d], [0xff5b, 0xff5d], [0xff5f, 0xff60], [0xff62, 0xff63]]) BRACKETS.set(o, as).set(c, -as)
+// a break put in a stretch's order where none is in the text
+const CUT = -1
 const STRONG = new Set(['L', 'R', 'AL'])
 const NUMBER = new Set(['EN', 'AN'])
+// The explicit embeddings, overrides and isolates by class; what X9 takes out of the text (they and the boundary
+// neutrals); the neutrals (B, S, WS and ON are all ON here); the whitespace rule L1 sets back to the paragraph's level
+// at a line's end (no segment separators: resvg turns a tab into a space, and measure() strips \v and U+001F); and
+// paragraph separators
+const EXPLICIT = new Map([['\u202a', 'LRE'], ['\u202b', 'RLE'], ['\u202c', 'PDF'], ['\u202d', 'LRO'], ['\u202e', 'RLO'], ['\u2066', 'LRI'], ['\u2067', 'RLI'], ['\u2068', 'FSI'], ['\u2069', 'PDI']])
+const REMOVED = new Set(['LRE', 'RLE', 'LRO', 'RLO', 'PDF', 'BN'])
+const ISOLATES = new Set(['LRI', 'RLI', 'FSI'])
+const NEUTRAL = new Set(['ON', 'LRI', 'RLI', 'FSI', 'PDI'])
+const WHITE = /[\t\f\u{20}\u{1680}\u{2000}-\u{200a}\u{2028}\u{205f}\u{3000}]/u
+const PARAGRAPH = /[\n\r\x1c-\x1e\x85\u2029]/u
+/** The level unicode-bidi 0.3.15 (the one resvg-js has) gives each character of a run with explicit embeddings,
+ *  overrides or isolates in it, set left to right in one paragraph: X1-X10 (an FSI by the first strong character in it,
+ *  and nothing opened past level 125), W1-W7, N0-N2 and I1-I2 for each isolating run sequence, the characters X9 takes
+ *  out at the level of the one before them, then L1 (whitespace and isolates at the end back at level 0). A port of
+ *  its code, quirks and all, rather than of UAX #9. */
+const explicitly = (cs) => {
+  const n = cs.length
+  const o = cs.map((c) => EXPLICIT.get(c) ?? bidi(c))
+  // X5c: an FSI is an RLI when the first strong character in it (not in an isolate inside it) is right to left
+  const open = []
+  for (const [i, x] of o.entries()) {
+    if (STRONG.has(x) && o[open.at(-1)] === 'FSI') o[open.at(-1)] = x === 'L' ? 'LRI' : 'RLI'
+    if (ISOLATES.has(x)) open.push(i)
+    else if (x === 'PDI') open.pop()
+  }
+  // X1-X8
+  const p = [...o]
+  const level = []
+  const stack = [{ level: 0, status: '' }]
+  let overIsolates = 0, overEmbeddings = 0, isolates = 0
+  for (let i = 0; i < n; i++) {
+    const x = o[i]
+    const last = stack.at(-1)
+    if (ISOLATES.has(x) || ['LRE', 'RLE', 'LRO', 'RLO'].includes(x)) {
+      level[i] = last.level
+      const isolate = ISOLATES.has(x)
+      if (isolate && last.status === 'R') p[i] = 'R'
+      else if (isolate && last.status === 'L') p[i] = 'L'
+      const next = x === 'RLE' || x === 'RLO' || x === 'RLI' ? (last.level + 1) | 1 : (last.level + 2) & ~1
+      if (next <= 125 && !overIsolates && !overEmbeddings) {
+        stack.push({ level: next, status: x === 'RLO' ? 'R' : x === 'LRO' ? 'L' : isolate ? 'I' : '' })
+        if (isolate) isolates++
+        else level[i] = next
+      } else if (isolate) overIsolates++
+      else if (!overIsolates) overEmbeddings++
+      if (!isolate) p[i] = 'BN'
+    } else if (x === 'PDI') {
+      if (overIsolates) overIsolates--
+      else if (isolates) {
+        overEmbeddings = 0
+        while (stack.length && stack.pop().status !== 'I');
+        isolates--
+      }
+      // (unicode-bidi's stack is never empty here: an isolate it opened is under the paragraph's own level)
+      const top = stack.at(-1)
+      level[i] = top.level
+      if (top.status === 'R' || top.status === 'L') p[i] = top.status
+    } else if (x === 'PDF') {
+      if (!overIsolates) {
+        if (overEmbeddings) overEmbeddings--
+        else if (last.status !== 'I' && stack.length >= 2) stack.pop()
+      }
+      level[i] = stack.at(-1).level
+      p[i] = 'BN'
+    } else {
+      level[i] = last.level
+      if (x !== 'BN' && (last.status === 'R' || last.status === 'L')) p[i] = last.status
+    }
+  }
+  // X10: level runs (cut where a character X9 keeps changes level), joined across an isolate into isolating run
+  // sequences, each with the direction before and after it (sos, eos)
+  const kept = (i) => !REMOVED.has(o[i])
+  const runs = []
+  let from = 0, at = level[0]
+  for (let i = 1; i < n; i++) if (kept(i) && level[i] !== at) runs.push([from, i]), (from = i), (at = level[i])
+  runs.push([from, n])
+  const sequences = []
+  const pending = [[]]
+  for (const [s, e] of runs) {
+    let end = o[s]
+    for (let i = e - 1; i >= s; i--) if (kept(i)) {
+      end = o[i]
+      break
+    }
+    const seq = o[s] === 'PDI' && pending.length > 1 ? pending.pop() : []
+    seq.push([s, e])
+    ;(ISOLATES.has(end) ? pending : sequences).push(seq)
+  }
+  sequences.push(...pending.reverse().filter((q) => q.length))
+  const dir = (l) => (l % 2 ? 'R' : 'L')
+  for (const seq of sequences) {
+    const q = seq.flatMap(([s, e]) => Array.from({ length: e - s }, (_, k) => s + k))
+    const first = q.find(kept) ?? q[0]
+    const final = q.findLast(kept) ?? q.at(-1)
+    let before = 0
+    for (let i = q[0] - 1; i >= 0; i--) if (kept(i)) {
+      before = level[i]
+      break
+    }
+    let after = 0
+    const end = seq.at(-1)[1]
+    let closing = 'BN'
+    for (let i = end - 1; i >= 0; i--) if (kept(i)) {
+      closing = o[i]
+      break
+    }
+    if (!ISOLATES.has(closing)) for (let i = end; i < n; i++) if (kept(i)) {
+      after = level[i]
+      break
+    }
+    const sos = dir(Math.max(level[first], before))
+    const eos = dir(Math.max(level[final], after))
+    weak(q, seq, p, sos, eos)
+    neutral(cs, q, seq, o, p, level[q[0]], sos, eos)
+  }
+  // I1, I2
+  for (let i = 0; i < n; i++) {
+    if (level[i] % 2 === 0) level[i] += p[i] === 'R' ? 1 : NUMBER.has(p[i]) ? 2 : 0
+    else if (p[i] === 'L' || NUMBER.has(p[i])) level[i]++
+  }
+  for (let i = 0; i < n; i++) if (REMOVED.has(o[i])) level[i] = i ? level[i - 1] : 0
+  // L1: whitespace and isolates at the line's end are at level 0 (and X9's characters
+  // among them; elsewhere at the level before them)
+  let reset = 0, last = 0
+  for (let i = 0; i < n; i++) {
+    const x = o[i]
+    if ((x === 'ON' && WHITE.test(cs[i])) || (x !== 'ON' && NEUTRAL.has(x))) reset ??= i
+    else if (REMOVED.has(x)) (reset ??= i), (level[i] = last)
+    else reset = null
+    last = level[i]
+  }
+  if (reset !== null) for (let j = reset; j < n; j++) level[j] = 0
+  return level
+}
+// The positions in an isolating run sequence (seq: its level runs) before position a, in the order unicode-bidi looks
+// back over them (iter_backwards_from): back to the start of a's level run, then each earlier level run, the latest
+// first, read forwards
+function* back(seq, a) {
+  const starts = []
+  let k = 0
+  for (const [s, e] of seq) starts.push(k), (k += e - s)
+  let r = starts.findLastIndex((s) => s <= a)
+  for (let j = a - 1; j >= starts[r]; j--) yield j
+  for (r--; r >= 0; r--) for (let j = starts[r]; j < starts[r + 1]; j++) yield j
+}
+// W1-W7 for an isolating run sequence (q: its characters' indices; seq: its level runs; p: their classes, resolved in
+// place), as unicode-bidi does them
+const weak = (q, seq, p, sos, eos) => {
+  let w4 = sos, w5 = sos, w1 = sos, al = false, ets = [], bns = []
+  for (let k = 0; k < q.length; k++) {
+    const i = q[k]
+    if (p[i] === 'BN') {
+      bns.push(i)
+      continue
+    }
+    let w2 = p[i]
+    if (p[i] === 'NSM') w2 = p[i] = ISOLATES.has(w1) || w1 === 'PDI' ? 'ON' : w1
+    w1 = p[i]
+    if (p[i] === 'EN' && al) p[i] = 'AN'
+    else if (p[i] === 'AL') p[i] = 'R'
+    if (w2 === 'L' || w2 === 'R') al = false
+    else if (w2 === 'AL') al = true
+    const w456 = p[i]
+    if (p[i] === 'EN') {
+      for (const j of ets) p[j] = 'EN'
+      ets = []
+    } else if (p[i] === 'ES' || p[i] === 'CS') {
+      let next = eos
+      for (let j = k + 1; j < q.length; j++) if (!REMOVED.has(p[q[j]])) {
+        next = p[q[j]]
+        break
+      }
+      if (next === 'EN' && al) next = 'AN'
+      p[i] = w4 === 'EN' && next === 'EN' ? 'EN' : w4 === 'AN' && p[i] === 'CS' && next === 'AN' ? 'AN' : 'ON'
+      if (p[i] === 'ON') {
+        for (const j of back(seq, k)) {
+          if (p[q[j]] !== 'BN') break
+          p[q[j]] = 'ON'
+        }
+        for (let j = k + 1; j < q.length && p[q[j]] === 'BN'; j++) p[q[j]] = 'ON'
+      }
+    } else if (p[i] === 'ET') {
+      if (w5 === 'EN') p[i] = 'EN'
+      else ets.push(...bns, i)
+    }
+    bns = []
+    w5 = p[i]
+    if (w5 !== 'ET') {
+      for (const j of ets) p[j] = 'ON'
+      ets = []
+    }
+    w4 = w456
+  }
+  for (const j of ets) p[j] = 'ON'
+  let left = sos === 'L'
+  for (const i of q) {
+    if (p[i] === 'EN' && left) p[i] = 'L'
+    else if (p[i] === 'L') left = true
+    else if (p[i] === 'R' || p[i] === 'AL') left = false
+  }
+}
+// N0-N2 for an isolating run sequence at level l
+const neutral = (cs, q, seq, o, p, l, sos, eos) => {
+  const e = l % 2 ? 'R' : 'L'
+  const notE = e === 'L' ? 'R' : 'L'
+  // BD16, as unicode-bidi pairs brackets: at most 63 open, past which it skips the rest of that level run
+  const pairs = []
+  const open = []
+  let k = 0
+  for (const [s, end] of seq) {
+    for (let i = s; i < end; i++, k++) {
+      const b = p[i] === 'ON' && BRACKETS.get(cs[i].codePointAt(0))
+      if (!b) continue
+      if (b > 0) {
+        if (open.length >= 63) {
+          k += end - i
+          break
+        }
+        open.push([b, k])
+      } else {
+        const j = open.findLastIndex(([x]) => x === -b)
+        if (j >= 0) pairs.push([open[j][1], k]), (open.length = j)
+      }
+    }
+  }
+  for (const [a, b] of pairs.sort(([x], [y]) => x - y)) {
+    let found = null
+    for (let j = a + 1; j < b; j++) {
+      const x = p[q[j]]
+      if (x === e || (NUMBER.has(x) && e === 'R')) {
+        found = e
+        break
+      }
+      if (x === notE || NUMBER.has(x)) found = notE
+    }
+    if (!found) continue
+    if (found !== e) {
+      found = sos
+      for (const j of back(seq, a)) if (['L', 'R', 'EN', 'AN'].includes(p[q[j]])) {
+        found = p[q[j]] === 'L' ? 'L' : 'R'
+        break
+      }
+    }
+    p[q[a]] = p[q[b]] = found
+    for (const j of back(seq, a)) {
+      if (p[q[j]] !== 'BN') break
+      p[q[j]] = found
+    }
+    for (const m of [a, b]) for (let j = m + 1; j < q.length && (o[q[j]] === 'NSM' || p[q[j]] === 'BN'); j++) p[q[j]] = found
+  }
+  let prev = sos
+  for (let j = 0; j < q.length; j++) {
+    if (!NEUTRAL.has(p[q[j]]) && p[q[j]] !== 'BN') {
+      prev = p[q[j]]
+      continue
+    }
+    let e2 = j
+    while (e2 + 1 < q.length && (NEUTRAL.has(p[q[e2 + 1]]) || p[q[e2 + 1]] === 'BN')) e2++
+    const next = e2 + 1 < q.length ? p[q[e2 + 1]] : eos
+    const rtl = (x) => x === 'R' || NUMBER.has(x)
+    const d = prev === 'L' && next === 'L' ? 'L' : rtl(prev) && rtl(next) ? 'R' : e
+    for (let m = j; m <= e2; m++) p[q[m]] = d
+    if (e2 + 1 < q.length) prev = p[q[e2 + 1]], (j = e2 + 1)
+    else prev = d, (j = e2)
+  }
+}
 /** resvg lays a run out in stretches of one direction, unicode-bidi's level runs for text set left to right, and
- *  shapes each apart. The ways it may be cut into stretches (null for a run with explicit embeddings, overrides or
- *  isolates and right-to-left text, or a right-to-left one of them), each a list of stretches: their characters'
- *  indices, a right-to-left stretch's in the order its clusters are drawn (its first letter's marks no font has, boxes
- *  set past the letter, end up at its right); far: shaped right to left, as a right-to-left stretch is, and one whose
- *  script is (a stretch set left to right that starts with an Arabic digit is shaped right to left and turned around);
- *  back: shaped right to left but set left to right, so kerned the other way round ("}" U+06DB "ď" as "ď}");
- *  hebrew: a right-to-left stretch shaped as Hebrew (its first character of any script is Hebrew). Measured. */
+ *  shapes each apart. The ways it may be cut into stretches, each a list of stretches with their bidi levels (lay() turns
+ *  them around by level, rule L2): their characters' indices, a right-to-left stretch's in the order its clusters are
+ *  drawn (its first letter's marks no font has, boxes set past the letter, end up at its right); far: shaped right to
+ *  left, as a right-to-left stretch is, and one whose script is (a stretch set left to right that starts with an Arabic
+ *  digit is shaped right to left and turned around); back: shaped right to left but set left to right, so kerned the
+ *  other way round ("}" U+06DB "ď" as "ď}"); hebrew: a right-to-left stretch shaped as Hebrew (its first character of
+ *  any script is Hebrew); reversed: a right-to-left stretch, its clusters in the order they're drawn. Null for a run
+ *  with explicit embeddings, overrides or isolates and a paragraph separator, or with a stretch drawn in a way not
+ *  modelled: left-to-right letters in one shaped by a right-to-left script or overridden right to left with marks or
+ *  mirrored brackets (forced), a dash with an angle bracket (arrow, Inter's long arrow once the bracket is mirrored),
+ *  or a letter and a mark split by bidi controls that don't keep them apart (SPLIT). Measured. */
 const stretches = (cs) => {
   const all = cs.map((_, i) => i)
   const stretch = (s, rtl) => {
@@ -723,39 +992,43 @@ const stretches = (cs) => {
       return { orders: [...orders, ...ways.map((whole) => ({ order: turned, whole }))], far, back: true }
     }
     const hebrew = HEBREW.test(first ?? '')
-    const orders = ways.map((whole) => {
+    // (marks that open the stretch, which an embedding, override or isolate can cut off their letter, have no letter
+    // under them: drawn at its right, after a break (CUT, which lay() draws as a zero-width space), each a box of its
+    // own; and guessed on the letter drawn before them too)
+    const orders = ways.flatMap((whole) => {
       const clusters = []
       for (const i of s) !clusters.length || (whole ? !IGNORED.test(cs[i]) && starts(cs[i]) : starts(cs[i])) ? clusters.push([i]) : clusters.at(-1).push(i)
-      return { order: clusters.reverse().flat(), whole }
+      const order = clusters.reverse().flat()
+      return starts(cs[s[0]]) ? [{ order, whole }] : [{ order, whole }, { order: [...clusters.slice(0, -1).flat(), CUT, ...clusters.at(-1)], whole: false }]
     })
-    return { orders, far, hebrew }
+    return { orders, far, hebrew, reversed: true }
   }
   if (!cs.some((c) => RIGHT.test(c))) return [[stretch(all, false)]]
   const t = cs.map(bidi)
   if (t.includes('X')) {
-    // (left-to-right embeddings, overrides and isolates in text with nothing right to left in it reorder nothing, but
-    // may cut it into stretches at every level: guessed cut there and not)
-    if (t.some((x) => x === 'R' || x === 'AL' || x === 'AN') || cs.some((c) => RLX.test(c))) return null
-    const stack = []
-    const level = []
-    for (const i of all) {
-      const c = cs[i]
-      if (OPENS.test(c)) {
-        level[i] = 2 * stack.length
-        // (past unicode-bidi's deepest level, it ignores them: not modelled)
-        if (stack.length === 62) return null
-        stack.push(c === '\u2066' || c === '\u2068')
-      } else if (c === '\u2069') stack.includes(true) && stack.splice(stack.lastIndexOf(true)), (level[i] = 2 * stack.length)
-      else if (c === '\u202c') stack.length && !stack.at(-1) && stack.pop()
-      else level[i] = 2 * stack.length
-      // (what rule X9 takes out, the boundary neutrals and the embeddings, overrides and their ends, gets the level of the
-      // character before it, as unicode-bidi has it: a zero-width space right after an isolate opens is in the stretch
-      // before the isolate, so the marks after it start a stretch of their own, each a box apart. Measured)
-      if (t[i] === 'BN' || (t[i] === 'X' && !ISOLATES.test(c))) level[i] = i ? level[i - 1] : 0
-    }
+    // (a paragraph separator starts a paragraph of its own, with embeddings and isolates closed: not modelled)
+    if (cs.some((c) => PARAGRAPH.test(c))) return null
+    const level = explicitly(cs)
     const out = []
     for (const i of all) i && level[i] === level[i - 1] ? out.at(-1).push(i) : out.push([i])
-    return [[stretch(all, false)], out.map((s) => stretch(s, false))]
+    // (left-to-right letters in a stretch resvg shapes by a script of the other direction, contrived: one an override
+    // sets right to left is kerned in the order it's drawn when its first script is left to right, as guessed, but its
+    // marks are composed in that order too ("١" RLO U+030C "l" draws "ľ") and its brackets mirrored ("RLO H[Ï]" draws
+    // "[Ï]H"); and in one whose first script is right to left, at any level, kerning follows the shaper's order, not the
+    // one guessed ("ب" RLO "ȴj" kerns "ȴj", RLE "١jȴ" kerns "ȴj"). None of it is modelled: room for every cluster, as below)
+    const forced = (s, odd) => s.some((i) => t[i] === 'L') && (bidi(cs[s.find((i) => SCRIPT.test(cs[i]))]) !== 'L' || (odd && s.some((i) => /[\p{M}\p{Bidi_M}]/u.test(cs[i]))))
+    // (and so does a dash with an angle bracket: a stretch shaped right to left mirrors the bracket, and Inter draws the
+    // dash and the drawn bracket as one long arrow, which isn't modelled here; #362)
+    const arrow = (s) => s.some((i) => /[-\u{2013}]/u.test(cs[i])) && s.some((i) => /[<>]/u.test(cs[i]))
+    if (out.some((s) => forced(s, level[s[0]] % 2 === 1) || arrow(s))) return null
+    // (and so does a letter and a mark with bidi controls between them that aren't an isolate or embedding closed as
+    // soon as it's opened (EMPTIED, below): the shaper joins them when they come out at the same level ("l" PDF LRE
+    // U+030C "l" in an RLI draws "ľ"), which isn't modelled either)
+    if ([...cs.join('').matchAll(SPLIT)].some((m) => !WHOLLY.test(m[1]))) return null
+    const cut = out.map((s) => ({ ...stretch(s, level[s[0]] % 2 === 1), level: level[s[0]] }))
+    // (embeddings, overrides and isolates that set nothing right to left reorder nothing, but may cut the run into
+    // stretches at every level: guessed cut there and not)
+    return level.some((l) => l % 2) ? [cut] : [[stretch(all, false)], cut]
   }
   // (boundary neutrals are left out, and take the level of the character before them)
   const at = all.filter((i) => t[i] !== 'BN')
@@ -1088,6 +1361,9 @@ const INSIDE = String.raw`[\u{ad}\u{180e}\u{200b}\u{200d}\u{2060}-\u{2064}\u{206
 const embedding = (inner) => String.raw`[\u{202a}\u{202b}\u{202d}\u{202e}](?:${inner})*\u{202c}`
 const EMPTY = String.raw`[\u{2066}-\u{2068}](?:${INSIDE}|[\u{202a}-\u{202e}])*\u{2069}|${embedding(`${INSIDE}|${embedding(INSIDE)}`)}`
 const EMPTIED = `(?:${PASSED}|${EMPTY})+`
+// a letter and a mark with bidi controls between them (what's between), and what between them EMPTIED covers
+const SPLIT = new RegExp(String.raw`(?!${IGNORED.source})\P{M}((?:${IGNORED.source})*[\u{202a}-\u{202e}\u{2066}-\u{2069}](?:${IGNORED.source})*)\p{M}`, 'gu')
+const WHOLLY = new RegExp(`^(?:${EMPTIED})$`, 'u')
 const carons = (skipped) => new RegExp(String.raw`[dlt]${skipped}\u{30c}|\u{3d2}${skipped}[\u{301}\u{341}]`, 'gu')
 const APART = [carons(SKIPPED), carons(EMPTIED)]
 // After composing, Inter's ccmp also joins a letter and the first mark on it (in the shaper's order, marks of a lower
@@ -1234,19 +1510,21 @@ const guessed = (run, font, any) => {
   }
   // each stretch of one direction is guessed apart, as resvg shapes it: its advance, and where its ink ends (past: the
   // ink of the characters that end past their advance, wherever it reaches past the stretch's end). They're laid out in
-  // the order they're drawn (each sequence of right-to-left and number stretches turned around; two next to each other
-  // are never of one level, so this is all of rule L2), so ink past one stretch's end, like sara am's, is under the
-  // next one's text rather than added to it, and the run takes the furthest any of it reaches.
-  // Where the run may be cut into stretches more than one way, it takes the widest.
+  // the order they're drawn (rule L2: from the highest level down to 1, each sequence of stretches at that level or
+  // higher turned around), so ink past one stretch's end, like sara am's, is under the next one's text rather than added
+  // to it, and the run takes the furthest any of it reaches. Where the run may be cut into stretches more than one way,
+  // it takes the widest.
   const lay = (ss) => {
-    const drawn = ss.map(({ orders, far, back, hebrew, level }) => {
-      const at = (ink) => Math.max(...orders.map(({ order, whole }) => laid(order.map((i) => cs[i]).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, over: past, room, whole })))
+    const drawn = ss.map(({ orders, far, back, hebrew, reversed, level }) => {
+      const at = (ink) => Math.max(...orders.map(({ order, whole }) => laid(order.map((i) => (i === CUT ? '\u{200b}' : cs[i])).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, reversed, over: past, room, whole })))
       return { a: at(false), ink: at(true), level }
     })
-    for (let k = 0; k < drawn.length; k++) {
-      let e = k
-      while (drawn[e]?.level) e++
-      if (e > k) drawn.splice(k, e - k, ...drawn.slice(k, e).reverse()), (k = e - 1)
+    for (let l = Math.max(0, ...drawn.map(({ level = 0 }) => level)); l > 0; l--) {
+      for (let k = 0; k < drawn.length; k++) {
+        let e = k
+        while ((drawn[e]?.level ?? 0) >= l) e++
+        if (e > k) drawn.splice(k, e - k, ...drawn.slice(k, e).reverse()), (k = e)
+      }
     }
     let w = 0, end = 0
     for (const { a, ink } of drawn) end = Math.max(end, w + ink), (w += a)
@@ -1254,17 +1532,18 @@ const guessed = (run, font, any) => {
   }
   const ways = stretches(cs)
   let w = ways ? Math.max(...ways.map(lay)) : 0
-  // A run with right-to-left embeddings, overrides or isolates, or any with right-to-left text (contrived), gets room
-  // for every cluster in any order and direction: each mark no font has a box of its own, sara am two, and the most one
-  // cluster's ink can end past them (boxes set past a letter's ink, a mark's overhang on nothing) and one character's
-  // ink past its advance (or one of Inter's marks past the pen, where nothing anchors it). But a letter and the marks
-  // right after it (nothing between them) that take its direction are one cluster in whatever order and direction it's
-  // drawn: its boxes widen it as in any run ("s̶t̶r̶i̶k̶e̶" after U+202E is a box wide a letter, not a letter and a box),
-  // and their ink past that, shaped right to left, is that cluster's most. (A spacing mark, like U+093F, is left to
-  // right whatever comes before it: after a right-to-left letter in an embedding it's a stretch of its own, a box on
-  // nothing.) Laid out a cluster at a time, nothing kerns one cluster's letter with the next, so each letter gets the
-  // more of its room and the most Inter kerns it before anything, whatever comes after it ("ď]" sixteen times in an
-  // embedding), as it's drawn with the marks after it too (composed with them, a dotless "ı" as "i")
+  // A run stretches() can't cut (a paragraph separator with explicit embeddings, overrides or isolates, or one with a
+  // stretch drawn in a way not modelled, contrived) gets room for every cluster in any order and direction: each mark
+  // no font has a box of its own, sara am two, and the most one cluster's ink can end past them (boxes set past a
+  // letter's ink, a mark's overhang on nothing) and one character's ink past its advance (or one of Inter's marks past
+  // the pen, where nothing anchors it). But a letter and the marks right after it (nothing between them) that take its
+  // direction are one cluster in whatever order and direction it's drawn: its boxes widen it as in any run
+  // ("s̶t̶r̶i̶k̶e̶" after U+202E is a box wide a letter, not a letter and a box), and their ink past that, shaped right
+  // to left, is that cluster's most. (A spacing mark, like U+093F, is left to right whatever comes before it: after a
+  // right-to-left letter in an embedding it's a stretch of its own, a box on nothing.) Laid out a cluster at a time,
+  // nothing kerns one cluster's letter with the next, so each letter gets the more of its room and the most Inter kerns
+  // it before anything, whatever comes after it ("ď]" sixteen times in an embedding), as it's drawn with the marks
+  // after it too (composed with them, a dotless "ı" as "i")
   if (!ways) {
     let most = BOX
     // (past the letter's advance: the room and kerning of each letter it can be drawn as)
