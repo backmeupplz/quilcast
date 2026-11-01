@@ -140,13 +140,21 @@ test('wrapping is linear in the length of the text, even when nothing between it
     wrap(s, 24, 356, 9)
     return performance.now() - t
   }
-  // zero-width spaces split by U+FEFF, which counts as whitespace: one long line of hundreds of words
+  // whether ten times the text takes less than k times as long. The deploy build runs these tests on a busy shared
+  // machine, so there are no bounds in milliseconds: the two lengths are timed one right after the other (each the best
+  // of two), and any of a few tries passes
+  const grows = (s, n, k) => {
+    const best = (s) => Math.min(time(s), time(s))
+    for (let i = 0; i < 5; i++) if (best(s.repeat(n * 10)) < k * best(s.repeat(n))) return true
+    return false
+  }
+  // zero-width spaces split by U+FEFF, which counts as whitespace: one long line of hundreds of words. Linear is about
+  // ten times as long, quadratic about a hundred
   const zero = cp(0x200b, 0xfeff)
   time(zero.repeat(30))
-  assert.ok(time(zero.repeat(300)) < 60)
-  // ten times the text takes about ten times as long, not a hundred
-  assert.ok(time(zero.repeat(3000)) < 600)
-  assert.ok(time('a '.repeat(3000)) < 600)
+  assert.ok(grows(zero, 100, 30))
+  // words that fill the lines: wrapping stops once they're full, so the rest of the text costs next to nothing
+  assert.ok(grows('a ', 300, 3))
 })
 
 test('a font says which characters it has, and their advances', () => {
