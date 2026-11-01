@@ -391,6 +391,9 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(cp(0x61c, 0x301, 0x200c, 0xe49), cp(0x61c, 0x362, 0x200b, 0xe4a), cp(0x61c, 0x301, 0x200b, 0xe4a, 0x62))
   // and sara am after them
   for (const k of [1, 2, 3, 5, 7]) runs.push(`${cp(0xe48).repeat(k)}${AM}`, `${cp(0xe48).repeat(k)}${AM}ba`, `${cp(0x200b)}${cp(0x336).repeat(k)}${AM}`, `ค${cp(0x200b)}${cp(0xe48).repeat(k)}${AM}`, `${cp(0x336).repeat(k)}${AM}ก`)
+  // a mark after an ignorable that cuts it off the letter before it (a non-joiner, a bidi isolate's end, a soft hyphen
+  // before sara am)
+  runs.push('g' + cp(0x200c, 0x20e0), cp(0x2199, 0x2066, 0x20e0) + '*', 'A1' + cp(0x2069, 0x336, 0xae), '_' + cp(0x2069, 0x336) + '52' + cp(0xfe0e, 0x2069) + ' ', cp(0x2044, 0xad, 0xe33) + '73')
   // a box mark on a letter Inter kerns wider after "l" (resvg kerns the box-wide letter too), also as a character drawn
   // as that letter once a mark is on it ("ΐ" as "ΐ", the Greek varia as a wider "`")
   runs.push(cp(0x6c, 0x1fd3, 0x345, 0x20), cp(0x6c, 0x390, 0x345, 0x20), cp(0x6c, 0x3ca, 0x345, 0x20), cp(0x6c, 0xef, 0x345, 0x20), cp(0x6c, 0x390, 0x345), cp(0x6c, 0x1fef, 0x345), cp(0x69, 0x1ffd, 0x336))
