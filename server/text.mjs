@@ -728,8 +728,30 @@ const notoWhole = (run, font) => {
   const drawn = (c) => NOTO.glyph(c) || NOTO_SPACES.has(c)
   return cs.some((c) => !font.glyph(c) && !NOTO_SPACES.has(c)) && cs.every(drawn) ? cs.reduce((w, c) => w + Math.max(NOTO.advance(c) ?? NOTO_SPACES.get(c), font.advance(c) ?? 0), 0) : null
 }
+// A letter and the marks after it that compose into a character the font has are drawn as that character, which can be
+// wider than the letter and its marks: "l" with a caron after it is drawn "ľ". The shaper composes them as NFC does
+// (marks reordered, a mark blocked by one of the same class or by an ignorable between them), so a cluster is guessed
+// composed when it composes into characters the font has (and ignorables it hides, and marks it doesn't have, which stay
+// boxes beside the letter: "l", a caron and a box mark are drawn "ľ" and the box), and the guess is the wider of the two
+// ways. And Inter draws a caron after "d", "l" and "t" as the apostrophe of "ď", and an acute (or the acute tone mark,
+// which is the same acute) on "ϒ" as in "ϓ", even with an ignorable between them that keeps them from composing (a
+// joiner, a variation selector; not a non-joiner, a Mongolian variation selector, a tag or a bidi control that opens a
+// stretch of its own). Measured for every letter and mark that compose into a character Inter has, past each ignorable;
+// generated, not tuned.
+const COMPOSABLE = /\P{M}\p{M}+/gu
+const HIDDEN = new RegExp(IGNORED.source, 'gu')
+const SKIPPED = String.raw`(?:(?![\u{200c}\u{180b}-\u{180d}\u{e0020}-\u{e007f}\u{61c}\u{200f}\u{202a}\u{202b}\u{202d}\u{202e}\u{2066}-\u{2068}])${IGNORED.source})+`
+const APART = new RegExp(String.raw`[dlt]${SKIPPED}\u{30c}|\u{3d2}${SKIPPED}[\u{301}\u{341}]`, 'gu')
+const together = (run, font) => run.replace(APART, (p) => p.replace(HIDDEN, '').normalize('NFC')).replace(COMPOSABLE, (g) => {
+  const n = g.normalize('NFC')
+  return n !== g && [...n].every((x) => IGNORED.test(x) || font.glyph(x.codePointAt(0)) || (/\p{M}/u.test(x) && g.includes(x))) ? n : g
+})
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
+  const composed = together(run, font)
+  return composed === run ? guessed(run, font) : Math.max(guessed(run, font), guessed(composed, font))
+}
+const guessed = (run, font) => {
   const noto = notoWhole(run, font)
   if (noto !== null) return noto + 0.04
   // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
@@ -800,7 +822,7 @@ export const guess = (run, bold = false) => {
 // them reshaped in Noto Emoji, each as wide as its glyphs. So a run with one is guessed as wide as each of its characters
 // could be drawn: its advance, a Noto Emoji glyph (every one is NOTO_EM or narrower), or, for the tone, two boxes, and
 // sara am's two boxes twice that; its ink past them as for any run. (A run Noto Emoji draws whole, such as "27🏻" or
-// " 🏻", never gets here: guess() returns notoWhole's sum of its Noto glyphs for it first.)
+// " 🏻", never gets here: guessed() returns notoWhole's sum of its Noto glyphs for it first.)
 const TONE = /[\u{1F3FB}-\u{1F3FF}]/u
 const NOTO_EM = 1.27
 const toned = (cs, adv) => cs.reduce((w, c) => w + (AM.test(c) ? 2 : 1) * Math.max(adv(c), NOTO_EM, TONE.test(c) ? 2 * BOX : 0), 0) + cs.reduce((m, c) => Math.max(m, past(c)), 0)

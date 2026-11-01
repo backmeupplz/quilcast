@@ -447,6 +447,15 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // a box mark on a letter Inter kerns wider after "l" (resvg kerns the box-wide letter too), also as a character drawn
   // as that letter once a mark is on it ("ΐ" as "ΐ", the Greek varia as a wider "`")
   runs.push(cp(0x6c, 0x1fd3, 0x345, 0x20), cp(0x6c, 0x390, 0x345, 0x20), cp(0x6c, 0x3ca, 0x345, 0x20), cp(0x6c, 0xef, 0x345, 0x20), cp(0x6c, 0x390, 0x345), cp(0x6c, 0x1fef, 0x345), cp(0x69, 0x1ffd, 0x336))
+  // decomposed text (as macOS file names have it), whose letters and marks resvg composes into letters Inter draws
+  // wider than the two: "l" and a caron are drawn "ľ", Slovak and Czech words, the same with marks in another order or
+  // through a singleton ("Ω" and an acute tone mark are drawn "Ώ"), and the caron after "d", "l", "t" (and the acute on
+  // "ϒ") that Inter draws as the composed letter's past an ignorable between them too
+  runs.push(`l${cp(0x30c)}x`, `d${cp(0x30c)}x`, `l${cp(0x30c)} x`, `t${cp(0x30c)}ah`, `${cp(0x3d2, 0x301)}x`, `${cp(0x3a5, 0x301)}x`, `${cp(0x395, 0x313, 0x301)}x`, `${cp(0x3a9, 0x341)}x`, `a${cp(0x302, 0x323)}x`)
+  for (const w of ['ľúbiť ťava ďakujem', 'Ďábel ťuk ľad', 'příliš žluťoučký kůň', 'Ύψος ϓ']) runs.push(w.normalize('NFD'))
+  for (const [l, m] of [[0x64, 0x30c], [0x6c, 0x30c], [0x74, 0x30c], [0x3d2, 0x301], [0x3d2, 0x341]]) for (const between of [0x34f, 0xfe0f, 0x200d, 0x200b, 0x2060, 0xad, 0x200e]) runs.push(`${cp(l, between, m)}x`, `${cp(l, between, m)}ah`)
+  // (and with a mark no font has after them, or between them, which stays a box beside the composed letter)
+  for (const [l, m] of [[0x64, 0x30c], [0x6c, 0x30c], [0x74, 0x30c], [0x3a5, 0x301]]) for (const box of [0x1acf, 0x1ad0, 0x1ad9, 0x113d2, 0x11b61]) runs.push(`${cp(l, m, box)}x`, `${cp(l, m, box)}ah`, `${cp(l, box, m)}x`)
   // a strike after an ignorable that cuts it off a space or symbol, with variation selectors after it and a narrow
   // space or letter next: a whole box after the space, not the box widening it
   runs.push(cp(0x205f, 0x2060, 0x336, 0xfe0f, 0xfe0f, 0x2009))
