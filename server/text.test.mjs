@@ -619,6 +619,16 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // and "ď" as "ď}" (+0.088 em, bold +0.131), before Hebrew, a letter or a dot, the bracket first or the mark, repeated
   // too, and "jȴ" as "ȴj"; and the same after a Latin letter, which has the stretch shaped left to right
   runs.push('}ۛďא', ')ۛďא', ']ۛďא', '}ۛďאא', '}ۛďa', '}ۛď.', 'ۛ}ď', 'ۛ)ď', `${cp(0x6f1)}}ď`, `${cp(0x610)}}ď`, 'ۛjȴא', '}ۛď'.repeat(6) + 'א', 'ۛ' + '}ď'.repeat(10), 'x}ۛďא hi')
+  // and the runs once guessed short in #363: a stretch turned around a grapheme at a time puts the marks it starts with
+  // (U+0340 on nothing) after the grapheme after them, and decomposes none of them with a variation selector there, so
+  // U+0340 is a box, not a grave: after a soft hyphen, a space or "!", with U+06D6 and a joiner or not, U+FE00 or
+  // U+E0100, with U+06DB for U+06D6, after a left-to-right embedding, and U+0341 and U+0344 the same
+  runs.push(cp(0x340, 0xad, 0x6d6, 0x200d, 0xfe00, 0x1ae0, 0x64), cp(0x340, 0xad, 0x6d6, 0x200d, 0xfe00, 0x61, 0x64), cp(0x340, 0xad, 0x6d6, 0xfe00, 0x61, 0x64))
+  runs.push(cp(0x340, 0x20, 0x6d6, 0xfe00, 0x61, 0x64), cp(0x340, 0x21, 0x6d6, 0xfe00, 0x61, 0x64), cp(0x340, 0x200d, 0xad, 0x6d6, 0xfe00, 0x61, 0x64), cp(0x340, 0xad, 0x6d6, 0xe0100, 0x61, 0x64))
+  runs.push(cp(0x341, 0xad, 0x6d6, 0xfe00, 0x61, 0x64), cp(0x344, 0xad, 0x6d6, 0xfe00, 0x61, 0x64), cp(0x340, 0xad, 0x6db, 0xfe00, 0x61, 0x64), cp(0x61, 0x202a, 0x340, 0xad, 0x6d6, 0xfe00, 0x61, 0x64))
+  // (and the other way round: a variation selector among the marks it starts with keeps the next grapheme's marks whole)
+  runs.push(cp(0xfe00, 0x6db, 0x2069, 0x341, 0x64, 0xfe0f, 0x64), cp(0xfe00, 0x6db, 0x2069, 0x341, 0x64, 0xfe0f, 0x64, 0x6d6), cp(0x6db, 0xfe00, 0x20, 0x341, 0x61))
+  runs.push(cp(0x610, 0xfe00, 0xad, 0x340, 0x64, 0x200c, 0x301), cp(0x300, 0x308, 0x34f, 0xfe00, 0x200c, 0x300, 0x344, 0x6f1, 0x64, 0x5d0))
   // a dotted "i" or Cyrillic "і" and a mark above past an ignorable that keeps NFC from composing them (a variation
   // selector, a zero-width space, a word joiner, a joiner), which Inter still draws dotless and kerns as "ĩ" or "ï",
   // between letters it kerns those with, repeated too

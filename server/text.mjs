@@ -1059,6 +1059,37 @@ const ligated = (run, font, empty, any) => run.replace(LIGATED[+any][empty], (al
   // whatever other ignorables are there, on any letter; measured for every row past a joiner and each other ignorable)
   return c && font.glyph(c.codePointAt(0)) && !(first === '\u{1dc4}' && skipped?.includes('\u{200d}')) ? c + ms.slice(first.length) : all
 })
+// A stretch set left to right but shaped right to left (one whose script is Arabic from a mark like U+06D6) is turned
+// around a grapheme at a time, so the marks it starts with, a grapheme on no letter, come after the grapheme after them.
+// The shaper then decomposes them with the marks that grapheme ends with, from its last character that isn't one, and
+// decomposes nothing when a variation selector is among them: U+0340 then stays itself, a box, not U+0300 on nothing
+// (U+0340, a soft hyphen or a space, U+06D6, a joiner and U+FE00 before "ad"; past a joiner after U+FE00 it's decomposed
+// again), and nothing of those marks of that grapheme either (U+FE00 and U+06DB starting it keep U+0341 after a PDI
+// a box). Measured. leading gives the indices of all those marks. (A grapheme goes on past a joiner before an emoji
+// symbol, and over a pair of regional indicators, too: not modelled, and guessed well over what resvg draws anyway.)
+const CONTINUES = new RegExp(`${MARK.source}|[\\u{200d}\\u{e0020}-\\u{e007f}\\u{1f3fb}-\\u{1f3ff}]`, 'u')
+const leading = (chars) => {
+  const out = new Set()
+  if (!chars.some((c) => VARIANT.test(c)) || !chars.some((c) => RTL.test(c))) return out
+  for (const way of stretches(chars) ?? []) {
+    for (const { orders, back } of way) {
+      const s = orders[0].order
+      if (!back || !MARK.test(chars[s[0]])) continue
+      // (the first grapheme, g, and the one after it, up to e; the cluster it's decomposed with starts at b)
+      let g = 1
+      while (g < s.length && CONTINUES.test(chars[s[g]])) g++
+      if (g >= s.length) continue
+      let e = g + 1
+      while (e < s.length && CONTINUES.test(chars[s[e]])) e++
+      let b = e - 1
+      while (b > g && MARK.test(chars[s[b]])) b--
+      let m = 0
+      while (m < g && MARK.test(chars[s[m]])) m++
+      if ([...s.slice(b, e), ...s.slice(0, m)].some((i) => VARIANT.test(chars[i]))) for (const i of [...s.slice(0, m), ...s.slice(b + 1, e)]) out.add(i)
+    }
+  }
+  return out
+}
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
   // the ligated text is a guess of its own, not a replacement: a pair past a PDF or PDI that closes an embedding or
@@ -1089,12 +1120,14 @@ const guessed = (run, font, any) => {
   // (but the shaper decomposes nothing in a cluster, a character and the marks after it, with a variation selector in
   // it: "I" U+0340 U+FE05 has U+0340 as a box widening the "I", not U+0300 on it, and "↮" U+FE05 is a box)
   const chars = [...ordered]
+  const led = leading(chars)
   let whole = false
   for (const [i, c] of chars.entries()) {
     if (!i || !MARK.test(c)) {
       whole = false
       for (let k = i; k < chars.length && (k === i || MARK.test(chars[k])); k++) whole ||= VARIANT.test(chars[k])
     }
+    whole ||= led.has(i)
     for (const [j, x] of [...(whole ? c : apart(c, font))].entries()) j && within.add(cs.length), cs.push(x)
   }
   // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base); a space no font
