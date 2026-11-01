@@ -75,6 +75,8 @@ const sent = () => {
   setTimeout(() => (g.webkit?.messageHandlers?.requestReview?.postMessage(null), g.QuilcastApp?.requestReview()), 2000)
 }
 const linksIn = (text: string) => [...new Set((text.match(LINK_RE) || []).map(toUrl))]
+// how the keyboard shortcuts read on this device
+const MOD = /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 const fmtLeft = (s?: number) => (s === undefined || !isFinite(s) ? '' : ' · ' + (s < 60 ? t('{n}s left', { n: Math.max(1, Math.round(s)) }) : t('{n} min left', { n: Math.round(s / 60) })))
 
 /** One post of a thread: text with @mention autocomplete, its attachments and the links it will embed. */
@@ -280,6 +282,13 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
     update(cur.id, () => ({ text: next }))
     if (el) requestAnimationFrame(() => (el.focus(), el.setSelectionRange(a, b)))
   }
+  // ⌘B / Ctrl+B and ⌘I / Ctrl+I in a post: bold and italic, like the buttons. The letter is the one typed, or for a
+  // layout without Latin letters (Russian, say) the key where B or I sits.
+  const shortcut = (e: KeyboardEvent) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || !(e.target instanceof HTMLTextAreaElement)) return
+    const k = /^[a-z]$/i.test(e.key) ? e.key.toLowerCase() : e.code.replace(/^Key/, '').toLowerCase()
+    if (k === 'b' || k === 'i') e.preventDefault(), fmt({ mark: k === 'b' ? '**' : '*' })
+  }
   // The emoji list is the heavy part, so the module only loads when the picker is opened.
   const [emoji, setEmoji] = useState<typeof import('./emoji.tsx') | null>(null)
   // Where the caret was, read on mousedown: by the time the click lands the focus has left the textarea, so an
@@ -347,7 +356,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   return (
     <div class="modal" onClick={leave}>
       <div class="sheet" tabIndex={-1} role="dialog" aria-label={parent ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send())}>
+        onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send(), shortcut(e))}>
         <div class="sheet-top">
           <span class="sheet-left">
             <button class="link-btn" onClick={leave}>{t('Cancel')}</button>
@@ -383,11 +392,13 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
         {md && (
           <div class="md-tools" hidden={gifs || drafts || !!emoji} onMouseDown={(e) => e.preventDefault()}>
             {([
-              [t('Bold'), <b>B</b>, { mark: '**' }], [t('Italic'), <i>I</i>, { mark: '*' }], [t('Strikethrough'), <s>S</s>, { mark: '~~' }],
+              [t('Bold'), <b>B</b>, { mark: '**' }, 'B'], [t('Italic'), <i>I</i>, { mark: '*' }, 'I'], [t('Strikethrough'), <s>S</s>, { mark: '~~' }],
               [t('Code'), <Icon d={P.code} size={18} />, { mark: '`' }], [t('Link'), <Icon d={P.link} size={18} />, { link: t('link') }],
               [t('Heading'), <b>H</b>, { line: '## ' }], [t('Bulleted list'), <Icon d={P.list} size={18} />, { line: '- ' }],
               [t('Numbered list'), <Icon d={P.olist} size={18} />, { line: '1. ' }], [t('Quote'), <Icon d={P.quote} size={18} />, { line: '> ' }],
-            ] as [string, any, Format][]).map(([label, face, how]) => <button class="icon-btn" aria-label={label} title={label} onClick={() => fmt(how)}>{face}</button>)}
+            ] as [string, any, Format, string?][]).map(([label, face, how, key]) => (
+              <button class="icon-btn" aria-label={label} aria-keyshortcuts={key && `${MOD === '⌘' ? 'Meta' : 'Control'}+${key}`} title={key ? `${label} (${MOD}${key})` : label} onClick={() => fmt(how)}>{face}</button>
+            ))}
           </div>
         )}
         <div class="toolbar" hidden={gifs || drafts || !!emoji}>
