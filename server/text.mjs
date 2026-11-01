@@ -859,14 +859,35 @@ const COMPOSABLE = /\P{M}\p{M}+/gu
 const HIDDEN = new RegExp(IGNORED.source, 'gu')
 const SKIPPED = String.raw`(?:(?![\u{200c}\u{180b}-\u{180d}\u{e0020}-\u{e007f}\u{61c}\u{200f}\u{202a}\u{202b}\u{202d}\u{202e}\u{2066}-\u{2068}])${IGNORED.source})+`
 const APART = new RegExp(String.raw`[dlt]${SKIPPED}\u{30c}|\u{3d2}${SKIPPED}[\u{301}\u{341}]`, 'gu')
+// After composing, Inter's ccmp also joins a letter and the first mark on it (in the shaper's order, marks of a lower
+// combining class first) into a character where NFC doesn't: "l" with a dot above is drawn "ŀ", "ı" with a tilde "ĩ",
+// "O" with a long solidus "Ø", "e" with U+1DC6 "ḕ" (past the same ignorables as the caron above). The letter, mark and
+// character of each, in hex, from Inter's GSUB (the same at both weights); regenerate it if Inter is updated.
+const LIGATURES = new Map(
+  `104 30a ee02,105 30a ee04,131 300 ec,131 301 ed,131 302 ee,131 303 129,131 304 12b,131 306 12d,131 308 ef,131 309 1ec9,131 30c 1d0,131 30f 209,237 302 135,237 30c 1f0,30 338 e06b,43 338 23b,63 338 23c,4c 307 13f,4c 338 141,4f 338 d8,6c 307 140,6c 338 142,6f 338 f8,59 328 ee03,79 328 ee05,61 ee90 1eb3,e050 338 e051,e071 338 e07b,44 f6c3 1e10,47 f6c3 122,4b f6c3 136,4c f6c3 13b,4e f6c3 145,52 f6c3 156,53 f6c3 218,54 f6c3 21a,64 f6c3 1e11,6b f6c3 137,6c f6c3 13c,6e f6c3 146,72 f6c3 157,73 f6c3 219,74 f6c3 21b,65 1dc6 1e15,65 1dc4 1e17,6f 1dc6 1e51,6f 1dc4 1e53`
+    .split(',')
+    .map((l) => l.split(' ').map((h) => String.fromCodePoint(parseInt(h, 16))))
+    .map(([letter, mark, c]) => [letter + mark, c]),
+)
+const LIGATED = new RegExp(String.raw`(\P{M})(${SKIPPED})?([\p{M}\u{ee90}\u{f6c3}]\p{M}*)`, 'gu')
 const together = (run, font) => run.replace(APART, (p) => p.replace(HIDDEN, '').normalize('NFC')).replace(COMPOSABLE, (g) => {
   const n = g.normalize('NFC')
   return n !== g && [...n].every((x) => IGNORED.test(x) || font.glyph(x.codePointAt(0)) || (/\p{M}/u.test(x) && g.includes(x))) ? n : g
 })
+const ligated = (run, font) => run.replace(LIGATED, (all, letter, _, marks) => {
+  // (a variation selector among the marks keeps the shaper from decomposing them)
+  const ms = VARIANT.test(marks) ? marks : marks.normalize('NFD')
+  const first = String.fromCodePoint(ms.codePointAt(0))
+  const c = LIGATURES.get(letter + first)
+  return c && font.glyph(c.codePointAt(0)) ? c + ms.slice(first.length) : all
+})
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
   const composed = together(run, font)
-  return composed === run ? guessed(run, font) : Math.max(guessed(run, font), guessed(composed, font))
+  // the ligated text is a guess of its own, not a replacement: a pair past a PDF or PDI that closes an embedding or
+  // isolate opened before the letter is drawn apart, and the composed text alone may be what keeps the run covered
+  const joined = ligated(composed, font)
+  return Math.max(...[...new Set([run, composed, joined])].map((t) => guessed(t, font)))
 }
 const guessed = (run, font) => {
   const noto = notoWhole(run, font)
