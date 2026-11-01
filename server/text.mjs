@@ -969,7 +969,7 @@ const neutral = (cs, q, seq, o, p, l, sos, eos) => {
  *  other way round ("}" U+06DB "ď" as "ď}"); hebrew: a right-to-left stretch shaped as Hebrew (its first character of
  *  any script is Hebrew); reversed: a right-to-left stretch, its clusters in the order they're drawn. Null for a run
  *  with explicit embeddings, overrides or isolates and a paragraph separator, or with a stretch drawn in a way not
- *  modelled: left-to-right letters in one shaped by a right-to-left script or overridden right to left with marks or
+ *  modelled: left-to-right letters in one set right to left and shaped by a right-to-left script, or with marks or
  *  mirrored brackets (forced), a dash with an angle bracket (arrow, Inter's long arrow once the bracket is mirrored),
  *  or a letter and a mark split by bidi controls that don't keep them apart (SPLIT). Measured. */
 const stretches = (cs) => {
@@ -1011,12 +1011,13 @@ const stretches = (cs) => {
     const level = explicitly(cs)
     const out = []
     for (const i of all) i && level[i] === level[i - 1] ? out.at(-1).push(i) : out.push([i])
-    // (left-to-right letters in a stretch resvg shapes by a script of the other direction, contrived: one an override
-    // sets right to left is kerned in the order it's drawn when its first script is left to right, as guessed, but its
-    // marks are composed in that order too ("١" RLO U+030C "l" draws "ľ") and its brackets mirrored ("RLO H[Ï]" draws
-    // "[Ï]H"); and in one whose first script is right to left, at any level, kerning follows the shaper's order, not the
-    // one guessed ("ب" RLO "ȴj" kerns "ȴj", RLE "١jȴ" kerns "ȴj"). None of it is modelled: room for every cluster, as below)
-    const forced = (s, odd) => s.some((i) => t[i] === 'L') && (bidi(cs[s.find((i) => SCRIPT.test(cs[i]))]) !== 'L' || (odd && s.some((i) => /[\p{M}\p{Bidi_M}]/u.test(cs[i]))))
+    // (left-to-right letters in a stretch set right to left, contrived: one an override sets right to left is kerned in
+    // the order it's drawn when its first script is left to right, as guessed, but its marks are composed in that order
+    // too ("١" RLO U+030C "l" draws "ľ") and its brackets mirrored ("RLO H[Ï]" draws "[Ï]H"); and in one whose first
+    // script is right to left, kerning follows the shaper's order, not the one guessed ("ب" RLO "ȴj" kerns "ȴj"). None of
+    // it is modelled: room for every cluster, as below. A stretch set left to right whose first script is right to left
+    // is modelled, as back: RLE "١jȴ" kerns "ȴj", LRO U+06DB "}ď" kerns "ď}")
+    const forced = (s, odd) => odd && s.some((i) => t[i] === 'L') && (bidi(cs[s.find((i) => SCRIPT.test(cs[i]))]) !== 'L' || s.some((i) => /[\p{M}\p{Bidi_M}]/u.test(cs[i])))
     // (and so does a dash with an angle bracket: a stretch shaped right to left mirrors the bracket, and Inter draws the
     // dash and the drawn bracket as one long arrow, which isn't modelled here; #362)
     const arrow = (s) => s.some((i) => /[-\u{2013}]/u.test(cs[i])) && s.some((i) => /[<>]/u.test(cs[i]))

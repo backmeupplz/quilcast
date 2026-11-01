@@ -441,8 +441,9 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // kerning and composing resvg takes from the stretch's first script; and a caron past an empty isolate in Hebrew text
   runs.push(cp(0x6c, 0x307, 0x897, 0x334, 0x6c), cp(0x202a, 0x6c, 0x307, 0x897, 0x334, 0x6c), cp(0x628, 0x202e, 0x234, 0x6a), cp(0x628, 0x202e, 0x76, 0x234, 0x191), cp(0x202e, 0x639, 0x64e, 0x234, 0x6a), cp(0x661, 0x202e, 0x30c, 0x6c))
   // and brackets in them, which resvg mirrors; and left-to-right letters after a digit or a letter that has resvg shape the
-  // stretch they're in right to left, in an embedding, an isolate or an override, kerned in the shaper's order
-  runs.push(cp(0x202e, 0x48, 0x5b, 0xcf, 0x5d), cp(0x202e, 0xcf, 0x5d), cp(0x202e, 0x48, 0x7b, 0xcf, 0x7d), cp(0x202b, 0x661, 0x6a, 0x234), `ש ${cp(0x2067, 0x661, 0x6a, 0x234, 0x2069)}`, `ש${cp(0x202b, 0x661, 0x662, 0x6a, 0x234, 0x202c)} ok`, cp(0x202d, 0x628, 0x6a, 0x234), cp(0x661, 0x202d, 0x6a, 0x234), cp(0x202d, 0x5e9, 0x6a, 0x234))
+  // stretch they're in right to left, in an embedding, an isolate or an override, kerned in the shaper's order (set left
+  // to right, so kerned the other way round: "}" "ď" after a box mark as "ď}")
+  runs.push(cp(0x202e, 0x48, 0x5b, 0xcf, 0x5d), cp(0x202e, 0xcf, 0x5d), cp(0x202e, 0x48, 0x7b, 0xcf, 0x7d), cp(0x202b, 0x661, 0x6a, 0x234), `ש ${cp(0x2067, 0x661, 0x6a, 0x234, 0x2069)}`, `ש${cp(0x202b, 0x661, 0x662, 0x6a, 0x234, 0x202c)} ok`, cp(0x202d, 0x628, 0x6a, 0x234), cp(0x661, 0x202d, 0x6a, 0x234), cp(0x202d, 0x5e9, 0x6a, 0x234), cp(0x202d, 0x6db, 0x7d, 0x10f))
   runs.push(cp(0x6c, 0x2066, 0x2069, 0x30c, 0x6c, 0x5e9), cp(0x64, 0x2066, 0x2069, 0x30c, 0x5d, 0x5e9), cp(0x6c, 0x2066, 0x2069, 0x307, 0x6c, 0x5e9))
   // a vertical tab and U+001F, which measure() strips, so they don't separate segments; and an en dash with an angle
   // bracket in a stretch shaped right to left, which mirrors the bracket into Inter's long arrow
@@ -762,6 +763,9 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   for (const run of LTR_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
   // and so are those in right-to-left text, laid out at the levels resvg's bidi gives them: as close as other text
   for (const run of RTL_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.15, run)
+  // (and so are stretches set left to right but shaped right to left with left-to-right letters in them, kerned the
+  // other way round, not given room for every cluster: LRO, a box mark, "}" and "ď"; an RLE, an Arabic digit and "jȴ")
+  for (const run of [cp(0x202d, 0x6db, 0x7d, 0x10f), cp(0x202b, 0x661, 0x6a, 0x234), `ש ${cp(0x2067, 0x661, 0x6a, 0x234, 0x2069)}`]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.15, `${bold} ${run}`)
   // and right-to-left text with its marks (pointed Arabic and Hebrew), or text struck through after a right-to-left
   // override (each box widening its letter, not a box beside it), isn't guessed far wider for each letter carrying marks
   const struck = [...'strike this'].map((c) => c + cp(0x336)).join('')
