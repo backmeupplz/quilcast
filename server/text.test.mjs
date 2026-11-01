@@ -467,6 +467,11 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // embedding, override or isolate before it, or a right-to-left letter in the run; and one repeated on a digit
   for (const o of [0x200f, 0x61c, 0x202b, 0x202e, 0x2067]) for (const m of [0x302, 0x308, 0x30f]) runs.push(`${cp(o, m)}1`, `a${cp(o, m)}1`, `${cp(o, 0x200b, m)}i${cp(0x202c)}`)
   runs.push(`${cp(0x2067, 0x302)}i${cp(0x2069)}`, `א${cp(0x308)}1`, `${cp(0x5d0, 0x20, 0x308)}.`, `1${cp(0x302).repeat(300)} `)
+  // and stacked after a bidi control that follows a Cyrillic or Greek letter: after an isolate, an embedding, an
+  // override, a right-to-left mark or an Arabic letter mark, resvg shapes the marks apart from the letter and stacks
+  // them further right than the letter's script would
+  runs.push(cp(0x431, 0x2067, 0x308, 0x35e), cp(0x431, 0x2066, 0x308, 0x35e), cp(0x416, 0x200f, 0x6c, 0xe01, 0x35e, 0x308))
+  for (const l of [0x431, 0x416, 0x3c9]) for (const o of [0x2066, 0x2067, 0x2068, 0x200f, 0x61c, 0x202a, 0x202b, 0x202d, 0x202e]) for (const [m, n] of [[0x308, 0x35e], [0x35e, 0x308]]) runs.push(cp(l, o, m, n), cp(l, o, m, n, 0x6c))
   // a mark after an ignorable that cuts it off the letter before it (a non-joiner, a bidi isolate's end, a soft hyphen
   // before sara am)
   runs.push('g' + cp(0x200c, 0x20e0), cp(0x2199, 0x2066, 0x20e0) + '*', 'A1' + cp(0x2069, 0x336, 0xae), '_' + cp(0x2069, 0x336) + '52' + cp(0xfe0e, 0x2069) + ' ', cp(0x2044, 0xad, 0xe33) + '73')
