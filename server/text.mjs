@@ -412,6 +412,9 @@ const BOX = 0.66
 // font has, not one on the letter before it. Measured against resvg for every mark; regenerate it if resvg is updated.
 const NEWER = /[\u{897}\u{1acf}-\u{1add}\u{1ae0}-\u{1aeb}\u{10d69}-\u{10d6d}\u{10efa}-\u{10efc}\u{113b8}-\u{113c0}\u{113c2}\u{113c5}\u{113c7}-\u{113ca}\u{113cc}-\u{113d0}\u{113d2}\u{113e1}\u{113e2}\u{11b60}-\u{11b67}\u{11f5a}\u{1611e}-\u{1612f}\u{1e5ee}\u{1e5ef}\u{1e6e3}\u{1e6e6}\u{1e6ee}\u{1e6ef}\u{1e6f5}]/u
 const MARK = new RegExp(`(?!${NEWER.source})\\p{M}`, 'u')
+const ORDERED = new RegExp(`(?:${MARK.source}){2,}`, 'gu')
+// (and every mark, for the guess that also takes a newer mark as one: see guess)
+const ORDERED_ANY = /\p{M}{2,}/gu
 const boxed = (c, font) => MARK.test(c) && !font.glyph(c.codePointAt(0)) && !NOTO.glyph(c.codePointAt(0))
 // Thai and Lao sara am. In a run resvg shapes as Thai (its first character of any script is Thai or Lao), the shaper
 // splits it into nikhahit and sara aa, two boxes in the cluster of the character before it (or, starting the run, a box
@@ -1009,7 +1012,9 @@ const notoWhole = (run, font) => {
 // from the letter), embeddings in an isolate, or closed embeddings in an embedding (measured for every ignorable in each
 // opener, at both weights). It's a guess of its own (EMPTIED), not a replacement: it can join more pairs than SKIPPED,
 // and so draw a narrower text than SKIPPED alone would.
-const COMPOSABLE = /\P{M}\p{M}+/gu
+// A mark newer than resvg's Unicode is a letter to it, so it ends the cluster, and the marks after it are on it, not
+// reordered past it onto the letter before (U+0897 U+0670 after a space keeps U+0670 on U+0897).
+const COMPOSABLE = [new RegExp(String.raw`\P{M}(?:${MARK.source})+`, 'gu'), /\P{M}\p{M}+/gu]
 const HIDDEN = new RegExp(IGNORED.source, 'gu')
 const PASSED = String.raw`(?![\u{200c}\u{180b}-\u{180d}\u{e0020}-\u{e007f}\u{61c}\u{200f}\u{202a}\u{202b}\u{202d}\u{202e}\u{2066}-\u{2068}])${IGNORED.source}`
 const SKIPPED = `(?:${PASSED})+`
@@ -1037,12 +1042,15 @@ const LIGATURES = new Map(
 // And Inter draws "i" and the Cyrillic "і" dotless before a mark above, so they join with it as "ı" does, also past an
 // ignorable that keeps NFC from composing them ("i" U+FE00 U+0308 and "i" U+200B U+0303 are drawn "ï" and "ĩ").
 const DOTLESS = { i: 'ı', і: 'ı' }
-const LIGATED = [SKIPPED, EMPTIED].map((skipped) => new RegExp(String.raw`(\P{M})(${skipped})?([\p{M}\u{ee90}\u{f6c3}]\p{M}*)`, 'gu'))
-const together = (run, font, empty) => run.replace(APART[empty], (p) => p.replace(HIDDEN, '').normalize('NFC')).replace(COMPOSABLE, (g) => {
+const LIGATED = [MARK.source, String.raw`\p{M}`].map((mark) =>
+  [SKIPPED, EMPTIED].map((skipped) => new RegExp(String.raw`(\P{M})(${skipped})?((?:${mark}|[\u{ee90}\u{f6c3}])(?:${mark})*)`, 'gu')),
+)
+// (any: a newer mark taken as a mark, see guess)
+const together = (run, font, empty, any) => run.replace(APART[empty], (p) => p.replace(HIDDEN, '').normalize('NFC')).replace(COMPOSABLE[+any], (g) => {
   const n = g.normalize('NFC')
   return n !== g && [...n].every((x) => IGNORED.test(x) || font.glyph(x.codePointAt(0)) || (/\p{M}/u.test(x) && g.includes(x))) ? n : g
 })
-const ligated = (run, font, empty) => run.replace(LIGATED[empty], (all, letter, skipped, marks) => {
+const ligated = (run, font, empty, any) => run.replace(LIGATED[+any][empty], (all, letter, skipped, marks) => {
   // (a variation selector among the marks keeps the shaper from decomposing them)
   const ms = VARIANT.test(marks) ? marks : marks.normalize('NFD')
   const first = String.fromCodePoint(ms.codePointAt(0))
@@ -1055,21 +1063,29 @@ export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
   // the ligated text is a guess of its own, not a replacement: a pair past a PDF or PDI that closes an embedding or
   // isolate opened before the letter is drawn apart, and the composed text alone may be what keeps the run covered
-  const texts = new Set([run])
-  for (const empty of [0, 1]) {
-    const composed = together(run, font, empty)
-    texts.add(composed).add(ligated(composed, font, empty))
+  const ways = (any) => {
+    const texts = new Set([run])
+    for (const empty of [0, 1]) {
+      const composed = together(run, font, empty, any)
+      texts.add(composed).add(ligated(composed, font, empty, any))
+    }
+    return [...texts].map((t) => guessed(t, font, any))
   }
-  return Math.max(...[...texts].map((t) => guessed(t, font)))
+  // With a mark newer than resvg's Unicode, the run is also guessed taking that mark as a mark (composed and ordered
+  // across it as Node's NFC does), and the guess is the wider of the two: resvg draws some runs with one wider than either
+  // way lays it out ("l" U+030C, a space, U+05A3, U+1AEB and U+0344 by half an em, as with an unassigned character in
+  // place of U+1AEB), and taking it as a mark happens to cover those.
+  return Math.max(...ways(false), ...(NEWER.test(run) ? ways(true) : []))
 }
-const guessed = (run, font) => {
+const guessed = (run, font, any) => {
   const noto = notoWhole(run, font)
   if (noto !== null) return noto + 0.04
   // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
   const cs = []
   const within = new Set()
   // (marks Inter has in the order the shaper puts them, by combining class: U+035E over U+0302 goes after it)
-  const ordered = run.replace(/\p{M}{2,}/gu, (ms) => ([...ms].every((c) => font.glyph(c.codePointAt(0))) ? ms.normalize('NFD') : ms))
+  // (only marks resvg knows: one newer than its Unicode is a letter to it, so the marks after it are ordered on their own)
+  const ordered = run.replace(any ? ORDERED_ANY : ORDERED, (ms) => ([...ms].every((c) => font.glyph(c.codePointAt(0))) ? ms.normalize('NFD') : ms))
   // (but the shaper decomposes nothing in a cluster, a character and the marks after it, with a variation selector in
   // it: "I" U+0340 U+FE05 has U+0340 as a box widening the "I", not U+0300 on it, and "↮" U+FE05 is a box)
   const chars = [...ordered]

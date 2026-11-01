@@ -605,6 +605,15 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // em bold, "tM"), before "Ƈ", whose ink past its room left bold too little to spare for that kerning (a left-to-right
   // isolate and harakat among them, and "0tƇ" alone)
   runs.push(cp(0x31, 0x2066, 0x30, 0x74, 0x4d, 0x65b, 0x2066, 0x64e, 0x187), '0tƇ')
+  // and the runs once guessed short in #353: a mark newer than resvg's Unicode (a letter to it) before a mark NFC
+  // would put ahead of it, which stays on it, not on the space or letter before (after "ľ" drawn composed)
+  runs.push(cp(0x6c, 0x30c, 0xad, 0x20, 0x897, 0x670, 0x7ca), cp(0x6c, 0x30c, 0xad, 0x20, 0x6c, 0x897, 0x670), cp(0x6c, 0x30c, 0xad, 0x20, 0x61, 0x1add, 0x308))
+  // and known marks after a newer one, which the shaper still puts in combining-class order on their own
+  runs.push(cp(0x61, 0x11b65, 0x35e, 0x308), cp(0x6c, 0x30c, 0x20, 0x1add, 0x35e, 0x308))
+  // and known marks after a newer one that only decompose into marks Inter has, or past a variation selector or a
+  // grapheme joiner, and a mark below on a space before a newer mark and U+0344, which resvg draws half an em wider
+  runs.push(cp(0x61, 0x1612c, 0x35e, 0x344), cp(0x6a, 0x11b64, 0x1612c, 0x35e, 0x358, 0x344), cp(0x20, 0x303, 0x64, 0xfe00, 0x113c0, 0x35e, 0x344, 0x2f))
+  runs.push(cp(0x61, 0x113cc, 0x35e, 0x303, 0xfe00), cp(0x20, 0x113c0, 0xfe00, 0x34f, 0x35e, 0x303), cp(0x6c, 0x30c, 0x20, 0x5a3, 0x1aeb, 0x344), cp(0x6c, 0x30c, 0x20, 0x316, 0x1aeb, 0x344))
   // and the runs once guessed short in #361: a stretch set left to right whose first letter of a script is Arabic (a box
   // mark, an Extended Arabic-Indic digit) is shaped right to left, so it's kerned the other way round: a closing bracket
   // and "ď" as "ď}" (+0.088 em, bold +0.131), before Hebrew, a letter or a dot, the bracket first or the mark, repeated
