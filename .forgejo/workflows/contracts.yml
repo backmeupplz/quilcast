@@ -1,0 +1,29 @@
+name: Contracts
+# contracts/: Quilcast's Base contracts, tested with plain (getplain.org), pinned in contracts/package.json
+on:
+  pull_request:
+    paths: ['contracts/**', '.forgejo/workflows/contracts.yml']
+  push:
+    branches: [main]
+    paths: ['contracts/**', '.forgejo/workflows/contracts.yml']
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  test:
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["backmeupplz","renovate","claude"]'), github.event.pull_request.user.login)) && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: contracts
+      - if: runner.os == 'Linux'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - run: npx plain build --check
+      - run: npm test

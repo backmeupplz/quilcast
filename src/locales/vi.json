@@ -1069,5 +1069,6 @@
   "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "Cast của bạn và dữ liệu trên Quilcast đã bị xóa; chỉ còn bước gỡ khóa. Hãy thử lại, hoặc vẫn xóa tài khoản khỏi thiết bị này.",
   "Custody wallet": "Ví lưu ký",
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "Hiện ví lưu ký của tài khoản bạn ở tab Ví và trong mini app. Mặc định tắt vì ví này sở hữu tài khoản Farcaster của bạn: chỉ một yêu cầu độc hại mà mini app nhờ bạn ký cũng có thể chiếm tài khoản hoặc tài sản trong đó. Quilcast hỏi trước mỗi lần ký, nhưng bật tính năng này là bạn tự chịu rủi ro.",
-  "{name} (custody)": "{name} (lưu ký)"
+  "{name} (custody)": "{name} (lưu ký)",
+  "Collect": "Sưu tầm"
 }

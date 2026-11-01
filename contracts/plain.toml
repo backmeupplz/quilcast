@@ -1,0 +1,6 @@
+# Quilcast's contracts, built, tested, deployed and verified with plain (getplain.org): `cd contracts && plain test`.
+# The settings QuilcastVote was deployed with, so both contracts build the same way.
+solc = "0.8.28"
+optimizer = true
+optimizer_runs = 200
+evm_version = "prague"

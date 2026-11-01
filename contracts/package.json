@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "description": "Quilcast's contracts (plain test / plain deploy, see plain.toml)",
+  "devDependencies": {
+    "@openzeppelin/contracts": "5.6.1",
+    "plain-evm": "0.5.0"
+  },
+  "scripts": {
+    "test": "plain test",
+    "build": "plain build --check"
+  }
+}

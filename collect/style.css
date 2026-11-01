@@ -1,0 +1,22 @@
+:root { color-scheme: dark; --bg: #0d0c11; --card: #1c1a23; --line: #2a2735; --fg: #edebf3; --muted: #9893a5; --accent: #5b3df5; --accent-hi: #7a61ff; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; min-height: 100dvh; background: var(--bg) radial-gradient(120% 60% at 90% 0%, #2a1f6e 0%, transparent 60%) no-repeat; color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 440px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); text-align: center; }
+.art { display: block; width: 100%; height: auto; aspect-ratio: 1; margin: 8px 0 4px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); }
+.logo { display: block; margin: 24px auto 8px; border-radius: 22px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 12px 0 8px; }
+.lead { margin: 0 0 18px; color: var(--muted); }
+button, .button { display: block; width: 100%; min-height: 52px; border: 0; border-radius: 14px; background: var(--accent); color: #fff; font-family: inherit; font-size: 17px; font-weight: 650; cursor: pointer; text-decoration: none; line-height: 52px; }
+button { line-height: normal; }
+button + button { margin-top: 10px; }
+button:hover:not(:disabled), .button:hover { background: var(--accent-hi); }
+button:disabled { opacity: .6; cursor: progress; }
+button:focus-visible, a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.owner { display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; margin: 0 0 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow-wrap: anywhere; }
+.owner img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: none; }
+#status { min-height: 1.5em; margin: 12px 0 0; }
+#status.err { color: #ff8f8f; }
+.muted { color: var(--muted); margin: 4px 0; }
+.small { font-size: 14px; margin-top: 16px; }
+a { color: #b3a6ff; }

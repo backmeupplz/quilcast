@@ -1069,5 +1069,6 @@
   "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "你的 cast 和 Quilcast 上的資料已刪除，只剩移除金鑰這一步。請重試，或仍然從此裝置清除該帳號。",
   "Custody wallet": "託管錢包",
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "在錢包頁和小程式中列出你帳號的託管錢包。預設關閉，因為這個錢包擁有你的 Farcaster 帳號：小程式請你簽署的一個惡意請求就可能奪走帳號或其中的資產。Quilcast 會在每次簽署前詢問，但開啟它的風險由你自行承擔。",
-  "{name} (custody)": "{name}（託管）"
+  "{name} (custody)": "{name}（託管）",
+  "Collect": "收藏"
 }

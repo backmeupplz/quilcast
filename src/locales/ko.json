@@ -1069,5 +1069,6 @@
   "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "캐스트와 Quilcast 데이터는 삭제됐고 키 제거만 남았어요. 다시 시도하거나, 그래도 이 기기에서 계정을 지우세요.",
   "Custody wallet": "커스터디 지갑",
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "계정의 커스터디 지갑을 지갑 탭과 미니 앱에 표시합니다. 이 지갑이 Farcaster 계정의 소유자이기 때문에 기본값은 꺼짐입니다. 미니 앱이 서명을 요청한 악성 요청 하나로 계정이나 그 안의 자산을 빼앗길 수 있습니다. Quilcast는 서명할 때마다 확인하지만, 켜는 것은 본인 책임입니다.",
-  "{name} (custody)": "{name} (커스터디)"
+  "{name} (custody)": "{name} (커스터디)",
+  "Collect": "수집"
 }

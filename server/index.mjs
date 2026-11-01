@@ -3,13 +3,13 @@
 // and fronts the upload, link-preview and video-poster APIs.
 import { renderAsync } from '@resvg/resvg-js'
 import { createHash } from 'node:crypto'
-import { createReadStream, readFileSync } from 'node:fs'
-import { readFile, stat } from 'node:fs/promises'
+import { createReadStream, readdirSync, readFileSync } from 'node:fs'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
-import { extname, join, normalize } from 'node:path'
+import { extname, join, normalize, relative } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, sized, urlsOf, X_LOGO } from '../src/shared.ts'
+import { castText, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { clientIp, fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
@@ -184,6 +184,11 @@ async function visualOf(c) {
   if (vid) return { src: await posterOf(vid).catch(() => null), video: true }
 }
 
+/** The visual as a data URI: a shared design's or theme's own card, else the picture (`w`: the CDN size asked for). */
+const pictureOf = (v, w) =>
+  v?.design ? designPng(v.design, v.d).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null)
+    : v?.theme ? themePng(v.theme, v.th).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null) : v?.src ? dataUri(sized(v.src, w)) : null
+
 async function card(c) {
   const a = c.author || {}
   const replies = Number(c.replies?.count) || 0
@@ -193,11 +198,7 @@ async function card(c) {
   const text = cut(castText(c), 600)
   const v = await visualOf(c)
   // the CDN's resized copies are a fraction of the originals and decode faster
-  const [pfp, pic] = await Promise.all([
-    a.pfp_url ? dataUri(sized(a.pfp_url, 'w=176')) : null,
-    v?.design ? designPng(v.design, v.d).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null)
-      : v?.theme ? themePng(v.theme, v.th).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null) : v?.src ? dataUri(sized(v.src, 'w=840')) : null,
-  ])
+  const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=176')) : null, pictureOf(v, 'w=840')])
   const tile = !!(pic || v?.video || v?.tweet)
   // link previews are ~1.91:1, so they get a landscape tile; everything else a square
   const [ty, th] = v?.wide ? [172, 220] : [72, 420]
@@ -513,6 +514,207 @@ const themePng = (id, th) => pngs.get(`theme:${id}`) || keep(pngs, 100, `theme:$
 // runs on the main thread first: server/text.mjs)
 /** A 1200×630 cast card grown to 1200×800, its background carried into the new space above and below. */
 const tall = (svg) => svg.replace('height="630" viewBox="0 0 1200 630"', 'height="800" viewBox="0 -85 1200 800"').replace(/<rect width="1200" height="630" fill="(#0d0c11|url\(#g\))"\/>/g, '<rect y="-85" width="1200" height="800" fill="$1"/>')
+// --- Quilcast Collect: a cast as a 1/1 NFT (contract in backmeupplz/quilcast-collect, token id = the cast's hash) ---
+
+const dateOf = (c) => new Date(c.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+/** The NFT's picture, 1200×1200: the author on top, then the text, then its picture or quoted post filling what's left,
+ *  and the footer. Text alone sits in the middle of the space, at a size its length allows. No counts: they'd go stale. */
+async function collectible(c) {
+  const a = c.author || {}
+  const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
+  const text = cut(castText(c), 1000)
+  const short = text.replace(/https?:\/\/(www\.)?(\S{28})\S+/g, '$2…').replace(/https?:\/\/(www\.)?/g, '').trim()
+  const v = await visualOf(c)
+  const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=240')) : null, pictureOf(v, 'w=1100')])
+  const box = !!(pic || v?.video || v?.tweet)
+  // the content area: 88 px margins, between the author row and the footer
+  const X = 88, W = 1024, TOP = 272, BOTTOM = 1032
+  let body = ''
+  let y = TOP
+  if (short) {
+    const size = box ? (short.length < 90 ? 48 : short.length < 200 ? 40 : 34) : short.length < 60 ? 72 : short.length < 140 ? 60 : short.length < 280 ? 48 : short.length < 500 ? 40 : 34
+    const lh = Math.round(size * 1.3)
+    const lines = wrap(short, size, W, box ? Math.floor(280 / lh) : Math.floor((BOTTOM - TOP) / lh))
+    const h = lines.length * lh
+    // alone, the text is centered in the space; the first baseline is about one size below the line's top
+    const top = box ? TOP : TOP + Math.max(0, (BOTTOM - TOP - h) / 2)
+    body += textSvg(lines, { x: X, y: top + size, lh, size, fill: '#edebf3' })
+    y = top + h + 36
+  }
+  if (box) {
+    const h = BOTTOM - y
+    body += `<clipPath id="nft-pic"><rect x="${X}" y="${y}" width="${W}" height="${h}" rx="32"/></clipPath>
+  <rect x="${X}" y="${y}" width="${W}" height="${h}" rx="32" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>`
+    if (pic) body += `<image href="${pic}" x="${X}" y="${y}" width="${W}" height="${h}" preserveAspectRatio="xMidYMid slice" clip-path="url(#nft-pic)"/>`
+    if (v?.video) body += `<circle cx="${X + W / 2}" cy="${y + h / 2}" r="56" fill="#000" fill-opacity="0.55"/><path d="M${X + W / 2 - 17} ${y + h / 2 - 29}v58l48-29z" fill="#fff"/>`
+    if (v?.label) {
+      const l = wrap(v.label, 24, 600, 1)[0] || ''
+      body += `<rect x="${X + 20}" y="${y + h - 64}" width="${Math.round(width(l, 24) + 36)}" height="44" rx="22" fill="#000" fill-opacity="0.6"/>${textSvg([l], { x: X + 38, y: y + h - 33, size: 24, fill: '#fff' })}`
+    }
+    if (v?.tweet && !pic) {
+      const tl = wrap(cut((v.tweet.text || '').replace(/https?:\/\/\S+/g, '').trim(), 800) || ' ', 32, W - 96, Math.max(1, Math.floor((h - 180) / 44)))
+      body += `<g transform="translate(${X + 48} ${y + 52}) scale(1.6)"><path d="${X_LOGO}" fill="#edebf3"/></g>
+  ${textSvg([wrap(v.tweet.author.name || '', 32, W - 200, 1, { bold: true })[0] || ''], { x: X + 112, y: y + 84, size: 32, bold: true, fill: '#edebf3' })}
+  ${textSvg([`@${v.tweet.author.handle || ''}`], { x: X + 48, y: y + 140, size: 26, fill: '#9893a5' })}
+  ${textSvg(tl, { x: X + 48, y: y + 196, lh: 44, size: 32, fill: '#edebf3' })}`
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <defs>
+    <radialGradient id="nft-g" cx="0.92" cy="0.04" r="0.75"><stop offset="0" stop-color="#3a2a9a"/><stop offset="1" stop-color="#0d0c11" stop-opacity="0"/></radialGradient>
+    <clipPath id="nft-av"><circle cx="148" cy="148" r="60"/></clipPath>
+  </defs>
+  <rect width="1200" height="1200" fill="#0d0c11"/><rect width="1200" height="1200" fill="url(#nft-g)"/>
+  <circle cx="148" cy="148" r="60" fill="#2a2735"/>
+  ${pfp ? `<image href="${pfp}" x="88" y="88" width="120" height="120" preserveAspectRatio="xMidYMid slice" clip-path="url(#nft-av)"/>` : initial(name, 148, 166, 52, '#9893a5')}
+  ${textSvg([wrap(name, 44, 1112 - 240, 1, { bold: true })[0] || ''], { x: 240, y: 140, size: 44, bold: true, fill: '#edebf3' })}
+  ${textSvg([wrap(`@${a.username || a.fid}`, 32, 1112 - 240, 1)[0] || ''], { x: 240, y: 192, size: 32, fill: '#9893a5' })}
+  ${body}
+  <line x1="88" y1="1068" x2="1112" y2="1068" stroke="#25232d" stroke-width="2"/>
+  <g transform="translate(88 1092) scale(1.25)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
+  <text x="144" y="1123" font-family="Inter" font-weight="700" font-size="30" fill="#edebf3">Quilcast Collect</text>
+  <text x="1112" y="1122" font-family="Inter" font-size="28" fill="#9893a5" text-anchor="end">${esc(dateOf(c))}</text>
+</svg>`
+}
+
+/** The token's metadata, as OpenSea and Blockscout read it. */
+function nftMeta(c, hash) {
+  const a = c.author || {}
+  const who = `@${a.username || a.fid}`
+  const text = castText(c).trim()
+  const urls = urlsOf(c)
+  const media = urls.some(isImg) ? 'Image' : urls.some(isVid) ? 'Video' : urls.length ? 'Link' : 'Text'
+  const channel = c.parent_url?.match(/\/~\/channel\/([\w-]+)$/)?.[1] || c.channel?.id
+  return {
+    name: `${who}: ${cut(text.replace(/\s+/g, ' '), 60) || 'a cast'}`,
+    description: `${text}\n\nA cast by ${who} on Farcaster, collected on Quilcast.`.trim(),
+    image: `${SITE}/nft/0x${hash}.png`,
+    external_url: `${SITE}/c/${hash}`,
+    attributes: [
+      { trait_type: 'Author', value: who },
+      { trait_type: 'FID', value: Number(a.fid) || 0, display_type: 'number' },
+      { trait_type: 'Cast', value: Math.floor(new Date(c.timestamp).getTime() / 1000), display_type: 'date' },
+      { trait_type: 'Media', value: media },
+      ...(channel ? [{ trait_type: 'Channel', value: `/${channel}` }] : []),
+    ],
+  }
+}
+const COLLECTION = {
+  name: 'Quilcast Collect',
+  description: 'Casts from Farcaster, collected on Quilcast. Every cast can be collected once, for free, as a 1/1: open a cast on quilcast.com and tap Collect.',
+  image: `${SITE}/nft/collection.png`,
+  banner_image: `${SITE}/nft/banner.png`,
+  featured_image: `${SITE}/nft/banner.png`,
+  external_link: SITE,
+}
+// a collected cast is kept as it was first seen here, so its NFT stays when the cast is deleted
+const NFT_DIR = join(DATA, 'nft')
+async function keptCast(hash) {
+  const file = join(NFT_DIR, `${hash}.json`)
+  const kept = await readFile(file, 'utf8').then(JSON.parse, () => null)
+  if (kept) return kept
+  const c = await getCast(hash)
+  if (c) await mkdir(NFT_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(c))).catch((e) => console.error('nft: keep', e))
+  return c
+}
+
+// --- collect.quilcast.com: the Collect mini app (collect/), each cast's page with share tags and pictures ---
+const COLLECT_HOST = process.env.COLLECT_HOST || 'collect.quilcast.com'
+const COLLECT = `https://${COLLECT_HOST}`
+const CONTRACT = '0x5961d6a95f140b40cb993190e9dc5076f0830d3e'
+const BASE_RPC = process.env.BASE_RPC || 'https://mainnet.base.org'
+const COLLECT_DIR = new URL('../collect/', import.meta.url).pathname
+// the app reads Base, the node (who owns it) and quilcast.com (the NFT's metadata); Farcaster clients and Quilcast frame it
+const COLLECT_CSP = `default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ${BASE_RPC} ${SITE} ${NODE}; img-src 'self' data: https:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *`
+const collectIndex = readFileSync(join(COLLECT_DIR, 'index.html'), 'utf8')
+// who holds a cast's NFT: an address and their Farcaster account, or null while nobody does; asked again after 5 minutes
+const owners = new Map()
+function ownerOf(hash) {
+  const hit = owners.get(hash)
+  if (hit && Date.now() - hit.at < 300e3) return hit.p
+  const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CONTRACT, data: '0x6352211e' + hash.padStart(64, '0') }, 'latest'] })
+  const p = fetch(BASE_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(5000) })
+    .then((r) => r.json())
+    .then(async (r) => {
+      if (!/^0x[0-9a-f]{64}$/i.test(r?.result || '')) return null // ownerOf reverts for a cast nobody has
+      const address = '0x' + r.result.slice(-40).toLowerCase()
+      const u = (await nodeJson(`/v2/farcaster/user/bulk-by-address?addresses=${address}`).catch(() => null))?.users?.[0]
+      return { address, user: u?.username ? u : null }
+    })
+    // Base didn't answer: asked again next time
+    .catch(() => (owners.get(hash)?.p === p && owners.delete(hash), null))
+  keep(owners, 2000, hash, { at: Date.now(), p })
+  return p
+}
+const ownerName = (o) => (o.user ? `@${o.user.username}` : `${o.address.slice(0, 6)}…${o.address.slice(-4)}`)
+// each cast's square picture is drawn once and reused by the wide ones
+const squares = new Map()
+const squareOf = (hash, c) => squares.get(hash) || keep(squares, 100, hash, collectible(c))
+/** A share picture, 1200 wide and `H` tall: the NFT on the left, and on the right who collected it (or that it's free
+ *  to collect) under the Quilcast Collect name. */
+async function shareCard(hash, c, o, H) {
+  const m = 56, S = H - 2 * m, x = S + 2 * m + 8, w = 1200 - x - 64
+  const inner = (await squareOf(hash, c)).replace(/<svg [^>]*>/, `<svg x="${m}" y="${m}" width="${S}" height="${S}" viewBox="0 0 1200 1200">`)
+  const pfp = o?.user?.pfp_url ? await dataUri(sized(o.user.pfp_url, 'w=176')) : null
+  // the column (logo row, then who has it) is centered on the card's height
+  let who, top
+  if (o) {
+    const name = o.user ? cut(o.user.display_name || o.user.username, 80) : ownerName(o)
+    top = (H - 232) / 2
+    who = `${textSvg(['Collected by'], { x, y: top + 136, size: 30, fill: '#9893a5' })}
+  <clipPath id="cw-av"><circle cx="${x + 36}" cy="${top + 196}" r="36"/></clipPath><circle cx="${x + 36}" cy="${top + 196}" r="36" fill="#2a2735"/>
+  ${pfp ? `<image href="${pfp}" x="${x}" y="${top + 160}" width="72" height="72" preserveAspectRatio="xMidYMid slice" clip-path="url(#cw-av)"/>` : initial(name, x + 36, top + 210, 32, '#9893a5')}
+  ${textSvg([wrap(name, 34, w - 92, 1, { bold: true })[0] || ''], { x: x + 92, y: top + (o.user ? 190 : 208), size: 34, bold: true, fill: '#edebf3' })}
+  ${o.user ? textSvg([wrap(`@${o.user.username}`, 26, w - 92, 1)[0] || ''], { x: x + 92, y: top + 226, size: 26, fill: '#9893a5' }) : ''}`
+  } else {
+    const lines = wrap('Collect this cast', 46, w, 2, { bold: true })
+    const sub = 150 + (lines.length - 1) * 56 + 64
+    top = (H - sub - 8) / 2
+    who = `${textSvg(lines, { x, y: top + 150, lh: 56, size: 46, bold: true, fill: '#edebf3' })}
+  ${textSvg(['A free 1/1 on Base'], { x, y: top + sub, size: 28, fill: '#9893a5' })}`
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${H}" viewBox="0 0 1200 ${H}">
+  <defs>
+    <radialGradient id="cw-g" cx="0.95" cy="0" r="0.9"><stop offset="0" stop-color="#3a2a9a"/><stop offset="1" stop-color="#0d0c11" stop-opacity="0"/></radialGradient>
+    <linearGradient id="cw-tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a61ff"/><stop offset="1" stop-color="#4a2fd6"/></linearGradient>
+    <clipPath id="cw-nft"><rect x="${m}" y="${m}" width="${S}" height="${S}" rx="28"/></clipPath>
+  </defs>
+  <rect width="1200" height="${H}" fill="#0d0c11"/><rect width="1200" height="${H}" fill="url(#cw-g)"/>
+  <g clip-path="url(#cw-nft)">${inner}</g>
+  <rect x="${m}" y="${m}" width="${S}" height="${S}" rx="28" fill="none" stroke="#2f2c3b" stroke-width="3"/>
+  <rect x="${x}" y="${top}" width="64" height="64" rx="14" fill="url(#cw-tile)"/>
+  <g transform="translate(${x + 13} ${top + 13}) scale(${38 / 24})"><path d="${P.collect}" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></g>
+  <text x="${x + 84}" y="${top + 43}" font-family="Inter" font-weight="700" font-size="30" fill="#edebf3">Quilcast Collect</text>
+  ${who}
+</svg>`
+}
+/** The mini app's page for `hash` (or its home page): the tags a shared link shows, the embed that opens it. */
+async function collectPage(hash) {
+  let title = 'Quilcast Collect', desc = 'Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it.'
+  let og = `${COLLECT}/og.png`, embed = `${COLLECT}/embed.png`, button = 'Open Quilcast Collect', path = '/'
+  const c = hash && (await keptCast(hash))
+  if (c) {
+    const o = await ownerOf(hash)
+    const who = `@${c.author?.username || c.author?.fid}`
+    // the owner in the picture's address, so a link shared again after the cast is collected isn't stuck on the old one
+    const v = o ? o.address.slice(2, 10) : 'open'
+    title = o ? `${who}'s cast, collected by ${ownerName(o)}` : `Collect ${who}'s cast`
+    desc = `${cut(castText(c).replace(/\s+/g, ' '), 200) || 'A cast on Farcaster'} · ${o ? 'Collected on Quilcast Collect' : 'Free to collect as a 1/1 on Base'}`
+    og = `${SITE}/nft/0x${hash}.og.png?v=${v}`
+    embed = `${SITE}/nft/0x${hash}.3x2.png?v=${v}`
+    button = o ? 'See the collected cast' : 'Collect this cast'
+    path = `/c/${hash}`
+  }
+  let h = collectIndex.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`)
+  for (const [a, k, v] of [['name', 'description', desc], ['property', 'og:title', title], ['property', 'og:description', desc], ['property', 'og:url', COLLECT + path], ['property', 'og:image', og], ['name', 'twitter:title', title], ['name', 'twitter:description', desc], ['name', 'twitter:image', og]]) h = meta(h, a, k, v)
+  for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
+    h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: embed, button: { title: button, action: { type, name: 'Quilcast Collect', url: COLLECT + path, splashImageUrl: `${COLLECT}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
+  }
+  return h.replace(/(<link rel="canonical" href=")[^"]*/, (_, p) => p + esc(COLLECT + path))
+}
+// collect/'s files, listed once: nothing else under it is served
+const collectFiles = new Set(readdirSync(COLLECT_DIR, { recursive: true, withFileTypes: true }).filter((d) => d.isFile() && d.name !== 'index.html').map((d) => '/' + relative(COLLECT_DIR, join(d.parentPath, d.name))))
+
 const render = (svg) => renderAsync(pictures(svg), { font: { fontFiles: FONTS, loadSystemFonts: false, defaultFontFamily: 'Inter' } }).then((img) => img.asPng())
 
 // small caches; failures drop out so they're retried. Rendered PNGs get their own, smaller one.
@@ -678,6 +880,19 @@ createServer(async (req, res) => {
   const ip = clientIp(req)
   try {
     if (path === '/health') return res.end('ok')
+
+    // collect.quilcast.com: the Collect mini app, a page per cast (/c/<hash>, or ?cast=<hash> as Quilcast first opened it)
+    if (String(req.headers.host || '').split(':')[0] === COLLECT_HOST) {
+      res.setHeader('content-security-policy', COLLECT_CSP)
+      const hash = (path.match(/^\/c\/(?:0x)?([0-9a-f]{40})$/i)?.[1] || (path === '/' ? url.searchParams.get('cast')?.match(/^(?:0x)?([0-9a-f]{40})$/i)?.[1] : undefined))?.toLowerCase()
+      if (hash || path === '/') {
+        if (hash && !cache.has(hash) && limited(`look:${ip}`, 120)) return res.writeHead(429).end()
+        return html(await collectPage(hash))
+      }
+      if (!collectFiles.has(path)) return res.writeHead(404).end()
+      const body = await readFile(join(COLLECT_DIR, path))
+      return send(req, res, 200, { 'content-type': TYPES[extname(path)] || 'application/octet-stream', 'cache-control': 'public, max-age=300', ...(path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' }) }, body, 'collect:' + path)
+    }
 
     // ogre mode's GIFs: a random one each time (server/shrek.mjs)
     if (/^\/shrek\/(dance|card|roar)$/.test(path)) return res.writeHead(302, { location: pick(), 'cache-control': 'no-store' }).end()
@@ -915,6 +1130,24 @@ createServer(async (req, res) => {
       if (!c) return res.writeHead(404).end()
       const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => card(c).then((svg) => render(og[2] ? tall(svg) : svg)))))
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600' }).end(png)
+    }
+
+    if (path === '/nft/collection.json') return json(200, COLLECTION, 'public, max-age=3600')
+    // .png: the NFT itself; .3x2.png and .og.png: the pictures a shared Collect link shows, with who owns it
+    const nft = path.match(/^\/nft\/0x([0-9a-f]{40})(\.png|\.3x2\.png|\.og\.png)?$/i)
+    if (nft) {
+      const hash = nft[1].toLowerCase()
+      const wide = nft[2] && nft[2] !== '.png' ? (nft[2] === '.og.png' ? 630 : 800) : 0
+      const o = wide ? await ownerOf(hash) : null
+      const k = `nft:${hash}${wide ? `:${wide}:${o?.address || ''}` : ''}`
+      // rendering is what costs, so it gets the share cards' limit; marketplaces fetch metadata in bulk
+      if (nft[2] ? !pngs.has(k) && limited(`og:${ip}`, 30) : limited(`nft:${ip}`, 600)) return res.writeHead(429).end()
+      const c = await keptCast(hash)
+      if (!c) return res.writeHead(404, { 'access-control-allow-origin': '*' }).end()
+      // the Collect mini app (collect.quilcast.com) reads it too
+      if (!nft[2]) return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' }).end(JSON.stringify(nftMeta(c, hash)))
+      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => (wide ? shareCard(hash, c, o, wide) : squareOf(hash, c)).then(render))))
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': `public, max-age=${wide ? 300 : 86400}` }).end(png)
     }
 
     const cast = path.match(/^\/c\/(?:0x)?([0-9a-f]{40})$/i)

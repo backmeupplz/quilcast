@@ -1,0 +1,40 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMzNTYzMTYsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhhRDI4MDQxNTMxNzJDYTE0MTA1NTA2Mzg2YzkwNzg1Mzc1ODhEZDVkIn0",
+    "payload": "eyJkb21haW4iOiJjb2xsZWN0LnF1aWxjYXN0LmNvbSJ9",
+    "signature": "7AFt60BtF8vcg2yufkEHg3wi6rWpxagjGv7wylqRyvdaAk4rU8CcSud3vzv3EvyZ3KJv0qCcJ974SUePp4bcoBs"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Quilcast Collect",
+    "iconUrl": "https://collect.quilcast.com/icon.png",
+    "homeUrl": "https://collect.quilcast.com/",
+    "imageUrl": "https://collect.quilcast.com/embed.png",
+    "buttonTitle": "Open Quilcast Collect",
+    "splashImageUrl": "https://collect.quilcast.com/splash.png",
+    "splashBackgroundColor": "#0d0c11",
+    "subtitle": "Collect casts as free 1/1 NFTs",
+    "tagline": "Own the cast you loved",
+    "description": "Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it. Each cast can be collected once; you only pay the gas.",
+    "primaryCategory": "social",
+    "tags": [
+      "quilcast",
+      "farcaster",
+      "collect",
+      "nft",
+      "base"
+    ],
+    "heroImageUrl": "https://collect.quilcast.com/og.png",
+    "ogTitle": "Quilcast Collect",
+    "ogDescription": "Collect any Farcaster cast as a free 1/1 NFT on Base.",
+    "ogImageUrl": "https://collect.quilcast.com/og.png",
+    "requiredChains": [
+      "eip155:8453"
+    ],
+    "requiredCapabilities": [
+      "wallet.getEthereumProvider",
+      "actions.composeCast"
+    ],
+    "canonicalDomain": "collect.quilcast.com"
+  }
+}

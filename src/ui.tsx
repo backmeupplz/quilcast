@@ -831,6 +831,9 @@ export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => vo
   )
 }
 
+// Quilcast Collect: the cast as a free 1/1 NFT on Base, or who owns it (backmeupplz/quilcast-collect)
+const COLLECT = (hash: string): AppMeta => ({ url: `https://collect.quilcast.com/c/${hash}`, name: 'Quilcast Collect', icon: 'https://collect.quilcast.com/icon.png', splash: 'https://collect.quilcast.com/splash.png', bg: '#0d0c11' })
+
 /** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row; `owner` is
  *  the profile it's shown on (see hides()). */
 export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number }) {
@@ -881,6 +884,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
         )}
       </span>
       {!settings.quorum && like}
+      <button class="act" aria-label={t('Collect')} title={t('Collect')} onClick={() => launchApp(COLLECT(c.hash))}><Icon d={P.collect} /></button>
       <button class="act" aria-label={t('Share')} onClick={share}><Icon d={P.share} /></button>
       <span class="wrap-menu">
         <button class="act" aria-label={t('More')} aria-haspopup="menu" onClick={() => (setMore(!more), setSure(false))}><Icon d={P.more} /></button>

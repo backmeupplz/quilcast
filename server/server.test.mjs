@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
-import { createServer } from 'node:http'
+import { createServer, request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { inflateSync } from 'node:zlib'
@@ -115,7 +115,7 @@ const port = 40000 + Math.floor(Math.random() * 20000)
 const base = `http://127.0.0.1:${port}`
 let srv
 before(async () => {
-  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods` }, stdio: 'ignore' })
+  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods` }, stdio: 'ignore' })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -212,6 +212,43 @@ test('casts are mini app embeds with a 3:2 card', async () => {
   assert.equal(e.button.action.url, `https://quilcast.test/c/${hash}`)
   const png = Buffer.from(await (await fetch(e.imageUrl.replace('https://quilcast.test', base))).arrayBuffer())
   assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 800])
+})
+
+test('a collected cast: square art, metadata the mini app can read, the cast kept on disk, and the collection', async () => {
+  const hash = 'cd'.repeat(20)
+  const r = await fetch(`${base}/nft/0x${hash}`)
+  assert.equal(r.headers.get('access-control-allow-origin'), '*')
+  const m = await r.json()
+  assert.equal(m.image, `https://quilcast.test/nft/0x${hash}.png`)
+  assert.equal(m.external_url, `https://quilcast.test/c/${hash}`)
+  assert.ok(m.attributes.some((a) => a.trait_type === 'Author'))
+  const png = Buffer.from(await (await fetch(`${base}/nft/0x${hash}.png`)).arrayBuffer())
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 1200])
+  assert.ok(existsSync(join(media, 'nft', `${hash}.json`)))
+  assert.equal((await (await fetch(`${base}/nft/collection.json`)).json()).name, 'Quilcast Collect')
+})
+
+test('collect.quilcast.com: the mini app, a page per cast whose link shows its NFT, and only its own files', async () => {
+  const hash = 'cd'.repeat(20)
+  const get = (path) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path, headers: { host: 'collect.quilcast.com' } }, (r) => {
+    const parts = []
+    r.on('data', (d) => parts.push(d)).on('end', () => ok({ status: r.statusCode, headers: r.headers, body: Buffer.concat(parts).toString() }))
+  }).on('error', no).end())
+  const page = await get(`/c/${hash}`)
+  assert.match(page.headers['content-security-policy'], /frame-ancestors \*/)
+  const e = JSON.parse(page.body.match(/<meta name="fc:miniapp" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+  assert.equal(e.button.action.url, `https://collect.quilcast.com/c/${hash}`)
+  assert.match(e.imageUrl, new RegExp(`^https://quilcast\\.test/nft/0x${hash}\\.3x2\\.png\\?v=`))
+  assert.match(page.body, new RegExp(`<meta property="og:image" content="https://quilcast\\.test/nft/0x${hash}\\.og\\.png`))
+  // what ?cast= opened before is the same page
+  assert.equal((await get(`/?cast=${hash}`)).body, page.body)
+  assert.equal((await get('/app.js')).headers['content-type'], 'text/javascript')
+  assert.equal((await get('/.well-known/farcaster.json')).headers['access-control-allow-origin'], '*')
+  for (const path of ['/index.html', '/../server/index.mjs', '/nope']) assert.equal((await get(path)).status, 404, path)
+  for (const [kind, h] of [['3x2', 800], ['og', 630]]) {
+    const png = Buffer.from(await (await fetch(`${base}/nft/0x${hash}.${kind}.png`)).arrayBuffer())
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, h], kind)
+  }
 })
 
 test('a control character in a name, bio or cast still gets the full card', async () => {

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Quilcast Collect</title>
+  <meta name="description" content="Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it." />
+  <link rel="canonical" href="https://collect.quilcast.com/" />
+  <link rel="icon" href="/icon.png" />
+  <meta name="theme-color" content="#0d0c11" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Quilcast" />
+  <meta property="og:url" content="https://collect.quilcast.com/" />
+  <meta property="og:title" content="Quilcast Collect" />
+  <meta property="og:description" content="Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it." />
+  <meta property="og:image" content="https://collect.quilcast.com/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Quilcast Collect: casts as 1/1 NFTs on Base" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@quilcast" />
+  <meta name="twitter:title" content="Quilcast Collect" />
+  <meta name="twitter:description" content="Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it." />
+  <meta name="twitter:image" content="https://collect.quilcast.com/og.png" />
+  <!-- filled in by the server (server/index.mjs collectPage) with the cast's own picture and button -->
+  <meta name="fc:miniapp" content="" />
+  <meta name="fc:frame" content="" />
+  <link rel="stylesheet" href="/style.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main>
+    <section id="cast" hidden>
+      <img id="art" class="art" width="1200" height="1200" alt="" />
+      <h1 id="title">Collect this cast</h1>
+      <p id="lead" class="lead">The first person to collect a cast owns it as a 1/1 NFT on Base. Collecting is free; you only pay a fraction of a cent in gas.</p>
+      <div id="owner" class="owner" hidden><img id="owner-pfp" alt="" width="48" height="48" /><div><span class="muted">Collected by</span><br /><a id="owner-name" target="_blank" rel="noopener"></a></div></div>
+      <button id="collect" type="button" hidden>Collect for free</button>
+      <button id="share" type="button" hidden>Share it</button>
+      <p id="status" role="status"></p>
+      <p class="muted small"><a id="cast-link" target="_blank" rel="noopener">View the cast</a> · <a id="opensea" target="_blank" rel="noopener">OpenSea</a> · <a id="contract" target="_blank" rel="noopener">Contract</a></p>
+    </section>
+    <section id="home" hidden>
+      <img class="logo" src="/icon.png" width="96" height="96" alt="" />
+      <h1>Quilcast Collect</h1>
+      <p class="lead">Every Farcaster cast can be collected once, for free, as a 1/1 NFT on Base. Open a cast on Quilcast and tap the Collect button under it to collect it or see who owns it.</p>
+      <p><a class="button" href="https://quilcast.com" target="_blank" rel="noopener">Open Quilcast</a></p>
+      <p id="count" class="muted"></p>
+      <p class="muted small"><a id="collection" target="_blank" rel="noopener">The collection on OpenSea</a> · <a id="contract2" target="_blank" rel="noopener">Contract</a></p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1069,5 +1069,6 @@
   "Your casts and Quilcast's data are gone; only removing the keys is left. Try again, or erase the account from this device anyway.": "Deine Casts und die Daten bei Quilcast sind weg; nur das Entfernen der Schlüssel fehlt noch. Versuch es noch mal oder lösche den Account trotzdem von diesem Gerät.",
   "Custody wallet": "Custody-Wallet",
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "Zeigt die Custody-Wallet deines Accounts im Wallet-Tab und in Mini-Apps. Standardmäßig aus, weil diese Wallet deinen Farcaster-Account besitzt: Eine einzige bösartige Anfrage, die eine Mini-App dich signieren lässt, kann den Account oder alles darauf übernehmen. Quilcast fragt vor jeder Signatur, aber du schaltest das auf eigenes Risiko ein.",
-  "{name} (custody)": "{name} (Custody)"
+  "{name} (custody)": "{name} (Custody)",
+  "Collect": "Sammeln"
 }
