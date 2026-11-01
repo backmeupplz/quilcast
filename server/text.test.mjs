@@ -379,6 +379,18 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(cp(...n(0x2001, 13), 0x1f3fb), cp(0x2001, 0x20e3, ...n(0x2001, 12)), cp(...n(0x2001, 12), 0x2000, 0x1f3fb, ...n(0x2000, 12)), cp(...n(0x2001, 13), 0x200d, 0x20e3), cp(...n(0x2000, 13), 0x200b, 0x1f3ff), cp(0x20e3, 0x37, ...n(0xa0, 13), 0x20e3))
   // a box mark before an orphaned private-use glyph, and a keycap mark after a symbol past a bidi isolate
   runs.push('Tf' + cp(0x360, 0xee90), '*' + cp(0x2066, 0x20e3))
+  // marks no font has with no base before them: after an invisible character resvg starts a new cluster at (a box of
+  // their own, not one on the letter before), once and repeated, and two or more opening a run
+  const AM = cp(0xe33)
+  for (const z of [0x200b, 0x200c, 0x2060, 0xad, 0xfeff, 0x61c, 0x200e, 0x2066, 0xe0001]) {
+    for (const m of [cp(0xe4a), cp(0x336), cp(0xe48, 0xe4a), cp(0x336, 0x336)]) runs.push(`ค${cp(z)}${m}`, `a${cp(z)}${m}`, `a${cp(z)}${m}b`, `ค${cp(z)}${m}`.repeat(3), `a${cp(z)}${m}`.repeat(3))
+    runs.push(`ค${cp(z)}${AM}`, `ค${cp(z, 0xe48)}${AM}`, `a${cp(z)}${AM}`, `${cp(z)}${AM}ก`)
+  }
+  runs.push(`${cp(0xe49, 0xe48)}ba`, `${cp(0xe48, 0xe35)}a${cp(0xe35, 0xe38)}${AM}${cp(0xe31, 0xe31)}`, `${cp(0xe48, 0xe48, 0xe48)}ba`, `${cp(0x336, 0x336)}ba`)
+  // (where resvg doesn't cut: a mark with no base after an Arabic letter mark stays on the box mark past a break)
+  runs.push(cp(0x61c, 0x301, 0x200c, 0xe49), cp(0x61c, 0x362, 0x200b, 0xe4a), cp(0x61c, 0x301, 0x200b, 0xe4a, 0x62))
+  // and sara am after them
+  for (const k of [1, 2, 3, 5, 7]) runs.push(`${cp(0xe48).repeat(k)}${AM}`, `${cp(0xe48).repeat(k)}${AM}ba`, `${cp(0x200b)}${cp(0x336).repeat(k)}${AM}`, `ค${cp(0x200b)}${cp(0xe48).repeat(k)}${AM}`, `${cp(0x336).repeat(k)}${AM}ก`)
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)

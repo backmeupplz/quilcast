@@ -190,7 +190,12 @@ const boxed = (c, font) => MARK.test(c) && !font.glyph(c.codePointAt(0)) && !NOT
 // advance, and at a run's end draws far past it. In any other run it's one box like any letter no font has.
 const AM = /[\u0e33\u0eb3]/u
 const THAI = /^[\p{sc=Zyyy}\p{sc=Zinh}\p{sc=Zzzz}]*[\p{sc=Thai}\p{sc=Laoo}]/u
-const laidAs = (run, adv, font, ink, thai, hang, over) => {
+// The default-ignorables resvg starts a new cluster at (a soft hyphen, the zero-width space and non-joiner, the word
+// joiner, the BOM, direction marks…): the marks after one have no base, like marks opening a run, and take a box. The
+// rest (the joiner, variation selectors, tags) keep them on the character before. Measured against resvg for every
+// default-ignorable.
+const BREAKS = /[\u{ad}\u{61c}\u{180e}\u{200b}\u{200c}\u{200e}\u{200f}\u{202a}-\u{202e}\u{2060}-\u{206f}\u{feff}\u{fff0}-\u{fff8}\u{1d173}-\u{1d17a}\u{e0000}-\u{e001f}\u{e0080}-\u{e00ff}\u{e01f0}-\u{e0fff}]/u
+const layAt = (run, adv, font, ink, thai, hang, over, breaks) => {
   let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, ends = 0
   const flush = () => {
     // (a mark's overhang is past the letter as its boxes widen it, or past the boxes' ink when it ends further, as
@@ -207,8 +212,9 @@ const laidAs = (run, adv, font, ink, thai, hang, over) => {
   }
   for (const c of run) {
     i++
-    if (IGNORED.test(c)) continue
-    if (thai && AM.test(c)) started ? (marks += 2) : ((base = BOX), marks++), (box = am = started = true)
+    if (breaks && BREAKS.test(c)) flush()
+    else if (IGNORED.test(c)) continue
+    else if (thai && AM.test(c)) started ? (marks += 2) : ((base = BOX), marks++), (box = am = started = true)
     else if (boxed(c, font)) marks++, (box = started = true)
     else if (MARK.test(c)) {
       marks++, (own += adv(c)), (started = true)
@@ -217,6 +223,12 @@ const laidAs = (run, adv, font, ink, thai, hang, over) => {
   }
   flush()
   return ink ? Math.max(w, end) : w
+}
+// A run with a break in it takes the wider of laying it out cut at its breaks and not: resvg doesn't always cut there
+// (a mark with no base after an Arabic letter mark stays on the box mark past a zero-width non-joiner after it)
+const laidAs = (run, adv, font, ink, thai, hang, over) => {
+  const whole = layAt(run, adv, font, ink, thai, hang, over, false)
+  return BREAKS.test(run) ? Math.max(whole, layAt(run, adv, font, ink, thai, hang, over, true)) : whole
 }
 // resvg shapes each stretch of one direction apart, so Thai after right-to-left text is shaped as Thai whatever came first
 const RTL = /[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Nkoo}\p{sc=Adlm}\p{sc=Rohg}\p{sc=Samr}\p{sc=Mand}]/u
@@ -228,7 +240,8 @@ const RTL = /[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Nkoo}\p{sc=Adlm}
 const laid = (run, adv, font, ink, hang, over) => {
   if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang, over)
   if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, over)
-  if (hang && !RTL.test(run)) return laidAs(run, adv, font, ink, false, hang, over)
+  // (nor in one with a break in it: after a left-to-right mark, resvg shapes a sara am as Thai in a Latin run)
+  if (hang && !RTL.test(run) && !BREAKS.test(run)) return laidAs(run, adv, font, ink, false, hang, over)
   return Math.max(laidAs(run, adv, font, ink, false, hang, over), laidAs(run, adv, font, ink, true, hang, over))
 }
 
