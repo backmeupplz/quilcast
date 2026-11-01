@@ -138,3 +138,11 @@ test('a cast with no embeds gets its first typed link as one; embeds win when th
   assert.deepEqual(urlsOf({ text: 'https://x.com/a', embeds: [{ url: 'https://c.com/' }] }), ['https://c.com/'])
   assert.deepEqual(urlsOf({ text: 'https://x.com/a', embeds: [{}] }), [])
 })
+
+test('a like and its undo in the same second still get different timestamps (a tie goes to the remove)', async () => {
+  const { envelope, rawEd, reactionBody, MT } = await import('./fc.ts')
+  const key = rawEd(new Uint8Array(32).fill(1)), body = reactionBody(1, 2, '0x' + '00'.repeat(20))
+  const a = await envelope(MT.REACTION_ADD, 3, body, key)
+  const b = await envelope(MT.REACTION_ADD, 3, body, key)
+  assert.notEqual(a.hash, b.hash)
+})

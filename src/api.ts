@@ -224,6 +224,16 @@ export async function loadMine() {
   mineVersion++
 }
 
+// likes and recasts tapped this visit, by type + hash, with the count the cast showed then. Every card of the cast reads
+// them, so one opened again (from the 5-minute cache, its count from before the tap) still shows the tap.
+export const taps = new Map<string, { on: boolean; count: number }>()
+/** Whether it's on and the count to show: a count that moved since the tap was fetched after it, so it has the tap in it. */
+export function tapped(type: 1 | 2, hash: string, was: boolean, count: number): [boolean, number] {
+  const tap = taps.get(type + hash)
+  if (!tap) return [was, count]
+  return [tap.on, Math.max(+tap.on, tap.count === count ? count + +tap.on - +was : count)]
+}
+
 export const isFollowing = async (target: number) =>
   !!account?.fid && (await get('/v1/linkById', { fid: account.fid, target_fid: target, link_type: 'follow' }).then(() => true, () => false))
 /** Whether `u` follows the signed-in user ("Follows you"): the node's viewer_context when it says, else the follow link. */

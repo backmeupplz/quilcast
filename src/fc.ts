@@ -79,10 +79,14 @@ export const rawEd = (priv: Uint8Array): Ed => ({ pub: ed25519.getPublicKey(priv
 
 /** Sign MessageData with an ed25519 key, return the Message envelope and its hash. `after`: a Farcaster timestamp the
  *  message has to be newer than (a like, follow or profile field is replaced by the newest message about it, so a
- *  remove from a clock that runs behind would lose); nodes take up to 10 minutes ahead. */
+ *  remove from a clock that runs behind would lose); nodes take up to 10 minutes ahead. A reaction or follow is also
+ *  newer than the one signed before it: a like and its undo in the same second would tie, and a tie goes to the remove. */
+let lastToggle = 0
 export async function envelope(type: number, fid: number, body: Uint8Array, key: Ed, after = 0) {
   const now = fcNow()
-  const data = pb([1, type], [2, fid], [3, Math.min(Math.max(now, after + 1), now + 590)], [4, 1], [BODY_FIELD[type], body])
+  let at = Math.min(Math.max(now, after + 1), now + 590)
+  if (type >= MT.REACTION_ADD && type <= MT.LINK_REMOVE) at = lastToggle = Math.min(Math.max(at, lastToggle + 1), now + 590)
+  const data = pb([1, type], [2, fid], [3, at], [4, 1], [BODY_FIELD[type], body])
   const hash = blake3(data, { dkLen: 20 })
   // hypersnap merges read `data` while hashing uses `data_bytes`: send both
   const msg = pb([1, data], [2, hash], [3, 1], [4, await key.sign(hash)], [5, 1], [6, key.pub], [7, data])

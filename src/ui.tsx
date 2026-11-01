@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
+import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
 import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
@@ -834,21 +834,21 @@ export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => vo
 /** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row; `owner` is
  *  the profile it's shown on (see hides()). */
 export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number }) {
-  // what the node counted already includes our earlier reactions; local taps adjust from there
+  // `mine` is what the node said at sign-in, and its counts include those; taps since then adjust from there
   const was = useMemo(() => [mine.likes.has(c.hash), mine.recasts.has(c.hash)], [c.hash, mineVersion])
-  const [likedTap, setLiked] = useState<boolean | null>(null)
-  const [recastTap, setRecast] = useState<boolean | null>(null)
-  const liked = likedTap ?? was[0]
-  const recast = recastTap ?? was[1]
+  const [, redraw] = useState(0)
+  const [liked, likes] = tapped(1, c.hash, was[0], c.reactions.likes_count)
+  const [recast, recasts] = tapped(2, c.hash, was[1], c.reactions.recasts_count)
   const [menu, setMenu] = useState(false)
   const [more, setMore] = useState(false)
   const [sure, setSure] = useState(false)
   const [gone, setGone] = useState(false)
-  const toggle = (type: 1 | 2, on: boolean, set: (v: boolean) => void, bag: Set<string>) => {
+  const toggle = (type: 1 | 2, on: boolean, count: number) => {
     if (!requireAccount()) return
-    set(on)
-    on ? bag.add(c.hash) : bag.delete(c.hash)
-    w().then((m) => m.react(type, on, c)).catch((e) => (set(!on), on ? bag.delete(c.hash) : bag.add(c.hash), toast(e.message)))
+    const k = type + c.hash, before = taps.get(k)
+    taps.set(k, { on, count })
+    redraw((x) => x + 1)
+    w().then((m) => m.react(type, on, c)).catch((e) => (before ? taps.set(k, before) : taps.delete(k), redraw((x) => x + 1), toast(e.message)))
   }
   const share = () => {
     const url = `${location.origin}/c/${c.hash}`
@@ -865,9 +865,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
   const sending = posting.get(c.hash) === c
   const ch = channelOf(c.parent_url)
   const parentUser = c.parent_author?.fid ? users.get(c.parent_author.fid) : undefined
-  const likes = c.reactions.likes_count + +liked - +was[0]
-  const recasts = c.reactions.recasts_count + +recast - +was[1]
-  const like = <button class={`act lk${liked ? ' on' : ''}`} aria-label={t('Like')} onClick={() => toggle(1, !liked, setLiked, mine.likes)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
+  const like = <button class={`act lk${liked ? ' on' : ''}`} aria-label={t('Like')} onClick={() => toggle(1, !liked, c.reactions.likes_count)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
   const actions = (
     <footer onClick={stop}>
       {/* Quorum mode's order is Like, Reply, Recast */}
@@ -877,7 +875,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
         <button class={`act rc${recast ? ' on' : ''}`} aria-label={t('Recast or quote')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.recast} /><span>{recasts ? n(recasts) : ''}</span></button>
         {menu && (
           <Menu close={() => setMenu(false)}>
-            <button role="menuitem" onClick={() => (setMenu(false), toggle(2, !recast, setRecast, mine.recasts))}><Icon d={P.recast} />{recast ? t('Undo recast') : t('Recast')}</button>
+            <button role="menuitem" onClick={() => (setMenu(false), toggle(2, !recast, c.reactions.recasts_count))}><Icon d={P.recast} />{recast ? t('Undo recast') : t('Recast')}</button>
             <button role="menuitem" onClick={() => (setMenu(false), requireAccount() && shell.compose({ quote: c }))}><Icon d={P.quote} />{t('Quote')}</button>
           </Menu>
         )}
