@@ -573,6 +573,10 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // reaches past its letter after a right-to-left override, "i" and a diaeresis drawn as a wider "ï" between digits, a
   // digit before a Mende Kikakui combining mark no font has, and Hebrew before a Devanagari vowel sign drawn before its letter
   runs.push(cp(0x340, 0xfe00, 0x2e), cp(0x6c, 0x341, 0xfe0f, 0x20), cp(0x6c, 0x344, 0xfe0f, 0x20), cp(0x202e, 0x6c, 0x35e, 0x31), cp(0x202e, 0x69, 0x308, 0x31), cp(0x31, 0x69, 0x308, 0x31), cp(0x31, 0x1e8d0), cp(0x5d0, 0x93f, 0x20), cp(0x5d0, 0x93f), cp(0x5d0, 0x94b, 0x20))
+  // and the run once guessed short in #350: a digit and letters Inter kerns wider though they get no room ("0t" +0.017
+  // em bold, "tM"), before "Ƈ", whose ink past its room left bold too little to spare for that kerning (a left-to-right
+  // isolate and harakat among them, and "0tƇ" alone)
+  runs.push(cp(0x31, 0x2066, 0x30, 0x74, 0x4d, 0x65b, 0x2066, 0x64e, 0x187), '0tƇ')
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
