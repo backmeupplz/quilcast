@@ -1071,5 +1071,15 @@
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "Hesabının custody cüzdanını Cüzdan sekmesinde ve mini uygulamalarda gösterir. Varsayılan olarak kapalıdır, çünkü bu cüzdan Farcaster hesabının sahibidir: bir mini uygulamanın imzalamanı istediği tek bir kötü niyetli istek hesabı ya da içindekileri ele geçirebilir. Quilcast her imzadan önce sorar ama bunu açmak kendi sorumluluğundadır.",
   "{name} (custody)": "{name} (custody)",
   "Collect": "Koleksiyona ekle",
-  "Preview": "Önizleme"
+  "Preview": "Önizleme",
+  "Markdown": "Markdown",
+  "Bold": "Kalın",
+  "Italic": "İtalik",
+  "Strikethrough": "Üstü çizili",
+  "Code": "Kod",
+  "Link": "Bağlantı",
+  "Heading": "Başlık",
+  "Bulleted list": "Madde işaretli liste",
+  "Numbered list": "Numaralı liste",
+  "link": "bağlantı"
 }

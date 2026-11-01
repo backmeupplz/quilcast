@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, LINK_RE, loadUsers, myUser, toUrl, users, type Account, type Cast, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, isImg, isVid, linkify, markdown, postMedia, withGif } from './shared.ts'
+import { castText, embedRoom, format, isImg, isVid, linkify, markdown, postMedia, withGif, type Format } from './shared.ts'
 import { ago, Avatar, channelUrl, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
 import type { Draft } from './write.ts'
 
@@ -78,8 +78,8 @@ const linksIn = (text: string) => [...new Set((text.match(LINK_RE) || []).map(to
 const fmtLeft = (s?: number) => (s === undefined || !isFinite(s) ? '' : ' · ' + (s < 60 ? t('{n}s left', { n: Math.max(1, Math.round(s)) }) : t('{n} min left', { n: Math.round(s / 60) })))
 
 /** One post of a thread: text with @mention autocomplete, its attachments and the links it will embed. */
-function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus, attach, placeholder, remove }: {
-  part: Part; set: (p: Partial<Part>) => void; first: boolean; last: boolean; quote?: Cast; embeds?: string[]
+function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus, attach, placeholder, remove, md }: {
+  md: boolean; part: Part; set: (p: Partial<Part>) => void; first: boolean; last: boolean; quote?: Cast; embeds?: string[]
   focus: boolean; onFocus: () => void; attach: (files: FileList | null) => void; placeholder: string; remove?: () => void
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -163,8 +163,8 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
           ))}
         </div>
       )}
-      {/* how the Markdown will look, once there is any: plain text reads the same either way */}
-      {markdown(part.text.trim()) !== linkify(part.text.trim()) && (
+      {/* how the Markdown will look, in Markdown mode */}
+      {md && part.text.trim() && (
         <div class="md-preview" aria-label={t('Preview')}><span class="md-label">{t('Preview')}</span><RichText text={part.text.trim()} /></div>
       )}
       {first && quote && <div class="embed-preview"><QuoteCard c={quote} /></div>}
@@ -269,6 +269,17 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
         .then((url) => patch({ url }), (e) => patch({ err: e.message }))
     }
   }
+  // Markdown mode: the formatting buttons and a preview under each post. It comes on by itself once a post has
+  // Markdown in it, and the toolbar's button turns it on or off.
+  const [mdSet, setMd] = useState<boolean>()
+  const md = mdSet ?? parts.some((p) => markdown(p.text.trim()) !== linkify(p.text.trim()))
+  // the buttons keep the focus in the post (see md-tools' onMouseDown), so its selection is still there
+  const fmt = (how: Format) => {
+    const el = document.activeElement instanceof HTMLTextAreaElement ? document.activeElement : null
+    const [next, a, b] = format(cur.text, el ? el.selectionStart : cur.text.length, el ? el.selectionEnd : cur.text.length, how)
+    update(cur.id, () => ({ text: next }))
+    if (el) requestAnimationFrame(() => (el.focus(), el.setSelectionRange(a, b)))
+  }
   // The emoji list is the heavy part, so the module only loads when the picker is opened.
   const [emoji, setEmoji] = useState<typeof import('./emoji.tsx') | null>(null)
   // Where the caret was, read on mousedown: by the time the click lands the focus has left the textarea, so an
@@ -364,16 +375,27 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
         <div class="parts" hidden={gifs || drafts || !!emoji}>
           {parts.map((p, i) => (
             <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs && !drafts && !emoji}
-              onFocus={() => setActive(i)} attach={attach}
+              onFocus={() => setActive(i)} attach={attach} md={md}
               remove={i > 0 ? () => (setParts((ps) => ps.filter((x) => x.id !== p.id)), setActive(i - 1)) : undefined}
               placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : quote ? t('Add a comment') : t("What's happening?")} />
           ))}
         </div>
+        {md && (
+          <div class="md-tools" hidden={gifs || drafts || !!emoji} onMouseDown={(e) => e.preventDefault()}>
+            {([
+              [t('Bold'), <b>B</b>, { mark: '**' }], [t('Italic'), <i>I</i>, { mark: '*' }], [t('Strikethrough'), <s>S</s>, { mark: '~~' }],
+              [t('Code'), <Icon d={P.code} size={18} />, { mark: '`' }], [t('Link'), <Icon d={P.link} size={18} />, { link: t('link') }],
+              [t('Heading'), <b>H</b>, { line: '## ' }], [t('Bulleted list'), <Icon d={P.list} size={18} />, { line: '- ' }],
+              [t('Numbered list'), <Icon d={P.olist} size={18} />, { line: '1. ' }], [t('Quote'), <Icon d={P.quote} size={18} />, { line: '> ' }],
+            ] as [string, any, Format][]).map(([label, face, how]) => <button class="icon-btn" aria-label={label} title={label} onClick={() => fmt(how)}>{face}</button>)}
+          </div>
+        )}
         <div class="toolbar" hidden={gifs || drafts || !!emoji}>
           <input ref={pick} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
           <button class="icon-btn" aria-label={t('Add photo or video')} disabled={!room} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
           <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs(true)}><Icon d={P.gif} /></button>
           <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
+          <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
           {!parent && <ChannelPicker value={channel} set={setChannel} />}
           <span class={`count${left < 50 ? ' warn' : ''}`} title={bytes(cur.text) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
             {bytes(cur.text) > 280 ? left : ''}

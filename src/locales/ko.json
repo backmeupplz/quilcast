@@ -1071,5 +1071,15 @@
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "계정의 커스터디 지갑을 지갑 탭과 미니 앱에 표시합니다. 이 지갑이 Farcaster 계정의 소유자이기 때문에 기본값은 꺼짐입니다. 미니 앱이 서명을 요청한 악성 요청 하나로 계정이나 그 안의 자산을 빼앗길 수 있습니다. Quilcast는 서명할 때마다 확인하지만, 켜는 것은 본인 책임입니다.",
   "{name} (custody)": "{name} (커스터디)",
   "Collect": "수집",
-  "Preview": "미리보기"
+  "Preview": "미리보기",
+  "Markdown": "마크다운",
+  "Bold": "굵게",
+  "Italic": "기울임꼴",
+  "Strikethrough": "취소선",
+  "Code": "코드",
+  "Link": "링크",
+  "Heading": "제목",
+  "Bulleted list": "글머리 기호 목록",
+  "Numbered list": "번호 매기기 목록",
+  "link": "링크"
 }

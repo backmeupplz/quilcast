@@ -9,7 +9,7 @@ import { createServer } from 'node:http'
 import { extname, join, normalize, relative } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
+import { castText, imagesIn, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { clientIp, fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
@@ -28,7 +28,7 @@ import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
-import { cut, ends, esc, exactly, FONTS, initial, pictures, textSvg, width, wrap } from './text.mjs'
+import { cut, ends, esc, exactly, FONTS, initial, pictures, richSvg, textSvg, width, wrap } from './text.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -165,7 +165,8 @@ async function posterOf(u) {
 /** The picture for the card: an attached image, else a link's preview image or X photo, else a video frame. */
 async function visualOf(c) {
   const urls = urlsOf(c)
-  const img = urls.find(isImg)
+  // a picture the text shows with Markdown counts too
+  const img = urls.find(isImg) || imagesIn(c.text || '')[0]
   if (img) return { src: img }
   // a shared design shows its own card
   const design = urls.map((u) => u.match(/^https:\/\/quilcast\.com\/design\/([\w-]{10})$/)?.[1]).find(Boolean)
@@ -195,7 +196,9 @@ async function card(c) {
   const recasts = Number(c.reactions?.recasts_count) || 0
   const likes = Number(c.reactions?.likes_count) || 0
   // only the first ~8 lines fit, so long casts are cut before wrapping
-  const text = cut(unmarkdown(castText(c)), 600)
+  // its Markdown drawn (richSvg)
+  const md = styled(castText(c))
+  const text = cut(md.text, 600)
   const v = await visualOf(c)
   // the CDN's resized copies are a fraction of the originals and decode faster
   const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=176')) : null, pictureOf(v, 'w=840')])
@@ -204,8 +207,8 @@ async function card(c) {
   const [ty, th] = v?.wide ? [172, 220] : [72, 420]
   const textW = tile ? 600 : 1040
   const size = text.length < 90 ? 46 : text.length < 200 ? 38 : 32
-  const short = text.replace(/https?:\/\/(www\.)?(\S{28})\S+/g, '$2…').replace(/https?:\/\/(www\.)?/g, '')
-  const lines = wrap(short || ' ', size, textW, Math.floor(300 / (size * 1.32)))
+  // (links already show short, as the app does; bold text is measured as such, so a line of it can't run long)
+  const lines = wrap(text || ' ', size, textW, Math.floor(300 / (size * 1.32)), { bold: md.marks.some((m) => m & 17) })
   const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
@@ -218,7 +221,7 @@ async function card(c) {
   ${pfp ? `<image href="${pfp}" x="84" y="76" width="88" height="88" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : initial(name, 128, 136, 40, '#9893a5')}
   ${textSvg([wrap(name, 34, (tile ? 680 : 1100) - 196, 1)[0] || ''], { x: 196, y: 112, size: 34, bold: true, fill: '#edebf3' })}
   ${textSvg([`@${cut(a.username || a.fid, 40)}`], { x: 196, y: 150, size: 26, fill: '#9893a5' })}
-  ${textSvg(lines, { x: 84, y: 232, lh: size * 1.32, size, fill: '#edebf3' })}
+  ${richSvg(md.text, md.marks, lines, { x: 84, y: 232, lh: size * 1.32, size, fill: '#edebf3', accent: '#a99bff', code: '#f0c48a', muted: '#9893a5' })}
   ${tile ? `<rect x="712" y="${ty}" width="420" height="${th}" rx="28" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>` : ''}
   ${pic ? `<image href="${pic}" x="712" y="${ty}" width="420" height="${th}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pic)"/>` : ''}
   ${v?.video ? `<circle cx="922" cy="282" r="46" fill="#000" fill-opacity="0.55"/><path d="M908 258v48l40-24z" fill="#fff"/>` : ''}

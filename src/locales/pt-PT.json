@@ -1071,5 +1071,15 @@
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "Mostra a carteira de custódia da sua conta no separador Carteira e nas mini apps. Está desligada por predefinição porque essa carteira é a dona da sua conta Farcaster: um único pedido malicioso que uma mini app lhe peça para assinar pode tomar a conta ou o que ela contém. O Quilcast pergunta antes de cada assinatura, mas ative-a por sua conta e risco.",
   "{name} (custody)": "{name} (custódia)",
   "Collect": "Colecionar",
-  "Preview": "Pré-visualização"
+  "Preview": "Pré-visualização",
+  "Markdown": "Markdown",
+  "Bold": "Negrito",
+  "Italic": "Itálico",
+  "Strikethrough": "Rasurado",
+  "Code": "Código",
+  "Link": "Ligação",
+  "Heading": "Título",
+  "Bulleted list": "Lista com marcas",
+  "Numbered list": "Lista numerada",
+  "link": "ligação"
 }

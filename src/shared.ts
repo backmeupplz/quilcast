@@ -412,8 +412,14 @@ export const LINK_RE = new RegExp(`https?:\\/\\/[^\\s<>"]+[^\\s<>".,;:!?)\\]'"]|
 export const toUrl = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}`)
 /** A cast's links, shown as its pictures and cards. Some clients leave a link in the text without embedding it, so a
  *  cast with no embeds at all gets its first typed http(s) link instead. */
-export const urlsOf = (c: { text?: string; embeds?: { url?: string }[] }) =>
-  c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : (c.text?.match(LINK_RE) || []).filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
+export const urlsOf = (c: { text?: string; embeds?: { url?: string }[] }) => {
+  // less the pictures the text already shows with Markdown (other clients still get them as embeds)
+  const shown = new Set(imagesIn(c.text || ''))
+  const urls = c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : (c.text?.match(LINK_RE) || []).filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
+  return urls.filter((u) => !shown.has(u))
+}
+/** The pictures Markdown puts in a text, ![alt](url), as safe URLs. */
+export const imagesIn = (text: string) => [...text.matchAll(/!\[[^\]\n]*\]\(([^\s()]+)\)/g)].flatMap((m) => safeUrl(m[1]) ?? [])
 
 // URLs from casts, profiles and link previews are untrusted: Snapchain only checks their length, so
 // a "link" can be javascript:… or point at the viewer's own network. Only public http(s) gets through.
@@ -443,6 +449,11 @@ export const P = {
   pen: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
   smile: 'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01',
+  markdown: 'M3 6h18v12H3zM6 15V9l3 3 3-3v6M17 9v6M14.5 12.5 17 15l2.5-2.5',
+  link: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
+  code: 'M16 18l6-6-6-6M8 6l-6 6 6 6',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  olist: 'M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1',
   gif: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM9.5 9h-2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2v-3h-1M12 9v6M17.5 9h-3v6M14.5 12h2.5',
   image: 'M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM3 16l5-5 5 5M14 14l2-2 5 5M15.5 8.5h.01',
   hash: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18',
@@ -498,6 +509,7 @@ export const linkify = (text: string) =>
 // underscore in a URL stays in it, and _ never emphasizes inside a word (snake_case, @some_x_handle).
 const INLINE = new RegExp([
   /(?<tick>`+)(?<code>[^`]|[^`][\s\S]*?[^`])\k<tick>(?!`)/.source,
+  /!\[(?<alt>[^\]\n]*)\]\((?<src>[^\s()]+)\)/.source,
   /\[(?<label>[^\]\n]+)\]\((?<href>[^\s()]+)\)/.source,
   `(?<token>${TOKENS.source})`,
   /\*\*(?=\S)(?<bold>[\s\S]*?\S)\*\*(?!\*)/.source,
@@ -516,7 +528,10 @@ function inline(s: string): string {
     out += html(s.slice(at, m.index))
     at = m.index + m[0].length
     if (g.code !== undefined) out += `<code>${html(g.code.replace(/^ (.*[^ ].*) $/s, '$1'))}</code>`
-    else if (g.label !== undefined) {
+    else if (g.src !== undefined) {
+      const u = safeUrl(g.src)
+      out += u ? `<img class="md-img" src="${html(u.replace(/^http:/, 'https:'))}" alt="${html(g.alt)}" loading="lazy" referrerpolicy="no-referrer">` : html(g.alt)
+    } else if (g.label !== undefined) {
       const u = safeUrl(g.href)
       out += u ? ext(u, inline(g.label)) : inline(g.label)
     } else if (g.token !== undefined) out += linkify(g.token)
@@ -538,23 +553,73 @@ const cells = (line: string) => line.replace(ROW, '$1').split(/(?<!\\)\|/).map((
 const isTable = (l: string, next = '') => l.includes('|') && next.includes('|') && DIVIDER.test(next) && cells(l).length === cells(next).length
 const starts = (l: string, next?: string) => FENCE.test(l) || HEADING.test(l) || RULE.test(l) || QUOTE.test(l) || ITEM.test(l) || isTable(l, next)
 
-/** Cast text as it reads, without its Markdown, for share cards and meta tags: what markdown() draws, flattened
- *  (lists keep their bullets and numbers, a link shows its label). */
-export function unmarkdown(text: string) {
-  const lists: number[] = [] // per open list, the next number, or 0 for bullets
-  return markdown(text)
-    .replace(/<(\/?)(\w+)[^>]*?(?: start="(\d+)")?>|&#(\d+);/g, (_, close, tag, start, ent) => {
-      if (ent) return String.fromCharCode(+ent)
-      if (tag === 'ul' || tag === 'ol') return close ? (lists.pop(), '\n') : (lists.push(tag === 'ol' ? +(start || 1) : 0), '')
-      if (tag === 'li') return close ? '' : `\n${'  '.repeat(lists.length - 1)}${lists.at(-1) ? `${lists[lists.length - 1]++}. ` : '• '}`
-      if (tag === 'td' || tag === 'th') return close ? ' · ' : ''
-      if (tag === 'tr') return close ? '\n' : ''
-      return /^(h\d|blockquote|pre|hr|table)$/.test(tag) ? '\n' : ''
-    })
-    .replace(/ · \n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+export type Format = { mark: string } | { line: string } | { link: string }
+/** What the composer's Markdown buttons do to the text and its selection [start, end), returning both after: `mark`
+ *  wraps the selection in "**", "*", "~~" or "`" (or unwraps it when it's wrapped already), `line` starts each line
+ *  the selection touches with "## ", "- ", "1. " or "> " (or takes it off when they all have it), and `link` makes
+ *  the selection, or the given word, a link with its URL selected to paste over. */
+export function format(text: string, start: number, end: number, how: Format): [string, number, number] {
+  const sel = text.slice(start, end)
+  if ('mark' in how) {
+    const m = how.mark
+    const n = m.length
+    if (text.slice(start - n, start) === m && text.slice(end, end + n) === m) return [text.slice(0, start - n) + sel + text.slice(end + n), start - n, end - n]
+    if (sel.length >= 2 * n && sel.startsWith(m) && sel.endsWith(m)) return [text.slice(0, start) + sel.slice(n, -n) + text.slice(end), start, end - 2 * n]
+    return [text.slice(0, start) + m + sel + m + text.slice(end), start + n, end + n]
+  }
+  if ('link' in how) {
+    const label = sel.trim() || how.link
+    const at = start + label.length + 3
+    return [`${text.slice(0, start)}[${label}](https://)${text.slice(end)}`, at, at + 8]
+  }
+  const from = text.lastIndexOf('\n', start - 1) + 1
+  const stop = text.indexOf('\n', Math.max(end - (end > start && text[end - 1] === '\n' ? 1 : 0), start))
+  const to = stop < 0 ? text.length : stop
+  const lines = text.slice(from, to).split('\n')
+  const ordered = how.line === '1. '
+  const has = (l: string) => (ordered ? /^\d+[.)] / : new RegExp(`^${how.line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)).test(l)
+  const off = lines.every(has)
+  const next = lines.map((l, i) => (off ? l.replace(/^(#{1,6} |> |[-*+] |\d+[.)] )/, '') : (ordered ? `${i + 1}. ` : how.line) + l.replace(/^(#{1,6} |> |[-*+] |\d+[.)] )/, ''))).join('\n')
+  return [text.slice(0, from) + next + text.slice(to), from, from + next.length]
 }
 
-/** Cast text as HTML, with Markdown: headings, **bold**, *italic*, ~~strike~~, `code` and fenced blocks, [links](…),
+/** How a character of styled() text looked, as bits: strong, em, code, a link (or mention, or channel), a heading's,
+ *  a quote's. */
+export const MD = { bold: 1, italic: 2, code: 4, link: 8, heading: 16, quote: 32 }
+const BITS: Record<string, number> = { strong: MD.bold, em: MD.italic, code: MD.code, a: MD.link, span: MD.link, blockquote: MD.quote, h1: MD.heading, h2: MD.heading, h3: MD.heading, h4: MD.heading, h5: MD.heading, h6: MD.heading }
+/** Cast text as it reads, without its Markdown (unmarkdown), with how each UTF-16 unit of it looked (MD bits), for
+ *  share cards: what markdown() draws, flattened (lists keep their bullets and numbers, a link shows its label). */
+export function styled(text: string): { text: string; marks: number[] } {
+  const lists: number[] = [] // per open list, the next number, or 0 for bullets
+  const open: number[] = [] // the bits of the open tags that have one
+  let out = ''
+  const marks: number[] = []
+  const put = (str: string) => {
+    const on = open.reduce((a, b) => a | b, 0)
+    // never more than one blank line in a row
+    for (const ch of str) if (ch !== '\n' || !out.endsWith('\n\n')) (out += ch), marks.push(...Array(ch.length).fill(on))
+  }
+  for (const [all, close, tag, start, ent] of markdown(text).matchAll(/<(\/?)(\w+)[^>]*?(?: start="(\d+)")?>|&#(\d+);|[^<&]+/g)) {
+    if (ent) put(String.fromCharCode(+ent))
+    else if (!tag) put(all)
+    else if (tag === 'ul' || tag === 'ol') close ? (lists.pop(), put('\n')) : lists.push(tag === 'ol' ? +(start || 1) : 0)
+    else if (tag === 'li') !close && put(`\n${'  '.repeat(lists.length - 1)}${lists.at(-1) ? `${lists[lists.length - 1]++}. ` : '• '}`)
+    else if (tag === 'td' || tag === 'th') close && put(' · ')
+    // a row's last cell drops its separator
+    else if (tag === 'tr') close && (out.endsWith(' · ') && ((out = out.slice(0, -3)), (marks.length -= 3)), put('\n'))
+    else {
+      if (/^(h\d|blockquote|pre|hr|table)$/.test(tag)) put('\n')
+      if (BITS[tag]) close ? open.pop() : open.push(BITS[tag])
+    }
+  }
+  const lead = out.length - out.trimStart().length
+  const kept = out.trim().length
+  return { text: out.slice(lead, lead + kept), marks: marks.slice(lead, lead + kept) }
+}
+/** Cast text as it reads, without its Markdown, for meta tags (see styled). */
+export const unmarkdown = (text: string) => styled(text).text
+
+/** Cast text as HTML, with Markdown: headings, **bold**, *italic*, ~~strike~~, `code` and fenced blocks, [links](…), ![pictures](…),
  *  lists, > quotes, rules and tables. Text between those keeps its line breaks as typed (.text is pre-wrap), so a cast
  *  without Markdown looks exactly as before. People's own HTML is shown as text, and links go through safeUrl. */
 export function markdown(text: string): string {

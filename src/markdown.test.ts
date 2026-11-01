@@ -16,6 +16,14 @@ test('inline formatting', () => {
   assert.equal(md('[**docs**](https://a.com/d)'), '<a href="https://a.com/d" target="_blank" rel="noopener noreferrer nofollow"><strong>docs</strong></a>')
   assert.equal(md('[x](javascript:alert(1))'), '[x](javascript:alert(1))')
   assert.equal(md('[x](http://localhost/a)'), 'x')
+  assert.equal(md('see ![a cat](http://i.imgur.com/c.png) and ![x](javascript:1)'), 'see <img class="md-img" src="https://i.imgur.com/c.png" alt="a cat" loading="lazy" referrerpolicy="no-referrer"> and x')
+})
+
+test('a Markdown picture is not an embed too', async () => {
+  const { urlsOf } = await import('./shared.ts')
+  const text = '![cat](https://i.imgur.com/c.png)'
+  assert.deepEqual(urlsOf({ text, embeds: [{ url: 'https://i.imgur.com/c.png' }, { url: 'https://a.com/' }] }), ['https://a.com/'])
+  assert.deepEqual(urlsOf({ text, embeds: [] }), [])
 })
 
 test('blocks', () => {
@@ -34,4 +42,32 @@ test('unmarkdown: what share cards and meta tags say', async () => {
   const { unmarkdown } = await import('./shared.ts')
   assert.equal(unmarkdown('gm @dwr, 5 * 3 & snake_case'), 'gm @dwr, 5 * 3 & snake_case')
   assert.equal(unmarkdown('# Title\n**bold** [docs](https://a.com/d) `x<y`\n> quote\n\n3. a\n4. b\n   - c\n---\n| A | B |\n|-|-|\n| 1 | 2 |'), 'Title\nbold docs x<y\nquote\n\n3. a\n4. b\n  • c\n\nA · B\n1 · 2')
+})
+
+test('the composer formatting buttons', async () => {
+  const { format } = await import('./shared.ts')
+  const f = (text: string, how: any) => {
+    const [s, e] = [text.indexOf('['), text.indexOf(']') - 1]
+    const [out, a, b] = format(text.replace('[', '').replace(']', ''), s, e, how)
+    return out.slice(0, a) + '[' + out.slice(a, b) + ']' + out.slice(b)
+  }
+  assert.equal(f('a [bold] b', { mark: '**' }), 'a **[bold]** b')
+  assert.equal(f('a **[bold]** b', { mark: '**' }), 'a [bold] b')
+  assert.equal(f('a [**bold**] b', { mark: '**' }), 'a [bold] b')
+  assert.equal(f('a [] b', { mark: '`' }), 'a `[]` b')
+  assert.equal(f('see [docs]', { link: 'link' }), 'see [docs]([https://])')
+  assert.equal(f('see []', { link: 'link' }), 'see [link]([https://])')
+  assert.equal(f('one\nt[wo\nthr]ee\nfour', { line: '- ' }), 'one\n[- two\n- three]\nfour')
+  assert.equal(f('[- two\n- three]', { line: '- ' }), '[two\nthree]')
+  assert.equal(f('[- two\nthree]', { line: '1. ' }), '[1. two\n2. three]')
+  assert.equal(f('x\n[ti]tle', { line: '## ' }), 'x\n[## title]')
+})
+
+test('styled: each character of the card text knows how it looked', async () => {
+  const { styled, MD } = await import('./shared.ts')
+  const { text, marks } = styled('## Hi\n**b** *i* `c` @dwr\n> q')
+  assert.equal(text, 'Hi\nb i c @dwr\nq')
+  const at = (s: string) => marks[text.indexOf(s)]
+  assert.deepEqual([at('Hi'), at('b'), marks[text.indexOf(' i ') + 1], at('c'), at('@dwr'), at('q'), at(' ')], [MD.heading, MD.bold, MD.italic, MD.code, MD.link, MD.quote, 0])
+  assert.equal(marks.length, text.length)
 })

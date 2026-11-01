@@ -485,6 +485,45 @@ export function textSvg(lines, { x, y, lh = 0, size, bold = false, weight = bold
   return [paint].flat().map(layer).join('') + pics
 }
 
+/** Wrapped lines of styled() text (src/shared.ts) drawn with their Markdown's look: runs of one look each placed where
+ *  the one before ends, bold for **bold** and headings, slanted for *italic*, in color for links, mentions and code,
+ *  and quotes muted behind a bar. `lines` come from wrap(text), so each is found in the text in order; one that isn't
+ *  (wrap dropped a character XML can't hold) is drawn plain. */
+export function richSvg(text, marks, lines, { x, y, lh, size, fill, accent, code, muted }) {
+  let out = ''
+  let from = 0
+  const space = width(' ', size)
+  lines.forEach((l, i) => {
+    const by = y + i * lh
+    const body = l.endsWith('…') ? l.slice(0, -1) : l
+    const k = body ? text.indexOf(body, from) : -1
+    if (k >= 0) from = k + body.length
+    // the "…" wrap adds looks like what it follows
+    const mark = (j) => (k < 0 ? 0 : marks[k + Math.min(j, body.length - 1)] || 0)
+    if (mark(0) & 32) out += `<rect x="${num(x - 22)}" y="${num(by - size * 0.85)}" width="4" height="${num(lh)}" rx="2" fill="${muted}"/>`
+    let cx = x
+    for (let j = 0; j < l.length; ) {
+      const m = mark(j)
+      let e = j + 1
+      while (e < l.length && mark(e) === m) e++
+      const run = l.slice(j, e)
+      const core = run.trim()
+      cx += (run.length - run.trimStart().length) * space
+      if (core) {
+        const bold = !!(m & 17)
+        const svg = textSvg([core], { x: cx, y: by, size, bold, fill: m & 8 ? accent : m & 4 ? code : m & 32 ? muted : fill })
+        // slanted about the baseline, so the run stays where it was laid out
+        out += m & 2 ? `<g transform="translate(${num(by * 0.2126)} 0) skewX(-12)">${svg}</g>` : svg
+        // measured, not guessed: a generous guess would leave a gap before the next run (the line's last needs none)
+        if (e < l.length) cx += exactly(() => ends(core, size, bold))
+      }
+      if (core) cx += (run.length - run.trimEnd().length) * space
+      j = e
+    }
+  })
+  return out
+}
+
 /** A name's first letter in a circle (centered on cx), without its marks, or its first emoji when it starts with one
  *  (the first of a cluster drawn in parts). */
 export function initial(name, cx, y, size, fill) {
