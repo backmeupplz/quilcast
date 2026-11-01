@@ -28,6 +28,7 @@ import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
+import { cut, esc, FONTS, initial, pictures, textSvg, width, wrap } from './text.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -48,15 +49,12 @@ loadReports(DATA)
 loadDrafts(DATA)
 loadThemes(DATA)
 loadOwners()
-const FONTS = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'NotoEmoji.ttf'].map((f) => new URL(`fonts/${f}`, import.meta.url).pathname)
 
 // a stray rejection somewhere must not take the whole server down
 process.on('unhandledRejection', (e) => console.error('unhandled rejection', e))
 
-// characters XML can't hold (control codes other than tab and line breaks, lone surrogates, U+FFFE/U+FFFF) are dropped:
-// one in a name or cast would make resvg reject the whole card
-const clean = (s) => String(s).replace(/[\0-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]/gu, '')
-const esc = (s) => clean(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+// esc() (server/text.mjs) also drops what XML can't hold: one control character in a name or cast would make resvg
+// reject the whole card
 
 // --- headers ---
 
@@ -125,33 +123,7 @@ const gifCache = new Map()
 
 // --- share cards ---
 
-// ponytail: per-character width guesses instead of real font metrics; fine for wrapping, may misjudge exotic scripts
-const charW = (c) => (/[iljI.,'!|:;`]/.test(c) ? 0.27 : c === ' ' ? 0.28 : /[mwMW@%]/.test(c) ? 0.86 : /[A-Z]/.test(c) ? 0.68 : /[0-9a-z]/.test(c) ? 0.56 : c.codePointAt(0) > 0x2e7f ? 1.05 : 0.6)
-const width = (s, px) => [...s].reduce((w, c) => w + charW(c) * px, 0)
-function wrap(text, px, max, lines) {
-  const out = []
-  for (const para of text.split('\n')) {
-    let line = ''
-    for (const word of para.split(/(\s+)/)) {
-      if (width(line + word, px) > max && line.trim()) out.push(line.trimEnd()), (line = word.trimStart())
-      else line += word
-      while (width(line, px) > max) {
-        let i = line.length
-        while (i > 1 && width(line.slice(0, i), px) > max) i--
-        out.push(line.slice(0, i))
-        line = line.slice(i)
-      }
-    }
-    out.push(line.trimEnd())
-    if (out.length > lines) break
-  }
-  while (out.length && !out.at(-1)) out.pop()
-  if (out.length > lines) {
-    out.length = lines
-    out[lines - 1] = out[lines - 1].replace(/\s*\S{0,12}$/, '') + '…'
-  }
-  return out
-}
+// widths, wrapping and color emoji: server/text.mjs
 
 /** An image from a user-supplied URL as a data URI with its size, or null; anything resvg would struggle to decode is skipped. */
 async function imageData(url, max = 4e6) {
@@ -218,7 +190,7 @@ async function card(c) {
   const recasts = Number(c.reactions?.recasts_count) || 0
   const likes = Number(c.reactions?.likes_count) || 0
   // only the first ~8 lines fit, so long casts are cut before wrapping
-  const text = castText(c).slice(0, 600)
+  const text = cut(castText(c), 600)
   const v = await visualOf(c)
   // the CDN's resized copies are a fraction of the originals and decode faster
   const [pfp, pic] = await Promise.all([
@@ -233,7 +205,7 @@ async function card(c) {
   const size = text.length < 90 ? 46 : text.length < 200 ? 38 : 32
   const short = text.replace(/https?:\/\/(www\.)?(\S{28})\S+/g, '$2…').replace(/https?:\/\/(www\.)?/g, '')
   const lines = wrap(short || ' ', size, textW, Math.floor(300 / (size * 1.32)))
-  const name = String(a.display_name || a.username || `!${a.fid}`).slice(0, 80)
+  const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <radialGradient id="g" cx="0.9" cy="0.05" r="0.8"><stop offset="0" stop-color="#3a2a9a"/><stop offset="1" stop-color="#0d0c11" stop-opacity="0"/></radialGradient>
@@ -242,18 +214,18 @@ async function card(c) {
   </defs>
   <rect width="1200" height="630" fill="#0d0c11"/><rect width="1200" height="630" fill="url(#g)"/>
   <circle cx="128" cy="120" r="44" fill="#2a2735"/>
-  ${pfp ? `<image href="${pfp}" x="84" y="76" width="88" height="88" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : `<text x="128" y="136" font-family="Inter" font-weight="700" font-size="40" fill="#9893a5" text-anchor="middle">${esc([...clean(name)][0]?.toUpperCase() || '?')}</text>`}
-  <text x="196" y="112" font-family="Inter, Noto Emoji" font-weight="700" font-size="34" fill="#edebf3">${esc(wrap(name, 34, (tile ? 680 : 1100) - 196, 1)[0] || '')}</text>
-  <text x="196" y="150" font-family="Inter" font-size="26" fill="#9893a5">@${esc(String(a.username || a.fid).slice(0, 40))}</text>
-  <text font-family="Inter, Noto Emoji" font-size="${size}" fill="#edebf3">${lines.map((l, i) => `<tspan x="84" y="${232 + i * size * 1.32}">${esc(l) || ' '}</tspan>`).join('')}</text>
+  ${pfp ? `<image href="${pfp}" x="84" y="76" width="88" height="88" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : initial(name, 128, 136, 40, '#9893a5')}
+  ${textSvg([wrap(name, 34, (tile ? 680 : 1100) - 196, 1)[0] || ''], { x: 196, y: 112, size: 34, bold: true, fill: '#edebf3' })}
+  ${textSvg([`@${cut(a.username || a.fid, 40)}`], { x: 196, y: 150, size: 26, fill: '#9893a5' })}
+  ${textSvg(lines, { x: 84, y: 232, lh: size * 1.32, size, fill: '#edebf3' })}
   ${tile ? `<rect x="712" y="${ty}" width="420" height="${th}" rx="28" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>` : ''}
   ${pic ? `<image href="${pic}" x="712" y="${ty}" width="420" height="${th}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pic)"/>` : ''}
   ${v?.video ? `<circle cx="922" cy="282" r="46" fill="#000" fill-opacity="0.55"/><path d="M908 258v48l40-24z" fill="#fff"/>` : ''}
   ${v?.label ? `<rect x="728" y="${ty + th - 48}" width="${Math.min(388, Math.round(width(v.label, 20) + 28))}" height="34" rx="17" fill="#000" fill-opacity="0.6"/><text x="742" y="${ty + th - 25}" font-family="Inter" font-weight="700" font-size="20" fill="#fff">${esc(wrap(v.label, 20, 360, 1)[0] || '')}</text>` : ''}
   ${v?.tweet ? `<g transform="translate(744 104) scale(1.4)"><path d="${X_LOGO}" fill="#edebf3"/></g>
-  <text x="790" y="128" font-family="Inter, Noto Emoji" font-weight="700" font-size="24" fill="#edebf3">${esc(wrap(v.tweet.author.name || '', 24, 320, 1)[0] || '')}</text>
-  <text x="744" y="168" font-family="Inter" font-size="20" fill="#9893a5">@${esc(v.tweet.author.handle || '')}</text>
-  <text font-family="Inter, Noto Emoji" font-size="24" fill="#edebf3">${wrap((v.tweet.text || '').replace(/https?:\/\/\S+/g, '').trim().slice(0, 600) || ' ', 24, 356, 9).map((l, i) => `<tspan x="744" y="${214 + i * 32}">${esc(l) || ' '}</tspan>`).join('')}</text>` : ''}
+  ${textSvg([wrap(v.tweet.author.name || '', 24, 320, 1)[0] || ''], { x: 790, y: 128, size: 24, bold: true, fill: '#edebf3' })}
+  ${textSvg([`@${v.tweet.author.handle || ''}`], { x: 744, y: 168, size: 20, fill: '#9893a5' })}
+  ${textSvg(wrap(cut((v.tweet.text || '').replace(/https?:\/\/\S+/g, '').trim(), 600) || ' ', 24, 356, 9), { x: 744, y: 214, lh: 32, size: 24, fill: '#edebf3' })}` : ''}
   <line x1="84" y1="540" x2="1116" y2="540" stroke="#25232d" stroke-width="2"/>
   <g transform="translate(84 562) scale(1.25)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
   <text x="138" y="593" font-family="Inter" font-weight="700" font-size="28" fill="#edebf3">Quilcast</text>
@@ -504,9 +476,9 @@ async function themeCard(id, raw) {
 }
 /** A profile's share card: their picture, name, bio and follower counts. */
 async function profileCard(u) {
-  const name = nameOf(u).slice(0, 80)
+  const name = cut(nameOf(u), 80)
   const pfp = u.pfp_url ? await dataUri(sized(u.pfp_url, 'w=352')) : null
-  const bio = wrap(String(u.profile?.bio?.text || '').slice(0, 400) || ' ', 34, 1032, 4)
+  const bio = wrap(cut(u.profile?.bio?.text || '', 400) || ' ', 34, 1032, 4)
   const f = u.follower_count || 0
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
@@ -515,10 +487,10 @@ async function profileCard(u) {
   </defs>
   <rect width="1200" height="630" fill="#0d0c11"/><rect width="1200" height="630" fill="url(#g)"/>
   <circle cx="172" cy="172" r="88" fill="#2a2735"/>
-  ${pfp ? `<image href="${pfp}" x="84" y="84" width="176" height="176" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : `<text x="172" y="198" font-family="Inter" font-weight="700" font-size="72" fill="#9893a5" text-anchor="middle">${esc([...clean(name)][0]?.toUpperCase() || '?')}</text>`}
-  <text x="300" y="160" font-family="Inter, Noto Emoji" font-weight="700" font-size="52" fill="#edebf3">${esc(wrap(name, 52, 816, 1)[0] || '')}</text>
-  <text x="300" y="214" font-family="Inter" font-size="32" fill="#9893a5">@${esc(fname(u) || u.fid)}</text>
-  <text font-family="Inter, Noto Emoji" font-size="34" fill="#edebf3">${bio.map((l, i) => `<tspan x="84" y="${336 + i * 45}">${esc(l) || ' '}</tspan>`).join('')}</text>
+  ${pfp ? `<image href="${pfp}" x="84" y="84" width="176" height="176" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : initial(name, 172, 198, 72, '#9893a5')}
+  ${textSvg([wrap(name, 52, 816, 1)[0] || ''], { x: 300, y: 160, size: 52, bold: true, fill: '#edebf3' })}
+  ${textSvg([`@${fname(u) || u.fid}`], { x: 300, y: 214, size: 32, fill: '#9893a5' })}
+  ${textSvg(bio, { x: 84, y: 336, lh: 45, size: 34, fill: '#edebf3' })}
   <line x1="84" y1="540" x2="1116" y2="540" stroke="#25232d" stroke-width="2"/>
   <g transform="translate(84 562) scale(1.25)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
   <text x="138" y="593" font-family="Inter" font-weight="700" font-size="28" fill="#edebf3">Quilcast</text>
@@ -529,10 +501,11 @@ async function profileCard(u) {
 // a theme never changes, so neither does its card; called inside a render slot already (renders() isn't reentrant)
 const themePng = (id, th) => pngs.get(`theme:${id}`) || keep(pngs, 100, `theme:${id}`, themeCard(id, th).then(render))
 
-// rendering runs on libuv's pool, so it never blocks the event loop
+// rendering runs on libuv's pool, so it never blocks the event loop (laying out the text measures a bounded number of
+// runs on the main thread first: server/text.mjs)
 /** A 1200×630 cast card grown to 1200×800, its background carried into the new space above and below. */
 const tall = (svg) => svg.replace('height="630" viewBox="0 0 1200 630"', 'height="800" viewBox="0 -85 1200 800"').replace(/<rect width="1200" height="630" fill="(#0d0c11|url\(#g\))"\/>/g, '<rect y="-85" width="1200" height="800" fill="$1"/>')
-const render = (svg) => renderAsync(svg, { font: { fontFiles: FONTS, loadSystemFonts: false, defaultFontFamily: 'Inter' } }).then((img) => img.asPng())
+const render = (svg) => renderAsync(pictures(svg), { font: { fontFiles: FONTS, loadSystemFonts: false, defaultFontFamily: 'Inter' } }).then((img) => img.asPng())
 
 // small caches; failures drop out so they're retried. Rendered PNGs get their own, smaller one.
 const cache = new Map()
@@ -942,7 +915,7 @@ createServer(async (req, res) => {
       if (!cache.has(hash) && limited(`look:${ip}`, 120)) return app()
       const c = await getCast(hash)
       if (!c) return app()
-      const desc = castText(c).slice(0, 280) || 'A cast on Farcaster'
+      const desc = cut(castText(c), 280) || 'A cast on Farcaster'
       return html(page({ title: `${c.author?.display_name || c.author?.username} (@${c.author?.username}) on Quilcast`, desc, path, image: `${SITE}/og/c/${hash}.png`, alt: desc, embed: `${SITE}/og/c/${hash}.3x2.png` }))
     }
 

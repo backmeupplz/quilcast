@@ -49,6 +49,7 @@ Channel pages aren't there because Hypersnap (and upstream Snapchain) can't list
 | `src/wallet.ts` | External wallets through viem: connect, chain switching, typed data and message signing, the registration transaction |
 | `src/app.tsx`, `src/join.tsx` | Preact UI |
 | `server/index.mjs` | Serves `dist/` (brotli or gzip), fills in meta tags for `/c/<hash>` and `/u/<name>`, renders 1200×630 cast cards at `/og/c/<hash>.png` with resvg, serves `/m/` uploads |
+| `server/text.mjs` | The share cards' text: widths and wrapping by grapheme, and emoji in color. resvg draws no color fonts, so each emoji is Twemoji's picture (`@twemoji/svg`, defined once per card and drawn with `<use>`), placed where resvg's own layout of the text before it ends (the few all-dark ones get a light edge); emoji newer than Twemoji's set fall back to Noto Emoji's outline. `esc()` there also drops characters XML can't hold |
 | `server/upload.mjs` | `/api/upload`: Farcaster CDN relay with a local fallback |
 | `src/dms.ts`, `src/messages.tsx`, `server/dm.mjs` | Messages: shared state and live updates, the pages, and the relay to farcaster.xyz's direct-cast endpoints (and nowhere else) |
 | `server/unfurl.mjs` | `/api/unfurl`: Open Graph metadata for link previews, public hosts only |
@@ -104,3 +105,5 @@ One release ships everything: bump `versionName`/`versionCode` in `android/app/b
 ## Hosting
 
 Production runs from the `Dockerfile` on Tugport; a push to `main` deploys it. Legal pages are `public/terms.html` and `public/privacy.html` (served at `/terms` and `/privacy`).
+
+Emoji on the share cards are [Twemoji](https://github.com/jdecked/twemoji) graphics, © Twitter and other contributors, modified (the all-dark ones are drawn with a light outline, and a few without their clip paths) and licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
