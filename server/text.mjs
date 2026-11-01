@@ -430,8 +430,26 @@ const apart = (c, font) => {
   const d = c.normalize('NFD')
   return d !== c && !has(c, font) && [...d].every((x) => font.glyph(x.codePointAt(0))) ? d : c
 }
+// A run Inter lacks a character of that Noto Emoji has every character of is drawn in Noto whole: resvg shapes it again
+// with the fallback font and keeps that when nothing is missing. So a keycap mark with no digit before it, "⃣7", makes
+// the digits after it (and a space, "#", "*") Noto's, each as wide as an emoji. The other spaces are never missing: a
+// font without one gets its space glyph at the width the space should have (measured in Noto, where the no-break and
+// figure spaces are its emoji-wide space and the narrow one half of it), but for one with a variation selector after it,
+// which Noto can't draw after a space, so the run isn't Noto's whole. A keycap mark or a skin tone after one of those spaces (even
+// past an ignorable) can have resvg drop Noto's shaping too and draw Inter's wider spaces, so each character is priced at
+// the wider of the two fonts.
+const SPACE_VARIANT = /[\u{a0}\u{2000}-\u{200a}\u{202f}\u{205f}\u{3000}][\u{fe00}-\u{fe0f}\u{e0100}-\u{e01ef}]/u
+const NOTO_SPACES = new Map([[0xa0, 1.2695], [0x2000, 0.5], [0x2001, 1], [0x2002, 0.5], [0x2003, 1], [0x2004, 0.3335], [0x2005, 0.25], [0x2006, 0.1665], [0x2007, 1.2695], [0x2008, 1.2695], [0x2009, 0.2002], [0x200a, 0.0625], [0x202f, 0.6348], [0x205f, 0.2222], [0x3000, 1]])
+const notoWhole = (run, font) => {
+  if (SPACE_VARIANT.test(run)) return null
+  const cs = [...run].filter((c) => !IGNORED.test(c)).map((c) => c.codePointAt(0))
+  const drawn = (c) => NOTO.glyph(c) || NOTO_SPACES.has(c)
+  return cs.some((c) => !font.glyph(c) && !NOTO_SPACES.has(c)) && cs.every(drawn) ? cs.reduce((w, c) => w + Math.max(NOTO.advance(c) ?? NOTO_SPACES.get(c), font.advance(c) ?? 0), 0) : null
+}
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
+  const noto = notoWhole(run, font)
+  if (noto !== null) return noto + 0.04
   // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
   const cs = []
   const within = new Set()

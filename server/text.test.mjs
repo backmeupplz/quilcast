@@ -365,6 +365,18 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   for (const c of [0x20db, 0x20dc, 0x20e8]) for (const box of [0xe31, 0xe48, 0x336]) runs.push(`a${cp(box, c)}`, ` ${cp(box, c)}`)
   // or after sara am's boxes, and bold "ɀ" after marks
   runs.push(`ก${cp(0xe33, 0x20dc)}`, `${cp(0xe33, 0x20dc)}x`, `ท${cp(0xe33, 0x20dc)}ก`, `${cp(0x313, 0xe31)}a${cp(0x240)}`, `${cp(0x336, 0x362, 0x240)}`)
+  // an enclosing mark Inter has under boxes, sara am before a letter whose ink reaches left, and a keycap mark opening a
+  // run, which has resvg draw the whole run in Noto Emoji when Noto has every character of it (digits, "#", a space)
+  runs.push(cp(0x20dd, 0x336, 0x336), 'จำj', `${cp(0x20e3)}7`, `${cp(0x20e3)}#`, `${cp(0x20e3)} 7`, `7 ${cp(0x20e3)}`, `${cp(0x20e3, 0xfe0f)}7`, `${cp(0x20e3)}0123456789#*`, `${cp(0x20e3)}7a`, `${cp(0x20e3, 0x200b)}77`)
+  // with the other spaces in it, which Noto draws with its own space glyph at their width (but not with a variation
+  // selector after them, which it has no glyph for)
+  for (const c of [0xa0, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200a, 0x202f, 0x205f, 0x3000]) runs.push(cp(0x20e3, c, 0x37), cp(0x20e3, 0x37, c, 0x23), cp(0xfe4e5, c, 0x37), cp(0x20e3, c, 0xfe0f), cp(0x20e3, c, 0xfe0e, 0x37))
+  // or with a keycap mark or a skin tone after one, even past an ignorable, which can have resvg draw Inter's wider
+  // spaces instead
+  const n = (c, k) => Array(k).fill(c)
+  runs.push(cp(...n(0x2001, 13), 0x1f3fb), cp(0x2001, 0x20e3, ...n(0x2001, 12)), cp(...n(0x2001, 12), 0x2000, 0x1f3fb, ...n(0x2000, 12)), cp(...n(0x2001, 13), 0x200d, 0x20e3), cp(...n(0x2000, 13), 0x200b, 0x1f3ff), cp(0x20e3, 0x37, ...n(0xa0, 13), 0x20e3))
+  // a box mark before an orphaned private-use glyph, and a keycap mark after a symbol past a bidi isolate
+  runs.push('Tf' + cp(0x360, 0xee90), '*' + cp(0x2066, 0x20e3))
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
