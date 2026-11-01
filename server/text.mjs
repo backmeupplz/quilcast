@@ -47,12 +47,68 @@ export function metrics(file) {
       }
     }
   }
+  // where a glyph's ink ends right of its origin (glyf's xMax), and where marks attach: GPOS mark-to-base (4) and
+  // mark-to-mark (6) anchors, as each mark's (lookup, class, anchor x) and each base's anchor x by lookup and class
+  const s16 = (o) => b.readInt16BE(o)
+  const long = t.glyf && s16(t.head + 50)
+  const loca = (id) => (long ? b.readUInt32BE(t.loca + 4 * id) : 2 * u16(t.loca + 2 * id))
+  const marks = new Map(), bases = new Map()
+  const covered = (o) => {
+    const ids = []
+    if (u16(o) === 1) for (let i = 0; i < u16(o + 2); i++) ids.push(u16(o + 4 + 2 * i))
+    else for (let i = 0; i < u16(o + 2); i++) for (let g = u16(o + 4 + 6 * i); g <= u16(o + 6 + 6 * i); g++) ids.push(g)
+    return ids
+  }
+  const anchors = (o, type, key) => {
+    // MarkBasePos and MarkMarkPos format 1 share a layout: the marks' coverage, the bases' (or the marks below's), the
+    // number of classes, the marks' classes and anchors, and the bases' anchors by class (0: none)
+    const [mc, bc, classes, ma, ba] = [o + u16(o + 2), o + u16(o + 4), u16(o + 6), o + u16(o + 8), o + u16(o + 10)]
+    covered(mc).forEach((id, i) => (marks.get(id) ?? marks.set(id, []).get(id)).push([type, key, u16(ma + 2 + 4 * i), s16(ma + u16(ma + 4 + 4 * i) + 2) / upm]))
+    covered(bc).forEach((id, i) => {
+      for (let k = 0; k < classes; k++) {
+        const a = u16(ba + 2 + 2 * (i * classes + k))
+        if (a) (bases.get(id) ?? bases.set(id, new Map()).get(id)).set(`${key}:${k}`, s16(ba + a + 2) / upm)
+      }
+    })
+  }
+  if (t.GPOS) {
+    const list = t.GPOS + u16(t.GPOS + 8)
+    for (let l = 0; l < u16(list); l++) {
+      const lookup = list + u16(list + 2 + 2 * l)
+      for (let s = 0; s < u16(lookup + 4); s++) {
+        let [type, o] = [u16(lookup), lookup + u16(lookup + 6 + 2 * s)]
+        if (type === 9) [type, o] = [u16(o + 2), o + b.readUInt32BE(o + 4)]
+        if ((type === 4 || type === 6) && u16(o) === 1) anchors(o, type, `${l}.${s}`)
+      }
+    }
+  }
+  // the glyphs GDEF calls marks (class 3): a mark is attached to the last glyph before it that isn't one
+  const marked = new Set()
+  const cd = t.GDEF && u16(t.GDEF + 4) && t.GDEF + u16(t.GDEF + 4)
+  if (cd && u16(cd) === 1) for (let i = 0; i < u16(cd + 4); i++) u16(cd + 6 + 2 * i) === 3 && marked.add(u16(cd + 2) + i)
+  else if (cd) for (let i = 0; i < u16(cd + 2); i++) if (u16(cd + 8 + 6 * i) === 3) for (let g = u16(cd + 4 + 6 * i); g <= u16(cd + 6 + 6 * i); g++) marked.add(g)
   return {
     glyph: (cp) => glyphs.get(cp) || undefined,
     advance: (cp) => {
       const id = glyphs.get(cp)
       return id ? u16(t.hmtx + 4 * Math.min(id, hmetrics - 1)) / upm : undefined
     },
+    reach: (cp) => {
+      const id = glyphs.get(cp)
+      return id && t.glyf && loca(id + 1) > loca(id) ? s16(t.glyf + loca(id) + 6) / upm : undefined
+    },
+    // how far right of the base's (or, onto: 6, the mark below's) origin a mark goes when it attaches to it, in em, as
+    // the last lookup that attaches it puts it (by the first of its subtables that does); undefined when none does
+    attach: (mark, base, onto = 4) => {
+      const bs = bases.get(glyphs.get(base))
+      let x, done
+      for (const [type, key, k, mx] of marks.get(glyphs.get(mark)) ?? []) {
+        const lookup = key.split('.')[0]
+        if (type === onto && lookup !== done && bs?.has(`${key}:${k}`)) (x = bs.get(`${key}:${k}`) - mx), (done = lookup)
+      }
+      return x
+    },
+    mark: (cp) => marked.has(glyphs.get(cp)),
   }
 }
 const [REGULAR, BOLD, NOTO] = FONTS.map(metrics)
@@ -195,8 +251,43 @@ const THAI = /^[\p{sc=Zyyy}\p{sc=Zinh}\p{sc=Zzzz}]*[\p{sc=Thai}\p{sc=Laoo}]/u
 // rest (the joiner, variation selectors, tags) keep them on the character before. Measured against resvg for every
 // default-ignorable.
 const BREAKS = /[\u{ad}\u{61c}\u{180e}\u{200b}\u{200c}\u{200e}\u{200f}\u{202a}-\u{202e}\u{2060}-\u{206f}\u{feff}\u{fff0}-\u{fff8}\u{1d173}-\u{1d17a}\u{e0000}-\u{e001f}\u{e0080}-\u{e00ff}\u{e01f0}-\u{e0fff}]/u
+const SCRIPTED = /[^\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u
+const UNMARKED = /[\p{Script=Cyrillic}\p{Script=Greek}]/u
+const JOINS = /[\u{200d}\u{180b}-\u{180d}\u{e0020}-\u{e007f}]/u
 const layAt = (run, adv, font, ink, thai, hang, over, room, breaks) => {
   let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, ends = 0, letter = ''
+  // A mark the font has that nothing anchors (it has no letter under it, or one with no place for it: a digit, "#", a
+  // letter of another font or none) is drawn where the pen is, after its base and the marks before it, and its ink
+  // reaches right of there, as resvg draws it (measured); a mark stacked on such a mark goes where that one's anchor
+  // puts it. For a run drawn alone (hang). of: the cluster's base; below: the marks on it the font has, with how far
+  // right of the pen each is (null: anchored); and whether a joiner or another invisible character came after the base.
+  // far: how far right of its pen such a mark's ink reaches, at most: in a run bidi turns around (right-to-left letters,
+  // or a right-to-left mark, embedding, override or isolate, as U+200F U+0308 "1" is drawn "1" then the mark), it can
+  // be drawn anywhere in it, up to its end.
+  let of = '', below = new Map(), joined = false, hidden = false, far = 0
+  // The shaper takes the run's script from its first letter, and Inter positions no marks in Cyrillic or Greek text
+  // ("Ж̂" has the mark after the letter, "aЖ̂" over it); every other script, or none, gets its default (Latin) marks
+  const marked = hang && !UNMARKED.test(run.match(SCRIPTED)?.[0] ?? '')
+  const pen = (c) => {
+    const m = c.codePointAt(0)
+    // a letter and the mark right on it that make a character the font has are drawn as it ("Жa" U+0302 is "Жâ")
+    const one = !below.size && !hidden && !joined && of && (of + c).normalize('NFC')
+    if (one && [...one].length === 1 && font.glyph(one.codePointAt(0))) return void (of = one)
+    // where it goes: on a mark below it with no anchor (not only the last: a lookup can skip marks of another class),
+    // wherever that is, or at the pen when nothing anchors it; the furthest right of those it could go
+    let x = marked && !joined && of && font.attach(m, of.codePointAt(0)) !== undefined ? null : 0
+    for (const [p, px] of marked ? below : []) {
+      const d = px === null ? undefined : font.attach(m, p, 6)
+      if (d !== undefined) x = Math.max(x ?? -Infinity, px + d)
+    }
+    const right = x === null ? -Infinity : x + (font.reach(m) ?? 0)
+    end = Math.max(end, w + base + own + right)
+    far = Math.max(far, right)
+    // (one the font doesn't call a mark, like the Cyrillic "҈", is the base of the marks after it; a mark repeated on
+    // the letter counts once, where it goes furthest right: what goes on it depends only on that)
+    if (font.glyph(m) && !font.mark(m)) (of = c), (below = new Map())
+    else if (!below.has(m) || (x !== null && (below.get(m) === null || x > below.get(m)))) below.set(m, x)
+  }
   const flush = () => {
     // (a letter's room for kerning and wider forms is on top of the box its boxes widen it to: resvg kerns the widened
     // letter as it kerns the letter, "l" and "ΐ" with a box on it as "lΐ")
@@ -211,21 +302,29 @@ const layAt = (run, adv, font, ink, thai, hang, over, room, breaks) => {
     // (and a letter whose ink ends past its advance reaches past what comes after it when that's narrower: "\u{e2c2} ")
     end = Math.max(end, w + ends)
     base = marks = own = ends = 0
-    box = am = hung = false
+    box = am = hung = joined = hidden = false
+    of = ''
+    below = new Map()
     letter = ''
   }
   for (const c of run) {
     i++
     if (breaks && BREAKS.test(c)) flush()
-    else if (IGNORED.test(c)) continue
-    else if (thai && AM.test(c)) started ? (marks += 2) : ((base = BOX), marks++), (box = am = started = true)
-    else if (boxed(c, font)) marks++, (box = started = true)
+    // the invisible characters the cluster goes on after keep a letter and a mark after them from making one character
+    // ("Ж" U+FE0F U+0308 isn't "Ӝ"), and a joiner, a Mongolian variation selector or a tag leaves the marks after it
+    // nothing to go on ("x" U+200D U+0302 has the mark after the pen; one that would make a character with the letter
+    // can be over it, "a" U+200D U+0308 is drawn as "ä", which a guess doesn't count on). Measured for every one.
+    else if (IGNORED.test(c)) JOINS.test(c) ? (joined = true) && (below = new Map()) : (hidden = true)
+    else if (thai && AM.test(c)) started ? (marks += 2) : ((base = BOX), marks++), (box = am = started = true), (of = ''), (below = new Map())
+    else if (boxed(c, font)) marks++, (box = started = true), (of = ''), (below = new Map())
     else if (MARK.test(c)) {
+      if (hang) pen(c)
       marks++, (own += adv(c)), (started = true)
       if (hang?.(i) && !font.advance(c.codePointAt(0))) hung = true
-    } else flush(), (base = adv(c)), (letter = c), (ends = over?.(c) ?? 0), (started = true)
+    } else flush(), (base = adv(c)), (letter = c), (ends = over?.(c) ?? 0), (started = true), (of = c)
   }
   flush()
+  if (far > 0 && LEFTWARD.test(run)) end = Math.max(end, w + far)
   return ink ? Math.max(w, end) : w
 }
 // A run with a break in it takes the wider of laying it out cut at its breaks and not: resvg doesn't always cut there
@@ -236,6 +335,9 @@ const laidAs = (run, adv, font, ink, thai, hang, over, room) => {
 }
 // resvg shapes each stretch of one direction apart, so Thai after right-to-left text is shaped as Thai whatever came first
 const RTL = /[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Nkoo}\p{sc=Adlm}\p{sc=Rohg}\p{sc=Samr}\p{sc=Mand}]/u
+// and what turns a stretch of a run around: those letters, and the right-to-left mark, Arabic letter mark, embedding,
+// override and isolate
+const LEFTWARD = new RegExp(`${RTL.source}|[\\u{200f}\\u{61c}\\u{202b}\\u{202e}\\u{2067}]`, 'u')
 /** A run's advance from its characters' (adv, which gives marks fonts have their own), with the marks no font has
  *  added as resvg adds them; ink: where the boxes' ink ends counts too, as it does at the end of a run. hang: given for
  *  a run drawn alone, as it is, and true for the characters (by index in it) of a mark fonts have with no advance whose
@@ -396,9 +498,9 @@ export function measure(run, bold = false) {
 // adds up each character's advance in the font resvg draws it with (Inter at the run's weight, Noto Emoji for what
 // Inter lacks, the missing-glyph box for what neither has, unless it's a space or decomposes into what Inter has), with
 // a little room for what that leaves out: Inter's wider contextual forms ("*" after a capital, "_" between letters), its
-// few positive kerning pairs, the ink of a mark with no advance that ends the run, and the ink of a character that
-// reaches past the run's end (a space after it can be narrower than its overhang). It stays close to resvg's own
-// advance, and never under it.
+// few positive kerning pairs, the ink of a mark with no advance that ends the run, the ink of Inter's marks that nothing
+// anchors (after the pen, wherever they are in the run), and the ink of a character that reaches past the run's end (a
+// space after it can be narrower than its overhang). It stays close to resvg's own advance, and never under it.
 const MEASURED = 32
 let fresh = 0
 let refill = false
@@ -446,10 +548,12 @@ const PAST = [
 ]
 const past = (c) => PAST.find(([, r]) => r.test(c))?.[0] ?? 0
 // A character neither font has that decomposes into ones Inter has is drawn as them: "↮" is "↔" with a slash through.
+// So is a mark that decomposes on a letter, though Inter has it: "a" U+0343 is "a" U+0313 (and U+0343 alone, its own
+// glyph, is narrower than U+0313).
 const has = (c, font) => font.glyph(c.codePointAt(0)) || NOTO.glyph(c.codePointAt(0))
 const apart = (c, font) => {
   const d = c.normalize('NFD')
-  return d !== c && !has(c, font) && [...d].every((x) => font.glyph(x.codePointAt(0))) ? d : c
+  return d !== c && (!has(c, font) || MARK.test(c)) && [...d].every((x) => font.glyph(x.codePointAt(0))) ? d : c
 }
 // A run Inter lacks a character of that Noto Emoji has every character of is drawn in Noto whole: resvg shapes it again
 // with the fallback font and keeps that when nothing is missing. So a keycap mark with no digit before it, "⃣7", makes
@@ -474,7 +578,9 @@ export const guess = (run, bold = false) => {
   // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
   const cs = []
   const within = new Set()
-  for (const c of run) for (const [j, x] of [...apart(c, font)].entries()) j && within.add(cs.length), cs.push(x)
+  // (marks Inter has in the order the shaper puts them, by combining class: U+035E over U+0302 goes after it)
+  const ordered = run.replace(/\p{M}{2,}/gu, (ms) => ([...ms].every((c) => font.glyph(c.codePointAt(0))) ? ms.normalize('NFD') : ms))
+  for (const c of ordered) for (const [j, x] of [...apart(c, font)].entries()) j && within.add(cs.length), cs.push(x)
   // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base); a space no font
   // has is as wide as resvg draws it (the ideographic space is a full em, not a box)
   const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? SPACES.get(c.codePointAt(0)) ?? BOX) + (MARK.test(c) ? extra(c) + 0.03 : 0)

@@ -391,6 +391,21 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(cp(0x61c, 0x301, 0x200c, 0xe49), cp(0x61c, 0x362, 0x200b, 0xe4a), cp(0x61c, 0x301, 0x200b, 0xe4a, 0x62))
   // and sara am after them
   for (const k of [1, 2, 3, 5, 7]) runs.push(`${cp(0xe48).repeat(k)}${AM}`, `${cp(0xe48).repeat(k)}${AM}ba`, `${cp(0x200b)}${cp(0x336).repeat(k)}${AM}`, `ค${cp(0x200b)}${cp(0xe48).repeat(k)}${AM}`, `${cp(0x336).repeat(k)}${AM}ก`)
+  // marks Inter has that nothing anchors, so resvg draws them after the pen with their ink reaching right, before a
+  // narrow character: opening a run, after an invisible character resvg starts a new cluster at, on a digit, "#", a
+  // letter of a script Inter lacks or an emoji, in Cyrillic and Greek text (Inter positions no marks there), stacked on
+  // each other (U+035E goes well right of the U+0308 under it), out of their canonical order, decomposing into another
+  // mark, after a mark Inter doesn't call one, and after a joiner, a variation selector or a tag (no "Ӝ" then, and
+  // nothing to go on after a joiner, a Mongolian variation selector or a tag)
+  for (const z of [0x200d, 0xfe0f, 0xfe00, 0x34f, 0x180b, 0xe002a, 0xe0037, 0xe0100]) for (const p of ['a', 'x', 'Ж', '1', `a${cp(0x308)}`, `1${cp(0x302)}`, `1${cp(0x308)}`]) runs.push(`${p}${cp(z, 0x308)} `, `${p}${cp(z, 0x302)}i`, `${p}${cp(z, 0x35e)} `)
+  for (const m of [0x302, 0x308, 0x301, 0x313, 0x343, 0x35e, 0x1dcd, 0x20db]) {
+    for (const p of ['', '1', '#', `#${cp(0x200b)}`, `a${cp(0x200b)}`, 'ก', 'क', cp(0x231a), ' ', '.', 'Ж', 'α', 'aЖ', 'Жx', `i${cp(0x488)}`, cp(0x308), `1${cp(0x308)}`]) for (const s of ['', ' ', 'i', '.']) runs.push(`${p}${cp(m)}${s}`)
+  }
+  runs.push(`1${cp(0x302)} `, `#${cp(0x200b, 0x308)}i`, `${cp(0x308)}i`, `${cp(0x302, 0x308)}i`, `1${cp(0x308, 0x35e)} `, `1${cp(0x35e, 0x308)} `, `1${cp(0x308, 0x35e, 0x1ddf)} `, `क${cp(0x35e, 0x302, 0x1de0)}l`, `Ж${cp(0x302, 0x308)} `, `ä${cp(0x308)}i`, `a${cp(0x336, 0x302)} `)
+  // such a mark in a run bidi turns around is drawn after what follows it: a right-to-left mark, Arabic letter mark,
+  // embedding, override or isolate before it, or a right-to-left letter in the run; and one repeated on a digit
+  for (const o of [0x200f, 0x61c, 0x202b, 0x202e, 0x2067]) for (const m of [0x302, 0x308, 0x30f]) runs.push(`${cp(o, m)}1`, `a${cp(o, m)}1`, `${cp(o, 0x200b, m)}i${cp(0x202c)}`)
+  runs.push(`${cp(0x2067, 0x302)}i${cp(0x2069)}`, `א${cp(0x308)}1`, `${cp(0x5d0, 0x20, 0x308)}.`, `1${cp(0x302).repeat(300)} `)
   // a mark after an ignorable that cuts it off the letter before it (a non-joiner, a bidi isolate's end, a soft hyphen
   // before sara am)
   runs.push('g' + cp(0x200c, 0x20e0), cp(0x2199, 0x2066, 0x20e0) + '*', 'A1' + cp(0x2069, 0x336, 0xae), '_' + cp(0x2069, 0x336) + '52' + cp(0xfe0e, 0x2069) + ' ', cp(0x2044, 0xad, 0xe33) + '73')
