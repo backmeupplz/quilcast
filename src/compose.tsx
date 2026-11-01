@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, LINK_RE, loadUsers, myUser, toUrl, users, type Account, type Cast, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, isImg, isVid, postMedia, withGif } from './shared.ts'
-import { ago, Avatar, channelUrl, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, toast, w } from './ui.tsx'
+import { castText, embedRoom, isImg, isVid, linkify, markdown, postMedia, withGif } from './shared.ts'
+import { ago, Avatar, channelUrl, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
 import type { Draft } from './write.ts'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
@@ -162,6 +162,10 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
             </div>
           ))}
         </div>
+      )}
+      {/* how the Markdown will look, once there is any: plain text reads the same either way */}
+      {markdown(part.text.trim()) !== linkify(part.text.trim()) && (
+        <div class="md-preview" aria-label={t('Preview')}><span class="md-label">{t('Preview')}</span><RichText text={part.text.trim()} /></div>
       )}
       {first && quote && <div class="embed-preview"><QuoteCard c={quote} /></div>}
       {first && embeds.map((u) => <div class="embed-preview">{isImg(u) || isVid(u) ? <Media urls={[u]} /> : <LinkCard u={u} />}</div>)}

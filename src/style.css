@@ -496,6 +496,8 @@ small.warn { color: var(--warn); }
 .part { position: relative; padding-bottom: 6px; }
 .part.threaded::before { content: ''; position: absolute; inset-inline-start: 13px; top: 52px; bottom: -6px; width: 2px; background: var(--line); }
 .embed-preview { margin-inline-start: 42px; pointer-events: none; }
+.md-preview { margin: 8px 0 0 42px; padding: 8px 12px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); pointer-events: none; }
+.md-label { display: block; font-size: 12px; color: var(--muted); }
 .embed-preview .linkcard, .embed-preview .tweet, .embed-preview .quote { margin-top: 8px; }
 .embed-preview .lc-img, .embed-preview .imgs img, .embed-preview .tw-video img { max-height: 180px; }
 .embed-preview .vid.shaped { width: min(100%, var(--tile)); }

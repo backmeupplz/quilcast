@@ -1070,5 +1070,6 @@
   "Custody wallet": "カストディウォレット",
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "アカウントのカストディウォレットをウォレットタブとミニアプリに表示します。このウォレットは Farcaster アカウントの所有者なので、初期設定ではオフです。ミニアプリに求められた悪意あるリクエストに一度でも署名すると、アカウントや中身を奪われるおそれがあります。Quilcast は署名のたびに確認しますが、オンにするのは自己責任でお願いします。",
   "{name} (custody)": "{name}（カストディ）",
-  "Collect": "コレクト"
+  "Collect": "コレクト",
+  "Preview": "プレビュー"
 }

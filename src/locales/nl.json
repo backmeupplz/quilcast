@@ -1070,5 +1070,6 @@
   "Custody wallet": "Custody-wallet",
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "Toont de custody-wallet van je account op het tabblad Wallet en in mini-apps. Standaard uit, omdat die wallet de eigenaar is van je Farcaster-account: één kwaadaardig verzoek dat een mini-app je laat ondertekenen kan het account of wat erop staat overnemen. Quilcast vraagt het vóór elke handtekening, maar zet dit aan op eigen risico.",
   "{name} (custody)": "{name} (custody)",
-  "Collect": "Verzamelen"
+  "Collect": "Verzamelen",
+  "Preview": "Voorbeeld"
 }

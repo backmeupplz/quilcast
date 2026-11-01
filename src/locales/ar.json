@@ -1070,5 +1070,6 @@
   "Custody wallet": "محفظة الحفظ",
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "يعرض محفظة الحفظ الخاصة بحسابك في تبويب المحفظة وفي التطبيقات المصغّرة. هذا الخيار متوقف افتراضيًا لأن هذه المحفظة تملك حسابك على Farcaster: طلب خبيث واحد يطلب منك تطبيق مصغّر توقيعه قد يستولي على الحساب أو على ما يملكه. يسألك Quilcast قبل كل توقيع، لكن فعّل هذا على مسؤوليتك الخاصة.",
   "{name} (custody)": "{name} (الحفظ)",
-  "Collect": "اقتناء"
+  "Collect": "اقتناء",
+  "Preview": "معاينة"
 }

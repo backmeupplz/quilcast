@@ -1070,5 +1070,6 @@
   "Custody wallet": "託管錢包",
   "Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.": "在錢包頁和小程式中列出你帳號的託管錢包。預設關閉，因為這個錢包擁有你的 Farcaster 帳號：小程式請你簽署的一個惡意請求就可能奪走帳號或其中的資產。Quilcast 會在每次簽署前詢問，但開啟它的風險由你自行承擔。",
   "{name} (custody)": "{name}（託管）",
-  "Collect": "收藏"
+  "Collect": "收藏",
+  "Preview": "預覽"
 }
