@@ -581,7 +581,7 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // diaeresis is "ï")
   for (const m of [0x303, 0x304, 0x306, 0x30f]) for (const [x, y] of [['1', '1'], ['7', '7'], ['f', 'T'], ['T', 'T'], ['7', 'T']]) runs.push(`${x}${cp(0x456, m)}${y}`, `${x}${cp(0x456, m)}${y}${cp(0x456, m)}${y}`, `${x}${cp(0x456, 0x200d, m)}${y}`)
   for (const [x, y] of [['f', 'T'], ['T', 'T'], ['1', '1']]) runs.push(`${x}${cp(0x456, 0x200d, 0x308)}${y}`, `${x}${cp(0x456, 0x34f, 0x308)}${y}`)
-  runs.push('aď)', '(loď)', '„ДЛЯ', '„д,', '„ӆ₄', 'vȴƑ', 'ưʯƑ', 'ɬḬƑ', 'ƎḻĐ', 'ưɨ₄', 'ưɉ₄', 'ưṱ₄', 'ƒɳƑ', 'ƒɋƑ')
+  runs.push('aď)', '(loď)', '„ДЛЯ', '„д,', '„ӆ₄', 'vȴƑ', 'ưʯƑ', 'ɬḬƑ', 'ƎḻĐ', 'ưɨ₄', 'ưɉ₄', 'ưṱ₄', 'ƒɳƑ', 'ƒɋƑ', '1Ɨƚ', '1ƗƚƗƚ', 'ɥjɥj', 'Ɨɥjɥj', 'ζ_j', 'ζ_Ƒ')
   // the runs once guessed short in #336: a tone mark before a variation selector and a dot or a space, a mark whose ink
   // reaches past its letter after a right-to-left override, "i" and a diaeresis drawn as a wider "ï" between digits, a
   // digit before a Mende Kikakui combining mark no font has, and Hebrew before a Devanagari vowel sign drawn before its letter
@@ -590,6 +590,23 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // em bold, "tM"), before "Ƈ", whose ink past its room left bold too little to spare for that kerning (a left-to-right
   // isolate and harakat among them, and "0tƇ" alone)
   runs.push(cp(0x31, 0x2066, 0x30, 0x74, 0x4d, 0x65b, 0x2066, 0x64e, 0x187), '0tƇ')
+  // a dotted "i" or Cyrillic "і" and a mark above past an ignorable that keeps NFC from composing them (a variation
+  // selector, a zero-width space, a word joiner, a joiner), which Inter still draws dotless and kerns as "ĩ" or "ï",
+  // between letters it kerns those with, repeated too
+  for (const d of [0x69, 0x456]) {
+    for (const g of [[0xfe00], [0x200b], [0x2060], [0x200d, 0x200b]]) for (const m of [[0x303], [0x308], [0x30f], [0x303, 0x308]]) {
+      const u = cp(d, ...g, ...m)
+      runs.push(`f${u}T`, `T${u}T${u}T`, `ĩ${u}ĩ${u}ĩ`)
+    }
+  }
+  runs.push(`ĩ${cp(0x69, 0xfe00, 0x308)}`.repeat(3) + 'ĩ', `ï${cp(0x69, 0xfe00, 0x308)}`.repeat(2) + 'ï', `ĩ${cp(0x69, 0xfe00, 0x308, 0x362)}ĩ`)
+  // and a sample of every character Inter has below U+0600, between the characters it kerns most with on each side
+  // (at the regular weight), alone and repeated
+  const most = (pair) => chars.reduce(([b, k], x) => (pair(x) > k ? [x, pair(x)] : [b, k]), ['', 0])[0]
+  for (const c of chars.filter((_, i) => i % 12 === 0)) {
+    const [x, y] = [most((x) => inter.kern(x, c, true)), most((y) => inter.kern(c, y, true))]
+    runs.push(x + c + y, x + c + y + c + y)
+  }
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
@@ -625,6 +642,8 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   }
   // each guess is close to resvg's advance, not twice it
   for (const run of [' gm ', ' this ', ' 2024 ', ' hello world ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) * 1.05, run)
+  // (also Russian and Czech, whose "д" and "ď" Inter kerns wide only next to a few characters)
+  for (const [run, over] of [['ДЛЯ ДРУЗЕЙ', 0.1], ['ДОБРОЕ УТРО', 0.1], ['Loď do přístavu', 0.15], ['Ďakujem, ďalší deň', 0.15]]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + over, `${bold} ${run}`)
   // and Thai with sara am, one box of advance however many boxes of ink, isn't taken as a box wider for each one
   for (const run of ['น้ำ', 'น้ำใจ', 'ทำงาน', 'ความจำ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.1, run)
   // and right-to-left text, its own letters first (with points no font has too), isn't taken as turned around

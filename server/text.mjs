@@ -435,7 +435,9 @@ const starts = (c) => (IGNORED.test(c) ? BREAKS.test(c) : !MARK.test(c))
 const SCRIPTED = /[^\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u
 const UNMARKED = /[\p{Script=Cyrillic}\p{Script=Greek}]/u
 const JOINS = /[\u{200d}\u{180b}-\u{180d}\u{e0020}-\u{e007f}]/u
-const DOTTED = { ı: 'i', ȷ: 'j' }
+// the letter a dotless "ı" or "ȷ" with a mark above is drawn and kerned as; and "i" and the Cyrillic "і", which Inter
+// draws dotless before a mark above, so the same as "ı" with it even with an ignorable between them
+const DOTTED = { ı: 'i', ȷ: 'j', i: 'i', і: 'i' }
 // whole: a break doesn't start a cluster (resvg doesn't always cut there)
 const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, over, room }, whole) => {
   let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, letter = '', points = true, ends = 0
@@ -937,23 +939,10 @@ const WIDER = [
   [0.04, /[\/\u{ce}\u{ee}\u{10f}\u{111}\u{134}\u{135}\u{187}\u{197}\u{1cf}\u{1d0}\u{1f0}\u{240}\u{25f}\u{26b}\u{434}\u{446}\u{449}\u{4b5}\u{1e3d}\u{e050}\u{e0e4}\u{eeba}]/u],
   [0.02, /[(7AVW\[ir{\u{c0}-\u{c6}\u{cd}\u{cf}\u{ec}\u{ed}\u{100}\u{102}\u{104}\u{128}\u{12c}\u{12f}\u{131}\u{133}\u{13a}\u{142}\u{155}\u{157}\u{159}\u{174}\u{193}\u{194}\u{19a}\u{1af}\u{1b9}\u{1c2}\u{1cd}\u{1de}\u{1e0}\u{1e2}\u{1fa}\u{1fc}\u{200}\u{202}\u{20a}\u{211}\u{213}\u{221}\u{226}\u{234}\u{235}\u{23a}\u{244}\u{249}-\u{24b}\u{24d}\u{256}\u{268}\u{26d}\u{273}\u{27b}\u{27e}\u{28c}\u{28e}\u{290}\u{29d}\u{2af}\u{2b3}\u{2de}\u{386}\u{391}\u{394}\u{39b}\u{3aa}\u{3c3}\u{3c4}\u{407}\u{410}\u{414}\u{433}\u{442}\u{44b}\u{453}\u{456}\u{466}\u{467}\u{474}\u{476}\u{48a}\u{48b}\u{491}\u{493}\u{4a2}\u{4a5}\u{4ad}\u{4b7}\u{4c5}\u{4c6}\u{4c9}\u{4ca}\u{4cd}\u{4ce}\u{4d0}\u{4d2}\u{4d4}\u{4f7}\u{4fb}\u{1d00}\u{1d1b}\u{1e00}\u{1e2c}-\u{1e2e}\u{1e39}\u{1e3b}\u{1e59}\u{1e5b}\u{1e5d}\u{1e5f}\u{1e71}\u{1e7c}\u{1e7e}\u{1e80}\u{1e82}\u{1e84}\u{1e86}\u{1e88}\u{1ea0}\u{1ea2}\u{1ea4}\u{1ea6}\u{1ea8}\u{1eaa}\u{1eac}\u{1eae}\u{1eb0}\u{1eb2}\u{1eb4}\u{1eb6}\u{1ec9}\u{1ecb}\u{1ee8}\u{1eea}\u{1eec}\u{1eee}\u{1ef0}\u{1f08}-\u{1f0f}\u{1f88}-\u{1f8f}\u{1fb8}-\u{1fbc}\u{1fd8}\u{2077}\u{20a7}\u{2163}\u{2164}\u{2174}\u{2206}\u{25b2}\u{25b3}\u{266b}\u{26a0}\u{e004}\u{e04b}-\u{e04f}\u{e05b}-\u{e05e}\u{e0bb}\u{e0f3}\u{e10a}\u{e10c}\u{e122}\u{e1e2}-\u{e1e7}\u{e1f6}\u{e1f7}\u{e219}\u{e21b}-\u{e21e}\u{e23f}\u{e242}\u{e243}\u{e245}\u{e249}\u{e256}-\u{e258}\u{e27b}\u{e280}-\u{e282}\u{e28d}\u{e2d9}\u{ee02}\u{ee06}\u{ee0e}\u{ee14}\u{ee1d}-\u{ee25}\u{ee80}\u{ee84}\u{eed5}]/u],
 ]
-// A few of those characters Inter kerns wider on both sides at once, after a character and before one that have no room
-// of their own ("ĩ" after "f" or "T" and before "T", "ď" before ")", "Д" after "„"), by more past their room than a
-// guess's own 0.04 covers: they get all of it, so a run of them ("TĩTĩT") isn't short either. Measured against resvg,
-// each between the characters Inter's kerning pairs it with most, at both weights; generated, not tuned. But for "_",
-// which needs 0.17 only between "ζ" and "Ƒ": that much room for every underscore in a name would push the rest of a
-// line well past where resvg draws it.
-const KERNED = [
-  [0.2, /[\u{ef}\u{129}\u{12d}\u{457}]/u],
-  [0.19, /[\u{12b}\u{20b}\u{1e2f}]/u],
-  [0.14, /[\u{10f}]/u],
-  [0.11, /[\u{234}]/u],
-  [0.1, /[\u{4c6}]/u],
-  [0.09, /[\u{434}]/u],
-  [0.08, /[\u{2af}\u{414}\u{1e2c}]/u],
-  [0.07, /[\u{249}\u{24b}\u{268}\u{273}\u{1e3b}\u{1e71}]/u],
-]
-const extra = (c) => (KERNED.find(([, r]) => r.test(c)) ?? WIDER.find(([, r]) => r.test(c)))?.[0] ?? 0
+// (A letter Inter kerns wider than that on both sides at once, "ĩ" between "T"s or "Ɨ" between "1" and "ƚ", needs no
+// more: layAt adds each pair's own kerning past the room of the letter before it. Raising a letter's room to cover the
+// pair it kerns most would widen every "д" and "ď" of ordinary Russian and Czech text.)
+const extra = (c) => WIDER.find(([, r]) => r.test(c))?.[0] ?? 0
 // a mark fonts have with no advance at a run's end can stick out past it by up to this much
 const OVERHANG = 0.43
 // The characters whose ink ends past their advance, by up to this much more in em ("⁄", some of Inter's private-use
@@ -1027,6 +1016,9 @@ const LIGATURES = new Map(
     .map((l) => l.split(' ').map((h) => String.fromCodePoint(parseInt(h, 16))))
     .map(([letter, mark, c]) => [letter + mark, c]),
 )
+// And Inter draws "i" and the Cyrillic "і" dotless before a mark above, so they join with it as "ı" does, also past an
+// ignorable that keeps NFC from composing them ("i" U+FE00 U+0308 and "i" U+200B U+0303 are drawn "ï" and "ĩ").
+const DOTLESS = { i: 'ı', і: 'ı' }
 const LIGATED = new RegExp(String.raw`(\P{M})(${SKIPPED})?([\p{M}\u{ee90}\u{f6c3}]\p{M}*)`, 'gu')
 const together = (run, font) => run.replace(APART, (p) => p.replace(HIDDEN, '').normalize('NFC')).replace(COMPOSABLE, (g) => {
   const n = g.normalize('NFC')
@@ -1036,7 +1028,7 @@ const ligated = (run, font) => run.replace(LIGATED, (all, letter, _, marks) => {
   // (a variation selector among the marks keeps the shaper from decomposing them)
   const ms = VARIANT.test(marks) ? marks : marks.normalize('NFD')
   const first = String.fromCodePoint(ms.codePointAt(0))
-  const c = LIGATURES.get(letter + first)
+  const c = LIGATURES.get((DOTLESS[letter] ?? letter) + first)
   return c && font.glyph(c.codePointAt(0)) ? c + ms.slice(first.length) : all
 })
 export const guess = (run, bold = false) => {
