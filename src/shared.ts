@@ -481,6 +481,144 @@ export const P = {
 export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@[a-z0-9][a-z0-9.-]*[a-z0-9]|(?<![\\w/:])\\/[a-z0-9-]{2,}(?![\\w/]))`, 'gi')
 export const shortUrl = (s: string) => ((s = s.replace(/^https?:\/\/(www\.)?/, '')), s.length > 40 ? s.slice(0, 40) + '…' : s)
 
+// --- cast text as HTML (ui.tsx RichText, server/home.mjs) ---
+const html = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+const ext = (u: string, label: string) => `<a href="${html(u)}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
+/** Plain text with its links, @mentions and /channels made live, as HTML. */
+export const linkify = (text: string) =>
+  text.split(TOKENS).map((p, i) => {
+    if (i % 2 === 0) return html(p)
+    if (p[0] === '@') return `<a href="/u/${html(p.slice(1))}">${html(p)}</a>`
+    if (p[0] === '/') return `<span class="chan-ref">${html(p)}</span>`
+    const u = safeUrl(toUrl(p))
+    return u ? ext(u, html(shortUrl(p))) : html(p)
+  }).join('')
+
+// the leftmost of these wins; at one spot, the earlier one. Links and mentions come before emphasis so an
+// underscore in a URL stays in it, and _ never emphasizes inside a word (snake_case, @some_x_handle).
+const INLINE = new RegExp([
+  /(?<tick>`+)(?<code>[^`]|[^`][\s\S]*?[^`])\k<tick>(?!`)/.source,
+  /\[(?<label>[^\]\n]+)\]\((?<href>[^\s()]+)\)/.source,
+  `(?<token>${TOKENS.source})`,
+  /\*\*(?=\S)(?<bold>[\s\S]*?\S)\*\*(?!\*)/.source,
+  /(?<!\w)__(?=\S)(?<bold2>[\s\S]*?\S)__(?!\w)/.source,
+  /~~(?=\S)(?<strike>[\s\S]*?\S)~~/.source,
+  /\*(?=[^\s*])(?<em>[\s\S]*?[^\s*])\*/.source,
+  /(?<!\w)_(?=[^\s_])(?<em2>[\s\S]*?[^\s_])_(?!\w)/.source,
+].join('|'), 'gi')
+
+function inline(s: string): string {
+  let out = ''
+  let at = 0
+  // matchAll works on a copy of INLINE, so the calls inside don't move this one along
+  for (const m of s.matchAll(INLINE)) {
+    const g = m.groups!
+    out += html(s.slice(at, m.index))
+    at = m.index + m[0].length
+    if (g.code !== undefined) out += `<code>${html(g.code.replace(/^ (.*[^ ].*) $/s, '$1'))}</code>`
+    else if (g.label !== undefined) {
+      const u = safeUrl(g.href)
+      out += u ? ext(u, inline(g.label)) : inline(g.label)
+    } else if (g.token !== undefined) out += linkify(g.token)
+    else if ((g.bold ?? g.bold2) !== undefined) out += `<strong>${inline(g.bold ?? g.bold2)}</strong>`
+    else if (g.strike !== undefined) out += `<s>${inline(g.strike)}</s>`
+    else out += `<em>${inline(g.em ?? g.em2)}</em>`
+  }
+  return out + html(s.slice(at))
+}
+
+const FENCE = /^ {0,3}(`{3,}|~{3,})/
+const HEADING = /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/
+const RULE = /^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/
+const QUOTE = /^ {0,3}> ?/
+const ITEM = /^( {0,3})([-*+]|(\d{1,9})[.)])[ \t]+/
+const ROW = /^\s*\|?(.*?)\|?\s*$/
+const DIVIDER = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/
+const cells = (line: string) => line.replace(ROW, '$1').split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'))
+const isTable = (l: string, next = '') => l.includes('|') && next.includes('|') && DIVIDER.test(next) && cells(l).length === cells(next).length
+const starts = (l: string, next?: string) => FENCE.test(l) || HEADING.test(l) || RULE.test(l) || QUOTE.test(l) || ITEM.test(l) || isTable(l, next)
+
+/** Cast text as it reads, without its Markdown, for share cards and meta tags: what markdown() draws, flattened
+ *  (lists keep their bullets and numbers, a link shows its label). */
+export function unmarkdown(text: string) {
+  const lists: number[] = [] // per open list, the next number, or 0 for bullets
+  return markdown(text)
+    .replace(/<(\/?)(\w+)[^>]*?(?: start="(\d+)")?>|&#(\d+);/g, (_, close, tag, start, ent) => {
+      if (ent) return String.fromCharCode(+ent)
+      if (tag === 'ul' || tag === 'ol') return close ? (lists.pop(), '\n') : (lists.push(tag === 'ol' ? +(start || 1) : 0), '')
+      if (tag === 'li') return close ? '' : `\n${'  '.repeat(lists.length - 1)}${lists.at(-1) ? `${lists[lists.length - 1]++}. ` : '• '}`
+      if (tag === 'td' || tag === 'th') return close ? ' · ' : ''
+      if (tag === 'tr') return close ? '\n' : ''
+      return /^(h\d|blockquote|pre|hr|table)$/.test(tag) ? '\n' : ''
+    })
+    .replace(/ · \n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+/** Cast text as HTML, with Markdown: headings, **bold**, *italic*, ~~strike~~, `code` and fenced blocks, [links](…),
+ *  lists, > quotes, rules and tables. Text between those keeps its line breaks as typed (.text is pre-wrap), so a cast
+ *  without Markdown looks exactly as before. People's own HTML is shown as text, and links go through safeUrl. */
+export function markdown(text: string): string {
+  const lines = text.split('\n')
+  let out = ''
+  let para: string[] = []
+  const flush = () => {
+    const p = para.join('\n').replace(/^\n+|\n+$/g, '')
+    para = []
+    // a paragraph between blocks drops the blank lines around it: the blocks have margins
+    out += inline(p)
+  }
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]
+    let m
+    // as in CommonMark, only a list from 1 breaks into a paragraph: "born in\n1990. Then…" stays text
+    const num = l.match(ITEM)?.[3]
+    if (!starts(l, lines[i + 1]) || (num !== undefined && +num !== 1 && para.length && para[para.length - 1].trim())) {
+      para.push(l)
+      continue
+    }
+    flush()
+    if ((m = l.match(FENCE))) {
+      const end = lines.findIndex((x, j) => j > i && x.trim().startsWith(m![1]) && !x.trim().slice(m![1].length).trim())
+      const stop = end < 0 ? lines.length : end
+      out += `<pre><code>${html(lines.slice(i + 1, stop).join('\n'))}</code></pre>`
+      i = stop
+    } else if ((m = l.match(HEADING))) out += `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`
+    else if (RULE.test(l)) out += '<hr>'
+    else if (QUOTE.test(l)) {
+      const q = []
+      while (i < lines.length && QUOTE.test(lines[i])) q.push(lines[i++].replace(QUOTE, ''))
+      i--
+      out += `<blockquote>${markdown(q.join('\n'))}</blockquote>`
+    } else if ((m = l.match(ITEM))) {
+      const ordered = m[3] !== undefined
+      const items: string[][] = []
+      // an item runs on over the indented lines under it (a nested list, say); an unindented line ends the list
+      const under = new RegExp(`^ {0,${m[0].length}}`)
+      for (; i < lines.length; i++) {
+        const x = lines[i]
+        const it = x.match(ITEM)
+        if (it && it[1].length <= m[1].length && (it[3] !== undefined) === ordered) items.push([x.slice(it[0].length)])
+        else if (/^\s{2,}\S/.test(x)) items[items.length - 1].push(x.replace(under, ''))
+        else break
+      }
+      i--
+      const tag = ordered ? 'ol' : 'ul'
+      const start = ordered && +m[3] !== 1 ? ` start="${+m[3]}"` : ''
+      out += `<${tag}${start}>${items.map((it) => `<li>${markdown(it.join('\n'))}</li>`).join('')}</${tag}>`
+    } else {
+      const head = cells(l)
+      const align = cells(lines[i + 1]).map((c) => (c.endsWith(':') ? (c.startsWith(':') ? 'center' : 'right') : ''))
+      const row = (cs: string[], tag: string) => `<tr>${head.map((_, k) => `<${tag}${align[k] ? ` class="md-${align[k]}"` : ''}>${inline(cs[k] || '')}</${tag}>`).join('')}</tr>`
+      out += `<table><thead>${row(head, 'th')}</thead><tbody>`
+      for (i += 2; i < lines.length && lines[i].includes('|') && lines[i].trim(); i++) out += row(cells(lines[i]), 'td')
+      i--
+      out += '</tbody></table>'
+    }
+  }
+  flush()
+  return out
+}
+
 /** The cast hash in one of our own /c/<hash> paths. */
 export const castOf = (path: string) => path.match(/^\/c\/(?:0x)?([0-9a-f]{40})$/i)?.[1].toLowerCase()
 

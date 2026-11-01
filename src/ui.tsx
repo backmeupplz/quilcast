@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
+import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type Cast, type User } from './api.ts'
+import { boxOf, castOf, linkify, markdown, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -160,19 +160,11 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
   return link ? <a class="avatar" href={userPath(u)} style={style} onClick={stop} aria-label={nameOf(u)}>{inner}</a> : <span class="avatar" style={style} onClick={onClick}>{inner}</span>
 }
 
-export function RichText({ text, class: cls = 'text' }: { text: string; class?: string }) {
-  // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round
-  return (
-    <p class={cls} dir="auto">
-      {text.split(TOKENS).map((p, i) => {
-        if (i % 2 === 0) return p
-        if (p[0] === '@') return <a href={`/u/${p.slice(1)}`} onClick={stop}>{p}</a>
-        if (p[0] === '/') return <span class="chan-ref">{p}</span>
-        const u = safeUrl(toUrl(p))
-        return u ? <a href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={stop}>{shortUrl(p)}</a> : p
-      })}
-    </p>
-  )
+/** Text with Markdown (shared.ts markdown), or `plain`: only its links, mentions and channels made live. */
+export function RichText({ text, class: cls = 'text', plain }: { text: string; class?: string; plain?: boolean }) {
+  // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round. A link's click is
+  // the link's, not the card's around it.
+  return <div class={cls} dir="auto" onClick={(e) => (e.target as Element).closest('a') && stop(e)} dangerouslySetInnerHTML={{ __html: plain ? linkify(text) : markdown(text) }} />
 }
 
 // long text in feeds folds at 10 lines; the button shows only when something is cut
@@ -399,7 +391,7 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
         <span class="handle">@{t.author.handle}</span>
         {t.at && <span class="handle tw-at">· {ago(new Date(t.at * 1000).toISOString())}</span>}
       </div>
-      {t.text && <RichText text={t.text.replace(/\s*https:\/\/t\.co\/\S+$/, '')} class="text tw-text" />}
+      {t.text && <RichText text={t.text.replace(/\s*https:\/\/t\.co\/\S+$/, '')} class="text tw-text" plain />}
       {t.photos.length > 0 && <Media urls={t.photos} />}
       {!t.photos.length && video && <div class="tw-video"><Img src={video} low /><span class="play"><Icon d={P.play} fill size={24} /></span></div>}
       {t.article && (

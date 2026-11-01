@@ -2,7 +2,7 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { boxOf, castOf, castText, designId, embedLayout, isImg, isVid, LOGO, n, P, poster, safeUrl, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, TOKENS, toUrl, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
+import { boxOf, castOf, castText, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -85,13 +85,7 @@ export function body(d, version, now = Date.now()) {
     return `<img${k ? ` class="${k}"` : ''} alt="" loading="lazy"${top ? ' fetchpriority="high"' : low ? ' fetchpriority="low"' : ''} referrerpolicy="no-referrer" ${at}src="${esc(src.replace(/^http:\/\//i, 'https://'))}"` +
       `${set ? ` ${at}srcset="${esc(set)}" sizes="${IMG_SIZES}"` : ''}>`
   }
-  const rich = (text, k = 'text') => `<p class="${k}" dir="auto">${text.split(TOKENS).map((p, i) => {
-    if (i % 2 === 0) return esc(p)
-    if (p[0] === '@') return `<a href="/u/${esc(p.slice(1))}">${esc(p)}</a>`
-    if (p[0] === '/') return `<span class="chan-ref">${esc(p)}</span>`
-    const u = safeUrl(toUrl(p))
-    return u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${esc(shortUrl(p))}</a>` : esc(p)
-  }).join('')}</p>`
+  const rich = (text, k = 'text', plain) => `<div class="${k}" dir="auto">${plain ? linkify(text) : markdown(text)}</div>`
   const avatar = (u, size = 40, link = true) => {
     const pfp = safeUrl(u.pfp_url)
     // `low`: after the casts' pictures (avatars come from the CDN's own connection, and are the smallest thing here)
@@ -125,7 +119,7 @@ export function body(d, version, now = Date.now()) {
     return `<div class="tweet" role="link" tabindex="0"><div class="tw-head">${av ? img(av, 'tw-av', '', true) : ''}<b>${esc(t.author?.name)}</b>` +
       `<svg class="tw-x" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="${X_LOGO}" fill="currentColor"></path></svg><span class="handle">@${esc(t.author?.handle)}</span>` +
       `${t.at ? `<span class="handle tw-at">· ${ago(t.at * 1000)}</span>` : ''}</div>` +
-      (t.text ? rich(t.text.replace(/\s*https:\/\/t\.co\/\S+$/, ''), 'text tw-text') : '') + (t.photos?.length ? media(t.photos) : '') +
+      (t.text ? rich(t.text.replace(/\s*https:\/\/t\.co\/\S+$/, ''), 'text tw-text', true) : '') + (t.photos?.length ? media(t.photos) : '') +
       (!t.photos?.length && video ? `<div class="tw-video">${img(video, '', '', true)}<span class="play">${icon(P.play, 24, true)}</span></div>` : '') +
       (t.article ? `<div class="tw-article">${safeUrl(t.article.cover) ? img(safeUrl(t.article.cover), 'lc-img') : ''}<div class="lc-text"><span class="lc-title">${esc(t.article.title)}</span>` +
         `${t.article.text ? `<span class="lc-desc">${esc(t.article.text)}</span>` : ''}</div></div>` : '') +

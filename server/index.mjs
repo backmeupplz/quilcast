@@ -9,7 +9,7 @@ import { createServer } from 'node:http'
 import { extname, join, normalize, relative } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
+import { castText, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { clientIp, fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
@@ -195,7 +195,7 @@ async function card(c) {
   const recasts = Number(c.reactions?.recasts_count) || 0
   const likes = Number(c.reactions?.likes_count) || 0
   // only the first ~8 lines fit, so long casts are cut before wrapping
-  const text = cut(castText(c), 600)
+  const text = cut(unmarkdown(castText(c)), 600)
   const v = await visualOf(c)
   // the CDN's resized copies are a fraction of the originals and decode faster
   const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=176')) : null, pictureOf(v, 'w=840')])
@@ -522,7 +522,7 @@ const dateOf = (c) => new Date(c.timestamp).toLocaleDateString('en-US', { month:
 async function collectible(c) {
   const a = c.author || {}
   const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
-  const text = cut(castText(c), 1000)
+  const text = cut(unmarkdown(castText(c)), 1000)
   const short = text.replace(/https?:\/\/(www\.)?(\S{28})\S+/g, '$2…').replace(/https?:\/\/(www\.)?/g, '').trim()
   const v = await visualOf(c)
   const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=240')) : null, pictureOf(v, 'w=1100')])
@@ -581,12 +581,13 @@ async function collectible(c) {
 function nftMeta(c, hash) {
   const a = c.author || {}
   const who = `@${a.username || a.fid}`
+  // marketplaces draw Markdown in a description, not in a name
   const text = castText(c).trim()
   const urls = urlsOf(c)
   const media = urls.some(isImg) ? 'Image' : urls.some(isVid) ? 'Video' : urls.length ? 'Link' : 'Text'
   const channel = c.parent_url?.match(/\/~\/channel\/([\w-]+)$/)?.[1] || c.channel?.id
   return {
-    name: `${who}: ${cut(text.replace(/\s+/g, ' '), 60) || 'a cast'}`,
+    name: `${who}: ${cut(unmarkdown(text).replace(/\s+/g, ' '), 60) || 'a cast'}`,
     description: `${text}\n\nA cast by ${who} on Farcaster, collected on Quilcast.`.trim(),
     image: `${SITE}/nft/0x${hash}.png`,
     external_url: `${SITE}/c/${hash}`,
@@ -700,7 +701,7 @@ async function collectPage(hash) {
     // the owner in the picture's address, so a link shared again after the cast is collected isn't stuck on the old one
     const v = o ? o.address.slice(2, 10) : 'open'
     title = o ? `${who}'s cast, collected by ${ownerName(o)}` : `Collect ${who}'s cast`
-    desc = `${cut(castText(c).replace(/\s+/g, ' '), 200) || 'A cast on Farcaster'} · ${o ? 'Collected on Quilcast Collect' : 'Free to collect as a 1/1 on Base'}`
+    desc = `${cut(unmarkdown(castText(c)).replace(/\s+/g, ' '), 200) || 'A cast on Farcaster'} · ${o ? 'Collected on Quilcast Collect' : 'Free to collect as a 1/1 on Base'}`
     og = `${SITE}/nft/0x${hash}.og.png?v=${v}`
     embed = `${SITE}/nft/0x${hash}.3x2.png?v=${v}`
     button = o ? 'See the collected cast' : 'Collect this cast'
@@ -1190,7 +1191,7 @@ createServer(async (req, res) => {
       if (!cache.has(hash) && limited(`look:${ip}`, 120)) return app()
       const c = await getCast(hash)
       if (!c) return app()
-      const desc = cut(castText(c), 280) || 'A cast on Farcaster'
+      const desc = cut(unmarkdown(castText(c)), 280) || 'A cast on Farcaster'
       return html(page({ title: `${c.author?.display_name || c.author?.username} (@${c.author?.username}) on Quilcast`, desc, path, image: `${SITE}/og/c/${hash}.png`, alt: desc, embed: `${SITE}/og/c/${hash}.3x2.png` }))
     }
 

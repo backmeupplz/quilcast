@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { markdown as md } from './shared.ts'
+
+test('plain casts render as before: text, line breaks, links, mentions, channels', () => {
+  assert.equal(md('gm\n\nhi @dwr see quilcast.com on /base'), 'gm\n\nhi <a href="/u/dwr">@dwr</a> see <a href="https://quilcast.com/" target="_blank" rel="noopener noreferrer nofollow">quilcast.com</a> on <span class="chan-ref">/base</span>')
+  assert.equal(md('<b>x</b> & "y"'), '&#60;b&#62;x&#60;/b&#62; &#38; &#34;y&#34;')
+  assert.equal(md('5 * 3 = 15, snake_case_name, @some_x_handle'), '5 * 3 = 15, snake_case_name, <a href="/u/some">@some</a>_x_handle')
+  assert.equal(md('born in\n1990. Then more'), 'born in\n1990. Then more')
+})
+
+test('inline formatting', () => {
+  assert.equal(md('**b** *i* _i_ __b__ ~~s~~ `a*b*`'), '<strong>b</strong> <em>i</em> <em>i</em> <strong>b</strong> <s>s</s> <code>a*b*</code>')
+  assert.equal(md('**bold *and em***'), '<strong>bold <em>and em</em></strong>')
+  assert.equal(md('x https://a.com/a_b_c_ y'), 'x <a href="https://a.com/a_b_c_" target="_blank" rel="noopener noreferrer nofollow">a.com/a_b_c_</a> y')
+  assert.equal(md('[**docs**](https://a.com/d)'), '<a href="https://a.com/d" target="_blank" rel="noopener noreferrer nofollow"><strong>docs</strong></a>')
+  assert.equal(md('[x](javascript:alert(1))'), '[x](javascript:alert(1))')
+  assert.equal(md('[x](http://localhost/a)'), 'x')
+})
+
+test('blocks', () => {
+  assert.equal(md('# Title\ntext\n## Sub #'), '<h1>Title</h1>text<h2>Sub</h2>')
+  assert.equal(md('#hashtag'), '#hashtag')
+  assert.equal(md('a\n\n```js\nif (a < b) **x**\n```\nb'), 'a<pre><code>if (a &#60; b) **x**</code></pre>b')
+  assert.equal(md('> quoted **x**\n> more\nafter'), '<blockquote>quoted <strong>x</strong>\nmore</blockquote>after')
+  assert.equal(md('a\n---\nb'), 'a<hr>b')
+  assert.equal(md('- a\n- b\n  - c\n    1. d\nend'), '<ul><li>a</li><li>b<ul><li>c<ol><li>d</li></ol></li></ul></li></ul>end')
+  assert.equal(md('3. x\n4. y'), '<ol start="3"><li>x</li><li>y</li></ol>')
+  assert.equal(md('| a | b |\n|:-|-:|\n| 1 | **2** |\nafter'), '<table><thead><tr><th>a</th><th class="md-right">b</th></tr></thead><tbody><tr><td>1</td><td class="md-right"><strong>2</strong></td></tr></tbody></table>after')
+  assert.equal(md('a | b\n---'), 'a | b<hr>')
+})
+
+test('unmarkdown: what share cards and meta tags say', async () => {
+  const { unmarkdown } = await import('./shared.ts')
+  assert.equal(unmarkdown('gm @dwr, 5 * 3 & snake_case'), 'gm @dwr, 5 * 3 & snake_case')
+  assert.equal(unmarkdown('# Title\n**bold** [docs](https://a.com/d) `x<y`\n> quote\n\n3. a\n4. b\n   - c\n---\n| A | B |\n|-|-|\n| 1 | 2 |'), 'Title\nbold docs x<y\nquote\n\n3. a\n4. b\n  • c\n\nA · B\n1 · 2')
+})
