@@ -1,0 +1,4 @@
+# Notes for agents
+
+- **Share-card text guesses (`guess()` in `server/text.mjs`) are generous on purpose.** Past a card's 32-measurement budget, the guess only has to never come out short of resvg's advance. Running wide by a fraction of an em is fine: a line wraps a little early. Don't file or fix tickets that make the guess more exact for rare Unicode (marks after bidi controls, mixed-script clusters, newest code points and the like). On 2026-11-01 a chain of such review follow-ups (#320 to #382) grew `text.mjs` from 464 to 2,042 lines in a day. Nikita stopped it, and it was replaced by a small allowance rule plus a random sweep test.
+- If a real cast's text is guessed **short** (text drawn over what follows), add the run to the sweep test in `server/text.test.mjs` and widen the allowance. Don't add a special case for it.
