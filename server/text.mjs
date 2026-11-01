@@ -439,7 +439,7 @@ const JOINS = /[\u{200d}\u{180b}-\u{180d}\u{e0020}-\u{e007f}]/u
 // draws dotless before a mark above, so the same as "ı" with it even with an ignorable between them
 const DOTTED = { ı: 'i', ȷ: 'j', i: 'i', і: 'i' }
 // whole: a break doesn't start a cluster (resvg doesn't always cut there)
-const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, over, room }, whole) => {
+const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, hebrew = false, over, room }, whole) => {
   let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, letter = '', points = true, ends = 0
   // A mark the font has that nothing anchors (it has no letter under it, or one with no place for it: a digit, "#", a
   // letter of another font or none) is drawn where the pen is, after its base and the marks before it, and its ink
@@ -493,7 +493,9 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
       if (d !== undefined) x = Math.max(x ?? -Infinity, px + d)
     }
     const right = x === null ? -Infinity : x + (font.reach(m) ?? 0)
-    // (past the letter as drawn, and its kerning with the letter before, past the room counted after that one)
+    // (past the letter as drawn, and its kerning with the letter before, past the room counted after that one; in a
+    // stretch kerned the other way round, that pair's kerning goes after the letter instead, so this only puts them
+    // further right than they are)
     const at = w + Math.max(0, kerned(before, drawn) - roomed) + Math.max(base, widest(drawn)) + own + right
     end = Math.max(end, at)
     loose = Math.max(loose, at)
@@ -512,7 +514,9 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
     // without it is guessed at its advance, the room added by whoever asks)
     const d = letter && marks && drawn === letter ? singleton(letter) : drawn
     const k = letter ? kerned(before, d) : 0
-    if (letter && room) w += Math.max(0, k - roomed)
+    // (shaped right to left but set left to right, a stretch is kerned the other way round: each letter with the one
+    // before it, past this one's room, "}" U+06DB "ď" as "ď}")
+    if (letter && room) w += back ? Math.max(0, kerned(d, before) - r) : Math.max(0, k - roomed)
     // (a mark's overhang is past the letter as its boxes widen it, or past the boxes' ink when it ends further, as
     // resvg sets a mark after a box against the box)
     // (shaped right to left, a letter's boxes start past its ink, not its advance: up to a box further, unless it's a
@@ -583,6 +587,7 @@ const LEFTWARD = new RegExp(`${RTL.source}|[\\u{200f}\\u{61c}\\u{202b}\\u{202e}\
  *  a run drawn alone, as it is, and true for the characters (by index in it) of a mark fonts have with no advance whose
  *  ink can end up to OVERHANG past its letter (a diaeresis on "l" before a space). Without it, the run may be a word of
  *  a line resvg shapes as Thai or not, and takes the wider of the two. o.far: the run is a stretch shaped right to left;
+ *  o.back: shaped right to left but laid out left to right, so kerned the other way round ("}" U+06DB "ď" as "ď}");
  *  o.hebrew: shaped as Hebrew; o.over: a letter's ink past its advance; o.room(letter, marked): the room a letter (with
  *  marks on it, or not) gets past its advance, which a box widening it doesn't take up; o.whole: whether a break starts
  *  a cluster (true: it doesn't; unset: either). */
@@ -631,6 +636,7 @@ const NUMBER = new Set(['EN', 'AN'])
  *  indices, a right-to-left stretch's in the order its clusters are drawn (its first letter's marks no font has, boxes
  *  set past the letter, end up at its right); far: shaped right to left, as a right-to-left stretch is, and one whose
  *  script is (a stretch set left to right that starts with an Arabic digit is shaped right to left and turned around);
+ *  back: shaped right to left but set left to right, so kerned the other way round ("}" U+06DB "ď" as "ď}");
  *  hebrew: a right-to-left stretch shaped as Hebrew (its first character of any script is Hebrew). Measured. */
 const stretches = (cs) => {
   const all = cs.map((_, i) => i)
@@ -645,11 +651,11 @@ const stretches = (cs) => {
       const orders = ways.map((whole) => ({ order: s, whole }))
       let k = 0
       while (k < s.length && !starts(cs[s[k]])) k++
-      if (!far || !k || k === s.length) return { orders, far }
+      if (!far || !k || k === s.length) return { orders, far, back: far }
       let e = k + 1
       while (e < s.length && !starts(cs[s[e]])) e++
       const turned = [...s.slice(k, e), ...s.slice(0, k), ...s.slice(e)]
-      return { orders: [...orders, ...ways.map((whole) => ({ order: turned, whole }))], far }
+      return { orders: [...orders, ...ways.map((whole) => ({ order: turned, whole }))], far, back: true }
     }
     const hebrew = HEBREW.test(first ?? '')
     const orders = ways.map((whole) => {
@@ -1092,8 +1098,8 @@ const guessed = (run, font) => {
   // next one's text rather than added to it, and the run takes the furthest any of it reaches.
   // Where the run may be cut into stretches more than one way, it takes the widest.
   const lay = (ss) => {
-    const drawn = ss.map(({ orders, far, hebrew, level }) => {
-      const at = (ink) => Math.max(...orders.map(({ order, whole }) => laid(order.map((i) => cs[i]).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, hebrew, over: past, room, whole })))
+    const drawn = ss.map(({ orders, far, back, hebrew, level }) => {
+      const at = (ink) => Math.max(...orders.map(({ order, whole }) => laid(order.map((i) => cs[i]).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, over: past, room, whole })))
       return { a: at(false), ink: at(true), level }
     })
     for (let k = 0; k < drawn.length; k++) {

@@ -605,6 +605,11 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // em bold, "tM"), before "Ƈ", whose ink past its room left bold too little to spare for that kerning (a left-to-right
   // isolate and harakat among them, and "0tƇ" alone)
   runs.push(cp(0x31, 0x2066, 0x30, 0x74, 0x4d, 0x65b, 0x2066, 0x64e, 0x187), '0tƇ')
+  // and the runs once guessed short in #361: a stretch set left to right whose first letter of a script is Arabic (a box
+  // mark, an Extended Arabic-Indic digit) is shaped right to left, so it's kerned the other way round: a closing bracket
+  // and "ď" as "ď}" (+0.088 em, bold +0.131), before Hebrew, a letter or a dot, the bracket first or the mark, repeated
+  // too, and "jȴ" as "ȴj"; and the same after a Latin letter, which has the stretch shaped left to right
+  runs.push('}ۛďא', ')ۛďא', ']ۛďא', '}ۛďאא', '}ۛďa', '}ۛď.', 'ۛ}ď', 'ۛ)ď', `${cp(0x6f1)}}ď`, `${cp(0x610)}}ď`, 'ۛjȴא', '}ۛď'.repeat(6) + 'א', 'ۛ' + '}ď'.repeat(10), 'x}ۛďא hi')
   // a dotted "i" or Cyrillic "і" and a mark above past an ignorable that keeps NFC from composing them (a variation
   // selector, a zero-width space, a word joiner, a joiner), which Inter still draws dotless and kerns as "ĩ" or "ï",
   // between letters it kerns those with, repeated too
