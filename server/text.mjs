@@ -497,12 +497,13 @@ const BREAKS = /[\u{ad}\u{61c}\u{180e}\u{200b}\u{200c}\u{200e}\u{200f}\u{202a}-\
 const starts = (c) => (IGNORED.test(c) ? BREAKS.test(c) : !MARK.test(c))
 const SCRIPTED = /[^\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u
 const UNMARKED = /[\p{Script=Cyrillic}\p{Script=Greek}]/u
+const PICTOGRAPH = /\p{Extended_Pictographic}/u
 const JOINS = /[\u{200d}\u{180b}-\u{180d}\u{e0020}-\u{e007f}]/u
 // the letter a dotless "ı" or "ȷ" with a mark above is drawn and kerned as; and "i" and the Cyrillic "і", which Inter
 // draws dotless before a mark above, so the same as "ı" with it even with an ignorable between them
 const DOTTED = { ı: 'i', ȷ: 'j', i: 'i', і: 'i' }
 // whole: a break doesn't start a cluster (resvg doesn't always cut there)
-const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, hebrew = false, over, room }, whole) => {
+const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, hebrew = false, over, room, joins }, whole) => {
   let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, letter = '', points = true, ends = 0
   // A mark the font has that nothing anchors (it has no letter under it, or one with no place for it: a digit, "#", a
   // letter of another font or none) is drawn where the pen is, after its base and the marks before it, and its ink
@@ -522,6 +523,18 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
   // letter of the cluster before, as drawn, and how far its unanchored marks reach (-Infinity: none). (Its kerning with
   // the letter before it puts the pen further right as well: "l" "ĩ" U+200D U+0308.)
   let drawn = '', loose = -Infinity, before = '', reach = -Infinity, roomed = 0
+  // The shaper keeps a pictograph right after a joiner ("©", "®", "↔") in the cluster before it, and resvg draws a
+  // cluster's glyphs one after another, each at its full width (a box mark's too), though it advances only by the widest
+  // of them: "a" U+1AB5 U+200D "®" draws the "®" past the "a" and a whole box, half an em further than where "a" with its
+  // box alone ends. So that cluster's ink is lag further right than its advance puts it (measured; its advance, after
+  // the cluster before, is guessed as it was, which is never under resvg's widest glyph). sum: the cluster's glyphs'
+  // widths so far (its marks' with their little room); prev: the character before. o.joins(i): whether the character at
+  // an index came right after a joiner in the text as written, for a stretch laid out in another order (a turned one can
+  // put a joiner right before a pictograph that wasn't after one)
+  // tip, spill: where the cluster before's glyphs end, drawn one after another, and how far its ink reaches past its
+  // advance (shaped right to left, its glyphs are drawn the other way round, the pictograph first, so that's past the
+  // pictograph's: "⁄" U+082A U+200D "⚠")
+  let lag = 0, sum = 0, prev = '', tip = 0, spill = 0
   const singleton = (c) => {
     const n = c.normalize('NFC')
     return n !== c && [...n].length === 1 && font.glyph(n.codePointAt(0)) ? n : c
@@ -559,7 +572,7 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
     // (past the letter as drawn, and its kerning with the letter before, past the room counted after that one; in a
     // stretch kerned the other way round, that pair's kerning goes after the letter instead, so this only puts them
     // further right than they are)
-    const at = w + Math.max(0, kerned(before, drawn) - roomed) + Math.max(base, widest(drawn)) + own + right
+    const at = w + lag + Math.max(0, kerned(before, drawn) - roomed) + Math.max(base, widest(drawn)) + own + right
     end = Math.max(end, at)
     loose = Math.max(loose, at)
     drift = Math.max(drift, right)
@@ -569,6 +582,8 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
     else if (!below.has(m) || (x !== null && (below.get(m) === null || x > below.get(m)))) below.set(m, x)
   }
   const flush = () => {
+    // (a cluster drawn lag past where it's laid out: its ink is laid out from there, its advance taken off it again)
+    w += lag
     // (a letter's room for kerning and wider forms is on top of the box its boxes widen it to: resvg kerns the widened
     // letter as it kerns the letter, "l" and "ΐ" with a box on it as "lΐ")
     const r = letter && room ? room(letter, marks > 0) : 0
@@ -580,6 +595,8 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
     // (shaped right to left but set left to right, a stretch is kerned the other way round: each letter with the one
     // before it, past this one's room, "}" U+06DB "ď" as "ď}")
     if (letter && room) w += back ? Math.max(0, kerned(d, before) - r) : Math.max(0, k - roomed)
+    // (where its glyphs, drawn one after another, end, and how far its ink reaches past its advance)
+    ;(tip = w + r + sum), (spill = ends + (hung ? OVERHANG : 0))
     // (a mark's overhang is past the letter as its boxes widen it, or past the boxes' ink when it ends further, as
     // resvg sets a mark after a box against the box)
     // (shaped right to left, a letter's boxes start past its ink, not its advance: up to a box further, unless it's a
@@ -602,7 +619,8 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
       if (reach > -Infinity) end = Math.max(end, reach + k)
       ;(before = d), (reach = loose), (roomed = r)
     } else reach = Math.max(reach, loose)
-    base = marks = own = ends = 0
+    w -= lag
+    base = marks = own = ends = lag = sum = 0
     box = am = hung = joined = hidden = false
     of = drawn = ''
     below = new Map()
@@ -618,13 +636,17 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
     // nothing to go on ("x" U+200D U+0302 has the mark after the pen; one that would make a character with the letter
     // can be over it, "a" U+200D U+0308 is drawn as "ä", which a guess doesn't count on). Measured for every one.
     else if (IGNORED.test(c)) JOINS.test(c) ? (joined = true) && (below = new Map()) : (hidden = true)
-    else if (thai && AM.test(c)) started ? (marks += 2) : ((base = BOX), marks++), (box = am = started = true), (of = ''), (below = new Map())
-    else if (boxed(c, font)) marks++, (box = started = true), (of = ''), (below = new Map()), (points &&= POINTS.test(c))
+    else if (thai && AM.test(c)) started ? (marks += 2) : ((base = BOX), marks++), (sum += 2 * BOX), (box = am = started = true), (of = ''), (below = new Map())
+    else if (boxed(c, font)) marks++, (sum += BOX), (box = started = true), (of = ''), (below = new Map()), (points &&= POINTS.test(c))
     else if (MARK.test(c)) {
       if (hang) pen(c)
-      marks++, (own += adv(c)), (started = true)
+      marks++, (own += adv(c)), (sum += adv(c)), (started = true)
       if (hang?.(i) && (!font.advance(c.codePointAt(0)) || (far && !letter))) hung = true
-    } else flush(), (base = adv(c)), (letter = drawn = c), (ends = over?.(c) ?? 0), (started = true), (of = c)
+    } else {
+      const after = (joins ? joins(i) : prev === '\u{200d}') && PICTOGRAPH.test(c)
+      flush(), (lag = after ? Math.max(0, tip - w) : 0), (base = sum = adv(c)), (letter = drawn = c), (ends = Math.max(over?.(c) ?? 0, after && far ? spill : 0)), (started = true), (of = c)
+    }
+    prev = c
   }
   flush()
   if (drift > 0 && (far || LEFTWARD.test(run))) end = Math.max(end, w + drift)
@@ -655,7 +677,7 @@ const LEFTWARD = new RegExp(`${RTL.source}|[\\u{200f}\\u{61c}\\u{202b}\\u{202e}\
  *  marks on it, or not) gets past its advance, which a box widening it doesn't take up; o.whole: whether a break starts
  *  a cluster (true: it doesn't; unset: either); o.reversed: the run is a right-to-left stretch with its clusters in the
  *  order they're drawn, so what it starts with isn't what decides how it's shaped (an override can put a sara am in
- *  one shaped as Hebrew). */
+ *  one shaped as Hebrew); o.joins: see layAt. */
 const laid = (run, adv, font, ink, hang, o = {}) => {
   if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang, o)
   if (hang && !o.reversed && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, o)
@@ -1517,7 +1539,7 @@ const guessed = (run, font, any) => {
   // it takes the widest.
   const lay = (ss) => {
     const drawn = ss.map(({ orders, far, back, hebrew, reversed, level }) => {
-      const at = (ink) => Math.max(...orders.map(({ order, whole }) => laid(order.map((i) => (i === CUT ? '\u{200b}' : cs[i])).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, reversed, over: past, room, whole })))
+      const at = (ink) => Math.max(...orders.map(({ order, whole }) => laid(order.map((i) => (i === CUT ? '\u{200b}' : cs[i])).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, reversed, over: past, room, whole, joins: (j) => order[j] !== CUT && cs[order[j] - 1] === '\u{200d}' })))
       return { a: at(false), ink: at(true), level }
     })
     for (let l = Math.max(0, ...drawn.map(({ level = 0 }) => level)); l > 0; l--) {
