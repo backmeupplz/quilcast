@@ -352,7 +352,18 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // Inter's arrow with a slash through it, marks newer than resvg's Unicode (a box each, like a letter), and the
   // Mongolian variation selector it draws as a box on the letter before it
   for (const c of [0x3000, 0x219a, 0x219b, 0x21ae, 0x21cd, 0x21ce, 0x21cf, 0x897, 0x180f, 0x10d69, 0x113b8, 0x1611e, 0x1e6f5]) runs.push(cp(c), `a${cp(c)}b`)
-  for (let c = 0x1acf; c <= 0x1aeb; c++) if (/\p{M}/u.test(cp(c))) runs.push(`a${cp(c)}b`)
+  // (the 16 and 17 marks listed, not found with the runtime's \p{M}, which may not know them)
+  for (const [from, to] of [[0x1acf, 0x1add], [0x1ae0, 0x1aeb]]) for (let c = from; c <= to; c++) runs.push(`a${cp(c)}b`)
+  // Thai and Lao sara am, two boxes of ink on one box of advance at a run's end (after a tone mark, alone, repeated,
+  // after a space, in a run resvg doesn't shape as Thai), and the characters whose ink ends past their advance
+  runs.push('น้ำ', 'ก่ำ', 'ทำ', 'จำ', 'กำ', 'ກຳ', 'ນ້ຳ', 'ความจำ', 'ไม่ทำ', 'ำำำ', 'ำ', 'ຳ', 'น้ำใจ', 'ทำงาน', 'ก ำ', ' ำก', '1ำ', '—ำ', 'กaำ', 'aำ', 'a ทำก', 'ทำ a', 'กินน้ำ ', 'عربي ทำ', 'שלום ทำ', '١٢٣ทำ', 'abc عربي น้ำ')
+  for (const c of [0x2044, 0x215f, 0xe2bf, 0xe2c0, 0xe2c1, 0xe2c2, 0xe2c3, 0xe2c4, 0xee07, 0xee0e, 0xee0f, 0xee90, 0xee9b, 0xee9c, 0xf6c3, 0x240, 0x260, 0x2a0, 0x308, 0x30f, 0x360]) runs.push(`a${cp(c)}`, `y${cp(c)}`, cp(c))
+  // and the marks Inter draws wider than a narrow letter, with narrow letters or a space after them
+  for (const c of [0x308, 0x30f, 0x313, 0x315, 0x32c, 0x343, 0x35d, 0x360, 0x361, 0x362]) runs.push(`i${cp(c)}i`, `l${cp(c)} `, `'${cp(c)} `, ` ${cp(c)}l`)
+  // a wide mark after one no font has, set against the box that widens its letter
+  for (const c of [0x20db, 0x20dc, 0x20e8]) for (const box of [0xe31, 0xe48, 0x336]) runs.push(`a${cp(box, c)}`, ` ${cp(box, c)}`)
+  // or after sara am's boxes, and bold "ɀ" after marks
+  runs.push(`ก${cp(0xe33, 0x20dc)}`, `${cp(0xe33, 0x20dc)}x`, `ท${cp(0xe33, 0x20dc)}ก`, `${cp(0x313, 0xe31)}a${cp(0x240)}`, `${cp(0x336, 0x362, 0x240)}`)
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
@@ -388,6 +399,10 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   }
   // each guess is close to resvg's advance, not twice it
   for (const run of [' gm ', ' this ', ' 2024 ', ' hello world ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) * 1.05, run)
+  // and Thai with sara am, one box of advance however many boxes of ink, isn't taken as a box wider for each one
+  for (const run of ['น้ำ', 'น้ำใจ', 'ทำงาน', 'ความจำ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.1, run)
+  // a mark at a run's end gets room for its ink once, and a decomposed arrow's slash none
+  for (const [run, over] of [[`cafe${cp(0x301)}`, 0.55], ['a↮', 0.1]]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + over, run)
 })
 
 test('past the budget, exactly() still measures: a tightly kerned line ends where resvg ends it, not at the guess', () => {

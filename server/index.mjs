@@ -422,8 +422,8 @@ async function themeCard(id, raw) {
   }).join('')
   // the name in up to two lines, smaller when it doesn't fit at 52 px; measured as it's drawn, bold. It (and glitter's
   // sparkle after each line) may reach into the panel's right padding, up to 8 px from its edge (1152). Wrapped and drawn
-  // measured, every run of it (a name is at most 60 characters): a guess past the card's budget can be off either way
-  // (wider for a tightly kerned "TyTy", narrower for a Thai word ending in "ำ"), which would put the sparkle outside
+  // measured, every run of it (a name is at most 60 characters): a guess past the card's budget runs wider
+  // than resvg draws a tightly kerned line ("TyTy"), which would put the sparkle outside
   const title = th.name || 'Untitled theme'
   const room = (ts) => 364 - (th.nameFx === 'glitter' ? SPARKLE * ts : 0)
   const ts = exactly(() => wrap(title, 52, room(52), 3, { bold: true })).length > 2 ? 40 : 52

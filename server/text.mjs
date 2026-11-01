@@ -180,24 +180,51 @@ const BOX = 0.66
 const NEWER = /[\u{897}\u{1acf}-\u{1add}\u{1ae0}-\u{1aeb}\u{10d69}-\u{10d6d}\u{10efa}-\u{10efc}\u{113b8}-\u{113c0}\u{113c2}\u{113c5}\u{113c7}-\u{113ca}\u{113cc}-\u{113d0}\u{113d2}\u{113e1}\u{113e2}\u{11b60}-\u{11b67}\u{11f5a}\u{1611e}-\u{1612f}\u{1e5ee}\u{1e5ef}\u{1e6e3}\u{1e6e6}\u{1e6ee}\u{1e6ef}\u{1e6f5}]/u
 const MARK = new RegExp(`(?!${NEWER.source})\\p{M}`, 'u')
 const boxed = (c, font) => MARK.test(c) && !font.glyph(c.codePointAt(0)) && !NOTO.glyph(c.codePointAt(0))
-/** A run's advance from its characters' (adv, which gives marks fonts have their own), with the marks no font has
- *  added as resvg adds them; ink: where the boxes' ink ends counts too, as it does at the end of a run. */
-const laid = (run, adv, font, ink) => {
-  let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0
+// Thai and Lao sara am. In a run resvg shapes as Thai (its first character of any script is Thai or Lao), the shaper
+// splits it into nikhahit and sara aa, two boxes in the cluster of the character before it (or, starting the run, a box
+// with a box on it). Such a cluster advances a box (or its first character's advance, when that's wider), but its boxes
+// are drawn one after another, so their ink ends a box further for each one: "น้ำ" is four boxes of ink on one box of
+// advance, and at a run's end draws far past it. In any other run it's one box like any letter no font has.
+const AM = /[\u0e33\u0eb3]/u
+const THAI = /^[\p{sc=Zyyy}\p{sc=Zinh}\p{sc=Zzzz}]*[\p{sc=Thai}\p{sc=Laoo}]/u
+const laidAs = (run, adv, font, ink, thai, hang) => {
+  let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1
   const flush = () => {
-    if (box) end = Math.max(end, w + base + 0.5 + BOX * (marks - 1)), (w += base + own + (marks === 1 ? Math.max(0, BOX - base) : 0.62 + BOX * (marks - 2)))
+    // (a mark's overhang is past the letter as its boxes widen it, or past the boxes' ink when it ends further, as
+    // resvg sets a mark after a box against the box)
+    const boxes = w + base + 0.5 + BOX * (marks - 1) + own
+    if (am) end = Math.max(end, boxes), (w += Math.max(base, BOX) + own)
+    else if (box) end = Math.max(end, boxes), (w += base + own + (marks === 1 ? Math.max(0, BOX - base) : 0.62 + BOX * (marks - 2)))
     else w += base + own
+    if (hung) end = Math.max(end, (box ? Math.max(w, boxes) : w) + OVERHANG)
     base = marks = own = 0
-    box = false
+    box = am = hung = false
   }
   for (const c of run) {
+    i++
     if (IGNORED.test(c)) continue
-    if (boxed(c, font)) marks++, (box = true)
-    else if (MARK.test(c)) marks++, (own += adv(c))
-    else flush(), (base = adv(c))
+    if (thai && AM.test(c)) started ? (marks += 2) : ((base = BOX), marks++), (box = am = started = true)
+    else if (boxed(c, font)) marks++, (box = started = true)
+    else if (MARK.test(c)) {
+      marks++, (own += adv(c)), (started = true)
+      if (hang?.(i) && !font.advance(c.codePointAt(0))) hung = true
+    } else flush(), (base = adv(c)), (started = true)
   }
   flush()
   return ink ? Math.max(w, end) : w
+}
+// resvg shapes each stretch of one direction apart, so Thai after right-to-left text is shaped as Thai whatever came first
+const RTL = /[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Nkoo}\p{sc=Adlm}\p{sc=Rohg}\p{sc=Samr}\p{sc=Mand}]/u
+/** A run's advance from its characters' (adv, which gives marks fonts have their own), with the marks no font has
+ *  added as resvg adds them; ink: where the boxes' ink ends counts too, as it does at the end of a run. hang: given for
+ *  a run drawn alone, as it is, and true for the characters (by index in it) of a mark fonts have with no advance whose
+ *  ink can end up to OVERHANG past its letter (a diaeresis on "l" before a space). Without it, the run may be a word of
+ *  a line resvg shapes as Thai or not, and takes the wider of the two. */
+const laid = (run, adv, font, ink, hang) => {
+  if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang)
+  if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang)
+  if (hang && !RTL.test(run)) return laidAs(run, adv, font, ink, false, hang)
+  return Math.max(laidAs(run, adv, font, ink, false, hang), laidAs(run, adv, font, ink, true, hang))
 }
 
 // the spaces other than " ", as resvg draws them (measured): the ideographic space Japanese text uses is a full em
@@ -376,7 +403,23 @@ const WIDER = [
 ]
 const extra = (c) => WIDER.find(([, r]) => r.test(c))?.[0] ?? 0
 // a mark fonts have with no advance at a run's end can stick out past it by up to this much
-const OVERHANG = 0.4
+const OVERHANG = 0.43
+// The characters whose ink ends past their advance, by up to this much more in em, as a run's last character ("⁄", some
+// of Inter's private-use glyphs, bold "ɀ"). Measured against resvg for every character either font has, alone and after
+// a letter, at both weights; generated, not tuned.
+const PAST = [
+  [0.3, /[\u{e2c2}]/u],
+  [0.28, /[\u{e2bf}\u{e2c3}\u{e2c4}]/u],
+  [0.22, /[\u{ee90}]/u],
+  [0.2, /[\u{ee9b}]/u],
+  [0.16, /[\u{ee07}]/u],
+  [0.1, /[\u{e2c0}\u{e2c1}\u{ee0e}\u{ee9c}\u{f6c3}]/u],
+  [0.08, /[\u{2044}\u{215f}]/u],
+  [0.06, /[\u{ee0f}]/u],
+  [0.04, /[\u{240}]/u],
+  [0.02, /[\u{260}\u{2a0}]/u],
+]
+const past = (c) => PAST.find(([, r]) => r.test(c))?.[0] ?? 0
 // A character neither font has that decomposes into ones Inter has is drawn as them: "↮" is "↔" with a slash through.
 const has = (c, font) => font.glyph(c.codePointAt(0)) || NOTO.glyph(c.codePointAt(0))
 const apart = (c, font) => {
@@ -385,16 +428,16 @@ const apart = (c, font) => {
 }
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
-  // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
   const end = [...run].findLast((c) => !IGNORED.test(c))
-  run = [...run].map((c) => apart(c, font)).join('')
-  const last = end && MARK.test(end) && [...run].findLast((c) => !IGNORED.test(c) && !boxed(c, font))
+  // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
+  const cs = []
+  const within = new Set()
+  for (const c of run) for (const [j, x] of [...apart(c, font)].entries()) j && within.add(cs.length), cs.push(x)
   // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base); a space no font
   // has is as wide as resvg draws it (the ideographic space is a full em, not a box)
   const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? SPACES.get(c.codePointAt(0)) ?? BOX) + extra(c) + (MARK.test(c) ? 0.03 : 0)
-  const tail = last && MARK.test(last) && !font.advance(last.codePointAt(0)) ? OVERHANG : 0
   // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em
-  return laid(run, adv, font, true) + tail + 0.04
+  return laid(cs.join(''), adv, font, true, (i) => !within.has(i)) + (end ? past(end) : 0) + 0.04
 }
 let exact = 0
 const advance = (run, bold) => (!run ? 0 : exact || laidOut.has(key(run, bold)) || spend() ? measure(run, bold) : guess(run, bold))
