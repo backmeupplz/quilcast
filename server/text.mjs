@@ -138,8 +138,8 @@ const PICTO = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u
 const SEQUENCE = /[\u200D\u20E3\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u
 // what resvg leaves out: joiners, variation selectors and the other default-ignorable characters (but for the four
 // shorthand format controls and the Hangul fillers, "ㅤ" the usual "invisible" name, which it draws as boxes like any
-// other character no font has)
-const IGNORED = /(?![\u{1BCA0}-\u{1BCA3}\u{115F}\u{1160}\u{3164}\u{FFA0}])\p{Default_Ignorable_Code_Point}/u
+// other character no font has, and the newest Mongolian variation selector, which it draws as a mark no font has)
+const IGNORED = /(?![\u{1BCA0}-\u{1BCA3}\u{115F}\u{1160}\u{3164}\u{FFA0}\u{180F}])\p{Default_Ignorable_Code_Point}/u
 const ALL_ZERO = /^(?:[\p{Mn}\p{Me}]|(?![\u{1BCA0}-\u{1BCA3}\u{115F}\u{1160}\u{3164}\u{FFA0}])\p{Default_Ignorable_Code_Point})+$/u
 
 /** How a grapheme is drawn: Twemoji's picture (its file), "noto" for Noto Emoji's outline in the text's color, or
@@ -175,7 +175,10 @@ const EMOJI = 1.22, SIZE = 1.08, TOP = 0.9
 // box's width (a narrow letter gets wider, a wide one doesn't), each one after that adds a box; and the boxes' ink ends
 // half a box past the base, a box further for each one after the first, which can be past the end of the run.
 const BOX = 0.66
-const MARK = /\p{M}/u
+// Marks newer than resvg's Unicode (16 and 17's) are characters it doesn't know, each a box of its own like a letter no
+// font has, not one on the letter before it. Measured against resvg for every mark; regenerate it if resvg is updated.
+const NEWER = /[\u{897}\u{1acf}-\u{1add}\u{1ae0}-\u{1aeb}\u{10d69}-\u{10d6d}\u{10efa}-\u{10efc}\u{113b8}-\u{113c0}\u{113c2}\u{113c5}\u{113c7}-\u{113ca}\u{113cc}-\u{113d0}\u{113d2}\u{113e1}\u{113e2}\u{11b60}-\u{11b67}\u{11f5a}\u{1611e}-\u{1612f}\u{1e5ee}\u{1e5ef}\u{1e6e3}\u{1e6e6}\u{1e6ee}\u{1e6ef}\u{1e6f5}]/u
+const MARK = new RegExp(`(?!${NEWER.source})\\p{M}`, 'u')
 const boxed = (c, font) => MARK.test(c) && !font.glyph(c.codePointAt(0)) && !NOTO.glyph(c.codePointAt(0))
 /** A run's advance from its characters' (adv, which gives marks fonts have their own), with the marks no font has
  *  added as resvg adds them; ink: where the boxes' ink ends counts too, as it does at the end of a run. */
@@ -341,9 +344,10 @@ export function measure(run, bold = false) {
 // MEASURED runs it hasn't seen before (the budget is per synchronous stretch, and a card's SVG is built in one); past
 // that, a run's advance is guessed, so a cast of hundreds of short runs between emoji can't stall the server. The guess
 // adds up each character's advance in the font resvg draws it with (Inter at the run's weight, Noto Emoji for what
-// Inter lacks, the missing-glyph box for what neither has), with a little room for what that leaves out: Inter's wider
-// contextual forms ("*" after a capital, "_" between letters), its few positive kerning pairs, and the ink of a mark
-// with no advance that ends the run. It stays close to resvg's own advance, and never under it.
+// Inter lacks, the missing-glyph box for what neither has, unless it's a space or decomposes into what Inter has), with
+// a little room for what that leaves out: Inter's wider contextual forms ("*" after a capital, "_" between letters), its
+// few positive kerning pairs, and the ink of a mark with no advance that ends the run. It stays close to resvg's own
+// advance, and never under it.
 const MEASURED = 32
 let fresh = 0
 let refill = false
@@ -373,11 +377,21 @@ const WIDER = [
 const extra = (c) => WIDER.find(([, r]) => r.test(c))?.[0] ?? 0
 // a mark fonts have with no advance at a run's end can stick out past it by up to this much
 const OVERHANG = 0.4
+// A character neither font has that decomposes into ones Inter has is drawn as them: "↮" is "↔" with a slash through.
+const has = (c, font) => font.glyph(c.codePointAt(0)) || NOTO.glyph(c.codePointAt(0))
+const apart = (c, font) => {
+  const d = c.normalize('NFD')
+  return d !== c && !has(c, font) && [...d].every((x) => font.glyph(x.codePointAt(0))) ? d : c
+}
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
-  const last = [...run].findLast((c) => !IGNORED.test(c) && !boxed(c, font))
-  // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base)
-  const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? BOX) + extra(c) + (MARK.test(c) ? 0.03 : 0)
+  // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
+  const end = [...run].findLast((c) => !IGNORED.test(c))
+  run = [...run].map((c) => apart(c, font)).join('')
+  const last = end && MARK.test(end) && [...run].findLast((c) => !IGNORED.test(c) && !boxed(c, font))
+  // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base); a space no font
+  // has is as wide as resvg draws it (the ideographic space is a full em, not a box)
+  const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? SPACES.get(c.codePointAt(0)) ?? BOX) + extra(c) + (MARK.test(c) ? 0.03 : 0)
   const tail = last && MARK.test(last) && !font.advance(last.codePointAt(0)) ? OVERHANG : 0
   // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em
   return laid(run, adv, font, true) + tail + 0.04

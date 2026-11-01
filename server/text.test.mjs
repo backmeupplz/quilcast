@@ -348,6 +348,11 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // font has, and a sample of everything Inter draws
   const runs = ['—————', '……', 'ⓌⒶⓋⒺ', '‱', '⟷⟺', 'Ⅷ', 'Ǳ', cp(0x20dd), 'ïïï ĩĩ īĭ', 'Đđď', 'WWW MMM', '漢字かな', 'नमस्ते', 's̶t̶r̶i̶k̶e̶', 'Z̷̢͎a̸͓l̴̰g̶̱o̵͚', 'a -> b', '*#*', 'A*B*C', 'a_b_c', 'ïïï', 'T_T', 'AVA', '(f)', 'office', 'नमस्ते दुनिया', 'สวัสดีครับ', ' नमस्ते दोस्तों ', ' g̶m̶ ', `z${cp(0x324, 0x308)}`, `ab${cp(0x336).repeat(6)}`, `a${cp(0xfff9)}b${cp(0xfffa)}c${cp(0xfffb)} `, cp(0x600, 0x6dd), cp(0x1bca0, 0x1bca3), `gm${cp(0x3164).repeat(5)}gn`, cp(0x115f, 0x1160, 0xffa0), `mm${cp(0x336, 0x20dd, 0x20dd)}`, `a${cp(0x20dc)}`, `=a${cp(0x20dc)}`, `a${cp(0x20db)}`, `a${cp(0x20e8)}`]
   for (let c = 0x21; c < 0x10000; c += 7) if (inter.glyph(c) && !/[\p{Cc}\p{Cs}]/u.test(cp(c))) runs.push(cp(c, c, c))
+  // alone and between letters: the ideographic space (a full em, not a box), arrows no font has that resvg draws as
+  // Inter's arrow with a slash through it, marks newer than resvg's Unicode (a box each, like a letter), and the
+  // Mongolian variation selector it draws as a box on the letter before it
+  for (const c of [0x3000, 0x219a, 0x219b, 0x21ae, 0x21cd, 0x21ce, 0x21cf, 0x897, 0x180f, 0x10d69, 0x113b8, 0x1611e, 0x1e6f5]) runs.push(cp(c), `a${cp(c)}b`)
+  for (let c = 0x1acf; c <= 0x1aeb; c++) if (/\p{M}/u.test(cp(c))) runs.push(`a${cp(c)}b`)
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
@@ -397,8 +402,9 @@ test('past the budget, exactly() still measures: a tightly kerned line ends wher
   assert.ok(Math.abs(x - (measure(`${line} `, true) * 52 + 0.07 * 52)) < 0.1, `${x}`)
 })
 
-test('past the budget, a bold line wrapped exactly() fits as drawn, with what a guess takes as narrower too', async () => {
-  // an ideographic space and "↮" are drawn wider than guessed; the budget is spent before each name is wrapped
+test('past the budget, a bold line wrapped exactly() fits as drawn, with what guesses have taken as narrower too', async () => {
+  // an ideographic space and "↮", which guesses took as narrower than they're drawn until they knew better; the budget
+  // is spent before each name is wrapped
   const names = []
   for (const s of ['　', '↮']) for (let n = 1; n <= 8; n++) for (const k of [0, 3, 9]) names.push([...'bcdfghjkl'.slice(0, k)].map((c) => `${c} `).join('') + 'Hi' + s.repeat(n) + 'Ok more')
   for (const [j, name] of names.entries()) {

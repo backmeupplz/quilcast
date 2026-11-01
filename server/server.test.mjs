@@ -562,7 +562,7 @@ test("glitter's sparkle follows each line of a theme's name and stays in the pan
   // a name that just fits one line by the old guesses, a full line of flags at 40 px, wide capitals drawn bold, and
   // names (of at most 60 characters, as a theme's name is kept) of so many words that the card would have measured all
   // it may before its last lines: kerned tight ("Ty", "AV"), where a guess at a line's end runs wider than it's drawn,
-  // and with ideographic spaces, which a guess takes as narrower than they're drawn
+  // and with ideographic spaces, which guesses took as narrower than they're drawn until they knew better
   const words = ' To b c d e f g h i j k l m n o p q r s t u v w x'
   const names = ['TyTyTyTyTy' + words, 'AVAVAVAVAV' + words, 'AVAVAVAVAV e b v n r g　　 s p t k y c j f w q h i m l z o u']
   for (const n of names) assert.ok([...n].length <= 60, n)
