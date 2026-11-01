@@ -557,6 +557,9 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // kerns wider before "Ï" than the bracket; and a sample of those pairs, alone and after a capital
   runs.push('ď]', 'ď)', 'ď}', 'ȴj', 'ȴȷ', 'ȴј', 'Ŧῒ', 'Ɋǰ', 'ɖĵ', '1ИȋṰῒ', 'αȴʃ', 'Жȴɲ', 'HƫɏЋH', 'H(Ï', `H(${cp(0x308)}Ï`, 'H[Ï', 'H{Ï')
   for (const [a, z] of kerned.filter((_, i) => i % 7 === 0)) runs.push(a + z, `H${a}${z}`)
+  // and bold "d" kerned +0.018 em past its room before a closing bracket, then a fraction slash, whose ink past its
+  // advance leaves only 0.005 em of the slack a guess has (once short in #354); and the same between capitals and repeated
+  runs.push('d]⁄', 'd)⁄', 'd}⁄', 'Hd]⁄H', 'd]⁄'.repeat(8))
   // (repeated in a right-to-left embedding, override or isolate, past the room such a run gets for its clusters)
   for (const o of [0x202b, 0x202e, 0x2067]) runs.push(cp(o) + 'ď]'.repeat(30), cp(o) + 'ȴj'.repeat(17))
   runs.push(cp(0x202a) + 'ď]'.repeat(15) + 'א', cp(0x202b) + cp(0x131, 0x308).repeat(40), cp(0x202b) + `l${cp(0x30c)}]`.repeat(20))
