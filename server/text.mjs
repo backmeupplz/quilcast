@@ -187,8 +187,8 @@ const boxed = (c, font) => MARK.test(c) && !font.glyph(c.codePointAt(0)) && !NOT
 // advance, and at a run's end draws far past it. In any other run it's one box like any letter no font has.
 const AM = /[\u0e33\u0eb3]/u
 const THAI = /^[\p{sc=Zyyy}\p{sc=Zinh}\p{sc=Zzzz}]*[\p{sc=Thai}\p{sc=Laoo}]/u
-const laidAs = (run, adv, font, ink, thai, hang) => {
-  let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1
+const laidAs = (run, adv, font, ink, thai, hang, over) => {
+  let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, ends = 0
   const flush = () => {
     // (a mark's overhang is past the letter as its boxes widen it, or past the boxes' ink when it ends further, as
     // resvg sets a mark after a box against the box)
@@ -197,7 +197,9 @@ const laidAs = (run, adv, font, ink, thai, hang) => {
     else if (box) end = Math.max(end, boxes), (w += base + own + (marks === 1 ? Math.max(0, BOX - base) : 0.62 + BOX * (marks - 2)))
     else w += base + own
     if (hung) end = Math.max(end, (box ? Math.max(w, boxes) : w) + OVERHANG)
-    base = marks = own = 0
+    // (and a letter whose ink ends past its advance reaches past what comes after it when that's narrower: "\u{e2c2} ")
+    end = Math.max(end, w + ends)
+    base = marks = own = ends = 0
     box = am = hung = false
   }
   for (const c of run) {
@@ -208,7 +210,7 @@ const laidAs = (run, adv, font, ink, thai, hang) => {
     else if (MARK.test(c)) {
       marks++, (own += adv(c)), (started = true)
       if (hang?.(i) && !font.advance(c.codePointAt(0))) hung = true
-    } else flush(), (base = adv(c)), (started = true)
+    } else flush(), (base = adv(c)), (ends = over?.(c) ?? 0), (started = true)
   }
   flush()
   return ink ? Math.max(w, end) : w
@@ -220,11 +222,11 @@ const RTL = /[\p{sc=Arab}\p{sc=Hebr}\p{sc=Syrc}\p{sc=Thaa}\p{sc=Nkoo}\p{sc=Adlm}
  *  a run drawn alone, as it is, and true for the characters (by index in it) of a mark fonts have with no advance whose
  *  ink can end up to OVERHANG past its letter (a diaeresis on "l" before a space). Without it, the run may be a word of
  *  a line resvg shapes as Thai or not, and takes the wider of the two. */
-const laid = (run, adv, font, ink, hang) => {
-  if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang)
-  if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang)
-  if (hang && !RTL.test(run)) return laidAs(run, adv, font, ink, false, hang)
-  return Math.max(laidAs(run, adv, font, ink, false, hang), laidAs(run, adv, font, ink, true, hang))
+const laid = (run, adv, font, ink, hang, over) => {
+  if (!AM.test(run)) return laidAs(run, adv, font, ink, false, hang, over)
+  if (hang && THAI.test(run)) return laidAs(run, adv, font, ink, true, hang, over)
+  if (hang && !RTL.test(run)) return laidAs(run, adv, font, ink, false, hang, over)
+  return Math.max(laidAs(run, adv, font, ink, false, hang, over), laidAs(run, adv, font, ink, true, hang, over))
 }
 
 // the spaces other than " ", as resvg draws them (measured): the ideographic space Japanese text uses is a full em
@@ -373,7 +375,8 @@ export function measure(run, bold = false) {
 // adds up each character's advance in the font resvg draws it with (Inter at the run's weight, Noto Emoji for what
 // Inter lacks, the missing-glyph box for what neither has, unless it's a space or decomposes into what Inter has), with
 // a little room for what that leaves out: Inter's wider contextual forms ("*" after a capital, "_" between letters), its
-// few positive kerning pairs, and the ink of a mark with no advance that ends the run. It stays close to resvg's own
+// few positive kerning pairs, the ink of a mark with no advance that ends the run, and the ink of a character that
+// reaches past the run's end (a space after it can be narrower than its overhang). It stays close to resvg's own
 // advance, and never under it.
 const MEASURED = 32
 let fresh = 0
@@ -404,9 +407,10 @@ const WIDER = [
 const extra = (c) => WIDER.find(([, r]) => r.test(c))?.[0] ?? 0
 // a mark fonts have with no advance at a run's end can stick out past it by up to this much
 const OVERHANG = 0.43
-// The characters whose ink ends past their advance, by up to this much more in em, as a run's last character ("⁄", some
-// of Inter's private-use glyphs, bold "ɀ"). Measured against resvg for every character either font has, alone and after
-// a letter, at both weights; generated, not tuned.
+// The characters whose ink ends past their advance, by up to this much more in em ("⁄", some of Inter's private-use
+// glyphs, bold "ɀ"), past the end of the run too when what follows them is narrower (a space). Measured against resvg
+// for every character either font has as a run's last character, alone and after a letter, at both weights; generated,
+// not tuned.
 const PAST = [
   [0.3, /[\u{e2c2}]/u],
   [0.28, /[\u{e2bf}\u{e2c3}\u{e2c4}]/u],
@@ -428,7 +432,6 @@ const apart = (c, font) => {
 }
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
-  const end = [...run].findLast((c) => !IGNORED.test(c))
   // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
   const cs = []
   const within = new Set()
@@ -436,8 +439,9 @@ export const guess = (run, bold = false) => {
   // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base); a space no font
   // has is as wide as resvg draws it (the ideographic space is a full em, not a box)
   const adv = (c) => (font.advance(c.codePointAt(0)) ?? NOTO.advance(c.codePointAt(0)) ?? SPACES.get(c.codePointAt(0)) ?? BOX) + extra(c) + (MARK.test(c) ? 0.03 : 0)
-  // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em
-  return laid(cs.join(''), adv, font, true, (i) => !within.has(i)) + (end ? past(end) : 0) + 0.04
+  // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em; past: the ink of the characters that end
+  // past their advance, wherever it reaches past the run's end
+  return laid(cs.join(''), adv, font, true, (i) => !within.has(i), past) + 0.04
 }
 let exact = 0
 const advance = (run, bold) => (!run ? 0 : exact || laidOut.has(key(run, bold)) || spend() ? measure(run, bold) : guess(run, bold))

@@ -355,9 +355,10 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // (the 16 and 17 marks listed, not found with the runtime's \p{M}, which may not know them)
   for (const [from, to] of [[0x1acf, 0x1add], [0x1ae0, 0x1aeb]]) for (let c = from; c <= to; c++) runs.push(`a${cp(c)}b`)
   // Thai and Lao sara am, two boxes of ink on one box of advance at a run's end (after a tone mark, alone, repeated,
-  // after a space, in a run resvg doesn't shape as Thai), and the characters whose ink ends past their advance
+  // after a space, in a run resvg doesn't shape as Thai), and the characters whose ink ends past their advance, ending
+  // the run or before a space or hair space that ends it short of their ink
   runs.push('น้ำ', 'ก่ำ', 'ทำ', 'จำ', 'กำ', 'ກຳ', 'ນ້ຳ', 'ความจำ', 'ไม่ทำ', 'ำำำ', 'ำ', 'ຳ', 'น้ำใจ', 'ทำงาน', 'ก ำ', ' ำก', '1ำ', '—ำ', 'กaำ', 'aำ', 'a ทำก', 'ทำ a', 'กินน้ำ ', 'عربي ทำ', 'שלום ทำ', '١٢٣ทำ', 'abc عربي น้ำ')
-  for (const c of [0x2044, 0x215f, 0xe2bf, 0xe2c0, 0xe2c1, 0xe2c2, 0xe2c3, 0xe2c4, 0xee07, 0xee0e, 0xee0f, 0xee90, 0xee9b, 0xee9c, 0xf6c3, 0x240, 0x260, 0x2a0, 0x308, 0x30f, 0x360]) runs.push(`a${cp(c)}`, `y${cp(c)}`, cp(c))
+  for (const c of [0x2044, 0x215f, 0xe2bf, 0xe2c0, 0xe2c1, 0xe2c2, 0xe2c3, 0xe2c4, 0xee07, 0xee0e, 0xee0f, 0xee90, 0xee9b, 0xee9c, 0xf6c3, 0x240, 0x260, 0x2a0, 0x308, 0x30f, 0x360]) runs.push(`a${cp(c)}`, `y${cp(c)}`, cp(c), cp(c, 0x20), cp(c, 0x200a), `a${cp(c, 0x200a)}`)
   // and the marks Inter draws wider than a narrow letter, with narrow letters or a space after them
   for (const c of [0x308, 0x30f, 0x313, 0x315, 0x32c, 0x343, 0x35d, 0x360, 0x361, 0x362]) runs.push(`i${cp(c)}i`, `l${cp(c)} `, `'${cp(c)} `, ` ${cp(c)}l`)
   // a wide mark after one no font has, set against the box that widens its letter
