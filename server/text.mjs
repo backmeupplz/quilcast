@@ -1195,7 +1195,20 @@ const guessed = (run, font, any) => {
   const within = new Set()
   // (marks Inter has in the order the shaper puts them, by combining class: U+035E over U+0302 goes after it)
   // (only marks resvg knows: one newer than its Unicode is a letter to it, so the marks after it are ordered on their own)
-  const ordered = run.replace(any ? ORDERED_ANY : ORDERED, (ms) => ([...ms].every((c) => font.glyph(c.codePointAt(0))) ? ms.normalize('NFD') : ms))
+  // (past the ignorables among them too, which no font has: a variation selector or a grapheme joiner is of class 0, so
+  // marks aren't reordered across it, but U+035E U+0308 U+FE00 still has U+0308 first; and a mark Inter has the parts of,
+  // which the shaper decomposes and orders, U+035E U+0344 as U+0308 U+0301 U+035E. In a cluster with a variation
+  // selector the shaper decomposes nothing but still orders the marks; NFD can't do one without the other, so a mark
+  // there that NFD would change leaves them all as they are, which the guess has covered (U+035E U+0344 U+FE00 is a box).
+  // That's the marks of a turned stretch's leading cluster with one too (see leading), so those are found first, in the
+  // run as it is.
+  const led0 = leading([...run])
+  const ordered = run.replace(any ? ORDERED_ANY : ORDERED, (ms, at) => {
+    const from = [...run.slice(0, at)].length
+    const own = VARIANT.test(ms), vs = own || [...ms].some((_, k) => led0.has(from + k))
+    const orders = (c) => IGNORED.test(c) || (font.glyph(c.codePointAt(0)) ? !own || c.normalize('NFD') === c : !vs && apart(c, font) !== c)
+    return [...ms].every(orders) ? ms.normalize('NFD') : ms
+  })
   // (but the shaper decomposes nothing in a cluster, a character and the marks after it, with a variation selector in
   // it: "I" U+0340 U+FE05 has U+0340 as a box widening the "I", not U+0300 on it, and "↮" U+FE05 is a box)
   const chars = [...ordered]

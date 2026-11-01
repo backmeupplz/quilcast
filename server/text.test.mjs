@@ -638,6 +638,13 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // (and the other way round: a variation selector among the marks it starts with keeps the next grapheme's marks whole)
   runs.push(cp(0xfe00, 0x6db, 0x2069, 0x341, 0x64, 0xfe0f, 0x64), cp(0xfe00, 0x6db, 0x2069, 0x341, 0x64, 0xfe0f, 0x64, 0x6d6), cp(0x6db, 0xfe00, 0x20, 0x341, 0x61))
   runs.push(cp(0x610, 0xfe00, 0xad, 0x340, 0x64, 0x200c, 0x301), cp(0x300, 0x308, 0x34f, 0xfe00, 0x200c, 0x300, 0x344, 0x6f1, 0x64, 0x5d0))
+  // and the runs once guessed short in #366: marks on nothing before a variation selector (which no font has), still put
+  // in combining-class order, U+0308 before U+035E, as resvg draws them; and U+0344, which Inter has the parts of, decomposed
+  // and ordered the same way (a tag after it, not in its cluster), before a space, a closing bracket or an embedding
+  runs.push(cp(0x35e, 0x308, 0xfe00, 0x20), cp(0x35e, 0x308, 0xfe00, 0x202a, 0xfe00, 0x343, 0x7d), cp(0x35e, 0x344, 0xe007f, 0x2069, 0x34f, 0x7d, 0xfe0f, 0xfe0f))
+  runs.push(cp(0x35e, 0x308, 0xfe00, 0x7d), cp(0x35e, 0x303, 0xe0100, 0x20), cp(0x35e, 0x344, 0x7d))
+  // (and U+0344 in a cluster with a variation selector, which the shaper doesn't decompose: a box, its marks left as they are)
+  runs.push(cp(0x35e, 0x344, 0xfe00, 0x20))
   // a dotted "i" or Cyrillic "і" and a mark above past an ignorable that keeps NFC from composing them (a variation
   // selector, a zero-width space, a word joiner, a joiner), which Inter still draws dotless and kerns as "ĩ" or "ï",
   // between letters it kerns those with, repeated too
