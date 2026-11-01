@@ -502,11 +502,32 @@ const PICTOGRAPH = /\p{Extended_Pictographic}/u
 // only mark of a higher class (240)
 const unordered = (x) => x !== '\u{345}' && `a\u{345}${x}`.normalize('NFD') === `a\u{345}${x}`
 const JOINS = /[\u{200d}\u{180b}-\u{180d}\u{e0020}-\u{e007f}]/u
+// resvg takes a glyph the font lacks from another font only when one has the character opening the first cluster with
+// a glyph missing (usvg's shape_text): only then is the run shaped again in Noto Emoji and its glyphs put in for the
+// missing ones. In "a" U+1AB5 U+200D "😀" that's "a", which Noto Emoji doesn't have, so the "😀" (in the "a"'s cluster,
+// after the joiner) is drawn as the font's missing-glyph box, as wide as one. Whether it can be: some cluster opens with
+// a character Noto Emoji has (a digit, "#", "*", a space, a pictograph not after a joiner) and has one the font lacks in
+// it. Only told apart in a run all left to right, which is shaped whole (other runs are cut into stretches shaped one
+// at a time, each with its own first cluster), and there it's never more than that: a mark, a joiner or another
+// ignorable that keeps the cluster going, a skin tone, sara am or a pictograph after a joiner never opens one.
+const NEWLINE = /[\n\r\u{1c}-\u{1e}\u{85}\u{2029}]/u
+const reaches = (run, font) => {
+  if (RIGHT.test(run) || NEWLINE.test(run)) return true
+  // (as resvg sees it: a tab is a space, which Noto Emoji has)
+  const cs = [...run.replace(/\t/g, ' ')]
+  const goes = (i) => i > 0 && (!starts(cs[i]) || TONE.test(cs[i]) || AM.test(cs[i]) || (PICTOGRAPH.test(cs[i]) && cs[i - 1] === '\u{200d}'))
+  const lacks = (c) => !IGNORED.test(c) && !font.glyph(c.codePointAt(0))
+  for (let i = 0; i < cs.length; i++) {
+    if (goes(i) || !NOTO.glyph(cs[i].codePointAt(0))) continue
+    for (let k = i; k === i || (k < cs.length && goes(k)); k++) if (lacks(cs[k])) return true
+  }
+  return false
+}
 // the letter a dotless "ı" or "ȷ" with a mark above is drawn and kerned as; and "i" and the Cyrillic "і", which Inter
 // draws dotless before a mark above, so the same as "ı" with it even with an ignorable between them
 const DOTTED = { ı: 'i', ȷ: 'j', i: 'i', і: 'i' }
 // whole: a break doesn't start a cluster (resvg doesn't always cut there)
-const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, hebrew = false, over, room, joins, tie }, whole) => {
+const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, hebrew = false, over, room, joins, tie, unreached }, whole) => {
   let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, letter = '', points = true, ends = 0
   // A mark the font has that nothing anchors (it has no letter under it, or one with no place for it: a digit, "#", a
   // letter of another font or none) is drawn where the pen is, after its base and the marks before it, and its ink
@@ -653,7 +674,8 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
     } else {
       // (and a letter tie() says is drawn in the cluster before it the same way: see merged in stretches)
       const after = ((joins ? joins(i) : prev === '\u{200d}') && PICTOGRAPH.test(c)) || !!tie?.(i)
-      flush(), (tied = !!tie?.(i)), (lag = after ? Math.max(0, tip - w) : 0), (base = sum = adv(c)), (letter = drawn = c), (ends = Math.max(over?.(c) ?? 0, after && far ? spill : 0)), (started = true), (of = c)
+      // (one only Noto Emoji has, in a run resvg never falls back to it for, is the missing-glyph box: see reaches)
+      flush(), (tied = !!tie?.(i)), (lag = after ? Math.max(0, tip - w) : 0), (base = sum = after && unreached && !font.glyph(c.codePointAt(0)) ? BOX : adv(c)), (letter = drawn = c), (ends = Math.max(over?.(c) ?? 0, after && far ? spill : 0)), (started = true), (of = c)
     }
     prev = c
   }
@@ -1606,6 +1628,8 @@ const leading = (chars) => {
 }
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
+  // (whether resvg ever takes Noto Emoji's glyphs for it is decided by the run as written)
+  const unreached = !reaches(run, font)
   // the ligated text is a guess of its own, not a replacement: a pair past a PDF or PDI that closes an embedding or
   // isolate opened before the letter is drawn apart, and the composed text alone may be what keeps the run covered
   const ways = (any) => {
@@ -1614,7 +1638,7 @@ export const guess = (run, bold = false) => {
       const composed = together(run, font, empty, any)
       texts.add(composed).add(ligated(composed, font, empty, any))
     }
-    return [...texts].map((t) => guessed(t, font, any))
+    return [...texts].map((t) => guessed(t, font, any, unreached))
   }
   // With a mark newer than resvg's Unicode, the run is also guessed taking that mark as a mark (composed and ordered
   // across it as Node's NFC does), and the guess is the wider of the two: resvg draws some runs with one wider than either
@@ -1635,7 +1659,7 @@ const ligating = (font) => {
   }
   return LIGATING.get(font)
 }
-const guessed = (run, font, any) => {
+const guessed = (run, font, any, unreached) => {
   const noto = notoWhole(run, font)
   if (noto !== null) return noto + 0.04
   // (a decomposed letter's own marks are drawn within it: the slash through "↮" doesn't stick out past it)
@@ -1688,7 +1712,7 @@ const guessed = (run, font, any) => {
   // it takes the widest.
   const lay = (ss) => {
     const drawn = ss.map(({ orders, far, back, hebrew, reversed, level }) => {
-      const at = (ink) => Math.max(...orders.map(({ order, whole, tied }) => laid(order.map((i) => (i === CUT ? '\u{200b}' : cs[i])).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, reversed, over: past, room, whole, joins: (j) => order[j] !== CUT && cs[order[j] - 1] === '\u{200d}', tie: tied && ((j) => tied.has(order[j])) })))
+      const at = (ink) => Math.max(...orders.map(({ order, whole, tied }) => laid(order.map((i) => (i === CUT ? '\u{200b}' : cs[i])).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, reversed, over: past, room, whole, unreached, joins: (j) => order[j] !== CUT && cs[order[j] - 1] === '\u{200d}', tie: tied && ((j) => tied.has(order[j])) })))
       return { a: at(false), ink: at(true), level }
     })
     for (let l = Math.max(0, ...drawn.map(({ level = 0 }) => level)); l > 0; l--) {

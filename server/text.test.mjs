@@ -787,6 +787,14 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(cp(0x316, 0x200d, 0x25aa, 0x82a, 0x1e86, 0x307), cp(0x316, 0x316, 0x200d, 0x25aa, 0x82a, 0x1e86, 0x307), cp(0x316, 0x316, 0x200d, 0x25aa, 0x200d, 0x26a0, 0x82a, 0x82a, 0x1e86, 0x307))
   // (and the rest of the class: right to left, in an isolate or after an Arabic letter)
   runs.push(cp(0x656, 0x670, 0x200d, 0x2198, 0x10f), cp(0x656, 0x670, 0x200d, 0x2198, 0x10f, 0x307), cp(0x20e3, 0x20, 0x2600, 0x639, 0x316, 0x200d, 0x2049, 0x5c1, 0x6f1, 0x301), cp(0x2067, 0x23, 0x1ab5, 0x200d, 0xa9, 0x1ab5, 0x2069))
+  // and one only Noto Emoji has ("😀", "⌚"): the missing-glyph box when resvg never falls back to Noto Emoji (the first
+  // cluster with a glyph missing opens with "a"), Noto Emoji's glyph when it does ("*", "1", "#", a space or a
+  // pictograph opening it), and right to left, its stretches shaped one at a time
+  runs.push(cp(0x61, 0x1ab5, 0x200d, 0x1f600), cp(0x61, 0x200d, 0x1f600), cp(0x61, 0x1ab5, 0x1ab5, 0x200d, 0x1f600, 0x62), cp(0x6c, 0x31, 0x316, 0x200d, 0x1f9d1), cp(0x2a, 0x1ab5, 0x200d, 0x23f0), cp(0x31, 0x1ab5, 0x200d, 0x1f3c3))
+  runs.push(cp(0x23, 0x82a, 0x1abd, 0x200d, 0x1f44d), cp(0x200c, 0x23, 0x1ab5, 0x200d, 0x1f9d1), cp(0x231a, 0x2014, 0xa0, 0x1ab5, 0x64b, 0x200d, 0x1f44d), cp(0x2014, 0x5a4, 0x200d, 0x1f600), cp(0x200d, 0x316, 0x57, 0x82a, 0x200d, 0x1f4a5, 0x202c), cp(0x20, 0x61, 0x1ab5, 0x200d, 0x231a))
+  runs.push(cp(0x2044, 0x82a, 0x200d, 0x1f600), cp(0x627, 0x1ab5, 0x200d, 0x1f600), cp(0x5d0, 0x5a3, 0x200d, 0x1f600), cp(0x61, 0x1ab5, 0x200d, 0x2764, 0xfe0f), cp(0x61, 0x1ab5, 0x200d, 0x1fabe))
+  // (a tab is a space to resvg, which Noto Emoji has)
+  runs.push(cp(0x23, 0x9, 0x1ab5, 0x200d, 0x1f600), cp(0x20, 0x9, 0x316, 0x200d, 0x1f600))
   // and a sample of every character Inter has below U+0600, between the characters it kerns most with on each side
   // (at the regular weight), alone and repeated
   const most = (pair) => chars.reduce(([b, k], x) => (pair(x) > k ? [x, pair(x)] : [b, k]), ['', 0])[0]
@@ -858,6 +866,9 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   // (and so are stretches set left to right but shaped right to left with left-to-right letters in them, kerned the
   // other way round, not given room for every cluster: LRO, a box mark, "}" and "ď"; an RLE, an Arabic digit and "jȴ")
   for (const run of [cp(0x202d, 0x6db, 0x7d, 0x10f), cp(0x202b, 0x661, 0x6a, 0x234), `ש ${cp(0x2067, 0x661, 0x6a, 0x234, 0x2069)}`]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.15, `${bold} ${run}`)
+  // and a pictograph only Noto Emoji has after a joiner, in a run resvg never falls back to Noto Emoji for, is a box
+  // drawn past its cluster's glyphs, not Noto Emoji's glyph drawn there ("a" U+1AB5 U+200D "😀" was half an em over)
+  for (const run of [cp(0x61, 0x1ab5, 0x200d, 0x1f600), cp(0x61, 0x200d, 0x1f600), cp(0x2044, 0x82a, 0x200d, 0x1f600)]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.25, `${bold} ${run}`)
   // and right-to-left text with its marks (pointed Arabic and Hebrew), or text struck through after a right-to-left
   // override (each box widening its letter, not a box beside it), isn't guessed far wider for each letter carrying marks
   const struck = [...'strike this'].map((c) => c + cp(0x336)).join('')
