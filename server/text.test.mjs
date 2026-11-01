@@ -353,6 +353,12 @@ const RTL_ISOLATED = [`gm ${cp(0x2068)}@alice${cp(0x2069)} שלום עולם`, `
 // (lines with harakat or points and an arrow)
 const ARROW_LINES = ['مَرْحَبًا بِكُمْ فِي الْعَالَمِ الْجَدِيدِ –> نَعَمْ', 'مَرْحَبًا –> عَالَم', 'שָׁלוֹם עוֹלָם –> כֵּן']
 const LTR_ISOLATED = [`gm ${cp(0x2068)}@alice${cp(0x2069)} how are you`, `A1${cp(0x2069, 0x336)}®`, `ดื่มน้ำ ${cp(0x2068)}x${cp(0x2069)}`, `${cp(0x202a)}Thai ${cp(0x2066)}น้ำ${cp(0x2069)} ok${cp(0x202c)}`, `${cp(0x202d)}a${cp(0x336, 0x202c)}b`]
+// stretches shaped right to left (their first letter of a script is Arabic) set left to right that start with marks no
+// font has (#368): "ď" and its acute after two, "ď" alone, "ĺ", the marks the
+// other way round before "a" and a diaeresis, three of them, a box mark on "ď" too, and Syriac and Devanagari ones
+// before letters and brackets; and the same opening an isolate or embedding after a zero-width space (#367 cuts the
+// stretch there)
+const TURNED_LEADS = [cp(0x610, 0x2066, 0x200b, 0x64b, 0x6e1, 0x10f, 0x301), cp(0x2066, 0x200b, 0x64b, 0x6e1, 0x10f, 0x301), cp(0x202a, 0x200b, 0x64b, 0x6e1, 0x10f), cp(0x61, 0x2068, 0x200b, 0x64b, 0x6e1, 0x10f, 0x301, 0x2069), cp(0x64b, 0x6e1, 0x10f, 0x301), cp(0x64b, 0x6e1, 0x10f), cp(0x64b, 0x6e1, 0x13a), cp(0x6e1, 0x64b, 0x61, 0x308), cp(0x64b, 0x6e1, 0x6db, 0x10f, 0x301), cp(0x64b, 0x6e1, 0x10f, 0x64b), cp(0x711, 0x941, 0x3c, 0x7d, 0x66, 0x61)]
 test("Inter's kerning read from the font is the room resvg gives a pair", () => {
   for (const [i, file] of FONTS.slice(0, 2).entries()) {
     const font = metrics(file)
@@ -694,6 +700,11 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // (and the other way round: a variation selector among the marks it starts with keeps the next grapheme's marks whole)
   runs.push(cp(0xfe00, 0x6db, 0x2069, 0x341, 0x64, 0xfe0f, 0x64), cp(0xfe00, 0x6db, 0x2069, 0x341, 0x64, 0xfe0f, 0x64, 0x6d6), cp(0x6db, 0xfe00, 0x20, 0x341, 0x61))
   runs.push(cp(0x610, 0xfe00, 0xad, 0x340, 0x64, 0x200c, 0x301), cp(0x300, 0x308, 0x34f, 0xfe00, 0x200c, 0x300, 0x344, 0x6f1, 0x64, 0x5d0))
+  // and the stretches turned around that start with marks no font has (#368), drawn a whole box each before the cluster
+  // after them, or under it: those runs, with what follows them too
+  // (and before a letter the shaper doesn't decompose, or sara am, where the boxes overlap what comes after them)
+  const leads = [...TURNED_LEADS, cp(0x64b, 0x6e1, 0x64), cp(0x64b, 0x6e1, 0x6c, 0x308), cp(0x7f2, 0xe33, 0x5d, 0x6e1, 0xeb3)]
+  runs.push(...leads, ...leads.flatMap((run) => [`${run}a`, `${run}aaaaa`, `${run}ทa`, `${run} ď`]))
   // and the runs once guessed short in #366: marks on nothing before a variation selector (which no font has), still put
   // in combining-class order, U+0308 before U+035E, as resvg draws them; and U+0344, which Inter has the parts of, decomposed
   // and ordered the same way (a tag after it, not in its cluster), before a space, a closing bracket or an embedding
@@ -891,6 +902,10 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   // and isolates and embeddings that only set text left to right are guessed as the stretches they cut, not as room for
   // every cluster in any order
   for (const run of LTR_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
+  // and a stretch shaped right to left (its first letter of a script is Arabic) set left to right that starts with marks
+  // no font has, which are drawn a whole box each before the cluster after them, not past its ink (U+064B U+06E1 "ď"
+  // U+0301 was 3.73 em for 2.00), nor that cluster's own mark's ink past them
+  for (const run of TURNED_LEADS) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} vs ${measure(run, bold)}`)
   // and so are those in right-to-left text, laid out at the levels resvg's bidi gives them: as close as other text
   for (const run of RTL_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.15, run)
   // (and so are stretches set left to right but shaped right to left with left-to-right letters in them, kerned the

@@ -527,7 +527,21 @@ const reaches = (run, font) => {
 // draws dotless before a mark above, so the same as "ı" with it even with an ignorable between them
 const DOTTED = { ı: 'i', ȷ: 'j', i: 'i', і: 'i' }
 // whole: a break doesn't start a cluster (resvg doesn't always cut there)
-const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, hebrew = false, over, room, joins, tie, unreached }, whole) => {
+const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, hebrew = false, over, room, joins, tie, unreached, ahead }, whole) => {
+  // (ahead: where the marks a stretch turned around starts with are, put after its first cluster's. When they're all
+  // marks no font has, they're drawn first, a whole box each, then that cluster: U+064B U+06E1 "ď" U+0301 is two boxes
+  // then "ď", the acute within them, not boxes past its ink. What comes after is drawn as if fewer boxes came before it:
+  // one ("d" U+0301 or "l" U+0308 after two, the boxes overlapping), or none when the shaper merges them into the
+  // cluster, decomposing its letter ("ď", "ĺ"), which then advances that letter or a box, the wider. So they add their
+  // boxes to that cluster's ink, and one box fewer, but at least one, to its advance. Measured; a cluster that starts
+  // with sara am, boxes of its own, is left as it was. Ignorables before those marks (LRI ZWSP U+064B U+06E1 "ď"), drawn
+  // as nothing, are skipped and not counted; a joiner among them, which can tie the marks to what comes after, keeps
+  // the lead as it was, laid out in turn)
+  const chars = [...run]
+  const shown = ahead?.filter((j) => !IGNORED.test(chars[j])) ?? []
+  const front = shown.length && !IGNORED.test(chars[0]) && !AM.test(chars[0]) && shown.every((j) => boxed(chars[j], font)) && !ahead.some((j) => JOINS.test(chars[j])) ? new Set(ahead) : null
+  const count = shown.length
+  let lead = front ? BOX * count : 0
   let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, letter = '', points = true, ends = 0
   // A mark the font has that nothing anchors (it has no letter under it, or one with no place for it: a digit, "#", a
   // letter of another font or none) is drawn where the pen is, after its base and the marks before it, and its ink
@@ -649,6 +663,7 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
       ;(before = d), (reach = loose), (roomed = r)
     } else reach = Math.max(reach, loose)
     w -= lag
+    if (lead && started) first()
     base = marks = own = ends = lag = sum = 0
     box = am = hung = joined = hidden = tied = false
     of = drawn = ''
@@ -657,8 +672,17 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
     points = true
     loose = -Infinity
   }
-  for (const c of run) {
+  // (the turned lead's boxes, put before the first cluster once it's laid out)
+  const first = () => {
+    end = lead + Math.max(end, w)
+    reach += lead
+    tip += lead
+    w += BOX * Math.max(1, count - 1)
+    lead = 0
+  }
+  for (const c of chars) {
     i++
+    if (front?.has(i)) continue
     if (!whole && BREAKS.test(c)) flush()
     // the invisible characters the cluster goes on after keep a letter and a mark after them from making one character
     // ("Ж" U+FE0F U+0308 isn't "Ӝ"), and a joiner, a Mongolian variation selector or a tag leaves the marks after it
@@ -680,6 +704,7 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, back = false, heb
     prev = c
   }
   flush()
+  if (lead) first()
   if (drift > 0 && (far || LEFTWARD.test(run))) end = Math.max(end, w + drift)
   return ink ? Math.max(w, end) : w
 }
@@ -1094,7 +1119,8 @@ const stretches = (cs) => {
       while (e < s.length && !begins(s, e)) e++
       const turned = [...s.slice(k, e), ...s.slice(0, k), ...s.slice(e)]
       const tied = merged(s, j, k, e) ? new Set([s[e]]) : undefined
-      return { orders: [...orders, ...ways.map((whole) => ({ order: turned, whole, tied }))], far, back: true }
+      const ahead = s.slice(0, k).map((_, i) => e - k + i)
+      return { orders: [...orders, ...ways.map((whole) => ({ order: turned, whole, ahead, tied }))], far, back: true }
     }
     const hebrew = HEBREW.test(first ?? '')
     // (marks that open the stretch, which an embedding, override or isolate can cut off their letter, have no letter
@@ -1132,7 +1158,13 @@ const stretches = (cs) => {
     // (and so does a letter and a mark with bidi controls between them that aren't an isolate or embedding closed as
     // soon as it's opened (EMPTIED, below): the shaper joins them when they come out at the same level ("l" PDF LRE
     // U+030C "l" in an RLI draws "ľ"), which isn't modelled either)
-    if ([...cs.join('').matchAll(SPLIT)].some((m) => !WHOLLY.test(m[1]))) return null
+    // (at different levels they're in stretches shaped apart, never joined: "a" FSI U+064B, #368)
+    const joined = cs.join('')
+    const split = (m) => {
+      const i = [...joined.slice(0, m.index)].length
+      return level[i] === level[i + 1 + [...m[1]].length]
+    }
+    if ([...joined.matchAll(SPLIT)].some((m) => !WHOLLY.test(m[1]) && split(m))) return null
     const cut = out.map((s) => ({ ...stretch(s, level[s[0]] % 2 === 1), level: level[s[0]] }))
     // (embeddings, overrides and isolates that set nothing right to left reorder nothing, but may cut the run into
     // stretches at every level: guessed cut there and not)
@@ -1829,7 +1861,7 @@ const guessed = (run, font, any, unreached) => {
   // it takes the widest.
   const lay = (ss) => {
     const drawn = ss.map(({ orders, far, back, hebrew, reversed, level }) => {
-      const at = (ink) => Math.max(...orders.map(({ order, whole, tied }) => laid(order.map((i) => (i === CUT ? '\u{200b}' : cs[i])).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, reversed, over: past, room, whole, unreached, joins: (j) => order[j] !== CUT && cs[order[j] - 1] === '\u{200d}', tie: tied && ((j) => tied.has(order[j])) })))
+      const at = (ink) => Math.max(...orders.map(({ order, whole, ahead, tied }) => laid(order.map((i) => (i === CUT ? '\u{200b}' : cs[i])).join(''), adv, font, ink, (j) => !within.has(order[j]), { far, back, hebrew, reversed, over: past, room, whole, unreached, joins: (j) => order[j] !== CUT && cs[order[j] - 1] === '\u{200d}', tie: tied && ((j) => tied.has(order[j])), ahead })))
       return { a: at(false), ink: at(true), level }
     })
     for (let l = Math.max(0, ...drawn.map(({ level = 0 }) => level)); l > 0; l--) {
