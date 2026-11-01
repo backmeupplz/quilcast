@@ -224,6 +224,9 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .tw-video { position: relative; margin-top: 10px; border-radius: calc(12px * var(--rs, 1)); overflow: hidden; background: #000; }
 .tw-video img { width: 100%; max-height: 420px; object-fit: cover; display: block; }
 .tw-video .play { pointer-events: none; }
+/* an X article: its cover, title and opening, drawn like a link card inside the post */
+.tw-article { margin-top: 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); overflow: hidden; }
+.tw-article .lc-img { aspect-ratio: 5 / 2; }
 .tw-quote { margin-top: 8px; padding: 8px 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); font-size: 14px; }
 .tw-quote p { margin: 2px 0 0; color: var(--muted); -webkit-line-clamp: 3; }
 .tw-stats { display: flex; gap: 14px; margin-top: 8px; color: var(--muted); font-size: 13px; }

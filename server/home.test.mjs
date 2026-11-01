@@ -66,3 +66,10 @@ test("a video is drawn in its poster's shape, and 16:9 when that's unknown", () 
   const plain = drawn({ [v]: null })
   assert.ok(plain.html.includes('<div class="vid"><video '))
 })
+
+test('an X article shows its cover, title and opening instead of its bare link', () => {
+  const article = 'https://x.com/cass_on_mars/status/2'
+  got[`u:${article}`] = { url: article, tweet: { text: '', author: { name: 'Cass', handle: 'cass_on_mars' }, photos: [], article: { title: 'Hot wallets', text: 'what a week', cover: 'https://pbs.twimg.com/media/c.jpg' } } }
+  const html = page([article])
+  assert.match(html, /<div class="tw-article"><img[^>]*class="lc-img"[^>]*><div class="lc-text"><span class="lc-title">Hot wallets<\/span><span class="lc-desc">what a week<\/span>/)
+})

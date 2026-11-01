@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, myUser, posting, safeUrl, settings, toUrl, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
+import { boxOf, castOf, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, TOKENS, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -278,7 +278,7 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
   )
 }
 
-export const urlsOf = (c: Cast) => c.embeds.flatMap((e) => safeUrl(e.url) ?? [])
+export { urlsOf }
 /** the cast's first image, or its video's poster */
 export const thumbOf = (c: Cast) => {
   const urls = urlsOf(c)
@@ -385,7 +385,7 @@ export function Lightbox({ urls, index, close }: { urls: string[]; index: number
   )
 }
 
-type Tweet = { text: string; author: { name?: string; handle?: string; avatar?: string }; at?: number; photos: string[]; video?: string; likes?: number; replies?: number; reposts?: number; quote?: { name?: string; handle?: string; text?: string } }
+type Tweet = { text: string; author: { name?: string; handle?: string; avatar?: string }; at?: number; photos: string[]; video?: string; likes?: number; replies?: number; reposts?: number; quote?: { name?: string; handle?: string; text?: string }; article?: { title: string; text?: string; cover?: string } }
 type Unfurl = { url: string; title?: string; description?: string; image?: string; button?: string; icon?: string; tweet?: Tweet; app?: AppMeta } | null
 
 function TweetCard({ u, t }: { u: string; t: Tweet }) {
@@ -402,6 +402,12 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
       {t.text && <RichText text={t.text.replace(/\s*https:\/\/t\.co\/\S+$/, '')} class="text tw-text" />}
       {t.photos.length > 0 && <Media urls={t.photos} />}
       {!t.photos.length && video && <div class="tw-video"><Img src={video} low /><span class="play"><Icon d={P.play} fill size={24} /></span></div>}
+      {t.article && (
+        <div class="tw-article">
+          {safeUrl(t.article.cover) && <Img class="lc-img" src={safeUrl(t.article.cover)} />}
+          <div class="lc-text"><span class="lc-title">{t.article.title}</span>{t.article.text && <span class="lc-desc">{t.article.text}</span>}</div>
+        </div>
+      )}
       {t.quote && <div class="tw-quote"><b>{t.quote.name}</b> <span class="handle">@{t.quote.handle}</span><p>{t.quote.text}</p></div>}
       <div class="tw-stats"><span>{tn(t.replies || 0, '{n} reply', '{n} replies', { n: n(t.replies) })}</span><span>{tn(t.reposts || 0, '{n} repost', '{n} reposts', { n: n(t.reposts) })}</span><span>{tn(t.likes || 0, '{n} like', '{n} likes', { n: n(t.likes) })}</span></div>
     </div>

@@ -81,15 +81,18 @@ async function tweet(url) {
   const r = await fetch(`https://api.fxtwitter.com/${m[1]}/status/${m[2]}`, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(5000) })
   const t = (await r.json()).tweet
   if (!t) return null
+  // an X article: the post is only the article's link, so the card shows its cover, title and opening instead
+  const a = t.article?.title && t.article
   return {
     url,
     tweet: {
-      text: clip(t.text, 4000),
+      text: clip(a ? String(t.text || '').replace(/\s*https:\/\/x\.com\/i\/article\/\d+/g, '').trim() : t.text, 4000),
       author: { name: clip(t.author?.name, 100), handle: clip(t.author?.screen_name, 30), avatar: httpUrl(t.author?.avatar_url) },
       at: Number(t.created_timestamp) || undefined,
       photos: (t.media?.photos || []).map((p) => httpUrl(p.url)).filter(Boolean).slice(0, 4),
       video: httpUrl(t.media?.videos?.[0]?.thumbnail_url),
       likes: Number(t.likes) || 0, replies: Number(t.replies) || 0, reposts: Number(t.retweets) || 0,
+      article: a ? { title: clip(a.title, 300), text: clip(String(a.preview_text || '').replace(/\s+/g, ' '), 600), cover: httpUrl(a.cover_media?.media_info?.original_img_url) } : undefined,
       quote: t.quote && { name: clip(t.quote.author?.name, 100), handle: clip(t.quote.author?.screen_name, 30), text: clip(t.quote.text, 1000) },
     },
   }

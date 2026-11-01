@@ -9,7 +9,7 @@ import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, sized, X_LOGO } from '../src/shared.ts'
+import { castText, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { clientIp, fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
@@ -192,7 +192,7 @@ async function posterOf(u) {
 
 /** The picture for the card: an attached image, else a link's preview image or X photo, else a video frame. */
 async function visualOf(c) {
-  const urls = (Array.isArray(c.embeds) ? c.embeds : []).map((e) => e?.url).filter((u) => typeof u === 'string' && /^https?:\/\//i.test(u))
+  const urls = urlsOf(c)
   const img = urls.find(isImg)
   if (img) return { src: img }
   // a shared design shows its own card
@@ -204,7 +204,8 @@ async function visualOf(c) {
   if (th) return { theme: themeLink, th, wide: true }
   for (const u of urls.filter((u) => !isVid(u)).slice(0, 2)) {
     const d = await unfurl(u).catch(() => null)
-    if (d?.tweet) return d.tweet.photos[0] || d.tweet.video ? { src: d.tweet.photos[0] || d.tweet.video, label: `@${d.tweet.author.handle} on X`, video: !d.tweet.photos[0] } : { tweet: d.tweet }
+    const pic = d?.tweet && (d.tweet.photos[0] || d.tweet.article?.cover)
+    if (d?.tweet) return pic || d.tweet.video ? { src: pic || d.tweet.video, label: `@${d.tweet.author.handle} on X`, video: !pic } : { tweet: d.tweet }
     if (d?.image) return { src: d.image, label: new URL(u).hostname.replace(/^www\./, ''), wide: true }
   }
   const vid = urls.find(isVid)

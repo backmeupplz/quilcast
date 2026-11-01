@@ -131,3 +131,10 @@ test('on-chain key calldata matches viem, with a SignedKeyRequest the validator 
   assert.equal(base58(new TextEncoder().encode('hello world')), 'StV1DL6CwTryKyV')
   assert.equal(base58(Uint8Array.of(0, 0, 1)), '112')
 })
+
+test('a cast with no embeds gets its first typed link as one; embeds win when there are any', async () => {
+  const { urlsOf } = await import('./shared.ts')
+  assert.deepEqual(urlsOf({ text: 'see example.com and https://x.com/a/status/1?s=46. https://b.com', embeds: [] }), ['https://x.com/a/status/1?s=46'])
+  assert.deepEqual(urlsOf({ text: 'https://x.com/a', embeds: [{ url: 'https://c.com/' }] }), ['https://c.com/'])
+  assert.deepEqual(urlsOf({ text: 'https://x.com/a', embeds: [{}] }), [])
+})

@@ -2,7 +2,7 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { boxOf, castOf, castText, designId, embedLayout, isImg, isVid, LOGO, n, P, poster, safeUrl, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, TOKENS, toUrl, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
+import { boxOf, castOf, castText, designId, embedLayout, isImg, isVid, LOGO, n, P, poster, safeUrl, shortUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, TOKENS, toUrl, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -21,7 +21,6 @@ const OUT = ['verified_addresses', 'verifications', 'custody_address', 'auth_add
 const leanUser = (u) => u && Object.fromEntries(Object.entries(u).filter(([k]) => !OUT.includes(k)))
 export const lean = (c) => ({ ...c, author: leanUser(c.author), mentioned_profiles: c.mentioned_profiles?.map(leanUser) })
 
-const urlsOf = (c) => (c.embeds || []).flatMap((e) => safeUrl(e?.url) ?? [])
 const ownPath = (u) => {
   const x = u && new URL(u)
   return x && ownHosts.includes(x.host) ? x.pathname : ''
@@ -128,6 +127,8 @@ export function body(d, version, now = Date.now()) {
       `${t.at ? `<span class="handle tw-at">· ${ago(t.at * 1000)}</span>` : ''}</div>` +
       (t.text ? rich(t.text.replace(/\s*https:\/\/t\.co\/\S+$/, ''), 'text tw-text') : '') + (t.photos?.length ? media(t.photos) : '') +
       (!t.photos?.length && video ? `<div class="tw-video">${img(video, '', '', true)}<span class="play">${icon(P.play, 24, true)}</span></div>` : '') +
+      (t.article ? `<div class="tw-article">${safeUrl(t.article.cover) ? img(safeUrl(t.article.cover), 'lc-img') : ''}<div class="lc-text"><span class="lc-title">${esc(t.article.title)}</span>` +
+        `${t.article.text ? `<span class="lc-desc">${esc(t.article.text)}</span>` : ''}</div></div>` : '') +
       (t.quote ? `<div class="tw-quote"><b>${esc(t.quote.name)}</b> <span class="handle">@${esc(t.quote.handle)}</span><p>${esc(t.quote.text)}</p></div>` : '') +
       `<div class="tw-stats"><span>${plural(t.replies || 0, 'reply', 'replies')}</span><span>${plural(t.reposts || 0, 'repost', 'reposts')}</span><span>${plural(t.likes || 0, 'like', 'likes')}</span></div></div>`
   }

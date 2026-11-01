@@ -410,6 +410,10 @@ export function wordsRe(words: string[]) {
 const TLDS = 'com|org|net|xyz|io|app|dev|ai|co|me|gg|so|sh|fm|tv|art|fun|lol|wtf|info|page|site|tech|link|to|us|uk|de|fr|eu|ca|ly|cc|club|blog|news|social|world|live|studio|games|finance|money|cash|network|systems|build|tools'
 export const LINK_RE = new RegExp(`https?:\\/\\/[^\\s<>"]+[^\\s<>".,;:!?)\\]'"]|(?<![@\\w.\\/-])(?:[a-z0-9-]+\\.)+(?:${TLDS})\\b(?:\\/[^\\s<>"]*[^\\s<>".,;:!?)\\]'"])?`, 'gi')
 export const toUrl = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}`)
+/** A cast's links, shown as its pictures and cards. Some clients leave a link in the text without embedding it, so a
+ *  cast with no embeds at all gets its first typed http(s) link instead. */
+export const urlsOf = (c: { text?: string; embeds?: { url?: string }[] }) =>
+  c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : (c.text?.match(LINK_RE) || []).filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
 
 // URLs from casts, profiles and link previews are untrusted: Snapchain only checks their length, so
 // a "link" can be javascript:… or point at the viewer's own network. Only public http(s) gets through.
