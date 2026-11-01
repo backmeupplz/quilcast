@@ -996,11 +996,23 @@ const notoWhole = (run, font) => {
 // which is the same acute) on "ϒ" as in "ϓ", even with an ignorable between them that keeps them from composing (a
 // joiner, a variation selector; not a non-joiner, a Mongolian variation selector, a tag or a bidi control that opens a
 // stretch of its own). Measured for every letter and mark that compose into a character Inter has, past each ignorable;
-// generated, not tuned.
+// generated, not tuned. An isolate or embedding closed as soon as it's opened (LRI PDI, RLE PDF) has no stretch of its
+// own either, and the shaper joins the letter and the mark past it too, in either direction, when all that's in it is
+// ignorables the bidi algorithm takes out and the shaper skips (a joiner, a soft hyphen; not a non-joiner or a tag, which
+// the shaper doesn't skip, nor a variation selector or a grapheme joiner, which are laid out inside the isolate, apart
+// from the letter), embeddings in an isolate, or closed embeddings in an embedding (measured for every ignorable in each
+// opener, at both weights). It's a guess of its own (EMPTIED), not a replacement: it can join more pairs than SKIPPED,
+// and so draw a narrower text than SKIPPED alone would.
 const COMPOSABLE = /\P{M}\p{M}+/gu
 const HIDDEN = new RegExp(IGNORED.source, 'gu')
-const SKIPPED = String.raw`(?:(?![\u{200c}\u{180b}-\u{180d}\u{e0020}-\u{e007f}\u{61c}\u{200f}\u{202a}\u{202b}\u{202d}\u{202e}\u{2066}-\u{2068}])${IGNORED.source})+`
-const APART = new RegExp(String.raw`[dlt]${SKIPPED}\u{30c}|\u{3d2}${SKIPPED}[\u{301}\u{341}]`, 'gu')
+const PASSED = String.raw`(?![\u{200c}\u{180b}-\u{180d}\u{e0020}-\u{e007f}\u{61c}\u{200f}\u{202a}\u{202b}\u{202d}\u{202e}\u{2066}-\u{2068}])${IGNORED.source}`
+const SKIPPED = `(?:${PASSED})+`
+const INSIDE = String.raw`[\u{ad}\u{180e}\u{200b}\u{200d}\u{2060}-\u{2064}\u{206a}-\u{206f}\u{feff}\u{1d173}-\u{1d17a}\u{e0001}]`
+const embedding = (inner) => String.raw`[\u{202a}\u{202b}\u{202d}\u{202e}](?:${inner})*\u{202c}`
+const EMPTY = String.raw`[\u{2066}-\u{2068}](?:${INSIDE}|[\u{202a}-\u{202e}])*\u{2069}|${embedding(`${INSIDE}|${embedding(INSIDE)}`)}`
+const EMPTIED = `(?:${PASSED}|${EMPTY})+`
+const carons = (skipped) => new RegExp(String.raw`[dlt]${skipped}\u{30c}|\u{3d2}${skipped}[\u{301}\u{341}]`, 'gu')
+const APART = [carons(SKIPPED), carons(EMPTIED)]
 // After composing, Inter's ccmp also joins a letter and the first mark on it (in the shaper's order, marks of a lower
 // combining class first) into a character where NFC doesn't: "l" with a dot above is drawn "ŀ", "ı" with a tilde "ĩ",
 // "O" with a long solidus "Ø", "e" with U+1DC6 "ḕ" (past the same ignorables as the caron above). The letter, mark and
@@ -1019,12 +1031,12 @@ const LIGATURES = new Map(
 // And Inter draws "i" and the Cyrillic "і" dotless before a mark above, so they join with it as "ı" does, also past an
 // ignorable that keeps NFC from composing them ("i" U+FE00 U+0308 and "i" U+200B U+0303 are drawn "ï" and "ĩ").
 const DOTLESS = { i: 'ı', і: 'ı' }
-const LIGATED = new RegExp(String.raw`(\P{M})(${SKIPPED})?([\p{M}\u{ee90}\u{f6c3}]\p{M}*)`, 'gu')
-const together = (run, font) => run.replace(APART, (p) => p.replace(HIDDEN, '').normalize('NFC')).replace(COMPOSABLE, (g) => {
+const LIGATED = [SKIPPED, EMPTIED].map((skipped) => new RegExp(String.raw`(\P{M})(${skipped})?([\p{M}\u{ee90}\u{f6c3}]\p{M}*)`, 'gu'))
+const together = (run, font, empty) => run.replace(APART[empty], (p) => p.replace(HIDDEN, '').normalize('NFC')).replace(COMPOSABLE, (g) => {
   const n = g.normalize('NFC')
   return n !== g && [...n].every((x) => IGNORED.test(x) || font.glyph(x.codePointAt(0)) || (/\p{M}/u.test(x) && g.includes(x))) ? n : g
 })
-const ligated = (run, font) => run.replace(LIGATED, (all, letter, _, marks) => {
+const ligated = (run, font, empty) => run.replace(LIGATED[empty], (all, letter, _, marks) => {
   // (a variation selector among the marks keeps the shaper from decomposing them)
   const ms = VARIANT.test(marks) ? marks : marks.normalize('NFD')
   const first = String.fromCodePoint(ms.codePointAt(0))
@@ -1033,11 +1045,14 @@ const ligated = (run, font) => run.replace(LIGATED, (all, letter, _, marks) => {
 })
 export const guess = (run, bold = false) => {
   const font = bold ? BOLD : REGULAR
-  const composed = together(run, font)
   // the ligated text is a guess of its own, not a replacement: a pair past a PDF or PDI that closes an embedding or
   // isolate opened before the letter is drawn apart, and the composed text alone may be what keeps the run covered
-  const joined = ligated(composed, font)
-  return Math.max(...[...new Set([run, composed, joined])].map((t) => guessed(t, font)))
+  const texts = new Set([run])
+  for (const empty of [0, 1]) {
+    const composed = together(run, font, empty)
+    texts.add(composed).add(ligated(composed, font, empty))
+  }
+  return Math.max(...[...texts].map((t) => guessed(t, font)))
 }
 const guessed = (run, font) => {
   const noto = notoWhole(run, font)

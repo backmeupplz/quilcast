@@ -576,6 +576,13 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // wider; past each ignorable it joins past, repeated too, and "ĵ", "ǰ")
   for (const g of [0x34f, 0x200d, 0x200b, 0xad, 0x2060, 0xfe0f, 0x200e, 0x202c, 0x2069]) for (const m of [0x303, 0x304, 0x306, 0x308, 0x30f]) for (const [x, y] of [['f', 'T'], ['T', 'T'], ['7', '7'], ['1', '1']]) runs.push(`${x}${cp(0x69, g, m)}${y}`, `${x}${cp(0x69, g, m, 0x69, g, m)}${y}`)
   for (const m of [0x302, 0x30c]) for (const [x, y] of [['f', 'T'], ['T', 'T'], ['H', 'H']]) runs.push(`${x}${cp(0x6a, 0x34f, m)}${y}`, `${x}${cp(0x6a, 0x200d, m)}ĩ${y}`)
+  // (and past an isolate or embedding closed as soon as it's opened, which the shaper joins them past too, in either
+  // direction, with a joiner in it or another such pair: "f i" LRI PDI tilde "T" is "fĩT", "d" LRI PDI caron "]" is "ď]",
+  // "l" LRE PDF dot above is "ŀ"; repeated, and after a ligature already in the run)
+  for (const e of [[0x2066, 0x2069], [0x2068, 0x2069], [0x202a, 0x202c], [0x202d, 0x202c], [0x2067, 0x2069], [0x202e, 0x202c], [0x2066, 0x200d, 0x2069], [0x2066, 0x202a, 0x202c, 0x2069], [0x2066, 0x2069, 0x34f]]) {
+    for (const [x, y] of [['f', 'T'], ['T', 'T']]) for (const m of [0x303, 0x304, 0x306, 0x308, 0x30f]) runs.push(`${x}${cp(0x69, ...e, m)}${y}`, `${x}${cp(0x69, ...e, m, 0x69, ...e, m)}${y}`)
+    for (const [l, m, y] of [[0x64, 0x30c, ']'], [0x6c, 0x30c, 'T'], [0x74, 0x30c, ']'], [0x6c, 0x307, 'T'], [0x4c, 0x307, 'T'], [0x3d2, 0x301, 'T'], [0x131, 0x303, 'T']]) runs.push(`f${cp(l, ...e, m)}${y}`, `H${cp(l, ...e, m)}${y}`, `Hŀ${cp(l, ...e, m)}ĩ`)
+  }
   // (and the Cyrillic "і" with a mark above, which Inter draws dotless and joins like "ı": "і" and a tilde are "ĩ",
   // between the letters that kern it wider, past a joiner too, and past a CGJ, where it doesn't compose into "ї" and a
   // diaeresis is "ï")
