@@ -558,6 +558,44 @@ test('a theme card draws the emoji in a theme name in color, under every name ef
   }
 })
 
+test("glitter's sparkle follows each line of a theme's name and stays in the panel, after a full first line too", async () => {
+  // a name that just fits one line by the old guesses, a full line of flags at 40 px, wide capitals drawn bold, and
+  // names (of at most 60 characters, as a theme's name is kept) of so many words that the card would have measured all
+  // it may before its last lines: kerned tight ("Ty", "AV"), where a guess at a line's end runs wider than it's drawn,
+  // and with ideographic spaces, which a guess takes as narrower than they're drawn
+  const words = ' To b c d e f g h i j k l m n o p q r s t u v w x'
+  const names = ['TyTyTyTyTy' + words, 'AVAVAVAVAV' + words, 'AVAVAVAVAV e b v n r g　　 s p t k y c j f w q h i m l z o u']
+  for (const n of names) assert.ok([...n].length <= 60, n)
+  for (const name of ['Love ❤️‍\u{1F525} mode', '\u{1F1FA}\u{1F1E6}'.repeat(12), 'MMMMMMMMMMMMMMMMMMMMMMMMMMMMM', ...names]) {
+    const { id } = await (await fetch(base + '/api/theme', { method: 'POST', body: JSON.stringify({ name, base: 'dark', nameFx: 'glitter' }) })).json()
+    const { w, h, at } = pixels(Buffer.from(await (await fetch(`${base}/og/theme/${id}.png`)).arrayBuffer()))
+    // the sparkle's gold in the panel (x 748 to 1152), and anything warm (its soft edge too) to the right of it
+    let inside = 0, outside = 0
+    for (let y = 0; y < h; y++) for (let x = 748; x < w; x++) {
+      const [r, b] = [at(x, y) >> 16, at(x, y) & 0xff]
+      if (x < 1152) inside += at(x, y) === 0xffc928
+      else outside += r > 40 && r > b + 20
+    }
+    assert.ok(inside > 40, `${name}: ${inside}`)
+    assert.equal(outside, 0, name)
+  }
+  // and a name with no effect may use the panel's padding too, up to 8 px from its edge
+  {
+    const { id } = await (await fetch(base + '/api/theme', { method: 'POST', body: JSON.stringify({ name: 'Christmas Morning Magic \u2728', base: 'dark' }) })).json()
+    const { w, h, at } = pixels(Buffer.from(await (await fetch(`${base}/og/theme/${id}.png`)).arrayBuffer()))
+    // the sparkles emoji, drawn: the name isn't cut before it
+    let gold = 0
+    for (let y = 0; y < h; y++) for (let x = 748; x < w; x++) gold += at(x, y) === 0xffac33
+    assert.ok(gold > 30, `sparkles: ${gold}`)
+  }
+  // and a name that fits whole beside its sparkles still does: the sunrise ending it is drawn (its water's blue)
+  const { id } = await (await fetch(base + '/api/theme', { method: 'POST', body: JSON.stringify({ name: 'Golden Hour Glow \u{1F305}', base: 'dark', nameFx: 'glitter' }) })).json()
+  const { w, h, at } = pixels(Buffer.from(await (await fetch(`${base}/og/theme/${id}.png`)).arrayBuffer()))
+  let water = 0
+  for (let y = 0; y < h; y++) for (let x = 748; x < w; x++) water += at(x, y) === 0x3b88c3
+  assert.ok(water > 50, `sunrise: ${water}`)
+})
+
 test('translations: asked once per cast and language, from the node\'s words, from free models only, then kept', async () => {
   const hash = 'ab'.repeat(20)
   assert.deepEqual(await (await fetch(`${base}/api/translate`)).json(), { on: true })

@@ -28,7 +28,7 @@ import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
-import { cut, esc, FONTS, initial, pictures, textSvg, width, wrap } from './text.mjs'
+import { cut, ends, esc, exactly, FONTS, initial, pictures, textSvg, width, wrap } from './text.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -323,6 +323,9 @@ const seeded = (s) => {
 }
 const mixHex = (a, b, t) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, '0')).join('')
 
+// how far past a name's end glitter's sparkle reaches, in em: its middle is 0.4 em past it, its points 0.3 em around
+const SPARKLE = 0.7
+
 /** The share card of a theme: Quilcast itself wearing it (sidebar, a feed of casts, its effect and stickers), next
  *  to the theme's name, its colors and an "Apply theme" button. */
 async function themeCard(id, raw) {
@@ -379,14 +382,14 @@ async function themeCard(id, raw) {
       else fx += (p.draw === 'glow' ? `<circle cx="${x}" cy="${y}" r="${size * 2.4}" fill="${col}" fill-opacity="0.25" filter="url(#soft)"/>` : '') + `<circle cx="${x}" cy="${y}" r="${size / 2}" fill="${col}" fill-opacity="${a}"/>`
     }
   }
-  // a name in the theme's name effect
+  // a name in the theme's name effect; glitter's sparkle follows where the name is drawn to
   const fxColor = th.nameColor || c.accent
   // (emoji in it are Twemoji's pictures, on top of the effect)
   const named = (x, y, size, s, base = c.ink) => {
     const t = (...paint) => textSvg([s], { x, y, size, weight: 800, paint })
     const fx = th.nameFx
     if (fx === 'rainbow') return t('fill="url(#rainbow)"')
-    if (fx === 'glitter') return t('fill="url(#glitter)"') + `<path d="M0 -1C.1 -.3 .3 -.1 1 0C.3 .1 .1 .3 0 1C-.1 .3 -.3 .1 -1 0C-.3 -.1 -.1 -.3 0 -1z" fill="#ffc928" transform="translate(${x + width(s, size) * 1.04 + size * 0.5} ${y - size * 0.35}) scale(${size * 0.3})"/>`
+    if (fx === 'glitter') return t('fill="url(#glitter)"') + `<path d="M0 -1C.1 -.3 .3 -.1 1 0C.3 .1 .1 .3 0 1C-.1 .3 -.3 .1 -1 0C-.3 -.1 -.1 -.3 0 -1z" fill="#ffc928" transform="translate(${x + ends(s, size, true) + size * (SPARKLE - 0.3)} ${y - size * 0.35}) scale(${size * 0.3})"/>`
     if (fx === 'glow') return t(`fill="${fxColor}" filter="url(#glow)"`, `fill="${base}"`)
     if (fx === 'shadow') return t(`fill="${base}" transform="translate(3 3)"`, `fill="${fxColor}"`)
     if (fx === 'outline') return t(`fill="none" stroke="${fxColor}" stroke-width="1.6"`)
@@ -408,7 +411,7 @@ async function themeCard(id, raw) {
     const ay = y + 40
     const hue = [c.accent, c.like, c.recast][i]
     return `<circle cx="${X + 44}" cy="${ay}" r="26" fill="${hue}"/><text x="${X + 44}" y="${ay + 9}" font-family="Inter" font-weight="800" font-size="24" fill="${c.onAccent}" text-anchor="middle">${name[0]}</text>
-    ${named(X + 84, y + 34, 21, name)}<text x="${X + 92 + width(name, 21) * 1.06 + (th.nameFx === 'glitter' ? 20 : 0)}" y="${y + 34}" font-family="Inter" font-size="19" fill="${c.muted}">@${user} · ${i + 2}h</text>
+    ${named(X + 84, y + 34, 21, name)}<text x="${X + 92 + ends(name, 21, true) + (th.nameFx === 'glitter' ? SPARKLE * 21 : 0)}" y="${y + 34}" font-family="Inter" font-size="19" fill="${c.muted}">@${user} · ${i + 2}h</text>
     ${textSvg(lines, { x: X + 84, y: y + 66, lh: 28, size: 21, fill: c.ink })}
     ${[[ICONS.reply, rep, c.muted], [ICONS.recast, rc, c.recast], [ICONS.like, lk, c.like]].map(([d, k, col], j) => `<g transform="translate(${X + 84 + j * 110} ${y + 112}) scale(0.85)"><path d="${d}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g><text x="${X + 112 + j * 110}" y="${y + 130}" font-family="Inter" font-size="18" fill="${col}">${k}</text>`).join('')}
     <rect x="${X}" y="${y + 154}" width="${W}" height="${bw}" fill="${c.line}"/>`
@@ -417,10 +420,14 @@ async function themeCard(id, raw) {
     const y = 132 + i * 54
     return `<circle cx="78" cy="${y - 8}" r="11" fill="none" stroke="${c.ink}" stroke-width="2.4"/><text x="104" y="${y}" font-family="Inter" font-weight="${i ? 400 : 800}" font-size="22" fill="${c.ink}">${label}</text>`
   }).join('')
-  // the name in up to two lines, smaller when it's long
+  // the name in up to two lines, smaller when it doesn't fit at 52 px; measured as it's drawn, bold. It (and glitter's
+  // sparkle after each line) may reach into the panel's right padding, up to 8 px from its edge (1152). Wrapped and drawn
+  // measured, every run of it (a name is at most 60 characters): a guess past the card's budget can be off either way
+  // (wider for a tightly kerned "TyTy", narrower for an ideographic space or "↮"), which would put the sparkle outside
   const title = th.name || 'Untitled theme'
-  const ts = width(title, 52) > 680 ? 40 : 52
-  const tl = wrap(title, ts, 352, 2)
+  const room = (ts) => 364 - (th.nameFx === 'glitter' ? SPARKLE * ts : 0)
+  const ts = exactly(() => wrap(title, 52, room(52), 3, { bold: true })).length > 2 ? 40 : 52
+  const tl = exactly(() => wrap(title, ts, room(ts), 2, { bold: true }))
   const facts = [base === 'light' ? 'Light' : 'Dark', p?.name, th.font && th.font !== 'system' ? FONT_STACKS[th.font].split(',')[0].replace(/'/g, '') : th.fontUrl ? 'Own font' : null, stickers.length ? `${stickers.length} sticker${stickers.length > 1 ? 's' : ''}` : null].filter(Boolean).join(' · ')
   const swatches = ['bg', 'card', 'ink', 'accent', 'like', 'recast'].map((k, i) => `<circle cx="${790 + i * 52}" cy="${320 + (tl.length - 1) * ts * 1.1}" r="19" fill="${c[k]}" stroke="${mixHex(c.card, c.ink, 0.25)}" stroke-width="2"/>`).join('')
   const fl = wrap(facts, 20, 352, 2)
@@ -433,7 +440,7 @@ async function themeCard(id, raw) {
     <rect x="748" y="150" width="404" height="${panelH}" rx="${R(28)}" fill="${c.card}" fill-opacity="${Math.max(sheer, 0.9)}"${stroke()}/>
     <rect x="780" y="182" width="${width('QUILCAST THEME', 16) * 1.12 + 32}" height="34" rx="${R(17)}" fill="${c.accent}" fill-opacity="0.16"/>
     <text x="796" y="205" font-family="Inter" font-weight="800" font-size="16" letter-spacing="1.6" fill="${c.accent}">QUILCAST THEME</text>
-    ${tl.map((l, i) => named(780, 266 + i * ts * 1.1, ts, l)).join('')}
+    ${exactly(() => tl.map((l, i) => named(780, 266 + i * ts * 1.1, ts, l)).join(''))}
     ${swatches}
     ${textSvg(fl, { x: 780, y: 380 + ty, lh: 26, size: 20, fill: c.muted })}
     <rect x="780" y="${412 + ty}" width="340" height="60" rx="${R(30)}" fill="${btnFill}"/>

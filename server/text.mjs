@@ -226,8 +226,11 @@ const fit = (p, px, max) => {
   }
   return cs.slice(0, lo).join('')
 }
-const units = (g, px, max) => (width(g, px) <= max ? [g] : parts(g).map((p) => (kind(p) || laid(p, charW, REGULAR, true) * px <= max ? p : fit(p, px, max))))
-export function wrap(text, px, max, lines) {
+const units = (g, px, max, w) => (w(g, px) <= max ? [g] : parts(g).map((p) => (kind(p) || laid(p, charW, REGULAR, true) * px <= max ? p : fit(p, px, max))))
+/** Text in at most `lines` lines of `max` px, the last one ending in "…" when it doesn't all fit. bold: measured as
+ *  textSvg draws bold text (resvg's own advances, wider than width's guesses), for a line something has to fit after. */
+export function wrap(text, px, max, lines, { bold = false } = {}) {
+  const w = bold ? drawnBold : width
   const out = []
   // measured as textSvg draws it: without the characters XML can't hold (marks after one join the letter before it),
   // and a tab or carriage return as a space (marks after it go on that space)
@@ -236,20 +239,32 @@ export function wrap(text, px, max, lines) {
     let line = '', lw = 0
     // a space with marks on it (which resvg draws, as boxes when no font has them) stays with the word after it
     for (const word of para.split(/(\s+(?!\p{M}))/u)) {
-      const ww = width(word, px)
-      if (lw + ww > max && line.trim()) out.push(line.trimEnd()), (line = word.trimStart()), (lw = width(line, px))
+      const ww = w(word, px)
+      if (lw + ww > max && line.trim()) out.push(line.trimEnd()), (line = word.trimStart()), (lw = w(line, px))
       else (line += word), (lw += ww)
       // a word longer than the line is cut where it stops fitting, never inside a grapheme that fits on a line
       if (lw > max) {
-        const us = graphemes(line).flatMap((g) => units(g, px, max))
-        line = ''
-        lw = 0
-        for (const u of us) {
-          const uw = width(u, px)
-          if (lw + uw > max && line) out.push(line), (line = ''), (lw = 0)
-          line += u
-          lw += uw
+        const us = graphemes(line).flatMap((g) => units(g, px, max, w))
+        const uws = us.map((u) => w(u, px))
+        for (let i = 0; i < us.length; ) {
+          let j = i + 1
+          for (let s = uws[i]; j < us.length && s + uws[j] <= max; ) s += uws[j++]
+          // drawn together, the pieces can take more room than apart (Inter's kerning and contextual forms: "ïïï" is
+          // wider than three "ï"), so the line keeps the most of them that fits drawn whole
+          if (j - i > 1 && w(us.slice(i, j).join(''), px) > max) {
+            let [lo, hi] = [1, j - i - 1]
+            while (lo < hi) {
+              const m = (lo + hi + 1) >> 1
+              if (w(us.slice(i, i + m).join(''), px) <= max) lo = m
+              else hi = m - 1
+            }
+            j = i + lo
+          }
+          line = us.slice(i, j).join('')
+          if (j < us.length) out.push(line)
+          i = j
         }
+        lw = w(line, px)
       }
       if (out.length > lines) break
     }
@@ -259,19 +274,35 @@ export function wrap(text, px, max, lines) {
   while (out.length && !out.at(-1)) out.pop()
   if (out.length > lines) {
     out.length = lines
-    // the last line loses its last word (or 12 graphemes of a long one, or of the pieces a grapheme is drawn as, like a
-    // line of skin-tone swatches) for the ellipsis
+    // the last line loses its last word for the ellipsis when it's a short one after others ("three four" ends
+    // "three…"); a run of emoji isn't a word, each one is kept or not
     const gs = graphemes(out[lines - 1])
-    let cut = 0
-    while (gs.length && cut < 12 && !/\s/.test(gs.at(-1))) {
-      const ps = parts(gs.pop())
-      while (ps.length && cut < 12) ps.pop(), cut++
-      // what's left of a cluster cut into keeps its pieces apart with a zero-width space (which resvg leaves out, and
-      // which always ends a grapheme), so they can't join up into another emoji: "👍🏻🏼" less a swatch is 👍 and 🏻, not 👍🏻
-      if (ps.length) gs.push(ps.join('\u200B'))
+    const sp = gs.findLastIndex((g) => /\s/.test(g))
+    const last = gs.slice(sp + 1).flatMap(parts)
+    if (sp > 0 && gs.slice(0, sp).some((g) => !/\s/.test(g)) && last.length <= 12 && !last.some(kind)) gs.length = sp
+    // and keeps as much of the rest as fits beside the "…" (a long word, a run of emoji, a line of skin-tone swatches),
+    // down to the pieces a grapheme is drawn as
+    const ps = gs.map(parts)
+    const upTo = (n) => {
+      const kept = []
+      gs.forEach((g, i) => {
+        if (n <= 0) return
+        // what's left of a cluster cut into keeps its pieces apart with a zero-width space (which resvg leaves out, and
+        // which always ends a grapheme), so they can't join up into another emoji: "👍🏻🏼" less a swatch is 👍 and 🏻, not 👍🏻
+        kept.push(n >= ps[i].length ? g : ps[i].slice(0, n).join('\u{200B}'))
+        n -= ps[i].length
+      })
+      while (kept.length && /\s/.test(kept.at(-1))) kept.pop()
+      return kept.join('') + '…'
     }
-    while (gs.length && /\s/.test(gs.at(-1))) gs.pop()
-    out[lines - 1] = gs.join('') + '…'
+    // (a line is never narrower for having more on it, so the most that fits is found by halving)
+    let [lo, hi] = [0, ps.flat().length]
+    while (lo < hi) {
+      const m = (lo + hi + 1) >> 1
+      if (w(upTo(m), px) <= max) lo = m
+      else hi = m - 1
+    }
+    out[lines - 1] = upTo(lo)
   }
   return out
 }
@@ -351,7 +382,53 @@ export const guess = (run, bold = false) => {
   // and Inter's few positive kerning pairs ("ty", "d)"), each at most 0.022 em
   return laid(run, adv, font, true) + tail + 0.04
 }
-const advance = (run, bold) => (!run ? 0 : laidOut.has(key(run, bold)) || spend() ? measure(run, bold) : guess(run, bold))
+let exact = 0
+const advance = (run, bold) => (!run ? 0 : exact || laidOut.has(key(run, bold)) || spend() ? measure(run, bold) : guess(run, bold))
+/** f(), with every run of text it lays out measured, past the card's budget too. For a few short lines with something
+ *  placed after their drawn end, like glitter's sparkle after a theme's name: a guess runs wider than resvg draws a
+ *  tightly kerned line ("TyTy", "AVAV"), so a line that wrapping found fits would be taken to end past its room. */
+export function exactly(f) {
+  exact++
+  try {
+    return f()
+  } finally {
+    exact--
+  }
+}
+
+// Whitespace as SVG collapses it (only that: no-break and other wide spaces stay as they are), and a line as textSvg
+// draws it, without the space that collapsing leaves at either end.
+const collapsed = (s) => clean(s).replace(/[ \t\n\r]+/g, ' ')
+const trimmed = (s) => collapsed(s).replace(/^ | $/g, '')
+/** A line laid out as textSvg draws it: put(piece, x, kind) for each run of text and each emoji, x from the line's
+ *  start, each where the one before it ends. Returns where the line ends; only text with something after it is
+ *  measured, unless `whole` asks for the end of the last run too. */
+function lay(l, size, bold, put, whole = false) {
+  let cx = 0
+  let run = ''
+  const flush = (last) => {
+    if (run) put?.(run, cx, null)
+    if (!last || whole) cx += advance(run, bold) * size
+    run = ''
+  }
+  for (const g of pieces(l)) {
+    const k = kind(g)
+    if (!k) {
+      run += g
+      continue
+    }
+    flush()
+    put?.(g, cx, k)
+    cx += (k === 'noto' ? (NOTO.advance(g.codePointAt(0)) ?? EMOJI) : EMOJI) * size
+  }
+  flush(true)
+  return cx
+}
+/** Where a line of card text that textSvg draws at x ends, less x: its text as resvg draws it, its emoji as placed. */
+export const ends = (l, size, bold = false) => lay(trimmed(l), size, bold, null, true)
+// text measured as textSvg draws it bold, for wrapping a bold line: whitespace collapses but stays at the ends, so the
+// words and spaces of a line add up to the line
+const drawnBold = (s, px) => lay(collapsed(s), px, true, null, true)
 
 /** Lines of card text with their emoji in color: a <text> of pieces, each placed where the one before it ends, then
  *  Twemoji's pictures in the gaps left for them. Whitespace collapses the way SVG text's does. `paint` (attributes, or a
@@ -362,30 +439,15 @@ export function textSvg(lines, { x, y, lh = 0, size, bold = false, weight = bold
   let pics = ''
   lines.forEach((l, i) => {
     const by = num(y + i * lh)
-    let cx = x
-    let run = ''
-    // the text so far; only text with something after it is measured
-    const flush = (last) => {
-      if (run) spans += `<tspan x="${num(cx)}" y="${by}">${esc(run)}</tspan>`
-      if (!last) cx += advance(run, weight >= 600) * size
-      run = ''
-    }
-    // only what SVG collapses: no-break and other wide spaces stay as they are
-    for (const g of pieces(clean(l).replace(/[ \t\n\r]+/g, ' ').replace(/^ | $/g, ''))) {
-      const k = kind(g)
-      if (!k) {
-        run += g
-        continue
-      }
-      flush()
-      if (k === 'noto') spans += `<tspan x="${num(cx)}" y="${by}" font-family="Noto Emoji">${esc(g)}</tspan>`
+    lay(trimmed(l), size, weight >= 600, (g, at, k) => {
+      const cx = x + at
+      if (!k) spans += `<tspan x="${num(cx)}" y="${by}">${esc(g)}</tspan>`
+      else if (k === 'noto') spans += `<tspan x="${num(cx)}" y="${by}" font-family="Noto Emoji">${esc(g)}</tspan>`
       else {
         const [px, py, ps] = [num(cx + ((EMOJI - SIZE) / 2) * size), num(by - TOP * size), num(SIZE * size)]
         pics += `<use href="#tw-${k.slice(0, -4)}" transform="translate(${px} ${py}) scale(${ps})"/>`
       }
-      cx += (k === 'noto' ? (NOTO.advance(g.codePointAt(0)) ?? EMOJI) : EMOJI) * size
-    }
-    flush(true)
+    })
   })
   const layer = (attrs) => `<text font-family="Inter, Noto Emoji" font-size="${size}"${weight !== 400 ? ` font-weight="${weight}"` : ''} ${attrs} xml:space="preserve">${spans}</text>`
   return [paint].flat().map(layer).join('') + pics

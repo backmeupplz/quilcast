@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { Resvg } from '@resvg/resvg-js'
-import { cut, esc, FONTS, graphemes, guess, initial, kind, LAYERED, measure, metrics, pictures, source, textSvg, width, wrap } from './text.mjs'
+import { cut, ends, esc, exactly, FONTS, graphemes, guess, initial, kind, LAYERED, measure, metrics, pictures, source, textSvg, width, wrap } from './text.mjs'
 
 const cp = (...c) => String.fromCodePoint(...c)
 const ZWJ = 0x200d, VS16 = 0xfe0f
@@ -102,7 +102,9 @@ test('a grapheme wider than the line breaks between the pieces it is drawn as, s
   const last = wrap(`hi a${cp(0x1f3fd).repeat(150)} bye`, 46, 1032, 4).at(-1)
   assert.ok(last.endsWith('…') && [...last].length > 6, last)
   // and what's left of a cluster drawn in parts is drawn as the same parts, never joined up into another emoji
-  const thumb = wrap(`one two ${cp(0x1f44d, 0x1f3fb, 0x1f3fc)}abcdefghijk more words here and more`, 34, 500, 1)[0]
+  // (a long word the ellipsis has to cut into, ending in a thumb with two swatches, only one of them fitting beside it)
+  const long = `one two abcdefghijk${cp(0x1f44d, 0x1f3fb, 0x1f3fc)}`
+  const thumb = wrap(`${long} more words here and more`, 34, width(long, 34) + 10, 1)[0]
   assert.ok(thumb.endsWith('…'), thumb)
   assert.equal(uses(card(textSvg([thumb], { x: 0, y: 40, size: 34, fill: '#fff' }))), 2)
   assert.match(textSvg([thumb], { x: 0, y: 40, size: 34, fill: '#fff' }), /tw-1f44d"[\s\S]*tw-1f3fb"/)
@@ -169,6 +171,64 @@ test('a font says which characters it has, and their advances', () => {
 
 // a card measures a bounded number of new runs per synchronous stretch; these tests measure more, so they yield
 const tick = () => new Promise((r) => setImmediate(r))
+
+test('the ellipsis keeps what still fits beside it: a run of emoji, a word alone on its line, the end of a long word', () => {
+  const FIRE = cp(0x1f525)
+  const pics = (l) => graphemes(l).filter((g) => kind(g)).length
+  for (const bold of [false, true]) {
+    const fits = (l, px, max) => (bold ? ends(l, px, true) : width(l, px)) <= max
+    // a theme name of flags, or a word and a run of fire, as the theme card wraps it: the second line used to be "…"
+    for (const s of [UA.repeat(15), `Hi ${FIRE.repeat(30)}`]) {
+      const lines = wrap(s, 40, 352, 2, { bold })
+      assert.equal(lines.length, 2, s)
+      assert.ok(lines[1].endsWith('…'), lines[1])
+      // all of a full line's emoji but the one the "…" takes the place of
+      assert.ok(pics(lines[1]) >= Math.floor(352 / (1.22 * 40)) - 1, lines[1])
+      for (const l of lines) assert.ok(fits(l, 40, 352), l)
+    }
+    // a few emoji after a word aren't a word: as many stay as fit beside the "…"
+    const wow = `Wow ${UA.repeat(4)}`
+    const max = (bold ? ends(wow, 40, true) : width(wow, 40)) + 10
+    const cut = wrap(`${wow} and more words`, 40, max, 1, { bold })[0]
+    assert.ok(cut.endsWith('…') && pics(cut) === 3 && fits(cut, 40, max), cut)
+    // a long word keeps all of itself that fits beside the "…", not all but its last 12 letters
+    const word = 'abcdefghijklmnopqrstuvwxyz'.repeat(3)
+    const [first, last] = wrap(word, 40, 352, 2, { bold })
+    assert.ok(last.endsWith('…') && graphemes(last).length >= graphemes(first).length - 3, last)
+    assert.ok(fits(last, 40, 352), last)
+  }
+  // a word alone on the last line stays when the "…" fits after it
+  assert.deepEqual(wrap('Midnight Wanderer Supreme Edition', 40, 352, 2, { bold: true }), ['Midnight', 'Wanderer…'])
+  // and a short last word after others still goes
+  assert.deepEqual(wrap('one two three four five six seven', 30, 200, 2, { bold: true }), ['one two', 'three…'])
+})
+
+test('a line ends where textSvg draws it to, and bold wrapping fits what is drawn bold', () => {
+  for (const bold of [false, true]) {
+    for (const l of ['Glittery', `Love ${cp(0x2764, VS16, ZWJ, 0x1f525)}`, `x ${UA} mode`, UA.repeat(3), 'WWWWW MMMMM']) {
+      const box = new Resvg(card(textSvg([l], { x: 100, y: 60, size: 40, bold, fill: '#fff' })), opts).getBBox()
+      const end = 100 + ends(l, 40, bold)
+      // past the ink by no more than a side bearing, or the room a picture leaves on its right
+      assert.ok(end >= box.x + box.width - 0.5 && end <= box.x + box.width + 0.15 * 40, `${l} ${bold}: ${end} vs ${box.x + box.width}`)
+    }
+  }
+  // capitals drawn bold are much wider than the guesses, so a bold wrap breaks them sooner, and its lines fit
+  const caps = 'WWWWWW WWW WWWWWW WWW'
+  assert.ok(wrap(caps, 40, 352, 9, { bold: true }).length > wrap(caps, 40, 352, 9).length)
+  for (const l of wrap(caps, 40, 352, 9, { bold: true })) assert.ok(ends(l, 40, true) <= 352, l)
+})
+
+test('a long word cut bold fits as drawn, though its letters draw wider together than apart', async () => {
+  for (const s of ['ï'.repeat(27), 'ĩ'.repeat(30), 'Q*'.repeat(18), `${'ï'.repeat(40)} ${'ĩ'.repeat(40)}`]) {
+    for (const px of [52, 40]) {
+      await tick()
+      const lines = wrap(s, px, 364, 3, { bold: true })
+      for (const l of lines) assert.ok(ends(l, px, true) <= 364, `${px} ${l}: ${ends(l, px, true)}`)
+      // nothing is lost but what the ellipsis takes
+      if (!lines.at(-1).endsWith('…')) assert.equal(lines.join('').replace(/ /g, ''), s.replace(/ /g, ''))
+    }
+  }
+})
 
 test('a line with emoji: text runs keep their characters, each emoji is a picture where its run ends', async () => {
   for (const bold of [false, true]) {
@@ -323,6 +383,32 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   }
   // each guess is close to resvg's advance, not twice it
   for (const run of [' gm ', ' this ', ' 2024 ', ' hello world ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) * 1.05, run)
+})
+
+test('past the budget, exactly() still measures: a tightly kerned line ends where resvg ends it, not at the guess', () => {
+  // the budget spent on runs never seen before
+  textSvg([Array.from({ length: 40 }, (_, i) => `spent ${i}`).join('🎉')], { x: 0, y: 40, size: 32, fill: '#fff' })
+  const line = 'TyTyTyTy AVAVAVAV'
+  const guessed = ends(line, 52, true)
+  assert.ok(guessed > measure(line, true) * 52 + 20, `${guessed}`)
+  assert.equal(exactly(() => ends(line, 52, true)), measure(line, true) * 52)
+  // and draws the line the same way: the emoji after it is placed at the measured end
+  const [[x]] = placed(exactly(() => textSvg([`${line} 🔥 xyzxyz`], { x: 0, y: 40, size: 52, bold: true, fill: '#fff' })))
+  assert.ok(Math.abs(x - (measure(`${line} `, true) * 52 + 0.07 * 52)) < 0.1, `${x}`)
+})
+
+test('past the budget, a bold line wrapped exactly() fits as drawn, with what a guess takes as narrower too', async () => {
+  // an ideographic space and "↮" are drawn wider than guessed; the budget is spent before each name is wrapped
+  const names = []
+  for (const s of ['　', '↮']) for (let n = 1; n <= 8; n++) for (const k of [0, 3, 9]) names.push([...'bcdfghjkl'.slice(0, k)].map((c) => `${c} `).join('') + 'Hi' + s.repeat(n) + 'Ok more')
+  for (const [j, name] of names.entries()) {
+    await tick()
+    textSvg([Array.from({ length: 40 }, (_, i) => `spent ${j} ${i}`).join('🎉')], { x: 0, y: 40, size: 32, fill: '#fff' })
+    for (const [px, max] of [[52, 327.6], [40, 336]]) {
+      const lines = exactly(() => wrap(name, px, max, 2, { bold: true }))
+      for (const l of lines) assert.ok(exactly(() => ends(l, px, true)) <= max + 0.01, `${JSON.stringify(name)} ${px}: ${JSON.stringify(l)}`)
+    }
+  }
 })
 
 test('wrapping counts marks no font has as resvg draws them (boxes), and what it leaves out as nothing', () => {
