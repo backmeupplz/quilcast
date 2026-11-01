@@ -536,3 +536,10 @@ test("characters XML can't hold are left out, so the card still draws", () => {
   assert.ok(!/[\0-\x08\uffff]/.test(s))
   new Resvg(card(s), opts).render()
 })
+
+test('fancy letters no card font has draw as the plain letters they stand for; everything else stays', async () => {
+  const { clean } = await import('./text.mjs')
+  assert.equal(clean('ȷď𝐛𝐛'), 'ȷďbb') // @jenna's name: mathematical bold b
+  assert.equal(clean('𝓈𝒸𝓇𝒾𝓅𝓉 𝕕𝕠𝕦𝕓𝕝𝕖 Ｗｉｄｅ'), 'script double Wide')
+  assert.equal(clean('漢字 🙂 café ﬁ'), '漢字 🙂 café fi') // ﬁ isn't in Inter either
+})

@@ -320,7 +320,17 @@ export function wrap(text, px, max, lines, { bold = false } = {}) {
 
 /** Text without the characters XML can't hold (control codes other than tab and line breaks, lone surrogates,
  *  U+FFFE/U+FFFF): one in a name or cast would make resvg reject the whole card. */
-export const clean = (s) => String(s).replace(/[\0-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]/gu, '')
+// "Fancy" letters from name generators (𝐛𝐨𝐥𝐝, 𝓈𝒸𝓇𝒾𝓅𝓉, Ⓐ, Ｗｉｄｅ) that no card font has are drawn as the plain letters
+// Unicode says they stand for (NFKC), when Inter has those, instead of as missing-glyph boxes. Anything else stays.
+const folds = new Map()
+const unfancy = (c) => {
+  // spaces, marks and format characters keep their own handling (only what SVG collapses is collapsed)
+  if (!/[\p{L}\p{N}\p{S}\p{P}]/u.test(c) || REGULAR.glyph(c.codePointAt(0)) || NOTO.glyph(c.codePointAt(0))) return c
+  const f = c.normalize('NFKC')
+  return f !== c && [...f].every((x) => REGULAR.glyph(x.codePointAt(0))) ? f : c
+}
+const fold = (c) => folds.get(c) ?? (folds.set(c, unfancy(c)), folds.get(c))
+export const clean = (s) => String(s).replace(/[\0-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]/gu, '').replace(/[^\0-\u024f]/gu, fold)
 export const esc = (s) => clean(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const num = (v) => Math.round(v * 10) / 10
 
@@ -401,7 +411,9 @@ const added = (run, font) => {
   }
   return n
 }
-export const guess = (run, bold = false) => {
+export const guess = (raw, bold = false) => {
+  // as drawn: fancy letters folded (clean), like measure's
+  const run = clean(raw)
   const font = bold ? BOLD : REGULAR
   const last = [...run].findLast((c) => !IGNORED.test(c) && !boxed(c, font))
   // a mark Inter has gets a little room for its own (they're a few hundredths of an em off their base)
@@ -489,7 +501,17 @@ export function textSvg(lines, { x, y, lh = 0, size, bold = false, weight = bold
  *  the one before ends, bold for **bold** and headings, slanted for *italic*, in color for links, mentions and code,
  *  and quotes muted behind a bar. `lines` come from wrap(text), so each is found in the text in order; one that isn't
  *  (wrap dropped a character XML can't hold) is drawn plain. */
-export function richSvg(text, marks, lines, { x, y, lh, size, fill, accent, code, muted }) {
+export function richSvg(raw, given, lines, { x, y, lh, size, fill, accent, code, muted }) {
+  // the text as wrap saw it (clean), each character keeping its look
+  let text = ''
+  const marks = []
+  let at = 0
+  for (const ch of raw) {
+    const c = clean(ch)
+    text += c
+    for (let n = 0; n < c.length; n++) marks.push(given[at] || 0)
+    at += ch.length
+  }
   let out = ''
   let from = 0
   const space = width(' ', size)
