@@ -544,6 +544,12 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   const chars = Array.from({ length: 0x600 - 0x21 }, (_, i) => cp(0x21 + i)).filter((c) => inter.glyph(c.codePointAt(0)) && /[\p{L}\p{N}\p{P}\p{S}]/u.test(c))
   for (const a of chars) for (const z of chars) if (inter.kern(a, z) > 0.05) kerned.push([a, z])
   for (const [a, z] of kerned.filter((_, i) => i % 50 === 0)) runs.push(a + cp(0x308) + z, `Ж${a}${cp(0x302)}${z}`, a + cp(0x200d, 0x360) + z)
+  // a letter Inter kerns wider on both sides at once, between letters that get no room of their own ("ĩ" after "f" and
+  // before "T"), repeated too, also spelled as a dotless "ı" and the mark Inter's ccmp joins it with; and the others it
+  // does that for, each between the characters that kern it most
+  for (const c of 'ĩīĭïїȋḯ') for (const [x, y] of [['T', 'T'], ['f', 'T'], ['Ҥ', 'Ҡ']]) runs.push(x + c + y, x + c + y + c + y)
+  for (const m of [0x303, 0x304, 0x306, 0x308]) for (const x of ['T', 'f']) runs.push(`${x}${cp(0x131, m)}T`, `${x}${cp(0x131, m)}T${cp(0x131, m)}T`)
+  runs.push('aď)', '(loď)', '„ДЛЯ', '„д,', '„ӆ₄', 'vȴƑ', 'ưʯƑ', 'ɬḬƑ', 'ƎḻĐ', 'ưɨ₄', 'ưɉ₄', 'ưṱ₄', 'ƒɳƑ', 'ƒɋƑ')
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
