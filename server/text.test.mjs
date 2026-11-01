@@ -452,6 +452,25 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // a mark after an ignorable that cuts it off the letter before it (a non-joiner, a bidi isolate's end, a soft hyphen
   // before sara am)
   runs.push('g' + cp(0x200c, 0x20e0), cp(0x2199, 0x2066, 0x20e0) + '*', 'A1' + cp(0x2069, 0x336, 0xae), '_' + cp(0x2069, 0x336) + '52' + cp(0xfe0e, 0x2069) + ' ', cp(0x2044, 0xad, 0xe33) + '73')
+  // text resvg lays out right to left, its clusters reversed, so the first one can end the run: after a right-to-left
+  // override (letters struck through, marks no font has with no base and on one, a digit, a slash or private-use glyph
+  // with one, or reaching past its advance, Inter's wide marks), in an embedding or isolate, and Arabic with its marks
+  const RLO = cp(0x202e)
+  runs.push(`${RLO}s̶t̶`, `a${RLO}s̶t̶`, `a${RLO}${cp(0xe48, 0xe4a)}b`, `a${RLO}${cp(0xe31).repeat(3)}b`, `a${RLO}b${cp(0xe4a)}c`, `a${RLO}b${cp(0xe4a, 0xe4a)}c`, `a${RLO}${cp(0xe48, 0xe4a, 0xe48, 0xe4a)}b`)
+  for (const b of ['1', '/', '_', '→', cp(0x2044), cp(0xe2c2), cp(0xee90)]) runs.push(`${RLO}${b}${cp(0x336)}`, `a${RLO}${b}${cp(0x336, 0x336)}bc`)
+  runs.push(`a${RLO}${cp(0x2044)}bc`, `a${RLO}${cp(0xe2c2)}bc`, `a${RLO}f${cp(0x360)}bc`, `a${RLO}a${cp(0x20dc)}bc`, `a${RLO}i${cp(0x20dc)}bc`)
+  for (const e of [cp(0x202b), cp(0x2067)]) runs.push(`a${e}${cp(0x660)}s${cp(0x336)}`, `${e}${cp(0x2044, 0x336)}b`, `a${e}${cp(0xe48, 0xe4a)}b`, `a${e}${cp(0xe31).repeat(3)}b`)
+  runs.push('مَرْحَبًا', 'aمَرْحَبًاb', 'שָׁלוֹם')
+  // spacing marks no font has (Devanagari's vowel signs) after right-to-left letters, an Arabic digit or "." in an
+  // embedding, and two clusters' ink past their room adding up
+  runs.push(cp(0x5d0, 0x93f, 0x5d1, 0x93f, 0x5d2, 0x93f), cp(0x627, 0x93f, 0x4e00, 0x336), `${cp(0x202b)}${cp(0x660, 0x93f)}`, `${cp(0x202b)}.${cp(0x93f, 0x93f)}`)
+  runs.push(`${RLO}${cp(0x336, 0x336)}«${cp(0xe48)}`, `${RLO}${cp(0x336, 0x336)}.${cp(0xe48)}`, cp(0x5c1, 0x941, 0x202e))
+  // an acute, a diaeresis, sara am or two strikes after a right-to-left control (with "i" between too), found short by
+  // other tickets' sweeps
+  runs.push(`_${cp(0x2067, 0x301)}®`, `W${cp(0x202e, 0x301)}52`, `A1${cp(0x2067, 0x301)}W`, `g${cp(0x2067, 0x308)}®`)
+  for (const o of [0x202e, 0x2067, 0x202b, 0x200f, 0x61c]) runs.push(`1${cp(o, 0xe48, 0xe33)}73`, `*${cp(o, 0xe33)}73`)
+  for (const o of [0x202e, 0x202b, 0x2067]) runs.push(`${cp(o, 0x336, 0x336)}i`, `a${cp(o, 0x336, 0x336)}i`, `a${cp(o)}i${cp(0x336, 0x336)}`)
+  runs.push(`${cp(0x2067, 0x335, 0x335)}i`)
   // a box mark on a letter Inter kerns wider after "l" (resvg kerns the box-wide letter too), also as a character drawn
   // as that letter once a mark is on it ("ΐ" as "ΐ", the Greek varia as a wider "`")
   runs.push(cp(0x6c, 0x1fd3, 0x345, 0x20), cp(0x6c, 0x390, 0x345, 0x20), cp(0x6c, 0x3ca, 0x345, 0x20), cp(0x6c, 0xef, 0x345, 0x20), cp(0x6c, 0x390, 0x345), cp(0x6c, 0x1fef, 0x345), cp(0x69, 0x1ffd, 0x336))
@@ -527,6 +546,10 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   // and isolates and embeddings that only set text left to right are guessed as the stretches they cut, not as room for
   // every cluster in any order
   for (const run of LTR_ISOLATED) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.75, run)
+  // and right-to-left text with its marks (pointed Arabic and Hebrew) isn't guessed far wider
+  // for each letter carrying marks
+  const pointed = ['مَرْحَبًا بِالْعَالَمِ', 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', 'שָׁלוֹם עוֹלָם', 'בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ']
+  for (const run of pointed) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) * 1.3, `${bold} ${run}: ${guess(run, bold)} vs ${measure(run, bold)}`)
 })
 
 test('past the budget, exactly() still measures: a tightly kerned line ends where resvg ends it, not at the guess', () => {
