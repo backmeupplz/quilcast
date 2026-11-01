@@ -71,15 +71,43 @@ export function metrics(file) {
       }
     })
   }
+  // and its pair adjustments (2: kerning), by lookup, each subtable as the glyphs it covers (first of a pair), at their
+  // coverage index, and how far it moves the next glyph's pen after a pair: the first glyph's x advance adjustment
+  const pairs = []
+  const classes = (o) => {
+    const k = new Map()
+    if (u16(o) === 1) for (let i = 0; i < u16(o + 4); i++) k.set(u16(o + 2) + i, u16(o + 6 + 2 * i))
+    else for (let i = 0; i < u16(o + 2); i++) for (let g = u16(o + 4 + 6 * i); g <= u16(o + 6 + 6 * i); g++) k.set(g, u16(o + 8 + 6 * i))
+    return k
+  }
+  const bits = (f) => (f.toString(2).match(/1/g) ?? []).length
+  const pair = (o) => {
+    const [f1, f2] = [u16(o + 4), u16(o + 6)]
+    const [size, x] = [2 * (bits(f1) + bits(f2)), f1 & 4 ? 2 * bits(f1 & 3) : -1]
+    const index = new Map(covered(o + u16(o + 2)).map((id, i) => [id, i]))
+    if (u16(o) === 1) {
+      return (a, z) => {
+        if (!index.has(a)) return undefined
+        const set = o + u16(o + 10 + 2 * index.get(a))
+        for (let i = 0; i < u16(set); i++) if (u16(set + 2 + i * (2 + size)) === z) return x < 0 ? 0 : s16(set + 4 + i * (2 + size) + x)
+        return undefined
+      }
+    }
+    const [one, two, n2] = [classes(o + u16(o + 8)), classes(o + u16(o + 10)), u16(o + 14)]
+    return (a, z) => (!index.has(a) ? undefined : x < 0 ? 0 : s16(o + 16 + ((one.get(a) ?? 0) * n2 + (two.get(z) ?? 0)) * size + x))
+  }
   if (t.GPOS) {
     const list = t.GPOS + u16(t.GPOS + 8)
     for (let l = 0; l < u16(list); l++) {
       const lookup = list + u16(list + 2 + 2 * l)
+      const subtables = []
       for (let s = 0; s < u16(lookup + 4); s++) {
         let [type, o] = [u16(lookup), lookup + u16(lookup + 6 + 2 * s)]
         if (type === 9) [type, o] = [u16(o + 2), o + b.readUInt32BE(o + 4)]
         if ((type === 4 || type === 6) && u16(o) === 1) anchors(o, type, `${l}.${s}`)
+        if (type === 2 && (u16(o) === 1 || u16(o) === 2)) subtables.push(pair(o))
       }
+      if (subtables.length) pairs.push(subtables)
     }
   }
   // the glyphs GDEF calls marks (class 3): a mark is attached to the last glyph before it that isn't one
@@ -109,6 +137,24 @@ export function metrics(file) {
       return x
     },
     mark: (cp) => marked.has(glyphs.get(cp)),
+    // how much wider the pair adjustments make the first of two characters drawn next to each other, in em: each lookup
+    // adjusts it by its first subtable that has the pair
+    kern: (a, z) => {
+      const [ga, gz] = [glyphs.get(a.codePointAt(0)), glyphs.get(z.codePointAt(0))]
+      let k = 0
+      if (ga && gz) {
+        for (const subtables of pairs) {
+          for (const p of subtables) {
+            const v = p(ga, gz)
+            if (v !== undefined) {
+              k += v
+              break
+            }
+          }
+        }
+      }
+      return k / upm
+    },
   }
 }
 const [REGULAR, BOLD, NOTO] = FONTS.map(metrics)
@@ -261,6 +307,7 @@ const starts = (c) => (IGNORED.test(c) ? BREAKS.test(c) : !MARK.test(c))
 const SCRIPTED = /[^\p{Script=Common}\p{Script=Inherited}\p{Script=Unknown}]/u
 const UNMARKED = /[\p{Script=Cyrillic}\p{Script=Greek}]/u
 const JOINS = /[\u{200d}\u{180b}-\u{180d}\u{e0020}-\u{e007f}]/u
+const DOTTED = { ı: 'i', ȷ: 'j' }
 // whole: a break doesn't start a cluster (resvg doesn't always cut there)
 const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, over, room }, whole) => {
   let w = 0, end = 0, base = 0, marks = 0, box = false, own = 0, am = false, hung = false, started = false, i = -1, letter = '', points = true, ends = 0
@@ -273,14 +320,37 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
   // right to left, right-to-left letters, or a right-to-left mark, embedding, override or isolate, as U+200F U+0308 "1"
   // is drawn "1" then the mark), it can be drawn anywhere in it, up to its end.
   let of = '', below = new Map(), joined = false, hidden = false, drift = 0
+  // The pen such a mark is drawn at is past the letter as resvg draws it, which can be wider than the letter: with a mark
+  // after it, the character it normalizes to (the Greek varia as "`"), or the one it composes into with the mark ("l"
+  // U+030C is "ľ"; past a joiner it may be or not, "і" U+200D U+0308 can be "ї"). drawn: those characters, any of which
+  // it may be drawn as; loose: how far right the cluster's unanchored marks' ink reaches. And Inter's
+  // kerning between the letter and the next one widens the letter's advance, so it moves those marks right too ("1"
+  // U+0308 "ï" has the diaeresis further right than "1" U+0308 alone, as "1ï" is kerned wider): before, reach: the
+  // letter of the cluster before, as drawn, and how far its unanchored marks reach (-Infinity: none). (Its kerning with
+  // the letter before it puts the pen further right as well: "l" "ĩ" U+200D U+0308.)
+  let drawn = '', loose = -Infinity, before = '', reach = -Infinity, roomed = 0
+  const singleton = (c) => {
+    const n = c.normalize('NFC')
+    return n !== c && [...n].length === 1 && font.glyph(n.codePointAt(0)) ? n : c
+  }
+  const widest = (d) => Math.max(0, ...[...d].map(adv))
+  const kerned = (a, z) => Math.max(0, ...[...a].flatMap((x) => [...z].map((y) => font.kern(x, y))))
   // The shaper takes the run's script from its first letter, and Inter positions no marks in Cyrillic or Greek text
   // ("Ж̂" has the mark after the letter, "aЖ̂" over it); every other script, or none, gets its default (Latin) marks
   const marked = hang && !UNMARKED.test(run.match(SCRIPTED)?.[0] ?? '')
   const pen = (c) => {
     const m = c.codePointAt(0)
+    if (letter && drawn === letter) drawn = singleton(letter)
     // a letter and the mark right on it that make a character the font has are drawn as it ("Жa" U+0302 is "Жâ")
-    const one = !below.size && !hidden && !joined && of && (of + c).normalize('NFC')
-    if (one && [...one].length === 1 && font.glyph(one.codePointAt(0))) return void (of = one)
+    const one = !below.size && !hidden && of && (of + c).normalize('NFC')
+    if (one && [...one].length === 1 && font.glyph(one.codePointAt(0))) {
+      if (!joined) return void (of = drawn = one)
+      if (!drawn.includes(one)) drawn += one
+    }
+    // (and Inter draws a dotless "ı" or "ȷ" with a mark on it as the dotted letter with it, which kerns as that: "ı"
+    // U+0308 is kerned as "ï", measured for every mark above)
+    const dot = !below.size && DOTTED[of] && (DOTTED[of] + c).normalize('NFC')
+    if (dot && [...dot].length === 1 && font.glyph(dot.codePointAt(0)) && !drawn.includes(dot)) drawn += dot
     // where it goes: on a mark below it with no anchor (not only the last: a lookup can skip marks of another class),
     // wherever that is, or at the pen when nothing anchors it; the furthest right of those it could go
     let x = marked && !joined && of && font.attach(m, of.codePointAt(0)) !== undefined ? null : 0
@@ -289,7 +359,10 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
       if (d !== undefined) x = Math.max(x ?? -Infinity, px + d)
     }
     const right = x === null ? -Infinity : x + (font.reach(m) ?? 0)
-    end = Math.max(end, w + base + own + right)
+    // (past the letter as drawn, and its kerning with the letter before, past the room counted after that one)
+    const at = w + Math.max(0, kerned(before, drawn) - roomed) + Math.max(base, widest(drawn)) + own + right
+    end = Math.max(end, at)
+    loose = Math.max(loose, at)
     drift = Math.max(drift, right)
     // (one the font doesn't call a mark, like the Cyrillic "҈", is the base of the marks after it; a mark repeated on
     // the letter counts once, where it goes furthest right: what goes on it depends only on that)
@@ -314,12 +387,20 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
     if (hung) end = Math.max(end, (box ? Math.max(w, boxes) : w) + OVERHANG + (far && !letter ? 0.2 : 0))
     // (and a letter whose ink ends past its advance reaches past what comes after it when that's narrower: "\u{e2c2} ")
     end = Math.max(end, w + ends)
+    // (the unanchored marks of the letter before are moved right by its kerning with this one, as this one is drawn; the
+    // marks after a break with no letter of their own are drawn after that letter too)
+    if (letter) {
+      const d = marks && drawn === letter ? singleton(letter) : drawn
+      if (reach > -Infinity) end = Math.max(end, reach + kerned(before, d))
+      ;(before = d), (reach = loose), (roomed = r)
+    } else reach = Math.max(reach, loose)
     base = marks = own = ends = 0
     box = am = hung = joined = hidden = false
-    of = ''
+    of = drawn = ''
     below = new Map()
     letter = ''
     points = true
+    loose = -Infinity
   }
   for (const c of run) {
     i++
@@ -335,7 +416,7 @@ const layAt = (run, adv, font, ink, thai, hang, { far = false, hebrew = false, o
       if (hang) pen(c)
       marks++, (own += adv(c)), (started = true)
       if (hang?.(i) && (!font.advance(c.codePointAt(0)) || (far && !letter))) hung = true
-    } else flush(), (base = adv(c)), (letter = c), (ends = over?.(c) ?? 0), (started = true), (of = c)
+    } else flush(), (base = adv(c)), (letter = drawn = c), (ends = over?.(c) ?? 0), (started = true), (of = c)
   }
   flush()
   if (drift > 0 && (far || LEFTWARD.test(run))) end = Math.max(end, w + drift)

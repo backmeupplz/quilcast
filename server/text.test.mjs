@@ -348,6 +348,17 @@ const BOX_ON_RTL_SPACE = [cp(0x20, 0x6db), cp(0x631, 0x64e, 0x64a, 0x652, 0x628,
 // a number after Arabic with harakat or Hebrew with points (a word and a count), bare or in brackets
 const RTL_BEFORE_NUMBERS = ['كَتَبَ 12', 'عَ 12', 'عَ 1', 'عَ12', 'عَ ١٢', 'عَ 1.5', 'عَ #1', 'كَتَبَ 2024!', 'שָׁלוֹם 12', 'בְּ 12', 'عَ (12)', 'عَ [12]', 'عَ (١٢)', 'عَ ((12))', 'عَ (1)(2)', `عَ ${cp(0x2329)}12${cp(0x3009)}`, 'עִ (12)', 'x (12) عَ', 'عَ (12)َ']
 const LTR_ISOLATED = [`gm ${cp(0x2068)}@alice${cp(0x2069)} how are you`, `A1${cp(0x2069, 0x336)}®`, `ดื่มน้ำ ${cp(0x2068)}x${cp(0x2069)}`, `${cp(0x202a)}Thai ${cp(0x2066)}น้ำ${cp(0x2069)} ok${cp(0x202c)}`, `${cp(0x202d)}a${cp(0x336, 0x202c)}b`]
+test("Inter's kerning read from the font is the room resvg gives a pair", () => {
+  for (const [i, file] of FONTS.slice(0, 2).entries()) {
+    const font = metrics(file)
+    for (const [a, z] of [['1', 'ï'], ['ĩ', 'ï'], ['і', 'ї'], ['T', 'o'], ['A', 'V'], ['t', 'y'], ['d', ')'], ['ď', ')']]) {
+      const sum = font.advance(a.codePointAt(0)) + font.advance(z.codePointAt(0)) + font.advance(0x48) + font.kern(a, z) + font.kern(z, 'H')
+      assert.ok(Math.abs(measure(`${a}${z}H`, i === 1) - sum) < 0.001, `${i} ${a}${z}`)
+    }
+    assert.ok(font.kern('1', 'ï') > 0.05 && font.kern('T', 'o') < 0)
+  }
+})
+
 test("a run past the budget is guessed, and the guess is never less than resvg's own advance", async () => {
   const inter = metrics(FONTS[0])
   // wide punctuation, fancy-text letters, arrows, numerals, digraphs, marks alone, Inter's widened forms, scripts no
@@ -502,6 +513,20 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
     for (const m of [0x340, 0x341, 0x344]) for (const p of ['I', 'a', 'l', '']) runs.push(`${p}${cp(m, v)}x`, `${p}${cp(v, m)}x`, `${p}${cp(m, 0x301, v)}x`, `${p}${cp(0x301, v, m)}i`)
     runs.push(`a${cp(0x343, v)}i`, `I${cp(0x21ae, v)}x`)
   }
+  // a mark nothing anchors after a letter drawn wider than it is (the Greek varia as "`", "l" and "d" with a caron as "ľ"
+  // and "ď"), and before a letter Inter kerns wider after the one under it ("1ï", "ĩï", "ії"), which moves the mark
+  // right with it ("I" U+0362 "ï"), or after one it kerns wider after the letter before ("lĩ")
+  runs.push(cp(0x49, 0x362, 0xef), cp(0x212a, 0x362, 0xef), cp(0x6c, 0x1fef, 0x308, 0x35e), cp(0x64, 0x30c, 0x200d, 0x308, 0x69), cp(0x416, 0x64, 0x30c, 0x308, 0x69), cp(0x3b1, 0x6c, 0x30c, 0x308, 0x69), cp(0x6c, 0x30c, 0x200d, 0x308, 0x69), cp(0x416, 0x6c, 0x30c, 0x308))
+  runs.push(cp(0x31, 0x308, 0xef), cp(0x31, 0x360, 0xef), cp(0x31, 0x30f, 0xef), cp(0x6c, 0x129, 0x200d, 0x308, 0xef), cp(0x416, 0x456, 0x308, 0x308, 0x457), cp(0x6c, 0x200d, 0x308, 0xef), cp(0x31, 0x308, 0x200b, 0xef), cp(0x6c, 0x1fef, 0x302, 0xef))
+  // (a letter and a mark a joiner keeps apart may still be drawn as one, "і" U+200D U+0308 as "ї", kerned as that, and
+  // a dotless "ı" with a mark above as the dotted letter with it, "ı" U+0308 as "ï")
+  runs.push(cp(0xef, 0x456, 0x200d, 0x308, 0x308, 0xef), cp(0x456, 0x200d, 0x308, 0x308, 0xef), cp(0x3b1, 0x131, 0x308, 0x457, 0x308, 0xef), cp(0x3b1, 0x131, 0x308, 0x457, 0x360, 0xef), cp(0x31, 0x131, 0x303, 0x200d, 0x308, 0xef))
+  // and a sample of the pairs Inter kerns wider, the mark at the pen of a digit or a letter in a Cyrillic run, or after
+  // a joiner
+  const kerned = []
+  const chars = Array.from({ length: 0x600 - 0x21 }, (_, i) => cp(0x21 + i)).filter((c) => inter.glyph(c.codePointAt(0)) && /[\p{L}\p{N}\p{P}\p{S}]/u.test(c))
+  for (const a of chars) for (const z of chars) if (inter.kern(a, z) > 0.05) kerned.push([a, z])
+  for (const [a, z] of kerned.filter((_, i) => i % 50 === 0)) runs.push(a + cp(0x308) + z, `Ж${a}${cp(0x302)}${z}`, a + cp(0x200d, 0x360) + z)
   for (const [i, run] of runs.entries()) {
     if (i % 25 === 0) await tick()
     for (const bold of [false, true]) assert.ok(guess(run, bold) >= measure(run, bold), `${bold} ${JSON.stringify(run)}: ${guess(run, bold)} < ${measure(run, bold)}`)
