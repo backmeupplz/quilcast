@@ -144,8 +144,15 @@ export function metrics(file) {
   // wider before "Ï" than "(" (+0.028 em, bold +0.051), so a guess can take a pair as kerned as the widest of the forms
   // either glyph can take, wherever it is (so "(j" counts the case form's kerning too: a little wider, never short).
   // Not the features text has to ask for, like small capitals', nor the fraction forms the shaper puts around "⁄" by
-  // itself, which are narrower than the digits (swept: no guess with them was short)
+  // itself, which are narrower than the digits (swept: no guess with them was short).
+  // And the ligatures (4) of those lookups that are wider than the glyphs they join, by their first glyph and then their
+  // second (-1: none): the glyphs past the first, and how much wider, in em. Inter's contextual alternates join dashes
+  // and an angle bracket into arrows, and "–>" is "⟶", 0.18 em wider than "–" and ">"; "--->" a long arrow 0.64 em
+  // wider (bold 0.16 and 0.6)
   const alternates = new Map()
+  const wide = new Map()
+  // (a glyph's advance, in font units)
+  const units = (id) => u16(t.hmtx + 4 * Math.min(id, hmetrics - 1))
   if (t.GSUB) {
     const list = t.GSUB + u16(t.GSUB + 8)
     const subtables = (l) => {
@@ -201,9 +208,21 @@ export function metrics(file) {
     const add = (from, to) => (alternates.get(from) ?? alternates.set(from, new Set()).get(from)).add(to)
     for (const l of applied) {
       for (const [type, o] of subtables(l)) {
-        if (type !== 1) continue
-        if (u16(o) === 1) for (const id of covered(o + u16(o + 2))) add(id, (id + u16(o + 4)) & 0xffff)
-        else if (u16(o) === 2) covered(o + u16(o + 2)).forEach((id, i) => add(id, u16(o + 6 + 2 * i)))
+        if (type === 1 && u16(o) === 1) for (const id of covered(o + u16(o + 2))) add(id, (id + u16(o + 4)) & 0xffff)
+        else if (type === 1 && u16(o) === 2) covered(o + u16(o + 2)).forEach((id, i) => add(id, u16(o + 6 + 2 * i)))
+        else if (type === 4 && u16(o) === 1) {
+          // (a ligature set per first glyph, each ligature its glyph, then how many glyphs it joins and those past the first)
+          covered(o + u16(o + 2)).forEach((first, i) => {
+            const set = o + u16(o + 6 + 2 * i)
+            for (let k = 0; k < u16(set); k++) {
+              const p = set + u16(set + 2 + 2 * k)
+              const rest = Array.from({ length: u16(p + 2) - 1 }, (_, j) => u16(p + 4 + 2 * j))
+              const d = units(u16(p)) - units(first) - rest.reduce((s, g) => s + units(g), 0)
+              const by = d > 0 && (wide.get(first) ?? wide.set(first, new Map()).get(first))
+              if (by) (by.get(rest[0] ?? -1) ?? by.set(rest[0] ?? -1, []).get(rest[0] ?? -1)).push([rest, d / upm])
+            }
+          })
+        }
       }
     }
   }
@@ -231,16 +250,29 @@ export function metrics(file) {
     for (const x of all) for (const y of alternates.get(x) ?? []) all.add(y)
     return formed.set(g, all).get(g)
   }
+  // (whether any form of a character's glyph starts a ligature wider than what it joins, by code point)
+  const leads = new Map()
+  const leading = (cp) => leads.get(cp) ?? leads.set(cp, [...forms(glyphs.get(cp) ?? 0)].some((f) => wide.has(f))).get(cp)
+  let leaders
   // the glyphs GDEF calls marks (class 3): a mark is attached to the last glyph before it that isn't one
   const marked = new Set()
   const cd = t.GDEF && u16(t.GDEF + 4) && t.GDEF + u16(t.GDEF + 4)
   if (cd && u16(cd) === 1) for (let i = 0; i < u16(cd + 4); i++) u16(cd + 6 + 2 * i) === 3 && marked.add(u16(cd + 2) + i)
   else if (cd) for (let i = 0; i < u16(cd + 2); i++) if (u16(cd + 8 + 6 * i) === 3) for (let g = u16(cd + 4 + 6 * i); g <= u16(cd + 6 + 6 * i); g++) marked.add(g)
+  // (not the ligatures of a letter and marks on it: guesses draw those composed already, "d" and a caron as "ď")
+  for (const [first, by] of wide) {
+    for (const [second, ls] of by) {
+      const kept = ls.filter(([rest]) => !rest.some((g) => marked.has(g)))
+      if (kept.length) by.set(second, kept)
+      else by.delete(second)
+    }
+    if (!by.size) wide.delete(first)
+  }
   return {
     glyph: (cp) => glyphs.get(cp) || undefined,
     advance: (cp) => {
       const id = glyphs.get(cp)
-      return id ? u16(t.hmtx + 4 * Math.min(id, hmetrics - 1)) / upm : undefined
+      return id ? units(id) / upm : undefined
     },
     reach: (cp) => {
       const id = glyphs.get(cp)
@@ -282,6 +314,34 @@ export function metrics(file) {
       if (!ga) return 0
       if (!mosts.has(ga)) mosts.set(ga, Math.max(...[...forms(ga)].map((f) => kerns(f).reduce((k, subtables) => k + Math.max(0, ...subtables.map((p) => p.most(f))), 0))) / upm)
       return mosts.get(ga)
+    },
+    // the characters that can start a ligature wider than what it joins, as code points
+    leaders: () => (leaders ??= [...glyphs.keys()].filter(leading)),
+    // how much wider than their own advances ligatures can draw these characters, at most, in em: the most any of them
+    // that don't overlap add up to, each starting with any form of a character (or of the other one as(c) gives for it)
+    // and going on with forms of the characters after it, past those skip(c) says the shaper skips
+    widened: (chars, as = () => undefined, skip = () => false) => {
+      const leader = (c) => leading(c.codePointAt(0)) || (as(c) !== undefined && leading(as(c).codePointAt(0)))
+      if (!chars.some(leader)) return 0
+      const cs = chars.filter((c) => !skip(c))
+      // (each character's forms, as they're needed)
+      const of = (x) => forms(glyphs.get(x.codePointAt(0)) ?? 0)
+      const sets = []
+      const at = (i) => (i < cs.length ? (sets[i] ??= as(cs[i]) ? new Set([...of(cs[i]), ...of(as(cs[i]))]) : of(cs[i])) : undefined)
+      // (from the end: the most past each character)
+      const best = new Array(cs.length + 1).fill(0)
+      for (let i = cs.length - 1; i >= 0; i--) {
+        best[i] = best[i + 1]
+        if (!leader(cs[i])) continue
+        for (const f of at(i)) {
+          const by = wide.get(f)
+          if (!by) continue
+          for (const second of [-1, ...(at(i + 1) ?? [])]) {
+            for (const [rest, d] of by.get(second) ?? []) if (rest.every((g, j) => at(i + 1 + j)?.has(g))) best[i] = Math.max(best[i], d + best[i + 1 + rest.length])
+          }
+        }
+      }
+      return best[0]
     },
   }
 }
@@ -1108,6 +1168,19 @@ export const guess = (run, bold = false) => {
   // place of U+1AEB), and taking it as a mark happens to cover those.
   return Math.max(...ways(false), ...(NEWER.test(run) ? ways(true) : []))
 }
+// (the characters Inter's ligatures join that have a mirrored one: BidiMirroring.txt's, and Inter's private-use case
+// forms of them, U+E097 and U+E098, whose ligatures turned around are each other's too)
+const MIRRORED = { '<': '>', '>': '<', '\u{e097}': '\u{e098}', '\u{e098}': '\u{e097}' }
+// (what can start one of a font's, mirrored too: most text has none, and is passed over with a look)
+const LIGATING = new Map()
+const ligating = (font) => {
+  if (!LIGATING.has(font)) {
+    const leaders = font.leaders().map((c) => String.fromCodePoint(c))
+    const all = [...leaders, ...Object.keys(MIRRORED).filter((m) => leaders.includes(MIRRORED[m]))]
+    LIGATING.set(font, new RegExp(all.length ? `[${all.map((c) => `\\u{${c.codePointAt(0).toString(16)}}`).join('')}]` : '(?!)', 'u'))
+  }
+  return LIGATING.get(font)
+}
 const guessed = (run, font, any) => {
   const noto = notoWhole(run, font)
   if (noto !== null) return noto + 0.04
@@ -1205,6 +1278,28 @@ const guessed = (run, font, any) => {
     if (u) w += cluster(u, at)
     const drawn = cs.filter((c) => !IGNORED.test(c))
     w += most + OVERHANG + 0.2 + Math.max(0, ...drawn.map(past), ...drawn.map((c) => (MARK.test(c) && font.reach(c.codePointAt(0))) || 0))
+  }
+  // Inter's ligatures that are wider than what they join ("–>" is a long arrow) add what they're wider by, past the
+  // ignorables between them (the shaper skips most: a joiner, a grapheme joiner, variation selectors, a soft hyphen, a
+  // left-to-right mark; not a non-joiner or a tag, which they're counted past anyway). A run with anything right to left
+  // in it, or of a script written right to left (a Persian digit, an Arabic mark), may be turned around before it's
+  // shaped: bidi mirrors the angle brackets it sets right to left ("م–<" is drawn with "⟵"), and the shaper reverses a
+  // stretch of such a script set left to right, its clusters' marks after their letters ("۱>–" is "⟶" too, and ">"
+  // U+0656 "---" a long arrow with the mark past it). Inter's wide ligatures turned around are each other mirrored, as
+  // wide, so in such a run an angle bracket counts as either one, and marks don't keep the characters apart. (And there,
+  // the marks no font has on a character of an arrow are drawn a box past it, not over it: ">" U+0656 "---" is the long
+  // arrow and a box, and so are the arrows narrower than what they join, "-" U+0610 "-<" too. Each such mark on a
+  // character that can be part of one takes a box; measured for the Arabic, Syriac, NKo and Samaritan marks.)
+  const ligatures = ligating(font)
+  if (ligatures.test(cs.join(''))) {
+    const turned = RIGHT.test(run) || RTL.test(run)
+    w += font.widened(cs, turned ? (c) => MIRRORED[c] : undefined, (c) => IGNORED.test(c) || (turned && MARK.test(c)))
+    // (a mark's character: the last before it that's neither a mark nor an ignorable)
+    const on = (i) => {
+      while (--i >= 0 && (MARK.test(cs[i]) || IGNORED.test(cs[i])));
+      return i >= 0 && ligatures.test(cs[i])
+    }
+    if (turned) w += BOX * cs.filter((c, i) => boxed(c, font) && on(i)).length
   }
   // and a little for Inter's positive kerning ("ty", "d)"; a pair kerned wider than the room its first letter gets is
   // counted where it's laid out: "ď]", "ȴj"); a skin tone outside an emoji as wide as toned has it (which counts a

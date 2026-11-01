@@ -347,6 +347,8 @@ const BOX_ON_RTL_SPACE = [cp(0x20, 0x6db), cp(0x631, 0x64e, 0x64a, 0x652, 0x628,
 // left-to-right isolates and embeddings in text with nothing right to left in it (a mention isolated in a cast)
 // a number after Arabic with harakat or Hebrew with points (a word and a count), bare or in brackets
 const RTL_BEFORE_NUMBERS = ['كَتَبَ 12', 'عَ 12', 'عَ 1', 'عَ12', 'عَ ١٢', 'عَ 1.5', 'عَ #1', 'كَتَبَ 2024!', 'שָׁלוֹם 12', 'בְּ 12', 'عَ (12)', 'عَ [12]', 'عَ (١٢)', 'عَ ((12))', 'عَ (1)(2)', `عَ ${cp(0x2329)}12${cp(0x3009)}`, 'עִ (12)', 'x (12) عَ', 'عَ (12)َ']
+// (lines with harakat or points and an arrow)
+const ARROW_LINES = ['مَرْحَبًا بِكُمْ فِي الْعَالَمِ الْجَدِيدِ –> نَعَمْ', 'مَرْحَبًا –> عَالَم', 'שָׁלוֹם עוֹלָם –> כֵּן']
 const LTR_ISOLATED = [`gm ${cp(0x2068)}@alice${cp(0x2069)} how are you`, `A1${cp(0x2069, 0x336)}®`, `ดื่มน้ำ ${cp(0x2068)}x${cp(0x2069)}`, `${cp(0x202a)}Thai ${cp(0x2066)}น้ำ${cp(0x2069)} ok${cp(0x202c)}`, `${cp(0x202d)}a${cp(0x336, 0x202c)}b`]
 test("Inter's kerning read from the font is the room resvg gives a pair", () => {
   for (const [i, file] of FONTS.slice(0, 2).entries()) {
@@ -639,6 +641,20 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
     }
   }
   runs.push(`ĩ${cp(0x69, 0xfe00, 0x308)}`.repeat(3) + 'ĩ', `ï${cp(0x69, 0xfe00, 0x308)}`.repeat(2) + 'ï', `ĩ${cp(0x69, 0xfe00, 0x308, 0x362)}ĩ`)
+  // and the arrows Inter's contextual alternates join dashes and an angle bracket into, wider than what they join ("–>"
+  // is "⟶", "--->" a longer arrow; and with Inter's private-use case forms), alone, after letters, next to each other,
+  // past the ignorables the shaper skips, and in right-to-left text, where bidi mirrors the bracket ("م–<" is "⟵")
+  runs.push('–>', '<–', 'a–>', 'م–>', '--->', '<---', '–-–>', '<—––', '—–->', '---->', 'A–>B', '–>–>', '<–<–', ' –> ', cp(0xe089, 0xe098), cp(0xe097, 0x2013), cp(0xe088, 0xe089, 0x2d, 0xe098), cp(0xe097, 0xe08b, 0x2013, 0x2d))
+  runs.push('م–<م', 'م>–م', 'م–<1', 'מ<–', 'מ–>', '1–<م', `${cp(0x202b)}–<`, `${cp(0x202e)}>–`, `${cp(0x2067)}–<${cp(0x2069)}`, `a${cp(0x200f)}–<`)
+  for (const g of [0x34f, 0x200d, 0xfe0f, 0xad, 0x200b, 0x200e, 0x2060, 0x202c, 0x2069, 0x17b4, 0xe0100]) runs.push(cp(0x2013, g, 0x3e), cp(0x3c, g, 0x2013), cp(0x2d, 0x2d, g, 0x2d, 0x3e), cp(0x644, 0x2013, g, 0x3c, 0x644))
+  // (and turned around by the shaper, in a run of a script written right to left set left to right: a Persian digit,
+  // an Arabic sign or mark, the mark after its letter moved past the arrow, and a mark no font has drawn a box past it)
+  runs.push(cp(0x6f1, 0x3e, 0x2013), cp(0x609, 0x3e, 0x2013), cp(0x3e, 0x2013, 0x6de), cp(0x656, 0x3e, 0x2d, 0x2d, 0x2d), cp(0x3e, 0x5b4, 0x2013, 0x645), cp(0x3e, 0x591, 0x2d, 0x2d, 0x2d), cp(0x2d, 0x656, 0x656, 0x2d, 0x2d, 0x3c))
+  for (const m of [0x610, 0x656, 0x711, 0x7eb, 0x816]) runs.push(cp(0x3e, m, 0x2d, 0x2d, 0x2d), cp(0x2013, m, 0x3c), cp(0x2d, m, 0x2d, 0x2d, 0x3c), cp(0x3e, m, m, 0x2d, 0x2d, 0x2d))
+  // (Inter's private-use case forms of the brackets turned around too, and a box mark past an arrow narrower than what
+  // it joins, "-" U+0610 "-<"; and lines with harakat or points and an arrow)
+  runs.push(cp(0x20, 0x6f5, 0x656, 0xe098, 0x2d, 0x2d, 0x2d), cp(0x8d3, 0x60a, 0x6f5, 0xe098, 0x338, 0x2d, 0x2d, 0x2d), cp(0x670, 0xe098, 0xe089, 0x6e9, 0x20d2, 0x2013, 0x3c))
+  runs.push(cp(0x2d, 0x610, 0x2d, 0x3c), cp(0x6f5, 0x2d, 0x610, 0x2d, 0x3c), cp(0x2d, 0x6f5, 0x2d, 0x610, 0x2d, 0x3c, 0x200c), ...ARROW_LINES)
   // and a sample of every character Inter has below U+0600, between the characters it kerns most with on each side
   // (at the regular weight), alone and repeated
   const most = (pair) => chars.reduce(([b, k], x) => (pair(x) > k ? [x, pair(x)] : [b, k]), ['', 0])[0]
@@ -685,6 +701,10 @@ test('a guessed run ends where resvg would end it, within a few px: no holes, no
   for (const [run, over] of [['ДЛЯ ДРУЗЕЙ', 0.1], ['ДОБРОЕ УТРО', 0.1], ['Loď do přístavu', 0.15], ['Ďakujem, ďalší deň', 0.15]]) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + over, `${bold} ${run}`)
   // and Thai with sara am, one box of advance however many boxes of ink, isn't taken as a box wider for each one
   for (const run of ['น้ำ', 'น้ำใจ', 'ทำงาน', 'ความจำ']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.1, run)
+  // and Inter's arrows are counted once, each as wide as it's drawn: not as the shorter ones inside it too
+  for (const run of ['–>', '--->', '–––>', '–>–>', 'a –> b', '<–––']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.1, run)
+  // and a line with harakat or points and an arrow takes a box only for a mark on the arrow, not for every one
+  for (const run of ARROW_LINES) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.5, run)
   // and right-to-left text, its own letters first (with points no font has too), isn't taken as turned around
   for (const run of ['عربي', 'שלום', `ע${cp(0x5b4)}ב${cp(0x5b0)}ר${cp(0x5b4)}ית`, 'abc عربي']) for (const bold of [false, true]) assert.ok(guess(run, bold) < measure(run, bold) + 0.1, run)
   // a mark at a run's end gets room for its ink once, and a decomposed arrow's slash none
