@@ -621,6 +621,13 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   // and "ď" as "ď}" (+0.088 em, bold +0.131), before Hebrew, a letter or a dot, the bracket first or the mark, repeated
   // too, and "jȴ" as "ȴj"; and the same after a Latin letter, which has the stretch shaped left to right
   runs.push('}ۛďא', ')ۛďא', ']ۛďא', '}ۛďאא', '}ۛďa', '}ۛď.', 'ۛ}ď', 'ۛ)ď', `${cp(0x6f1)}}ď`, `${cp(0x610)}}ď`, 'ۛjȴא', '}ۛď'.repeat(6) + 'א', 'ۛ' + '}ď'.repeat(10), 'x}ۛďא hi')
+  // and the runs once guessed short in #367: a zero-width space (or another boundary neutral) right after an isolate or
+  // embedding opens takes the level before it, so it's laid out in the stretch before, and the marks no font has after
+  // it start a stretch of their own, a whole box each, not boxes on the space; after U+0610 too, with an acute on "ď"
+  runs.push(cp(0x610, 0x2066, 0x200b, 0x64b, 0x6e1, 0x10f, 0x301), cp(0x610, 0x2066, 0x200b, 0x64b, 0x6e1, 0x10f), cp(0x2066, 0x200b, 0x64b, 0x6e1, 0x10f, 0x301), cp(0x61, 0x2066, 0x200b, 0x64b, 0x6e1, 0x10f))
+  for (const open of [0x2066, 0x2068, 0x202a, 0x202d]) for (const bn of [0x200b, 0x200c, 0x200d, 0xad, 0x2060, 0xfeff, 0x180e]) runs.push(cp(open, bn, 0x64b, 0x6e1, 0x10f), cp(open, bn, 0x200b, 0x6e1, 0x64b, 0x61, 0x2069))
+  // and right after an embedding closes, which takes the level inside it, so the space is laid out with what's inside
+  runs.push(cp(0x202a, 0x61, 0x202c, 0x200b, 0x64b, 0x6e1, 0x10f), cp(0x202d, 0x61, 0x202c, 0x2060, 0x64b, 0x6e1, 0x10f))
   // and the runs once guessed short in #363: a stretch turned around a grapheme at a time puts the marks it starts with
   // (U+0340 on nothing) after the grapheme after them, and decomposes none of them with a variation selector there, so
   // U+0340 is a box, not a grave: after a soft hyphen, a space or "!", with U+06D6 and a joiner or not, U+FE00 or

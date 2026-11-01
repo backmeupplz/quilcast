@@ -687,6 +687,8 @@ const RIGHT = new RegExp(`${BIDI.AL.source}|${BIDI.R.source}|${BIDI.AN.source}|$
 // the right-to-left embedding, override and isolate; and the embeddings, overrides and isolates that open a level
 const RLX = /[\u202b\u202e\u2067]/u
 const OPENS = /[\u202a\u202d\u2066\u2068]/u
+// the isolates and the end of one, which rule X9 doesn't take out
+const ISOLATES = /[\u2066-\u2069]/u
 // The paired brackets (BidiBrackets.txt, as unicode-bidi has them): each opening one by the code point it pairs by, and
 // each closing one by minus that ("〈" pairs with "〉" and "〉")
 const BRACKETS = new Map()
@@ -744,8 +746,12 @@ const stretches = (cs) => {
         if (stack.length === 62) return null
         stack.push(c === '\u2066' || c === '\u2068')
       } else if (c === '\u2069') stack.includes(true) && stack.splice(stack.lastIndexOf(true)), (level[i] = 2 * stack.length)
-      else if (c === '\u202c') (level[i] = i ? level[i - 1] : 0), stack.length && !stack.at(-1) && stack.pop()
+      else if (c === '\u202c') stack.length && !stack.at(-1) && stack.pop()
       else level[i] = 2 * stack.length
+      // (what rule X9 takes out, the boundary neutrals and the embeddings, overrides and their ends, gets the level of the
+      // character before it, as unicode-bidi has it: a zero-width space right after an isolate opens is in the stretch
+      // before the isolate, so the marks after it start a stretch of their own, each a box apart. Measured)
+      if (t[i] === 'BN' || (t[i] === 'X' && !ISOLATES.test(c))) level[i] = i ? level[i - 1] : 0
     }
     const out = []
     for (const i of all) i && level[i] === level[i - 1] ? out.at(-1).push(i) : out.push([i])
