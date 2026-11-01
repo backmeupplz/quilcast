@@ -1018,8 +1018,11 @@ const APART = new RegExp(String.raw`[dlt]${SKIPPED}\u{30c}|\u{3d2}${SKIPPED}[\u{
 // character of each, in hex, from Inter's GSUB (the same at both weights); regenerate it if Inter is updated. A dotted
 // "i" or "j" with a mark above is drawn dotless, so it joins the same way when an ignorable keeps NFC from composing it:
 // "i", a joiner and a tilde are "ĩ" (measured against resvg for every mark above and every ignorable, at both weights).
+// The Cyrillic "і" before a mark above is drawn dotless too, so it joins as "ı" does: "і" and a tilde are "ĩ"
+// (measured against resvg for every mark Inter has, between the letters it kerns them with; "ј" is drawn as "ȷ" is,
+// which guesses already cover).
 const LIGATURES = new Map(
-  `104 30a ee02,105 30a ee04,131 300 ec,131 301 ed,131 302 ee,131 303 129,131 304 12b,131 306 12d,131 308 ef,131 309 1ec9,131 30c 1d0,131 30f 209,69 300 ec,69 301 ed,69 302 ee,69 303 129,69 304 12b,69 306 12d,69 308 ef,69 309 1ec9,69 30c 1d0,69 30f 209,237 302 135,237 30c 1f0,6a 302 135,6a 30c 1f0,30 338 e06b,43 338 23b,63 338 23c,4c 307 13f,4c 338 141,4f 338 d8,6c 307 140,6c 338 142,6f 338 f8,59 328 ee03,79 328 ee05,61 ee90 1eb3,e050 338 e051,e071 338 e07b,44 f6c3 1e10,47 f6c3 122,4b f6c3 136,4c f6c3 13b,4e f6c3 145,52 f6c3 156,53 f6c3 218,54 f6c3 21a,64 f6c3 1e11,6b f6c3 137,6c f6c3 13c,6e f6c3 146,72 f6c3 157,73 f6c3 219,74 f6c3 21b,65 1dc6 1e15,65 1dc4 1e17,6f 1dc6 1e51,6f 1dc4 1e53`
+  `104 30a ee02,105 30a ee04,131 300 ec,131 301 ed,131 302 ee,131 303 129,131 304 12b,131 306 12d,131 308 ef,131 309 1ec9,131 30c 1d0,131 30f 209,69 300 ec,69 301 ed,69 302 ee,69 303 129,69 304 12b,69 306 12d,69 308 ef,69 309 1ec9,69 30c 1d0,69 30f 209,456 300 ec,456 301 ed,456 302 ee,456 303 129,456 304 12b,456 306 12d,456 308 ef,456 309 1ec9,456 30c 1d0,456 30f 209,237 302 135,237 30c 1f0,6a 302 135,6a 30c 1f0,30 338 e06b,43 338 23b,63 338 23c,4c 307 13f,4c 338 141,4f 338 d8,6c 307 140,6c 338 142,6f 338 f8,59 328 ee03,79 328 ee05,61 ee90 1eb3,e050 338 e051,e071 338 e07b,44 f6c3 1e10,47 f6c3 122,4b f6c3 136,4c f6c3 13b,4e f6c3 145,52 f6c3 156,53 f6c3 218,54 f6c3 21a,64 f6c3 1e11,6b f6c3 137,6c f6c3 13c,6e f6c3 146,72 f6c3 157,73 f6c3 219,74 f6c3 21b,65 1dc6 1e15,65 1dc4 1e17,6f 1dc6 1e51,6f 1dc4 1e53`
     .split(',')
     .map((l) => l.split(' ').map((h) => String.fromCodePoint(parseInt(h, 16))))
     .map(([letter, mark, c]) => [letter + mark, c]),
