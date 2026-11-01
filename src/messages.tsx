@@ -2,6 +2,7 @@
 import { Fragment } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, myUser, safeUrl, settings, type User } from './api.ts'
+import { GifPicker } from './gifs.tsx'
 import { autoDelete, compact, details, load, loadChat, lookup, mute, read, sameDay, send, store, subscribe, unread, type Box, type Convo, type Msg, type Person } from './dms.ts'
 import { lang, t, tn } from './i18n.ts'
 import { isImg, sized } from './shared.ts'
@@ -222,6 +223,43 @@ function Chat({ id }: { id: string }) {
   const [err, setErr] = useState('')
   const [menu, setMenu] = useState(false)
   const atBottom = useRef(true)
+  const box = useRef<HTMLTextAreaElement>(null)
+  const [gifs, setGifs] = useState(false)
+  // a picked GIF waits here and shows as a thumbnail; it only joins the text when the message goes out, since a
+  // direct cast carries a picture as its address (partsOf above)
+  const [gif, setGif] = useState('')
+  // the emoji list is the heavy part, so the module only loads when the picker is opened
+  const [emoji, setEmoji] = useState<typeof import('./emoji.tsx') | null>(null)
+  // where the caret was, read on mousedown: by the time the click lands the focus has left the box
+  const spot = useRef<{ start: number; end: number } | null>(null)
+  const grabCaret = () => {
+    const el = box.current
+    spot.current = el && document.activeElement === el ? { start: el.selectionStart, end: el.selectionEnd } : null
+  }
+  /** `apart` keeps a GIF a word of its own, since a direct cast carries a picture as its address (partsOf above). */
+  const insert = (put: string, apart = false) => {
+    const at = spot.current
+    const from = Math.min(at ? at.start : text.length, text.length)
+    const to = Math.min(at ? at.end : text.length, text.length)
+    const before = text.slice(0, from)
+    const after = text.slice(to)
+    const added = (apart && before && !/\s$/.test(before) ? ' ' : '') + put + (apart && after && !/^\s/.test(after) ? ' ' : '')
+    setText(before + added + after)
+    const caret = from + added.length
+    if (at) ((at.start = caret), (at.end = caret))
+    requestAnimationFrame(() => (box.current?.focus(), box.current?.setSelectionRange(caret, caret)))
+  }
+  const takeEmoji = (e: string) => (insert(e), setEmoji(null))
+  const takeGif = (url: string) => (setGif(url), setGifs(false), requestAnimationFrame(() => box.current?.focus()))
+  const openEmoji = () => (setGifs(false), import('./emoji.tsx').then(setEmoji, () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.')))
+  const shut = () => (setGifs(false), setEmoji(null))
+  const picker = gifs ? <GifPicker cast start="trending" pick={takeGif} close={shut} /> : emoji ? <emoji.EmojiPicker pick={takeEmoji} close={shut} /> : null
+  const tools = (
+    <>
+      <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} onMouseDown={grabCaret} onClick={() => (setEmoji(null), setGifs(!gifs))}><Icon d={P.gif} /></button>
+      <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={() => (emoji ? setEmoji(null) : openEmoji())}><Icon d={P.smile} /></button>
+    </>
+  )
   useEffect(() => {
     // on screen, so what arrives here is read as it comes
     store.open = id
@@ -248,9 +286,12 @@ function Chat({ id }: { id: string }) {
     requestAnimationFrame(() => scrollBy(0, document.documentElement.scrollHeight - h))
   }
   const submit = () => {
-    const message = text.trim()
+    const message = [text.trim(), gif].filter(Boolean).join(' ')
     if (!message || !c) return
     setText('')
+    setGif('')
+    spot.current = null
+    shut()
     atBottom.current = true
     send(c, message).catch((e) => toast(t("Couldn't send: {error}", { error: t(e.message) })))
   }
@@ -322,17 +363,37 @@ function Chat({ id }: { id: string }) {
         {!err && (settings.quorum ? (
           // Quorum's composer: one rounded box with the send arrow inside it
           <div class="dm-compose q-compose-box">
+            {picker && <div class="dm-pick">{picker}</div>}
+            {gif && (
+              <div class="dm-att">
+                <span>
+                  <Img src={gif} />
+                  <button class="att-x" aria-label={t('Remove')} onClick={() => setGif('')}><Icon d={P.x} size={14} /></button>
+                </span>
+              </div>
+            )}
             <div class="q-composer">
-              <textarea dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
-                onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit())} />
-              <button class="q-send" aria-label={t('Send')} title={t('Send')} disabled={!text.trim() || !c} onClick={submit}><svg width="18" height="14" viewBox="0 0 100 80" aria-hidden="true"><path d="M0 80L25 40.4L0 0l100 40.4z" fill="currentColor" /></svg></button>
+              <textarea ref={box} dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
+                onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => (e.key === 'Escape' && shut(), e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit()))} />
+              {tools}
+              <button class="q-send" aria-label={t('Send')} title={t('Send')} disabled={(!text.trim() && !gif) || !c} onClick={submit}><svg width="18" height="14" viewBox="0 0 100 80" aria-hidden="true"><path d="M0 80L25 40.4L0 0l100 40.4z" fill="currentColor" /></svg></button>
             </div>
           </div>
         ) : (
           <div class="dm-compose">
-            <textarea dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
-              onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit())} />
-            <button class="btn small" disabled={!text.trim() || !c} onClick={submit}>{t('Send')}</button>
+            {picker && <div class="dm-pick">{picker}</div>}
+            {gif && (
+              <div class="dm-att">
+                <span>
+                  <Img src={gif} />
+                  <button class="att-x" aria-label={t('Remove')} onClick={() => setGif('')}><Icon d={P.x} size={14} /></button>
+                </span>
+              </div>
+            )}
+            <textarea ref={box} dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
+              onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => (e.key === 'Escape' && shut(), e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit()))} />
+            {tools}
+            <button class="btn small" disabled={(!text.trim() && !gif) || !c} onClick={submit}>{t('Send')}</button>
           </div>
         ))}
       </div>
