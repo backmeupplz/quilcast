@@ -479,6 +479,10 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   runs.push(`a${RLO}${cp(0x2044)}bc`, `a${RLO}${cp(0xe2c2)}bc`, `a${RLO}f${cp(0x360)}bc`, `a${RLO}a${cp(0x20dc)}bc`, `a${RLO}i${cp(0x20dc)}bc`)
   for (const e of [cp(0x202b), cp(0x2067)]) runs.push(`a${e}${cp(0x660)}s${cp(0x336)}`, `${e}${cp(0x2044, 0x336)}b`, `a${e}${cp(0xe48, 0xe4a)}b`, `a${e}${cp(0xe31).repeat(3)}b`)
   runs.push('مَرْحَبًا', 'aمَرْحَبًاb', 'שָׁלוֹם')
+  // and everyday words with harakat or points, each a box on its letter (once 0.44 em short: "قُرْآن", "مَرْحَبًا"),
+  // with a shadda or dagesh doubling a letter, and a word or two after
+  runs.push('قُرْآن', 'قُرْان', 'ٱلْقُرْآن', 'كِتَابٌ', 'شُكْرًا', 'مُحَمَّدٌ', 'ٱللَّهِ', 'إِنْ شَاءَ ٱللَّهُ', 'اَلسَّلَامُ عَلَيْكُمْ', 'قُرْآنٌ كَرِيمٌ', 'أَهْلًا وَسَهْلًا')
+  runs.push('תּוֹרָה', 'בְּרֵאשִׁית', 'יִשְׂרָאֵל', 'חַיִּים', 'סֵפֶר', 'תּוֹדָה רַבָּה')
   // spacing marks no font has (Devanagari's vowel signs) after right-to-left letters, an Arabic digit or "." in an
   // embedding, and two clusters' ink past their room adding up
   runs.push(cp(0x5d0, 0x93f, 0x5d1, 0x93f, 0x5d2, 0x93f), cp(0x627, 0x93f, 0x4e00, 0x336), `${cp(0x202b)}${cp(0x660, 0x93f)}`, `${cp(0x202b)}.${cp(0x93f, 0x93f)}`)
