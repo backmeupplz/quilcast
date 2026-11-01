@@ -365,6 +365,8 @@ test("a run past the budget is guessed, and the guess is never less than resvg's
   for (const c of [0x20db, 0x20dc, 0x20e8]) for (const box of [0xe31, 0xe48, 0x336]) runs.push(`a${cp(box, c)}`, ` ${cp(box, c)}`)
   // or after sara am's boxes, and bold "ɀ" after marks
   runs.push(`ก${cp(0xe33, 0x20dc)}`, `${cp(0xe33, 0x20dc)}x`, `ท${cp(0xe33, 0x20dc)}ก`, `${cp(0x313, 0xe31)}a${cp(0x240)}`, `${cp(0x336, 0x362, 0x240)}`)
+  // and two boxes opening a run, which take a box's width, before narrow characters and a mark Inter has at the end
+  runs.push(`${cp(0xe31, 0xe48)} ${cp(0x308)}`, `${cp(0x940, 0x940)}4${cp(0x200d)} ${cp(0x308)}`, `${cp(0xe38, 0xe38)}%${cp(0x360)}`, `${cp(0x94d, 0x902)}+${cp(0x360)}`, `${cp(0x93e, 0x6d6)}l${cp(0xe81)},%${cp(0x308)}`)
   // an enclosing mark Inter has under boxes, sara am before a letter whose ink reaches left, and a keycap mark opening a
   // run, which has resvg draw the whole run in Noto Emoji when Noto has every character of it (digits, "#", a space)
   runs.push(cp(0x20dd, 0x336, 0x336), 'จำj', `${cp(0x20e3)}7`, `${cp(0x20e3)}#`, `${cp(0x20e3)} 7`, `7 ${cp(0x20e3)}`, `${cp(0x20e3, 0xfe0f)}7`, `${cp(0x20e3)}0123456789#*`, `${cp(0x20e3)}7a`, `${cp(0x20e3, 0x200b)}77`)

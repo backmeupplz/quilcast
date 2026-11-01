@@ -172,8 +172,11 @@ const EMOJI = 1.22, SIZE = 1.08, TOP = 0.9
 
 // What a character no font has takes: the missing-glyph box. A combining mark no font has is a box too, laid out the
 // way resvg lays it out (measured): once a base has one, every mark on it is a box; the first box widens the base to a
-// box's width (a narrow letter gets wider, a wide one doesn't), each one after that adds a box; and the boxes' ink ends
-// half a box past the base, a box further for each one after the first, which can be past the end of the run.
+// box's width (a narrow letter gets wider, a wide one doesn't), and more boxes don't widen it further (the guess still
+// takes two boxes 0.62 past the base's own width and a box more for each one after that, an over-count, but never less
+// than a box's width in all, so boxes opening a run with no letter under them take a box too: what follows them starts
+// there); and the boxes' ink ends half a box past the base, a box further for each one after the first, which can be
+// past the end of the run.
 const BOX = 0.66
 // Marks newer than resvg's Unicode (16 and 17's) are characters it doesn't know, each a box of its own like a letter no
 // font has, not one on the letter before it. Measured against resvg for every mark; regenerate it if resvg is updated.
@@ -194,7 +197,7 @@ const laidAs = (run, adv, font, ink, thai, hang, over) => {
     // resvg sets a mark after a box against the box)
     const boxes = w + base + 0.5 + BOX * (marks - 1) + own
     if (am) end = Math.max(end, boxes), (w += Math.max(base, BOX) + own)
-    else if (box) end = Math.max(end, boxes), (w += base + own + (marks === 1 ? Math.max(0, BOX - base) : 0.62 + BOX * (marks - 2)))
+    else if (box) end = Math.max(end, boxes), (w += base + own + Math.max(BOX - base, marks === 1 ? 0 : 0.62 + BOX * (marks - 2)))
     else w += base + own
     if (hung) end = Math.max(end, (box ? Math.max(w, boxes) : w) + OVERHANG)
     // (and a letter whose ink ends past its advance reaches past what comes after it when that's narrower: "\u{e2c2} ")
