@@ -1081,5 +1081,9 @@
   "Heading": "शीर्षक",
   "Bulleted list": "बुलेट सूची",
   "Numbered list": "क्रमांकित सूची",
-  "link": "लिंक"
+  "link": "लिंक",
+  "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "जिन कास्ट के स्पैम होने की संभावना कम से कम इतनी है, उन पर संभावना के साथ लेबल लगता है, या वे छिपा दिए जाते हैं। हमारा अपना Laya मॉडल हर नया कास्ट पढ़ता है।",
+  "How likely spam.quilcast.com thinks this cast is spam": "spam.quilcast.com के अनुसार इस कास्ट के स्पैम होने की संभावना",
+  "Spam threshold": "स्पैम सीमा",
+  "Spam {n}%": "स्पैम {n}%"
 }

@@ -1081,5 +1081,9 @@
   "Heading": "Encabezado",
   "Bulleted list": "Lista con viñetas",
   "Numbered list": "Lista numerada",
-  "link": "enlace"
+  "link": "enlace",
+  "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "Los casts con al menos esta probabilidad de ser spam llevan una etiqueta con la probabilidad, o se ocultan. Nuestro propio modelo Laya lee cada cast nuevo.",
+  "How likely spam.quilcast.com thinks this cast is spam": "Qué probabilidad hay, según spam.quilcast.com, de que este cast sea spam",
+  "Spam threshold": "Umbral de spam",
+  "Spam {n}%": "Spam {n} %"
 }

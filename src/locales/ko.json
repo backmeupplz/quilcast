@@ -1081,5 +1081,9 @@
   "Heading": "제목",
   "Bulleted list": "글머리 기호 목록",
   "Numbered list": "번호 매기기 목록",
-  "link": "링크"
+  "link": "링크",
+  "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "스팸일 가능성이 이 값 이상인 캐스트는 확률이 적힌 라벨이 붙거나 숨겨집니다. 자체 Laya 모델이 모든 새 캐스트를 읽습니다.",
+  "How likely spam.quilcast.com thinks this cast is spam": "spam.quilcast.com이 판단한 이 캐스트의 스팸 가능성",
+  "Spam threshold": "스팸 기준값",
+  "Spam {n}%": "스팸 {n}%"
 }

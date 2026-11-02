@@ -1081,5 +1081,9 @@
   "Heading": "标题",
   "Bulleted list": "项目符号列表",
   "Numbered list": "编号列表",
-  "link": "链接"
+  "link": "链接",
+  "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "是垃圾信息的可能性不低于此值的投稿会带上标注概率的标签，或被隐藏。我们自己的 Laya 模型会读取每条新投稿。",
+  "How likely spam.quilcast.com thinks this cast is spam": "spam.quilcast.com 判断此投稿为垃圾信息的可能性",
+  "Spam threshold": "垃圾信息阈值",
+  "Spam {n}%": "垃圾 {n}%"
 }

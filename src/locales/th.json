@@ -1081,5 +1081,9 @@
   "Heading": "หัวข้อ",
   "Bulleted list": "รายการสัญลักษณ์",
   "Numbered list": "รายการลำดับเลข",
-  "link": "ลิงก์"
+  "link": "ลิงก์",
+  "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "แคสต์ที่มีโอกาสเป็นสแปมอย่างน้อยเท่านี้จะมีป้ายบอกโอกาส หรือถูกซ่อน โมเดล Laya ของเราเองอ่านทุกแคสต์ใหม่",
+  "How likely spam.quilcast.com thinks this cast is spam": "โอกาสที่ spam.quilcast.com คิดว่าแคสต์นี้เป็นสแปม",
+  "Spam threshold": "เกณฑ์สแปม",
+  "Spam {n}%": "สแปม {n}%"
 }

@@ -6,6 +6,7 @@ export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, setMute } from './mutes.ts'
+import { spamOf } from './spam.ts'
 import { base, detect } from './lang.ts'
 
 // keys and crypto load only when someone signs in or writes
@@ -890,10 +891,12 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
       </span>
     </footer>
   )
+  const spam = spamOf(c)
   const name = (
     <>
       <a class="name" href={userPath(c.author)} onClick={stop}>{nameOf(c.author)}</a>
       <span class="handle">@{handle(c.author)}</span>
+      {spam != null && <span class="spam-tag" title={t('How likely spam.quilcast.com thinks this cast is spam')}>{t('Spam {n}%', { n: spam })}</span>}
     </>
   )
   if (focus) {

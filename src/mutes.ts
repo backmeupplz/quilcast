@@ -4,6 +4,7 @@
 import { account, read, save, type Cast } from './api.ts'
 import { castText, cleanMutes, wordsRe, type Mutes, type Timed } from './shared.ts'
 import removedList from './removed.json' with { type: 'json' }
+import { hidesSpam } from './spam.ts'
 
 const key = `quilcast:mutes:${account?.fid}`
 export let mutes: Mutes = cleanMutes(read(key, null))
@@ -50,7 +51,7 @@ export function hides(c: Cast, owner?: number) {
   if (fid === account?.fid) return false
   if (blockOf(fid)) return true
   if (fid === owner) return false
-  return !!muteOf(fid) || !!words()?.test(castText(c))
+  return !!muteOf(fid) || !!words()?.test(castText(c)) || hidesSpam(c)
 }
 /** Whether a person's notifications and casts are muted or blocked. */
 export const silenced = (fid?: number) => !!(muteOf(fid) || blockOf(fid))

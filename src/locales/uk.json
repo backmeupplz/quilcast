@@ -1081,5 +1081,9 @@
   "Heading": "Заголовок",
   "Bulleted list": "Маркований список",
   "Numbered list": "Нумерований список",
-  "link": "посилання"
+  "link": "посилання",
+  "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "Касти, які щонайменше з такою ймовірністю є спамом, отримують мітку з імовірністю або приховуються. Кожен новий каст читає наша власна модель Laya.",
+  "How likely spam.quilcast.com thinks this cast is spam": "Наскільки ймовірно, за оцінкою spam.quilcast.com, що цей каст — спам",
+  "Spam threshold": "Поріг спаму",
+  "Spam {n}%": "Спам {n}%"
 }

@@ -10,6 +10,7 @@ import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, Cast
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
+import { spamAt } from './spam.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
 
@@ -1373,6 +1374,16 @@ function Settings() {
             </div>
           </div>
           <p class="hint">{t('Backgrounds, colors, songs and GIFs people add to their profile pages.')}{account?.done && myUser() && <> <a href={`${userPath(myUser()!)}?customize`}>{t('Customize yours')}</a></>}</p>
+        </section>
+        <section>
+          <div class="setting">
+            <h2>{t('Spam')}</h2>
+            <div class="seg">
+              {(['show', 'hide'] as const).map((v) => <button class={(settings.spam || 'show') === v ? 'on' : ''} onClick={() => ((settings.spam = v), saveSettings(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
+            </div>
+          </div>
+          <label class="lk-row"><span>{t('Spam threshold')}</span><span class="lk-ctl"><input type="range" min={50} max={99} value={spamAt()} onInput={(e) => ((settings.spamAt = Number(e.currentTarget.value)), saveSettings(), force((x) => x + 1))} /><output>{spamAt()}%</output></span></label>
+          <p class="hint">{t('Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.')}</p>
         </section>
         {account && (
           <section>

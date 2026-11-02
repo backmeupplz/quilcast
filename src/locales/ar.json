@@ -1081,5 +1081,9 @@
   "Heading": "عنوان",
   "Bulleted list": "قائمة نقطية",
   "Numbered list": "قائمة مرقمة",
-  "link": "رابط"
+  "link": "رابط",
+  "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "المنشورات التي يُرجَّح أنها رسائل مزعجة بهذه النسبة على الأقل تحصل على علامة بالنسبة، أو تُخفى. نموذج Laya الخاص بنا يقرأ كل منشور جديد.",
+  "How likely spam.quilcast.com thinks this cast is spam": "مدى ترجيح spam.quilcast.com أن هذا المنشور رسالة مزعجة",
+  "Spam threshold": "حد الرسائل المزعجة",
+  "Spam {n}%": "مزعج {n}%"
 }

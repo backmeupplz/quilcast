@@ -1081,5 +1081,9 @@
   "Heading": "Tiêu đề",
   "Bulleted list": "Danh sách dấu đầu dòng",
   "Numbered list": "Danh sách đánh số",
-  "link": "liên kết"
+  "link": "liên kết",
+  "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "Các cast có khả năng là spam ít nhất bằng mức này sẽ có nhãn kèm xác suất, hoặc bị ẩn. Mô hình Laya của chúng tôi đọc mọi cast mới.",
+  "How likely spam.quilcast.com thinks this cast is spam": "Khả năng cast này là spam theo spam.quilcast.com",
+  "Spam threshold": "Ngưỡng spam",
+  "Spam {n}%": "Spam {n}%"
 }
