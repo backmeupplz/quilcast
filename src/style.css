@@ -299,8 +299,9 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 /* a quoted cast's picture sits under its text, at size, like in the cast itself */
 .qbody { display: flex; flex-direction: column; gap: 8px; }
 .qbody .text { flex: 1; min-width: 0; }
-.clamp { -webkit-line-clamp: 4; }
-.fold { -webkit-line-clamp: 10; }
+/* a line count alone doesn't hold back pictures and tables in Markdown, so those stop at a height too */
+.clamp { -webkit-line-clamp: 4; max-height: max(4lh, 160px); }
+.fold { -webkit-line-clamp: 10; max-height: max(10lh, 480px); }
 .show-more { border: 0; background: none; padding: 2px 0; color: var(--accent); font-size: 15px; }
 .show-more:hover { text-decoration: underline; }
 .qimg { display: block; width: auto; height: auto; max-width: 100%; max-height: 300px; border-radius: calc(10px * var(--rs, 1)); margin-top: 4px; align-self: flex-start; }
@@ -548,7 +549,7 @@ small.warn { color: var(--warn); }
 .part.threaded::before { content: ''; position: absolute; inset-inline-start: 13px; top: 52px; bottom: -6px; width: 2px; background: var(--line); }
 .embed-preview { margin-inline-start: 42px; pointer-events: none; }
 .md-preview { margin: 8px 0 0 42px; padding: 8px 12px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); pointer-events: none; }
-.text .md-img { display: block; max-width: 100%; max-height: 420px; margin: 6px 0; border-radius: calc(12px * var(--rs, 1)); }
+.text .md-img { display: block; max-width: 100%; max-height: 360px; min-width: 120px; min-height: 60px; object-fit: contain; margin: 6px 0; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); background: var(--soft); cursor: zoom-in; }
 .md-label { display: block; font-size: 12px; color: var(--muted); }
 .embed-preview .linkcard, .embed-preview .tweet, .embed-preview .quote { margin-top: 8px; }
 .embed-preview .lc-img, .embed-preview .imgs img, .embed-preview .tw-video img { max-height: 180px; }

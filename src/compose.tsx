@@ -469,6 +469,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
               [t('Code'), <Icon d={P.code} size={18} />, { mark: '`' }], [t('Link'), <Icon d={P.link} size={18} />, { link: t('link') }],
               [t('Heading'), <b>H</b>, { line: '## ' }], [t('Bulleted list'), <Icon d={P.list} size={18} />, { line: '- ' }],
               [t('Numbered list'), <Icon d={P.olist} size={18} />, { line: '1. ' }], [t('Quote'), <Icon d={P.quote} size={18} />, { line: '> ' }],
+              [t('Table'), <Icon d={P.table} size={18} />, { table: t('Column') }],
             ] as [string, any, Format, string?][]).map(([label, face, how, key]) => (
               <button class="icon-btn" aria-label={label} aria-keyshortcuts={key && `${MOD === '⌘' ? 'Meta' : 'Control'}+${key}`} title={key ? `${label} (${MOD}${key})` : label} onClick={() => fmt(how)}>{face}</button>
             ))}

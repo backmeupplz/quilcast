@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Aggiungi un wallet in Impostazioni → Wallet per dare mance.",
   "Like (hold to tip $1)": "Mi piace (tieni premuto per una mancia di 1 $)",
   "Tip @{name} $1": "Mancia di 1 $ a @{name}",
-  "Tipped @{name} $1": "Mancia di 1 $ inviata a @{name}"
+  "Tipped @{name} $1": "Mancia di 1 $ inviata a @{name}",
+  "Table": "Tabella",
+  "Column": "Colonna"
 }

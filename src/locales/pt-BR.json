@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Adicione uma carteira em Configurações → Carteiras para dar gorjetas.",
   "Like (hold to tip $1)": "Curtir (segure para dar US$ 1 de gorjeta)",
   "Tip @{name} $1": "Gorjeta de US$ 1 para @{name}",
-  "Tipped @{name} $1": "Você deu US$ 1 de gorjeta para @{name}"
+  "Tipped @{name} $1": "Você deu US$ 1 de gorjeta para @{name}",
+  "Table": "Tabela",
+  "Column": "Coluna"
 }

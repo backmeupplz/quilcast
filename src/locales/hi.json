@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "टिप देने के लिए सेटिंग्स → वॉलेट में एक वॉलेट जोड़ें।",
   "Like (hold to tip $1)": "पसंद (दबाकर रखें, $1 टिप दें)",
   "Tip @{name} $1": "@{name} को $1 टिप",
-  "Tipped @{name} $1": "@{name} को $1 टिप दी"
+  "Tipped @{name} $1": "@{name} को $1 टिप दी",
+  "Table": "तालिका",
+  "Column": "कॉलम"
 }

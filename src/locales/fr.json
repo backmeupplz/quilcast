@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Ajoutez un portefeuille dans Réglages → Portefeuilles pour donner un pourboire.",
   "Like (hold to tip $1)": "J'aime (maintenir pour un pourboire de 1 $)",
   "Tip @{name} $1": "Pourboire de 1 $ à @{name}",
-  "Tipped @{name} $1": "Pourboire de 1 $ envoyé à @{name}"
+  "Tipped @{name} $1": "Pourboire de 1 $ envoyé à @{name}",
+  "Table": "Tableau",
+  "Column": "Colonne"
 }

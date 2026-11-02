@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "팁을 보내려면 설정 → 지갑에서 지갑을 추가하세요.",
   "Like (hold to tip $1)": "좋아요 (길게 눌러 $1 팁)",
   "Tip @{name} $1": "@{name}님에게 $1 팁",
-  "Tipped @{name} $1": "@{name}님에게 $1 팁을 보냈습니다"
+  "Tipped @{name} $1": "@{name}님에게 $1 팁을 보냈습니다",
+  "Table": "표",
+  "Column": "열"
 }

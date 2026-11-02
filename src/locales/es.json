@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Añade una billetera en Ajustes → Billeteras para dar propinas.",
   "Like (hold to tip $1)": "Me gusta (mantén pulsado para dar $1 de propina)",
   "Tip @{name} $1": "Propina de $1 a @{name}",
-  "Tipped @{name} $1": "Diste $1 de propina a @{name}"
+  "Tipped @{name} $1": "Diste $1 de propina a @{name}",
+  "Table": "Tabla",
+  "Column": "Columna"
 }

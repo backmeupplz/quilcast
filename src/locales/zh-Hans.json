@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "请在设置 → 钱包中添加钱包后再打赏。",
   "Like (hold to tip $1)": "赞（长按打赏 $1）",
   "Tip @{name} $1": "打赏 @{name} $1",
-  "Tipped @{name} $1": "已打赏 @{name} $1"
+  "Tipped @{name} $1": "已打赏 @{name} $1",
+  "Table": "表格",
+  "Column": "列"
 }

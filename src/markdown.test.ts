@@ -191,7 +191,7 @@ test('a picture put in by the composer, once its upload is done', async () => {
   text = settlePicture(text, 'uploading:a', undefined, putA)
   assert.equal(text, `Intro\n\n![](${url})\nOutro`)
   // the reader's Quilcast shows it in place and doesn't embed it again
-  assert.match(md(text), /^Intro\n\n<img class="md-img" src="https:\/\/imagedelivery\.net\/a\/b\/original"/)
+  assert.match(md(text), /^Intro\n<img class="md-img" src="https:\/\/imagedelivery\.net\/a\/b\/original"/)
   assert.deepEqual(urlsOf({ text, embeds: [{ url }] }), [])
   // one the author already deleted from the text stays deleted
   assert.equal(settlePicture('gone', 'uploading:c', url), 'gone')
@@ -246,4 +246,26 @@ test('styled: each character of the card text knows how it looked', async () => 
   const at = (s: string) => marks[text.indexOf(s)]
   assert.deepEqual([at('Hi'), at('b'), marks[text.indexOf(' i ') + 1], at('c'), at('@dwr'), at('q'), at(' ')], [MD.heading, MD.bold, MD.italic, MD.code, MD.link, MD.quote, 0])
   assert.equal(marks.length, text.length)
+})
+
+test('pictures on lines of their own draw no empty line between them, only their margins', async () => {
+  const { markdown } = await import('./shared.ts')
+  const pic = (n: number) => `![](https://imagedelivery.net/a/${n}/original)`
+  const out = markdown(`hi\n${pic(1)}\n${pic(2)}\nbye`)
+  assert.doesNotMatch(out, /\n/)
+  assert.equal(out.match(/<img class="md-img"/g)?.length, 2)
+  // a blank line stays one line break apart
+  assert.match(markdown(`hi\n\n${pic(1)}`), /^hi\n<img/)
+})
+
+test('the table button puts a table on lines of its own, its first heading selected, and it renders', async () => {
+  const { format, markdown } = await import('./shared.ts')
+  const [text, a, b] = format('Intro', 5, 5, { table: 'Column' })
+  assert.equal(text, 'Intro\n| Column | Column |\n| --- | --- |\n|  |  |')
+  assert.equal(text.slice(a, b), 'Column')
+  assert.match(markdown(text), /<table><thead><tr><th>Column<\/th><th>Column<\/th><\/tr><\/thead><tbody><tr><td><\/td><td><\/td><\/tr><\/tbody><\/table>/)
+  // the selection heads the first column, and text after it moves to a line of its own
+  const [t2, c, d] = format('Name rest', 0, 4, { table: 'Column' })
+  assert.equal(t2, '| Name | Column |\n| --- | --- |\n|  |  |\n rest')
+  assert.equal(t2.slice(c, d), 'Name')
 })

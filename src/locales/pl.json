@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Dodaj portfel w Ustawieniach → Portfele, aby dawać napiwki.",
   "Like (hold to tip $1)": "Polub (przytrzymaj, by dać 1 $ napiwku)",
   "Tip @{name} $1": "Napiwek 1 $ dla @{name}",
-  "Tipped @{name} $1": "Dano 1 $ napiwku @{name}"
+  "Tipped @{name} $1": "Dano 1 $ napiwku @{name}",
+  "Table": "Tabela",
+  "Column": "Kolumna"
 }

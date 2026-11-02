@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Lägg till en plånbok under Inställningar → Plånböcker för att ge dricks.",
   "Like (hold to tip $1)": "Gilla (håll in för 1 $ i dricks)",
   "Tip @{name} $1": "1 $ i dricks till @{name}",
-  "Tipped @{name} $1": "Gav @{name} 1 $ i dricks"
+  "Tipped @{name} $1": "Gav @{name} 1 $ i dricks",
+  "Table": "Tabell",
+  "Column": "Kolumn"
 }

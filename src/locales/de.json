@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Füge unter Einstellungen → Wallets eine Wallet hinzu, um Trinkgeld zu geben.",
   "Like (hold to tip $1)": "Gefällt mir (halten für 1 $ Trinkgeld)",
   "Tip @{name} $1": "1 $ Trinkgeld an @{name}",
-  "Tipped @{name} $1": "@{name} 1 $ Trinkgeld gegeben"
+  "Tipped @{name} $1": "@{name} 1 $ Trinkgeld gegeben",
+  "Table": "Tabelle",
+  "Column": "Spalte"
 }

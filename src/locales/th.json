@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "เพิ่มกระเป๋าเงินในการตั้งค่า → กระเป๋าเงิน เพื่อให้ทิป",
   "Like (hold to tip $1)": "ถูกใจ (กดค้างเพื่อให้ทิป $1)",
   "Tip @{name} $1": "ทิป $1 ให้ @{name}",
-  "Tipped @{name} $1": "ให้ทิป $1 แก่ @{name} แล้ว"
+  "Tipped @{name} $1": "ให้ทิป $1 แก่ @{name} แล้ว",
+  "Table": "ตาราง",
+  "Column": "คอลัมน์"
 }

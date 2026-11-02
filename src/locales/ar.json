@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "أضف محفظة من الإعدادات ← المحافظ لإرسال إكرامية.",
   "Like (hold to tip $1)": "إعجاب (اضغط مطولًا لإرسال إكرامية 1$)",
   "Tip @{name} $1": "إكرامية 1$ إلى @{name}",
-  "Tipped @{name} $1": "أرسلت إكرامية 1$ إلى @{name}"
+  "Tipped @{name} $1": "أرسلت إكرامية 1$ إلى @{name}",
+  "Table": "جدول",
+  "Column": "عمود"
 }

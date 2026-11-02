@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Tambahkan dompet di Pengaturan → Dompet untuk memberi tip.",
   "Like (hold to tip $1)": "Suka (tahan untuk tip $1)",
   "Tip @{name} $1": "Tip $1 ke @{name}",
-  "Tipped @{name} $1": "Memberi tip $1 ke @{name}"
+  "Tipped @{name} $1": "Memberi tip $1 ke @{name}",
+  "Table": "Tabel",
+  "Column": "Kolom"
 }

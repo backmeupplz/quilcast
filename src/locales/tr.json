@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Bahşiş vermek için Ayarlar → Cüzdanlar'dan bir cüzdan ekleyin.",
   "Like (hold to tip $1)": "Beğen (1 $ bahşiş için basılı tut)",
   "Tip @{name} $1": "@{name} için 1 $ bahşiş",
-  "Tipped @{name} $1": "@{name} kullanıcısına 1 $ bahşiş verildi"
+  "Tipped @{name} $1": "@{name} kullanıcısına 1 $ bahşiş verildi",
+  "Table": "Tablo",
+  "Column": "Sütun"
 }

@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Voeg een wallet toe via Instellingen → Wallets om fooi te geven.",
   "Like (hold to tip $1)": "Vind ik leuk (vasthouden voor $ 1 fooi)",
   "Tip @{name} $1": "$ 1 fooi aan @{name}",
-  "Tipped @{name} $1": "@{name} $ 1 fooi gegeven"
+  "Tipped @{name} $1": "@{name} $ 1 fooi gegeven",
+  "Table": "Tabel",
+  "Column": "Kolom"
 }

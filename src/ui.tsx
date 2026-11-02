@@ -172,7 +172,15 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
 export function RichText({ text, class: cls = 'text', plain }: { text: string; class?: string; plain?: boolean }) {
   // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round. A link's click is
   // the link's, not the card's around it.
-  const click = (e: MouseEvent) => (e.target as Element).closest('a') && stop(e)
+  // a Markdown picture opens in the image viewer, with the text's other pictures a swipe away, like a cast's embeds
+  const click = (e: MouseEvent) => {
+    const el = e.target as Element
+    if (el.closest('a')) return stop(e)
+    if (!el.classList.contains('md-img')) return
+    stop(e)
+    const pics = [...(e.currentTarget as Element).querySelectorAll<HTMLImageElement>('img.md-img')]
+    shell.view(pics.map((p) => p.src), pics.indexOf(el as HTMLImageElement))
+  }
   // a [label](url) link to another site, or any link to a look-alike host, first shows where it really goes. Asked
   // while the click comes down, before the link's own listeners (inapp.ts opens links out from there); a middle
   // click too.
@@ -190,12 +198,14 @@ function Folded({ text }: { text: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [over, setOver] = useState(false)
-  useLayoutEffect(() => {
+  const measure = () => {
     const p = ref.current?.firstElementChild
     p && setOver(p.scrollHeight > p.clientHeight + 1)
-  }, [text])
+  }
+  useLayoutEffect(measure, [text])
   return (
-    <div ref={ref}>
+    // and again as each Markdown picture arrives and takes its height
+    <div ref={ref} onLoadCapture={measure}>
       <RichText text={text} class={open ? 'text' : 'text fold'} />
       {over && !open && <button class="show-more" onClick={(e) => (stop(e), setOpen(true))}>{t('Show more')}</button>}
     </div>

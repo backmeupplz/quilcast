@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "Thêm ví trong Cài đặt → Ví để gửi tip.",
   "Like (hold to tip $1)": "Thích (giữ để tip $1)",
   "Tip @{name} $1": "Tip $1 cho @{name}",
-  "Tipped @{name} $1": "Đã tip $1 cho @{name}"
+  "Tipped @{name} $1": "Đã tip $1 cho @{name}",
+  "Table": "Bảng",
+  "Column": "Cột"
 }

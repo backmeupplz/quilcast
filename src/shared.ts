@@ -580,6 +580,7 @@ export const P = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   olist: 'M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1',
   gif: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM9.5 9h-2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h2v-3h-1M12 9v6M17.5 9h-3v6M14.5 12h2.5',
+  table: 'M4 5h16v14H4zM4 10h16M4 15h16M12 5v14',
   image: 'M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM3 16l5-5 5 5M14 14l2-2 5 5M15.5 8.5h.01',
   hash: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18',
   x: 'M18 6 6 18M6 6l12 12',
@@ -705,12 +706,13 @@ export function pictureSpot(text: string, start: number, end: number): [number, 
   return [at, at]
 }
 
-export type Format = { mark: string } | { line: string } | { link: string } | { picture: string }
+export type Format = { mark: string } | { line: string } | { link: string } | { picture: string } | { table: string }
 /** What the composer's Markdown buttons do to the text and its selection [start, end), returning both after: `mark`
  *  wraps the selection in "**", "*", "~~" or "`" (or unwraps it when it's wrapped already), `line` starts each line
  *  the selection touches with "## ", "- ", "1. " or "> " (or takes it off when they all have it), and `link` makes
  *  the selection, or the given word, a link with its URL selected to paste over. `picture` puts ![selection](src) on a
- *  line of its own, the selection as its alt text, with the caret after it, at its pictureSpot. */
+ *  line of its own, the selection as its alt text, with the caret after it, at its pictureSpot. `table` puts a two-column
+ *  table on lines of its own, the selection (or the given word) heading its first column, which is selected. */
 export function format(text: string, start: number, end: number, how: Format): [string, number, number] {
   if ('picture' in how) [start, end] = pictureSpot(text, start, end)
   const sel = text.slice(start, end)
@@ -726,6 +728,15 @@ export function format(text: string, start: number, end: number, how: Format): [
     const after = text.slice(end)
     const pic = `${before && !before.endsWith('\n') ? '\n' : ''}![${sel.replace(/[[\]\n]+/g, ' ').trim()}](${how.picture})${after && !after.startsWith('\n') ? '\n' : ''}`
     return [before + pic + after, start + pic.length, start + pic.length]
+  }
+  if ('table' in how) {
+    const before = text.slice(0, start)
+    const after = text.slice(end)
+    const head = sel.replace(/[|\n]+/g, ' ').trim() || how.table
+    const lead = before && !before.endsWith('\n') ? '\n' : ''
+    const table = `${lead}| ${head} | ${how.table} |\n| --- | --- |\n|  |  |${after && !after.startsWith('\n') ? '\n' : ''}`
+    const at = start + lead.length + 2
+    return [before + table + after, at, at + head.length]
   }
   if ('link' in how) {
     const label = sel.trim() || how.link
@@ -843,8 +854,9 @@ export function markdown(text: string): string {
   const flush = () => {
     const p = para.join('\n').replace(/^\n+|\n+$/g, '')
     para = []
-    // a paragraph between blocks drops the blank lines around it: the blocks have margins
-    out += inline(p)
+    // a paragraph between blocks drops the blank lines around it: the blocks have margins. So does a picture, which is
+    // a block too: the line break on each side of it would draw an empty line under pre-wrap
+    out += inline(p).replace(/\n?(<img class="md-img"[^>]*>)\n?/g, '$1')
   }
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i]

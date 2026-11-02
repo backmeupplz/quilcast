@@ -1106,5 +1106,7 @@
   "Add a wallet in Settings → Wallets to tip.": "チップを送るには、設定 → ウォレットでウォレットを追加してください。",
   "Like (hold to tip $1)": "いいね（長押しで $1 のチップ）",
   "Tip @{name} $1": "@{name} に $1 のチップ",
-  "Tipped @{name} $1": "@{name} に $1 のチップを送りました"
+  "Tipped @{name} $1": "@{name} に $1 のチップを送りました",
+  "Table": "表",
+  "Column": "列"
 }
