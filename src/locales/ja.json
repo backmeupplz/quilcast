@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "このアドレスには、通常の文字に見える Unicode 文字が含まれています。フィッシングリンクの可能性があります。",
   "This link goes to:": "このリンクの行き先:",
   "With those characters, the address reads:": "それらの文字で書くと、アドレスはこう見えます:",
-  "Open link": "リンクを開く"
+  "Open link": "リンクを開く",
+  "Cast here": "ここにキャスト",
+  "Channels": "チャンネル",
+  "Members only": "メンバー限定",
+  "No casts in this channel yet.": "このチャンネルにはまだキャストがありません。",
+  "No channels match “{term}”.": "「{term}」に一致するチャンネルはありません。",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "/{id} にキャストできるのはメンバーだけなので、farcaster.xyz のチャンネルには表示されません。",
+  "The channel list couldn't be loaded. Try again in a bit.": "チャンネル一覧を読み込めませんでした。少し経ってからもう一度お試しください。",
+  "member|members": "メンバー"
 }

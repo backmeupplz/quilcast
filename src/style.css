@@ -325,6 +325,8 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .counts b { color: var(--ink); }
 .counts a { color: inherit; }
 .counts a:hover { text-decoration: underline; }
+.channel-header { display: block; width: calc(100% + 32px); max-width: none; margin: -16px -16px 12px; aspect-ratio: 3 / 1; object-fit: cover; }
+a.chan:hover { text-decoration: underline; }
 .profile + .tabs { border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
 /* a profile as the server sends it (server/profile.mjs), there until the app starts and draws its own */
 .ssr { display: flex; justify-content: center; }

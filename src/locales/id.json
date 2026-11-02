@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Alamat ini berisi karakter Unicode yang bisa terlihat seperti huruf biasa. Ini mungkin tautan phishing.",
   "This link goes to:": "Tautan ini menuju ke:",
   "With those characters, the address reads:": "Dengan karakter tersebut, alamatnya terbaca:",
-  "Open link": "Buka tautan"
+  "Open link": "Buka tautan",
+  "Cast here": "Cast di sini",
+  "Channels": "Saluran",
+  "Members only": "Khusus anggota",
+  "No casts in this channel yet.": "Belum ada cast di saluran ini.",
+  "No channels match “{term}”.": "Tidak ada saluran yang cocok dengan “{term}”.",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Hanya anggota yang bisa cast di /{id}, jadi farcaster.xyz tidak akan menampilkannya di sana.",
+  "The channel list couldn't be loaded. Try again in a bit.": "Daftar saluran tidak bisa dimuat. Coba lagi sebentar lagi.",
+  "member|members": "anggota"
 }

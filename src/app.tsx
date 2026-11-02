@@ -11,6 +11,7 @@ import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
 import { spamAt } from './spam.ts'
+import { channelFeed, findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
 
@@ -788,7 +789,7 @@ function Profile({ id }: { id: string }) {
 function Search() {
   const params = new URLSearchParams(location.search)
   const [q, setQ] = useState(params.get('q') || '')
-  const [tab, setTab] = useState<'people' | 'casts'>(params.get('t') === 'casts' ? 'casts' : 'people')
+  const [tab, setTab] = useState<'people' | 'casts' | 'channels'>(params.get('t') === 'casts' ? 'casts' : params.get('t') === 'channels' ? 'channels' : 'people')
   const [people, setPeople] = useState<User[] | null>(null)
   const [term, setTerm] = useState(q.trim())
   const input = useRef<HTMLInputElement>(null)
@@ -798,7 +799,7 @@ function Search() {
     return () => clearTimeout(t)
   }, [q])
   useEffect(() => {
-    history.replaceState(null, '', term ? `/search?${new URLSearchParams({ q: term, ...(tab === 'casts' && { t: 'casts' }) })}` : '/search')
+    history.replaceState(null, '', term || tab === 'channels' ? `/search?${new URLSearchParams({ ...(term && { q: term }), ...(tab !== 'people' && { t: tab }) })}` : '/search')
     setPeople(null)
     if (tab === 'people' && term) findUsers(term).then((us) => setPeople(us.slice(0, 25)), () => setPeople([]))
   }, [term, tab])
@@ -809,12 +810,85 @@ function Search() {
           <Icon d={P.search} size={16} />
           <input ref={input} type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search people and casts')} aria-label={t('Search')} />
         </div>
-        <Tabs tabs={[['people', t('People')], ['casts', t('Casts')]]} value={tab} set={setTab} />
+        <Tabs tabs={[['people', t('People')], ['casts', t('Casts')], ['channels', t('Channels')]]} value={tab} set={setTab} />
       </Header>
-      {!term && <div class="note">{t('Find people by name or username, or search the text of casts.')}</div>}
+      {!term && tab !== 'channels' && <div class="note">{t('Find people by name or username, or search the text of casts.')}</div>}
+      {tab === 'channels' && <ChannelList q={term} />}
       {!term && tab === 'people' && <Customized />}
       {term && tab === 'people' && (people === null ? <div class="spinner" /> : people.length ? people.map((u) => <UserRow u={u} />) : <div class="note">{t('No one matches “{term}”.', { term })}</div>)}
       {term && tab === 'casts' && <Feed k={`s${term}`} empty={t('No casts match “{term}”.', { term })} load={(cursor) => get('/v2/farcaster/cast/search', { q: term, limit: 25, cursor }).then((r) => r.result || r)} />}
+    </>
+  )
+}
+
+// a channel's picture where a profile picture would be
+const face = (c: Channel) => ({ fid: 0, pfp_url: c.image, display_name: c.name }) as User
+const ChannelRow = ({ c }: { c: Channel }) => (
+  <a class="row" href={`/channel/${c.id}`}>
+    <Avatar u={face(c)} link={false} />
+    <span class="row-main">
+      <span class="row-top"><b>{c.name}</b><span class="handle">/{c.id}{!c.open && ' 🔒'}</span></span>
+      {c.desc && <span class="row-sub">{c.desc}</span>}
+    </span>
+    <span class="row-meta">{n(c.followers)}<small>{tn(c.followers, 'follower', 'followers')}</small></span>
+  </a>
+)
+
+/** The top channels by followers, or the ones matching `q`, from farcaster.xyz's directory (server/channels.mjs). */
+function ChannelList({ q }: { q: string }) {
+  const [list, setList] = useState<Channel[] | null>(null)
+  useEffect(() => (setList(null), void findChannels(q, 50).then(setList)), [q])
+  if (!list) return <div class="spinner" />
+  if (!list.length) return <div class="note">{q ? t('No channels match “{term}”.', { term: q }) : t('The channel list couldn\'t be loaded. Try again in a bit.')}</div>
+  return <>{list.map((c) => <ChannelRow c={c} />)}</>
+}
+
+function Channels() {
+  const [q, setQ] = useState('')
+  const [term, setTerm] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setTerm(q.trim()), 300)
+    return () => clearTimeout(t)
+  }, [q])
+  return (
+    <>
+      <Header title={t('Channels')}>
+        <div class="searchbox">
+          <Icon d={P.search} size={16} />
+          <input type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search channels')} aria-label={t('Search channels')} />
+        </div>
+      </Header>
+      <ChannelList q={term} />
+    </>
+  )
+}
+
+/** A channel's page: farcaster.xyz's details for it and the casts under its URL, newest first. */
+function ChannelPage({ id }: { id: string }) {
+  const [c, setC] = useState<Channel | null>(null)
+  const [round, reload] = useReload()
+  // when the directory can't be had, the casts under the usual URL still show
+  useEffect(() => void getChannel(id).then((x) => setC(x || { id, url: `https://warpcast.com/~/channel/${id}`, name: id, followers: 0, members: 0, open: true })), [id])
+  const load = useMemo(() => c && channelFeed(c.url, (cursor) => get('/v2/farcaster/feed/parent_urls', { parent_urls: c.url, limit: 25, cursor })), [c, round])
+  return (
+    <>
+      <Header title={c?.name || `/${id}`} action={<button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={reload}><Icon d={P.refresh} /></button>} />
+      {!c || !load ? <div class="spinner" /> : (
+        <>
+          <section class="profile channel">
+            {c.header && <Img class="channel-header" src={c.header} />}
+            <div class="row-top">
+              <Avatar u={face(c)} size={72} link={false} />
+              {account?.done && <span class="btns"><button class="btn small" onClick={() => shell.compose({ channel: c.id })}>{t('Cast here')}</button></span>}
+            </div>
+            <h2>{c.name}</h2>
+            <div class="handle">/{c.id}{!c.open && <> <span class="pill">{t('Members only')}</span></>}</div>
+            {c.desc && <RichText text={c.desc} plain />}
+            {c.followers > 0 && <div class="counts"><span><b>{n(c.followers)}</b> {tn(c.followers, 'follower', 'followers')}</span><span><b>{n(c.members)}</b> {tn(c.members, 'member', 'members')}</span></div>}
+          </section>
+          <Feed k={`channel:${c.url}:${round}`} empty={t('No casts in this channel yet.')} load={load} />
+        </>
+      )}
     </>
   )
 }
@@ -1518,7 +1592,9 @@ function App() {
     addEventListener('account', f)
     addEventListener('mutes', f)
     addEventListener('quorum', f)
-    return () => (removeEventListener('account', f), removeEventListener('mutes', f), removeEventListener('quorum', f))
+    // the old-style channel URLs (channels.ts legacy) arrived, so casts can say their channel
+    addEventListener('channels', f)
+    return () => (removeEventListener('account', f), removeEventListener('mutes', f), removeEventListener('quorum', f), removeEventListener('channels', f))
   }, [])
   // accounts that opened messages listen for them from the start (dms.ts loads only for them)
   useEffect(() => void (account?.dm && import('./dms.ts').then((m) => m.start())), [account?.dm])
@@ -1534,6 +1610,7 @@ function App() {
     r0 === 'c' ? (Object.hasOwn(WHO, r2) ? <Who hash={r1} kind={r2 as keyof typeof WHO} /> : <Thread hash={r1} />)
       : r0 === 'u' ? (Object.hasOwn(FOLLOWS, r2) ? <Follows id={decode(r1)} kind={r2 as keyof typeof FOLLOWS} /> : <Profile id={decode(r1)} />)
         : r0 === 'search' ? <Search />
+          : r0 === 'channel' ? (r1 ? <ChannelPage id={decode(r1).toLowerCase()} /> : <Channels />)
           : r0 === 'notifications' ? <Notifications />
           : r0 === 'messages' ? <Messages id={r1 && decode(r1)} />
           : r0 === 'settings' ? <Settings />
@@ -1544,17 +1621,17 @@ function App() {
           : r0 === 'theme' ? <><Header title={t('Theme')} /><div class="design-page"><ThemeCard id={r1} big /></div></>
             : r0 === 'join' ? <><Header /><Join step={r1} /></>
               : <Home />
-  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps], ['spaces', t('Spaces'), P.mic]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear], ...(me ? [['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : [])]
+  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ['channel', t('Channels'), P.hash], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps], ['spaces', t('Spaces'), P.mic]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear], ...(me ? [['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : [])]
   const href = (k: string) => (k === 'u' ? userPath(me!) : `/${k}`)
   const active = (k: string) => (k === 'u' ? r0 === 'u' && !!me && userPath(me) === `/u/${r1}` : r0 === k)
   const ico = (k: string, d: string) => <span class="ico"><Icon d={d} size={22} />{unread[k as keyof typeof unread] && <i class="badge" />}</span>
   const quorum = !!settings.quorum
   const wallet = useWalletOpen() && quorum && !!me
   if (quorum) {
-    // Quorum's sidebar, in its order, with Quilcast's closest page for each. Channels (Hypersnap can't list a channel's
-    // casts yet), Governance, Saved posts and Status have none here, so they're left out; Spaces are Quilcast's audio
-    // rooms. Profile is in the user card, and Wallet opens the docked panel instead of a page.
-    nav.splice(0, nav.length, ['', t('Home'), P.home], ['search', t('Explore'), P.explore], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['spaces', t('Spaces'), P.mic], ['apps', t('Apps'), P.apps], ['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : []), ...(me ? [] : [['join', t('Join'), P.user]] as [string, string, string][]))
+    // Quorum's sidebar, in its order, with Quilcast's closest page for each. Governance, Saved posts and Status have
+    // none here, so they're left out; Spaces are Quilcast's audio rooms. Profile is in the user card, and Wallet opens
+    // the docked panel instead of a page.
+    nav.splice(0, nav.length, ['', t('Home'), P.home], ['search', t('Explore'), P.explore], ['channel', t('Channels'), P.hash], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['spaces', t('Spaces'), P.mic], ['apps', t('Apps'), P.apps], ['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : []), ...(me ? [] : [['join', t('Join'), P.user]] as [string, string, string][]))
   }
   const toggleWallet = (e: Event) => (e.preventDefault(), setWalletOpen(!wallet))
   const navProps = (k: string) => (quorum && k === 'wallet' ? { href: '/wallet', onClick: toggleWallet, 'aria-expanded': wallet } : { href: href(k) })
@@ -1621,7 +1698,7 @@ function App() {
         </nav>
       ) : (
         <nav class="tabbar" aria-label={t('Main')}>
-          {nav.map(([k, label, d]) => <a class={on(k) ? 'on' : ''} {...navProps(k)} aria-label={label}>{ico(k, d)}</a>)}
+          {nav.filter(([k]) => k !== 'channel').map(([k, label, d]) => <a class={on(k) ? 'on' : ''} {...navProps(k)} aria-label={label}>{ico(k, d)}</a>)}
         </nav>
       )}
       {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={quorum ? P.plus : P.pen} size={22} /></button>}

@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "ที่อยู่นี้มีอักขระ Unicode ที่อาจดูเหมือนตัวอักษรปกติ อาจเป็นลิงก์ฟิชชิง",
   "This link goes to:": "ลิงก์นี้ไปที่:",
   "With those characters, the address reads:": "เมื่อใช้อักขระเหล่านั้น ที่อยู่จะอ่านได้ว่า:",
-  "Open link": "เปิดลิงก์"
+  "Open link": "เปิดลิงก์",
+  "Cast here": "แคสต์ที่นี่",
+  "Channels": "ช่อง",
+  "Members only": "เฉพาะสมาชิก",
+  "No casts in this channel yet.": "ช่องนี้ยังไม่มีแคสต์",
+  "No channels match “{term}”.": "ไม่มีช่องที่ตรงกับ “{term}”",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "เฉพาะสมาชิกเท่านั้นที่แคสต์ใน /{id} ได้ farcaster.xyz จึงจะไม่แสดงโพสต์นี้ที่นั่น",
+  "The channel list couldn't be loaded. Try again in a bit.": "โหลดรายการช่องไม่ได้ ลองอีกครั้งในอีกสักครู่",
+  "member|members": "สมาชิก"
 }

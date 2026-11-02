@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "يحتوي هذا العنوان على أحرف يونيكود قد تبدو مثل الأحرف العادية. قد يكون رابط تصيّد.",
   "This link goes to:": "هذا الرابط يؤدي إلى:",
   "With those characters, the address reads:": "بهذه الأحرف، يُقرأ العنوان هكذا:",
-  "Open link": "افتح الرابط"
+  "Open link": "افتح الرابط",
+  "Cast here": "انشر هنا",
+  "Channels": "القنوات",
+  "Members only": "للأعضاء فقط",
+  "No casts in this channel yet.": "لا توجد كاستات في هذه القناة بعد.",
+  "No channels match “{term}”.": "لا توجد قنوات تطابق «{term}».",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "النشر في /{id} للأعضاء فقط، لذا لن يظهر هذا هناك على farcaster.xyz.",
+  "The channel list couldn't be loaded. Try again in a bit.": "تعذّر تحميل قائمة القنوات. حاول مرة أخرى بعد قليل.",
+  "member|members": "عضو|عضو|عضوان|أعضاء|عضوًا|عضو"
 }

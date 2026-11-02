@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "此地址包含看起来可能像普通字母的 Unicode 字符，可能是钓鱼链接。",
   "This link goes to:": "此链接指向：",
   "With those characters, the address reads:": "用这些字符写出来，地址显示为：",
-  "Open link": "打开链接"
+  "Open link": "打开链接",
+  "Cast here": "在这里发帖",
+  "Channels": "频道",
+  "Members only": "仅限成员",
+  "No casts in this channel yet.": "这个频道还没有帖子。",
+  "No channels match “{term}”.": "没有与“{term}”匹配的频道。",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "只有成员能在 /{id} 发帖，所以 farcaster.xyz 不会在那里显示这条。",
+  "The channel list couldn't be loaded. Try again in a bit.": "频道列表加载失败，请稍后再试。",
+  "member|members": "位成员"
 }

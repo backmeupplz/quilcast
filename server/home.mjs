@@ -4,6 +4,7 @@
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
 import { boxOf, castOf, pathOf, castText, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
+import { channelOf } from './channels.mjs'
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const ownHosts = ['quilcast.com']
@@ -50,7 +51,6 @@ const uname = (u) => (u.username && !u.username.startsWith('fid:') ? u.username 
 const handle = (u) => uname(u) || `!${u.fid}`
 const nameOf = (u) => u.display_name || handle(u)
 const userPath = (u) => `/u/${uname(u) || u.fid}`
-const channelOf = (u) => u?.match(/(?:warpcast\.com|farcaster\.xyz)\/~\/channel\/([^/?#]+)/)?.[1]
 const plural = (x, one, many) => `${n(x)} ${x === 1 ? one : many}`
 
 /** The page's #app contents and the stylesheet for its sizes (the CSP allows no style attributes), from `d`:

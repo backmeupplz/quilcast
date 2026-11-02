@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, LINK_RE, loadUsers, myUser, toUrl, users, type Account, type Cast, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, format, isImg, isVid, linkify, markdown, postMedia, withGif, type Format } from './shared.ts'
-import { ago, Avatar, channelUrl, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
+import { castText, embedRoom, format, n, isImg, isVid, linkify, markdown, postMedia, withGif, type Format } from './shared.ts'
+import { ago, Avatar, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
 import type { Draft } from './write.ts'
+import { findChannels, getChannel, isMember, urlOf, type Channel } from './channels.ts'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
 const bytes = (s: string) => new TextEncoder().encode(s).length
@@ -38,23 +39,31 @@ function AsPicker({ value, set }: { value: Account; set: (a: Account) => void })
   )
 }
 
-function ChannelPicker({ value, set }: { value?: string; set: (v?: string) => void }) {
+function ChannelPicker({ value, set, fid }: { value?: string; set: (v?: string) => void; fid?: number }) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
-  const [list, setList] = useState<{ id: string; member_count?: number }[]>([])
+  const [list, setList] = useState<Channel[]>([])
+  // farcaster.xyz leaves non-members' casts out of a members-only channel
+  const [closed, setClosed] = useState(false)
   useEffect(() => {
-    if (!q.trim()) return setList([])
-    const t = setTimeout(() => get('/v2/farcaster/channel/search', { q: q.trim(), limit: 8 }).then((r) => setList(r.channels), () => {}), 250)
+    if (!open) return
+    const t = setTimeout(() => findChannels(q.trim(), 8).then(setList), q.trim() ? 250 : 0)
     return () => clearTimeout(t)
-  }, [q])
+  }, [q, open])
+  useEffect(() => {
+    setClosed(false)
+    let on = true
+    value && fid && getChannel(value).then(async (c) => c && !c.open && !(await isMember(c.id, fid)) && on && (setClosed(true), toast(t('Only members can cast in /{id}, so farcaster.xyz won\'t show this there.', { id: c.id }))))
+    return () => void (on = false)
+  }, [value, fid])
   return (
     <span class="wrap-menu">
-      <button class={`chip${value ? ' on' : ''}`} onClick={() => setOpen(!open)} aria-haspopup="menu"><Icon d={P.hash} size={14} />{value ? `/${value}` : t('Channel')}</button>
+      <button class={`chip${value ? ' on' : ''}`} onClick={() => setOpen(!open)} aria-haspopup="menu" title={closed ? t('Only members can cast in /{id}, so farcaster.xyz won\'t show this there.', { id: value! }) : undefined}><Icon d={P.hash} size={14} />{value ? `/${value}` : t('Channel')}{closed && ' 🔒'}</button>
       {open && (
         <Menu class="picker" close={() => setOpen(false)}>
           <input autoFocus value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search channels')} aria-label={t('Search channels')} />
           {value && <button onClick={() => (set(undefined), setOpen(false))}>{t('No channel')}</button>}
-          {list.map((c) => <button onClick={() => (set(c.id), setOpen(false), setQ(''))}>/{c.id}<small>{c.member_count ?? ''}</small></button>)}
+          {list.map((c) => <button onClick={() => (set(c.id), setOpen(false), setQ(''))}>/{c.id}<small>{c.open ? n(c.followers) : `🔒 ${n(c.followers)}`}</small></button>)}
         </Menu>
       )}
     </span>
@@ -332,7 +341,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
         if (!filled(p, i)) continue
         const hash = await m.post(p.text.trim(), {
           parent: prev,
-          channel: i === 0 && !parent && channel ? channelUrl(channel) : undefined,
+          channel: i === 0 && !parent && channel ? await urlOf(channel) : undefined,
           quote: i === 0 && quote ? { fid: quote.author.fid, hash: quote.hash } : undefined,
           media: postMedia(i === 0 ? embeds : [], p.files),
           as,
@@ -407,7 +416,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
           <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs(true)}><Icon d={P.gif} /></button>
           <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
           <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
-          {!parent && <ChannelPicker value={channel} set={setChannel} />}
+          {!parent && <ChannelPicker value={channel} set={setChannel} fid={as.fid} />}
           <span class={`count${left < 50 ? ' warn' : ''}`} title={bytes(cur.text) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
             {bytes(cur.text) > 280 ? left : ''}
           </span>

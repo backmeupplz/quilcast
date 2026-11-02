@@ -4,6 +4,7 @@ import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion,
 import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
+import { legacy } from './channels.ts'
 import { lang, t, t as tr, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, setMute } from './mutes.ts'
 import { spamOf } from './spam.ts'
@@ -102,8 +103,7 @@ const uname = (u: User) => (u.username && !u.username.startsWith('fid:') ? u.use
 export const handle = (u: User) => uname(u) || `!${u.fid}`
 export const nameOf = (u: User) => u.display_name || handle(u)
 export const userPath = (u: User) => `/u/${uname(u) || u.fid}`
-export const channelOf = (u?: string | null) => u?.match(/(?:warpcast\.com|farcaster\.xyz)\/~\/channel\/([^/?#]+)/)?.[1]
-export const channelUrl = (id: string) => `https://warpcast.com/~/channel/${id}`
+export const channelOf = (u?: string | null) => (u && Object.hasOwn(legacy, u) ? legacy[u] : u?.match(/(?:warpcast\.com|farcaster\.xyz)\/~\/channel\/([^/?#]+)/)?.[1])
 // keeps a click inside a cast from opening the cast; a link it lands on still opens in place
 export const stop = (e: MouseEvent) => (e.stopPropagation(), follow(e))
 
@@ -958,7 +958,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
     const stats = ([['recasts', recasts, tn(recasts, 'recast', 'recasts')], ['quotes', quotes, tn(quotes, 'quote', 'quotes')], ['likes', likes, tn(likes, 'like', 'likes')]] as const).filter(([, x]) => x > 0)
     return (
       <article class="cast focus">
-        <header><Avatar u={c.author} size={44} /><div class="who">{name}</div>{ch && <span class="chan">/{ch}</span>}</header>
+        <header><Avatar u={c.author} size={44} /><div class="who">{name}</div>{ch && <a class="chan" href={`/channel/${ch}`} onClick={stop}>/{ch}</a>}</header>
         <Said c={c} full />
         <Embeds c={c} />
         <div class="when">{sending ? <span class="posting"><span class="pulse" /> {t('Posting…')}</span> : new Date(c.timestamp).toLocaleString(lang, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' })}</div>
@@ -975,7 +975,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
           {name}
           <span class="dot">·</span>
           {sending ? <span class="posting">{t('Posting…')}</span> : <time dateTime={c.timestamp} title={new Date(c.timestamp).toLocaleString(lang)}>{ago(c.timestamp)}</time>}
-          {ch && <span class="chan">/{ch}</span>}
+          {ch && <a class="chan" href={`/channel/${ch}`} onClick={stop}>/{ch}</a>}
         </header>
         {c.parent_hash && !inThread && <div class="replying">{parentUser ? <>{t('Replying to')} <a href={userPath(parentUser)} onClick={stop}>@{handle(parentUser)}</a></> : t('Replying to a cast')}</div>}
         <Said c={c} />

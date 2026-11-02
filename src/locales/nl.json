@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Dit adres bevat Unicode-tekens die op gewone letters kunnen lijken. Het kan een phishinglink zijn.",
   "This link goes to:": "Deze link gaat naar:",
   "With those characters, the address reads:": "Met die tekens leest het adres als:",
-  "Open link": "Link openen"
+  "Open link": "Link openen",
+  "Cast here": "Hier casten",
+  "Channels": "Kanalen",
+  "Members only": "Alleen voor leden",
+  "No casts in this channel yet.": "Nog geen casts in dit kanaal.",
+  "No channels match “{term}”.": "Geen kanaal gevonden voor ‘{term}’.",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Alleen leden kunnen casten in /{id}, dus farcaster.xyz laat dit daar niet zien.",
+  "The channel list couldn't be loaded. Try again in a bit.": "De kanalenlijst kon niet worden geladen. Probeer het zo nog eens.",
+  "member|members": "lid|leden"
 }

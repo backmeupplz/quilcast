@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Bu adres, normal harflere benzeyebilen Unicode karakterler içeriyor. Bir oltalama bağlantısı olabilir.",
   "This link goes to:": "Bu bağlantı şuraya gidiyor:",
   "With those characters, the address reads:": "Bu karakterlerle adres şöyle okunuyor:",
-  "Open link": "Bağlantıyı aç"
+  "Open link": "Bağlantıyı aç",
+  "Cast here": "Burada paylaş",
+  "Channels": "Kanallar",
+  "Members only": "Yalnızca üyeler",
+  "No casts in this channel yet.": "Bu kanalda henüz cast yok.",
+  "No channels match “{term}”.": "“{term}” ile eşleşen kanal yok.",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "/{id} kanalında yalnızca üyeler paylaşım yapabilir, bu yüzden farcaster.xyz bunu orada göstermez.",
+  "The channel list couldn't be loaded. Try again in a bit.": "Kanal listesi yüklenemedi. Biraz sonra tekrar dene.",
+  "member|members": "üye|üye"
 }

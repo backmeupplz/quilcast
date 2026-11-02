@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "此網址包含看起來可能像一般字母的 Unicode 字元，可能是釣魚連結。",
   "This link goes to:": "此連結會前往：",
   "With those characters, the address reads:": "用這些字元寫出來，網址顯示為：",
-  "Open link": "開啟連結"
+  "Open link": "開啟連結",
+  "Cast here": "在這裡發文",
+  "Channels": "頻道",
+  "Members only": "僅限成員",
+  "No casts in this channel yet.": "這個頻道還沒有貼文。",
+  "No channels match “{term}”.": "沒有符合「{term}」的頻道。",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "只有成員能在 /{id} 發文，所以 farcaster.xyz 不會在那裡顯示這則。",
+  "The channel list couldn't be loaded. Try again in a bit.": "無法載入頻道清單，請稍後再試。",
+  "member|members": "位成員"
 }

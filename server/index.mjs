@@ -28,6 +28,7 @@ import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
+import { channels, search } from './channels.mjs'
 import { cut, ends, esc, exactly, FONTS, initial, pictures, richSvg, textSvg, width, wrap } from './text.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
@@ -49,6 +50,7 @@ loadReports(DATA)
 loadDrafts(DATA)
 loadThemes(DATA)
 loadOwners()
+channels()
 
 // a stray rejection somewhere must not take the whole server down
 process.on('unhandledRejection', (e) => console.error('unhandled rejection', e))
@@ -1080,6 +1082,27 @@ createServer(async (req, res) => {
       if (limited(`apps:${ip}`, 60)) return json(429, [])
       return json(200, await apps(), 'public, max-age=600')
     }
+    // the channel directory (server/channels.mjs): ?q= searches it, without q it's the top channels by followers
+    if (path === '/api/channels') {
+      if (limited(`channels:${ip}`, 300)) return json(429, [])
+      const { list } = await channels()
+      const q = (url.searchParams.get('q') || '').trim().slice(0, 64)
+      const n = Math.min(100, Math.max(1, +url.searchParams.get('n') || 50))
+      return json(200, q ? search(list, q, n) : list.slice(0, n), 'public, max-age=600')
+    }
+    if (path === '/api/channels/legacy') return json(200, (await channels()).legacy, 'public, max-age=86400')
+    // whether someone is a member of a members-only channel, whose other casts farcaster.xyz leaves out of it
+    const member = path.match(/^\/api\/channel\/([a-z0-9-]{1,64})\/member\/([1-9]\d{0,9})$/)
+    if (member) {
+      if (limited(`member:${ip}`, 60)) return json(429, null)
+      const r = await fetchJson(`https://api.farcaster.xyz/fc/channel-members?channelId=${member[1]}&fid=${member[2]}`, 5000).catch(() => null)
+      return json(200, { member: r ? !!r.result?.members?.length : null }, 'private, max-age=300')
+    }
+    const chan = path.match(/^\/api\/channel\/([a-z0-9-]{1,64})$/)
+    if (chan) {
+      const c = (await channels()).byId.get(chan[1])
+      return c ? json(200, c, 'public, max-age=600') : json(404, null, 'public, max-age=600')
+    }
 
     if (path === '/api/notify' || path.startsWith('/api/notify/') || path === '/api/manifest') {
       // apps' servers send notifications in bursts; everything else is one browser's own calls
@@ -1243,6 +1266,14 @@ createServer(async (req, res) => {
       // ponytail: a card stays until it falls out of the cache or the server restarts; key it by a profile hash if edits must show sooner
       const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => profileCard(p.u).then(render))))
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }).end(png)
+    }
+
+    const channelPage = path.match(/^\/channel\/([a-z0-9-]{1,64})$/)
+    if (channelPage) {
+      const c = (await channels()).byId.get(channelPage[1])
+      if (!c) return app()
+      const desc = cut(c.desc || `Casts in /${c.id} on Farcaster.`, 280)
+      return html(page({ title: `${c.name} (/${c.id}) on Farcaster · Quilcast`, desc, path, image: c.image, alt: c.name }))
     }
 
     const designPage = path.match(/^\/design\/([\w-]{10})$/)

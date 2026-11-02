@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Este endereço contém caracteres Unicode que podem parecer letras normais. Pode ser uma ligação de phishing.",
   "This link goes to:": "Esta ligação leva a:",
   "With those characters, the address reads:": "Com esses caracteres, o endereço lê-se assim:",
-  "Open link": "Abrir ligação"
+  "Open link": "Abrir ligação",
+  "Cast here": "Publicar aqui",
+  "Channels": "Canais",
+  "Members only": "Só para membros",
+  "No casts in this channel yet.": "Ainda não há casts neste canal.",
+  "No channels match “{term}”.": "Nenhum canal corresponde a “{term}”.",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Só os membros podem publicar em /{id}, por isso o farcaster.xyz não vai mostrar isto lá.",
+  "The channel list couldn't be loaded. Try again in a bit.": "Não foi possível carregar a lista de canais. Tenta novamente daqui a pouco.",
+  "member|members": "membro|membros"
 }

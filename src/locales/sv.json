@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Den här adressen innehåller Unicode-tecken som kan se ut som vanliga bokstäver. Det kan vara en nätfiskelänk.",
   "This link goes to:": "Den här länken går till:",
   "With those characters, the address reads:": "Med de tecknen läses adressen som:",
-  "Open link": "Öppna länk"
+  "Open link": "Öppna länk",
+  "Cast here": "Casta här",
+  "Channels": "Kanaler",
+  "Members only": "Bara för medlemmar",
+  "No casts in this channel yet.": "Inga casts i den här kanalen än.",
+  "No channels match “{term}”.": "Ingen kanal matchar ”{term}”.",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Bara medlemmar kan casta i /{id}, så farcaster.xyz visar inte det här där.",
+  "The channel list couldn't be loaded. Try again in a bit.": "Det gick inte att läsa in kanallistan. Försök igen om en stund.",
+  "member|members": "medlem|medlemmar"
 }

@@ -1092,5 +1092,13 @@
   "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "इस पते में यूनिकोड वर्ण हैं जो सामान्य अक्षरों जैसे दिख सकते हैं। यह फ़िशिंग लिंक हो सकता है।",
   "This link goes to:": "यह लिंक यहाँ ले जाता है:",
   "With those characters, the address reads:": "उन वर्णों के साथ पता ऐसे पढ़ा जाता है:",
-  "Open link": "लिंक खोलें"
+  "Open link": "लिंक खोलें",
+  "Cast here": "यहाँ कास्ट करें",
+  "Channels": "चैनल",
+  "Members only": "सिर्फ़ सदस्यों के लिए",
+  "No casts in this channel yet.": "इस चैनल में अभी कोई कास्ट नहीं है।",
+  "No channels match “{term}”.": "“{term}” से कोई चैनल मेल नहीं खाता।",
+  "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "/{id} में सिर्फ़ सदस्य कास्ट कर सकते हैं, इसलिए farcaster.xyz इसे वहाँ नहीं दिखाएगा।",
+  "The channel list couldn't be loaded. Try again in a bit.": "चैनलों की सूची लोड नहीं हो सकी। थोड़ी देर में फिर से कोशिश करें।",
+  "member|members": "सदस्य|सदस्य"
 }
