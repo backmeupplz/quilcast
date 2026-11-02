@@ -196,3 +196,15 @@ test('uploads wait their turn, at most 3 at a time (server/upload.mjs MAX_ACTIVE
   assert.deepEqual(started, [0, 1, 2, 3, 4, 5])
   assert.equal(most, 3)
 })
+
+test('a Markdown [label](url) link is already in the text, so it gets no card, no embed, and no card for readers', () => {
+  for (const text of ['see [my site](https://a.com)', 'see [a.com](https://a.com)', '[x](https://a.com)nice']) {
+    assert.deepEqual(textLinks(text), [], text)
+    assert.deepEqual(castEmbeds(text, []), [], text)
+    assert.deepEqual(urlsOf({ text }), [], text)
+    // a cast already sent with it embedded
+    assert.deepEqual(urlsOf({ text, embeds: [{ url: 'https://a.com' }] }), [], text)
+  }
+  assert.deepEqual(textLinks('[x](https://a.com) and https://b.com'), ['https://b.com'])
+  assert.deepEqual(textLinks('![](https://a.com/p.png) [x](https://b.com) c.com'), ['https://c.com'])
+})

@@ -448,8 +448,8 @@ export const toUrl = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}
 /** A cast's links, shown as its pictures and cards. Some clients leave a link in the text without embedding it, so a
  *  cast with no embeds at all gets its first typed http(s) link instead. */
 export const urlsOf = (c: { text?: string; embeds?: { url?: string }[] }) => {
-  // less the pictures the text already shows with Markdown (other clients still get them as embeds)
-  const shown = new Set(imagesIn(c.text || ''))
+  // less the pictures and [label](url) links the text already shows with Markdown (other clients still get them as embeds)
+  const shown = new Set([...imagesIn(c.text || ''), ...linksIn(c.text || '')])
   const urls = c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : typed(c.text || '').filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
   return urls.filter((u) => !shown.has(u))
 }
@@ -468,10 +468,14 @@ export const textLinks = (text: string) => {
 }
 /** A Markdown picture, ![alt](url), as markdown() reads it (INLINE). */
 const PICTURE = /!\[[^\]\n]*\]\(([^\s()]+)\)/g
-/** The links typed in a text, less any that starts inside a Markdown picture's ![…](…): that's the picture's URL (or its
- *  alt text), even with words stuck to its ")" (`![](https://…/original)nice`, or Japanese, which has no spaces). */
+/** A Markdown link, [label](url), as markdown() reads it (INLINE): its URL is already in the text, so it gets no card. */
+const LINK = /(?<!!)\[[^\]\n]+\]\(([^\s()]+)\)/g
+const linksIn = (text: string) => [...text.matchAll(LINK)].flatMap((m) => safeUrl(m[1]) ?? [])
+/** The links typed in a text, less any that starts inside a Markdown picture's ![…](…) or link's […](…): that's its URL
+ *  (or its alt text or label), even with words stuck to its ")" (`![](https://…/original)nice`, or Japanese, which has
+ *  no spaces). */
 const typed = (text: string) => {
-  const pics = [...text.matchAll(PICTURE)].map((m) => [m.index, m.index + m[0].length])
+  const pics = [...text.matchAll(PICTURE), ...text.matchAll(LINK)].map((m) => [m.index, m.index + m[0].length])
   return [...text.matchAll(LINK_RE)].filter((m) => !pics.some(([a, b]) => m.index >= a && m.index < b)).map((m) => m[0])
 }
 /** The composer's stand-in for a picture still uploading, ![…](uploading:…) (see format's `picture`). */
