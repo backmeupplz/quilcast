@@ -259,6 +259,17 @@ async function uploadNow(original: Blob, progress: Progress) {
     return json(r)
   }
   const { id, chunk: max } = await begin()
+  try {
+    return await sendFile(file, id, max, cdn, progress)
+  } catch (e) {
+    // giving up frees its place on the server at once, so the next upload waiting here isn't turned away (with the
+    // network down this can't arrive, and the server lets the place go after a couple of idle minutes instead)
+    await fetch(`/api/upload/${id}`, { method: 'DELETE', signal: AbortSignal.timeout(5000) }).catch(() => {})
+    throw e
+  }
+}
+
+async function sendFile(file: Blob, id: string, max: number, cdn: boolean, progress: Progress) {
   progress('uploading', 0)
   // each request must finish well inside the proxy's 60 s, so chunks grow on fast links and shrink on slow ones
   let size = 512 * 1024

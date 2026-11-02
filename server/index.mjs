@@ -16,7 +16,7 @@ import { loadTranslations, lookup as translations, translate } from './translate
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
 import { cached, unfurl } from './unfurl.mjs'
-import { chunk, done, EXT, loadOwners, MEDIA, start, status } from './upload.mjs'
+import { cancel, chunk, done, EXT, loadOwners, MEDIA, start, status } from './upload.mjs'
 import { deleteAccount } from './account.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
@@ -951,7 +951,8 @@ createServer(async (req, res) => {
             : id && fin && req.method === 'POST' ? done(req, id, { site: SITE, node: NODE })
               : id && req.method === 'PUT' ? chunk(req, id, Number(url.searchParams.get('offset')))
                 : id && req.method === 'GET' ? status(id)
-                  : Promise.reject(Object.assign(new Error('not found'), { status: 404 })),
+                  : id && !fin && req.method === 'DELETE' ? cancel(id)
+                    : Promise.reject(Object.assign(new Error('not found'), { status: 404 })),
         )
         .catch((e) => e)
       const err = r instanceof Error

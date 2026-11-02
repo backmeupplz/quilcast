@@ -3,6 +3,7 @@
 //   PUT  /api/upload/<id>?offset=n   append one chunk (≤ 8 MB)
 //   POST /api/upload/<id>/done  hand the file to Farcaster's CDN (or our volume) in the background
 //   GET  /api/upload/<id>       { state: 'receiving' | 'processing' | 'ready' | 'failed', url?, error? }
+//   DELETE /api/upload/<id>     the browser gave up: the upload stops holding one of its account's places
 // Who's uploading is proven by one of the account's Farcaster keys (the browser's signer, as the node lists it). Farcaster's
 // CDN takes uploads the way Quorum does it, with a farcaster.xyz token from a login the custody signs; a browser that holds
 // the recovery phrase sends one along. The CDN only serves accounts that have a Warpcast signer, so other files (and every
@@ -197,6 +198,19 @@ export function dropMedia(fid, gone, seen) {
 const today = () => Math.floor(Date.now() / 86400e3)
 const used = (fid) => (quota.get(fid)?.day === today() ? quota.get(fid).bytes : 0)
 const active = (j) => j.state === 'receiving' || j.state === 'sending' || j.state === 'processing'
+// an upload no chunk has reached for this long may have been given up (the browser retries a failed chunk within a minute
+// or so), so it gives up its place when a new upload needs it. Only then: a phone that put the tab in the background, or a
+// laptop that slept, picks its upload up where it stopped as long as nothing else wanted the place.
+const IDLE = Number(process.env.UPLOAD_IDLE_MS || 120e3)
+/** Give up on a receiving upload: its bytes go and it no longer counts as active. It stays listed, failed, like finished
+ *  ones; the sweep removes the file again then, in case a chunk still being written put some back. */
+const drop = (j, error) => {
+  j.state = 'failed'
+  j.error = error
+  j.endedAt = Date.now()
+  rm(j.file, { force: true }).catch(() => {})
+}
+const idle = (j, now) => j.state === 'receiving' && !j.busy && now - j.at > IDLE
 setInterval(() => {
   const now = Date.now()
   // finished jobs go after 10 minutes, abandoned ones after an hour
@@ -260,9 +274,22 @@ export async function start(req, { node }) {
     if (spent.has(`${key}:${ts}`)) throw fail(401, 'this signature was already used')
     spent.set(`${key}:${ts}`, Date.now())
   }
-  const mine = [...jobs.values()].filter(active)
-  if (mine.filter((j) => j.fid === fid).length >= MAX_ACTIVE_PER_FID) throw fail(429, 'Finish your other uploads first.')
-  if (mine.length >= MAX_ACTIVE || mine.reduce((n, j) => n + (j.state === 'receiving' ? j.size : 0), 0) + size > MAX_INCOMING) throw fail(503, 'Uploads are busy right now, try again in a minute.')
+  const full = () => {
+    const all = [...jobs.values()].filter(active)
+    return {
+      mine: all.filter((j) => j.fid === fid).length >= MAX_ACTIVE_PER_FID,
+      all: all.length >= MAX_ACTIVE || all.reduce((n, j) => n + (j.state === 'receiving' ? j.size : 0), 0) + size > MAX_INCOMING,
+    }
+  }
+  // idle uploads make way, longest idle first and only as many as it takes: the account's own while it's at its limit,
+  // then anyone's while the server is (never others' for a start that's refused anyway)
+  const now = Date.now()
+  const idled = [...jobs.values()].filter((j) => idle(j, now)).sort((a, b) => a.at - b.at)
+  let over = full()
+  for (const j of idled) if (over.mine && j.fid === fid) drop(j, 'Upload timed out'), (over = full())
+  if (over.mine) throw fail(429, 'Finish your other uploads first.')
+  for (const j of idled) if (over.all && j.state === 'receiving') drop(j, 'Upload timed out'), (over = full())
+  if (over.all) throw fail(503, 'Uploads are busy right now, try again in a minute.')
   const disk = await statfs(join(MEDIA, '..')).catch(() => null)
   if (!disk || disk.bavail * disk.bsize - size < FREE_FLOOR) throw fail(507, 'Upload storage is full right now.')
   // a farcaster.xyz token means the CDN will take it; no token (no Warpcast signer) means our volume.
@@ -282,6 +309,7 @@ export async function start(req, { node }) {
 export async function chunk(req, id, offset) {
   const job = jobs.get(id)
   if (!job || job.state !== 'receiving') throw fail(404, 'unknown upload')
+  job.at = Date.now()
   if (offset !== job.received) return { received: job.received }
   // one chunk at a time per upload: two writers appending at once would interleave bytes
   if (job.busy) throw fail(409, 'chunk already in progress')
@@ -319,6 +347,8 @@ export async function done(req, id, { site, node }) {
   const job = jobs.get(id)
   if (!job || job.state !== 'receiving') throw fail(404, 'unknown upload')
   if (job.received !== job.size) throw fail(400, 'upload incomplete')
+  // signing in below takes a while; it mustn't look idle meanwhile
+  job.at = Date.now()
   // ponytail: tabs loaded before 0.5.0 don't sign /done, so their files stay on our volume; drop this after a while
   if (job.cdn && !req.headers['x-auth-request']) job.cdn = false
   let token
@@ -365,6 +395,15 @@ export async function done(req, id, { site, node }) {
       job.endedAt = Date.now()
       return rm(job.file, { force: true }).catch(() => {})
     })
+  return status(id)
+}
+
+/** DELETE /api/upload/<id>: the browser gave up on it, so its place frees at once. Like the chunks, the id is the key.
+ *  An upload already finishing goes on. */
+export function cancel(id) {
+  const j = jobs.get(id)
+  if (!j) throw fail(404, 'unknown upload')
+  if (j.state === 'receiving') drop(j, 'Upload cancelled')
   return status(id)
 }
 

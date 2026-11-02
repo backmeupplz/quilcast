@@ -119,7 +119,7 @@ const port = 40000 + Math.floor(Math.random() * 20000)
 const base = `http://127.0.0.1:${port}`
 let srv
 before(async () => {
-  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods` }, stdio: 'ignore' })
+  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '4000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods` }, stdio: 'ignore' })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -346,6 +346,8 @@ test('an upload signature works once, also when re-encoded, and the file lands o
   for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
   assert.equal(st.state, 'ready')
   assert.match(st.url, /^https:\/\/quilcast\.test\/m\/[0-9a-f]{24}\.png$/)
+  // giving up on it now changes nothing (#407)
+  assert.equal((await (await fetch(`${base}/api/upload/${id}`, { method: 'DELETE' })).json()).state, 'ready')
 })
 
 test('an upload signed by one of the account\'s keys works once; a key the node doesn\'t list, or none, is refused', async () => {
@@ -366,6 +368,51 @@ test('an upload signed by one of the account\'s keys works once; a key the node 
   for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
   assert.equal(st.state, 'ready')
   assert.match(st.url, /^https:\/\/quilcast\.test\/m\/[0-9a-f]{24}\.png$/)
+})
+
+test('an upload given up on stops holding one of the account\'s 3 places: at once when cancelled, after a while idle (#407)', async () => {
+  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 3]), Buffer.alloc(40)])
+  // timestamps of their own, and an address of its own so these starts don't eat into the other tests' rate limit
+  let ts = Date.now() - 120e3
+  const start = () => fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(png.length), 'x-fid': '7', 'x-forwarded-for': '203.0.113.7', 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`quilcast-upload:7:${ts++}:`), signer)).toString('hex') } })
+  const open = async () => {
+    const r = await start()
+    assert.equal(r.status, 200)
+    return (await r.json()).id
+  }
+  const put = (id, offset, body) => fetch(`${base}/api/upload/${id}?offset=${offset}`, { method: 'PUT', body })
+  const state = async (id) => (await (await fetch(`${base}/api/upload/${id}`)).json())
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  const [a, b, c] = [await open(), await open(), await open()]
+  assert.equal((await put(a, 0, png.subarray(0, 20))).status, 200)
+  assert.equal((await start()).status, 429)
+  // the browser gave up on a partway: its place frees at once, and it takes no more chunks
+  assert.equal((await fetch(`${base}/api/upload/${a}`, { method: 'DELETE' })).status, 200)
+  assert.deepEqual(await state(a), { state: 'failed', received: 20, size: png.length, error: 'Upload cancelled' })
+  assert.equal((await put(a, 20, png.subarray(20))).status, 404)
+  const d = await open()
+  assert.equal((await start()).status, 429)
+  // b and c never hear from their browser again (the network went); d keeps sending, more slowly than the idle limit
+  // (UPLOAD_IDLE_MS, 4 s here) between its start and its finish, but never that long between two chunks. A new upload
+  // that finds the account full makes the idle ones give way
+  await wait(2500)
+  assert.equal((await put(d, 0, png.subarray(0, 10))).status, 200)
+  await wait(2000)
+  // idle as they are, b and c keep their places while nothing else needs them (a phone may only have paused the tab)
+  for (const id of [b, c]) assert.equal((await state(id)).state, 'receiving')
+  // one gives way per new upload, the one idle longest
+  const e = await open()
+  assert.equal((await state(b)).state, 'failed')
+  assert.equal((await state(c)).state, 'receiving')
+  const f = await open()
+  assert.equal((await start()).status, 429)
+  for (const id of [b, c]) assert.deepEqual(await state(id), { state: 'failed', received: 0, size: png.length, error: 'Upload timed out' })
+  assert.equal((await put(d, 10, png.subarray(10))).status, 200)
+  assert.deepEqual(await state(d), { state: 'receiving', received: png.length, size: png.length })
+  // (not finished: a file fid 7 alone put here would change what deleting its account finds below; an unknown upload
+  // can't be cancelled, and a finished one isn't, see the test above)
+  assert.equal((await fetch(`${base}/api/upload/${'0'.repeat(8)}-0000-0000-0000-${'0'.repeat(12)}`, { method: 'DELETE' })).status, 404)
+  for (const id of [d, e, f]) assert.equal((await fetch(`${base}/api/upload/${id}`, { method: 'DELETE' })).status, 200)
 })
 
 test('reports: kept and sent to the webhook, anonymous or signed by the reporter\'s key', async () => {
