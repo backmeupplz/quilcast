@@ -408,7 +408,37 @@ export function wordsRe(words: string[]) {
 
 // links as people write them: with a scheme, or a bare domain on a common TLD ("quilcast.com/x")
 const TLDS = 'com|org|net|xyz|io|app|dev|ai|co|me|gg|so|sh|fm|tv|art|fun|lol|wtf|info|page|site|tech|link|to|us|uk|de|fr|eu|ca|ly|cc|club|blog|news|social|world|live|studio|games|finance|money|cash|network|systems|build|tools'
-export const LINK_RE = new RegExp(`https?:\\/\\/[^\\s<>"]+[^\\s<>".,;:!?)\\]'"]|(?<![@\\w.\\/-])(?:[a-z0-9-]+\\.)+(?:${TLDS})\\b(?:\\/[^\\s<>"]*[^\\s<>".,;:!?)\\]'"])?`, 'gi')
+// A bare domain glued to a letter, mark or digit of another script isn't one: Cyrillic аpple.com would link only
+// pple.com, google.coм only google.co, and apple.com.рф or google.co.ukм only apple.com or google.co, real sites the
+// text doesn't name. Nor do invisible characters in between (а, a zero-width space, pple.com) unglue them. Scripts
+// written without spaces between words (访问quilcast.com, quilcast.comで) still link, and so do domains next to
+// emoji: a variation selector is an invisible mark and a keycap encloses an emoji (➡️quilcast.com, 1️⃣quilcast.com),
+// though a letter it encloses is still glued (a⃣pple.com, a️⃣pple.com). Script_Extensions, not Script, so the
+// characters those scripts share with others count too (サーバーquilcast.com: ー is Common, 〆, ｰ, Bopomofo ㄅ). Nor
+// do the digits every script shares (①quilcast.comにアクセス, ２０２４quilcast.com), only a script's own (٣pple.com).
+// A mark those scripts share (a tilde or dot below also listed for Thai, kana voicing marks) glues when the letter it
+// sits on does: ãpple.com, españa.com and google.cõm written with a combining tilde, but not ガquilcast.com.
+const SPACELESS = '\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Bopomofo}\\p{scx=Hangul}\\p{scx=Thai}\\p{scx=Lao}\\p{scx=Khmer}\\p{scx=Myanmar}'
+const INVISIBLE = '\\p{Default_Ignorable_Code_Point}*'
+const GLUED = `\\w|[^\\P{N}\\p{scx=Common}${SPACELESS}]|[^\\P{L}${SPACELESS}]`
+// The checks on what a mark sits on run only once their mark has matched, not at every spot a match backs off to (a
+// long run of invisible characters would make that quadratic). Inside a lookbehind, which matches right to left, that
+// means writing them before the mark, so WORDY_BEHIND is the same set of characters for use in one.
+const MARK = '[^\\P{M}\\p{Me}\\p{Default_Ignorable_Code_Point}]'
+const ON_GLUED = `(?<=(?:${GLUED})[\\p{M}\\p{Default_Ignorable_Code_Point}]*)`
+const ON_LETTER = `(?<=\\p{L}${INVISIBLE})`
+const WORDY_START = `${GLUED}|[^\\P{M}\\p{Me}\\p{Default_Ignorable_Code_Point}${SPACELESS}]`
+const WORDY = `${WORDY_START}|${MARK}${ON_GLUED}|\\p{Me}(?<=\\p{L}${INVISIBLE}\\p{Me})`
+const WORDY_BEHIND = `${WORDY_START}|${ON_GLUED}${MARK}|${ON_LETTER}\\p{Me}`
+// These regexps need the u flag for \p{…}, and with u the i flag folds ſ and the Kelvin sign K into s and k, so
+// [a-z], \w and even [\x00-\x7f] would match them. So no i flag: letters are spelled out in both cases.
+const anyCase = (s: string) => s.replace(/[a-z]/g, (c) => `[${c}${c.toUpperCase()}]`)
+// In order, all at the start so each runs once per possible domain and the whole match stays linear: a domain char
+// (the lookbehind scans back over invisible characters), nothing glued before it, and its run of domain chars, dots
+// and invisible characters doesn't end in a glued letter (google.co.ukм). A check after the TLD would rescan that run
+// on every label the match backs off. Then the domain itself, with nothing glued right after it.
+const BARE = `(?=[a-zA-Z0-9-])(?<!(?:[@.\\/\\-]|${WORDY_BEHIND})${INVISIBLE})(?![\\p{Default_Ignorable_Code_Point}a-zA-Z0-9.-]*(?![\\x00-\\x7f])(?:${WORDY}))(?:[a-zA-Z0-9-]+\\.)+(?:${anyCase(TLDS)})(?!${INVISIBLE}(?:${WORDY}))`
+export const LINK_RE = new RegExp(`${anyCase('http')}[sS]?:\\/\\/[^\\s<>"]+[^\\s<>".,;:!?)\\]'"]|${BARE}(?:\\/[^\\s<>"]*[^\\s<>".,;:!?)\\]'"])?`, 'gu')
 export const toUrl = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}`)
 /** A cast's links, shown as its pictures and cards. Some clients leave a link in the text without embedding it, so a
  *  cast with no embeds at all gets its first typed http(s) link instead. */
@@ -539,7 +569,7 @@ export const P = {
 }
 
 // links, @mentions and /channels inside cast text
-export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@[a-z0-9][a-z0-9.-]*[a-z0-9]|(?<![\\w/:])\\/[a-z0-9-]{2,}(?![\\w/]))`, 'gi')
+export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]|(?<![\\w/:])\\/[a-zA-Z0-9-]{2,}(?![\\w/]))`, 'gu')
 /** A link's page as people read it (its decoded path), for the link card of a site that won't tell us its title. */
 export const pathOf = (u: string) => {
   try {
@@ -575,7 +605,7 @@ const INLINE = new RegExp([
   /~~(?=\S)(?<strike>[\s\S]*?\S)~~/.source,
   /\*(?=[^\s*])(?<em>[\s\S]*?[^\s*])\*/.source,
   /(?<!\w)_(?=[^\s_])(?<em2>[\s\S]*?[^\s_])_(?!\w)/.source,
-].join('|'), 'gi')
+].join('|'), 'gu')
 
 /** Where a Markdown picture loads from: Farcaster's image CDN (where the app's own uploads go) as it is, anything else
  *  through our /api/img (server/index.mjs), so the picture's host never sees who is reading. */

@@ -1,12 +1,111 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { markdown as md } from './shared.ts'
+import { LINK_RE, linkify, markdown as md } from './shared.ts'
 
 test('plain casts render as before: text, line breaks, links, mentions, channels', () => {
   assert.equal(md('gm\n\nhi @dwr see quilcast.com on /base'), 'gm\n\nhi <a href="/u/dwr">@dwr</a> see <a href="https://quilcast.com/" target="_blank" rel="noopener noreferrer nofollow">quilcast.com</a> on <span class="chan-ref">/base</span>')
   assert.equal(md('<b>x</b> & "y"'), '&#60;b&#62;x&#60;/b&#62; &#38; &#34;y&#34;')
   assert.equal(md('5 * 3 = 15, snake_case_name, @some_x_handle'), '5 * 3 = 15, snake_case_name, <a href="/u/some">@some</a>_x_handle')
   assert.equal(md('born in\n1990. Then more'), 'born in\n1990. Then more')
+})
+
+test('a bare domain glued to a letter of another script links nothing, not just its ASCII part', () => {
+  const a = (u: string, label = u) => `<a href="https://${u}/" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
+  // Cyrillic а, о and м, Greek ο, a combining accent, an Arabic-Indic digit
+  // and the same with invisible characters in between, or a non-ASCII label after it
+  for (const s of ['аpple.com', 'see аpple.com/login now', 'pаypal.com', 'google.coм', 'appleο.com', 'épple.com', '٣pple.com', 'quilcast.comа',
+    'а​pple.com', 'a­pple.com', 'а⁠﻿pple.com', 'google.co​m', 'apple.com.рф', 'apple.com.​рф',
+    'аㅤpple.com', 'а᠎pple.com', 'а‎pple.com', 'а\u{e0041}pple.com', 'google.coㅤм',
+    // a later label that starts in ASCII doesn't make a shorter domain out of it either
+    'google.co.ukм', 'bbc.co.ukа', 'a⃣pple.com', 'а️⃣pple.com', 'x.com⃣', 'а️pple.com', 'apple.com.xрф', 'apple.com.mаil', 'apple.com.co.uкм', 'apple.com.uk.​рф',
+    // combining accents some spaceless scripts share still glue on the letter they sit on: tilde, dot below, NFD
+    'а̃pple.com', 'ãpple.com', 'а̣pple.com', 'cạ̀pple.com', 'españa.com', 'google.cõm',
+    'a̅pple.com', 'a̱pple.com', 'a゙pple.com', 'aัpple.com', 'ã​pple.com', 'x.com̃', 'x.com​̣', 'x.com゙'])
+    for (const out of [linkify(s), md(s)]) assert.ok(!out.includes('<a'), `${s} → ${out}`)
+  assert.equal('аpple.com'.match(LINK_RE), null)
+  // ASCII bare domains, and ones next to punctuation or a script written without spaces, still link
+  assert.equal(linkify('quilcast.com'), a('quilcast.com'))
+  assert.equal(linkify('«quilcast.com» — “x.com”'), `«${a('quilcast.com')}» — “${a('x.com')}”`)
+  assert.equal(linkify('访问quilcast.com看看'), `访问${a('quilcast.com')}看看`)
+  assert.equal(linkify('quilcast.comで見て'), `${a('quilcast.com')}で見て`)
+  assert.equal(linkify('ไปที่quilcast.com'), `ไปที่${a('quilcast.com')}`)
+  assert.equal(linkify('ไปที่​quilcast.com'), `ไปที่​${a('quilcast.com')}`)
+  // their marks too: decomposed kana voicing, Thai vowels and tones, a shared tilde on a Han character
+  for (const pre of ['ガ', 'か゚', 'ที่', '漢̃', 'ガ​'])
+    assert.equal(linkify(`${pre}quilcast.com`), `${pre}${a('quilcast.com')}`)
+  assert.equal(linkify('‏quilcast.com.Next'),`‏${a('quilcast.com')}.Next`)
+  assert.equal(linkify('quilcast.com.uk'), a('quilcast.com.uk'))
+  assert.equal(linkify('quilcast.com. Затем'), `${a('quilcast.com')}. Затем`)
+  // an emoji's variation selector or keycap isn't a glued letter
+  assert.equal(linkify('➡️quilcast.com'), `➡️${a('quilcast.com')}`)
+  assert.equal(linkify('see ❤️quilcast.com'), `see ❤️${a('quilcast.com')}`)
+  assert.equal(linkify('1️⃣quilcast.com'), `1️⃣${a('quilcast.com')}`)
+  assert.equal(linkify('x.com️'), `${a('x.com')}️`)
+  // characters Japanese and Chinese share with other scripts: ー and 〆 are Common, ｰ and ﾞ halfwidth, ㄅ Bopomofo
+  for (const [pre, post] of [['サーバー', ''], ['コーヒー', 'で'], ['ｰ', ''], ['〆', ''], ['ｶﾞ', ''], ['ㄅㄆ', ''], ['〇', ''], ['', 'ー'],
+    // and digits every script shares: circled, fullwidth, superscript
+    ['①', 'にアクセス'], ['❶', ''], ['２０２４', ''], ['', '１'], ['', '²']])
+    assert.equal(linkify(`${pre}quilcast.com${post}`), `${pre}${a('quilcast.com')}${post}`)
+  // any case still links, but ſ and the Kelvin sign aren't s and k: they're letters glued to the domain
+  assert.equal(linkify('Quilcast.COM and HTTPS://X.com'), `${a('quilcast.com', 'Quilcast.COM')} and ${a('x.com', 'HTTPS://X.com')}`)
+  for (const s of ['\u017ftripe.com', '\u212ax.com', 'x.co\u212a', 'http\u017f://x.com']) assert.ok(!linkify(s).includes('<a'), s)
+  assert.equal(linkify('https://аpple.com'), a('xn--pple-43d.com', 'аpple.com'))
+  assert.equal(md('**quilcast.com**, @dwr on /base'), `<strong>${a('quilcast.com')}</strong>, <a href="/u/dwr">@dwr</a> on <span class="chan-ref">/base</span>`)
+})
+
+test('long runs of invisible characters or labels around a domain take linear time', () => {
+  const a = (u: string) => `<a href="https://${u}/" target="_blank" rel="noopener noreferrer nofollow">${u}</a>`
+  for (const ch of ['​', '⁠']) {
+    const s = ch.repeat(20000) + ' quilcast.com'
+    const t = performance.now()
+    const out = [linkify(s), md(s)]
+    const ms = performance.now() - t
+    for (const o of out) assert.ok(o.endsWith(` ${a('quilcast.com')}`), o.slice(-120))
+    assert.ok(ms < 200, `${ms} ms`)
+  }
+  // and long runs of labels before a glued letter, which the match backs off one label at a time
+  for (const s of ['com.'.repeat(20000) + 'рф', 'x.' + 'a.'.repeat(20000) + 'м', 'x.' + 'co.​'.repeat(20000) + 'м']) {
+    const t = performance.now()
+    const out = [linkify(s), md(s)]
+    const ms = performance.now() - t
+    for (const o of out) assert.ok(!o.includes('<a'), o.slice(-120))
+    assert.ok(ms < 200, `${ms} ms`)
+  }
+  // and long runs of invisible characters after a domain, then a space (links) or a glued letter or keycap (doesn't)
+  for (const ch of ['​', '️', '⁠'])
+    for (const [end, links] of [[' ', true], ['м', false], ['⃣', false], ['̃', false]] as const) {
+      const s = 'quilcast.com' + ch.repeat(30000) + end
+      const t = performance.now()
+      const out = [linkify(s), md(s)]
+      const ms = performance.now() - t
+      for (const o of out) assert.equal(o.startsWith(a('quilcast.com')), links, o.slice(0, 120))
+      assert.ok(ms < 200, `${ms} ms`)
+    }
+  // and long runs of marks, with or without invisible characters, before a domain or after its labels
+  for (const [s, links] of [['a' + '̃'.repeat(30000) + 'quilcast.com', false], ['漢' + '̃'.repeat(30000) + 'quilcast.com', true],
+    ['漢' + '̃​'.repeat(30000) + 'quilcast.com', true], ['x.' + 'a.'.repeat(20000) + 'm' + '̃'.repeat(20000), false]] as const) {
+    const t = performance.now()
+    const out = [linkify(s), md(s)]
+    const ms = performance.now() - t
+    for (const o of out) assert.equal(o.includes('<a'), links, o.slice(-120))
+    assert.ok(ms < 200, `${ms} ms`)
+  }
+  // and long runs of invisible characters right before a domain, after the start, a space or a glued letter
+  for (const ch of ['​', '⁠', '­', '͏', '️', '᠋', '\u{e0100}'])
+    for (const [start, links] of [['', true], [' ', true], ['a', false], ['а', false]] as const) {
+      const s = start + ch.repeat(20000) + 'quilcast.com'
+      const t = performance.now()
+      const out = [linkify(s), md(s)]
+      const ms = performance.now() - t
+      for (const o of out) assert.equal(o.endsWith(`${a('quilcast.com')}`), links, o.slice(-120))
+      assert.ok(ms < 200, `${ch.codePointAt(0)?.toString(16)} after '${start}': ${ms} ms`)
+    }
+})
+
+test('mentions, channels and emphasis treat ſ and the Kelvin sign as letters, not s and k', () => {
+  for (const s of ['@Kelvin', '@aſb', '/ſtar', '/Kb']) assert.equal(md(s), s)
+  assert.equal(md('@DWR on /Base'), '<a href="/u/DWR">@DWR</a> on <span class="chan-ref">/Base</span>')
+  assert.equal(md('ſ/base K@dwr ſ_x_'), 'ſ<span class="chan-ref">/base</span> K<a href="/u/dwr">@dwr</a> ſ<em>x</em>')
 })
 
 test('inline formatting', () => {
