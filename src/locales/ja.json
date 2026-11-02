@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "@{name} に $1 のチップ",
   "Tipped @{name} $1": "@{name} に $1 のチップを送りました",
   "Table": "表",
-  "Column": "列"
+  "Column": "列",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "アカウントはプロフィールと最近のキャストから判定されます。スパムアカウントを非表示にすると、そのキャストと返信がすべての場所から消えます。",
+  "How likely spam.quilcast.com thinks this is a spam account": "spam.quilcast.com が判定した、スパムアカウントである可能性",
+  "Spam account {n}%": "スパムアカウント {n}%",
+  "Spam accounts": "スパムアカウント"
 }

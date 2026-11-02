@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "@{name} को $1 टिप",
   "Tipped @{name} $1": "@{name} को $1 टिप दी",
   "Table": "तालिका",
-  "Column": "कॉलम"
+  "Column": "कॉलम",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "खातों को उनकी प्रोफ़ाइल और हाल के कास्ट से परखा जाता है; स्पैम खाते को छिपाने से उसके कास्ट और जवाब हर जगह से हट जाते हैं।",
+  "How likely spam.quilcast.com thinks this is a spam account": "spam.quilcast.com के अनुसार यह स्पैम खाता होने की संभावना",
+  "Spam account {n}%": "स्पैम खाता {n}%",
+  "Spam accounts": "स्पैम खाते"
 }

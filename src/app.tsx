@@ -10,7 +10,7 @@ import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, toggle
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
-import { spamAt } from './spam.ts'
+import { checkAccounts, spamAccountOf, spamAt } from './spam.ts'
 import { channelFeed, findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
@@ -663,6 +663,7 @@ function Profile({ id }: { id: string }) {
   const [following, setFollowing] = useState<boolean | null>(null)
   // they follow the viewer; shown only once known, so nothing jumps while it's asked
   const [followsYou, setFollowsYou] = useState(false)
+  const [, setSpamChecked] = useState(0)
   const [menu, setMenu] = useState(false)
   // the profile's look (src/looks.tsx), and the owner's unsaved version while they edit it
   const [L, setL] = useState<Looks | null>(null)
@@ -682,6 +683,7 @@ function Profile({ id }: { id: string }) {
     let live = true
     getUser(k?.fid ?? id).then((u) => {
       setU(u)
+      checkAccounts([u.fid]).then(() => live && setSpamChecked((x) => x + 1))
       isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))
       followsMe(u).then((f) => live && setFollowsYou(f))
     }, () => setErr(t('No one goes by that name.')))
@@ -763,7 +765,7 @@ function Profile({ id }: { id: string }) {
                 )}
               </div>
               <h2><span class={shown ? L.nameClass(shown) : undefined}>{nameOf(u)}</span></h2>
-              <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span>{!self && followsYou && <span class="pill">{t('Follows you')}</span>}{!self && (blockOf(u.fid) || muteOf(u.fid)) && <span class="pill">{blockOf(u.fid) ? t('Blocked') : t('Muted')} {untilText((blockOf(u.fid) || muteOf(u.fid))!.until)}</span>}</div>
+              <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span>{!self && followsYou && <span class="pill">{t('Follows you')}</span>}{spamAccountOf(u.fid) != null && <span class="spam-tag" title={t('How likely spam.quilcast.com thinks this is a spam account')}>{t('Spam account {n}%', { n: spamAccountOf(u.fid)! })}</span>}{!self && (blockOf(u.fid) || muteOf(u.fid)) && <span class="pill">{blockOf(u.fid) ? t('Blocked') : t('Muted')} {untilText((blockOf(u.fid) || muteOf(u.fid))!.until)}</span>}</div>
               {shown && <L.Mood l={shown} />}
               {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
               <div class="counts"><a href={`${userPath(u)}/following`}><b>{n(u.following_count)}</b> {t('following')}</a><a href={`${userPath(u)}/followers`}><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</a></div>
@@ -1464,8 +1466,13 @@ function Settings() {
               {(['show', 'hide'] as const).map((v) => <button class={(settings.spam || 'show') === v ? 'on' : ''} onClick={() => ((settings.spam = v), saveSettings(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
             </div>
           </div>
+          <div class="lk-row"><span>{t('Spam accounts')}</span>
+            <div class="seg">
+              {(['show', 'hide'] as const).map((v) => <button class={(settings.spamAccounts || 'show') === v ? 'on' : ''} onClick={() => ((settings.spamAccounts = v), saveSettings(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
+            </div>
+          </div>
           <label class="lk-row"><span>{t('Spam threshold')}</span><span class="lk-ctl"><input type="range" min={50} max={99} value={spamAt()} onInput={(e) => ((settings.spamAt = Number(e.currentTarget.value)), saveSettings(), force((x) => x + 1))} /><output>{spamAt()}%</output></span></label>
-          <p class="hint">{t('Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.')}</p>
+          <p class="hint">{t('Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.')} {t('Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.')}</p>
         </section>
         {account && (
           <section>

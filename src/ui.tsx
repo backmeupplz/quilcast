@@ -7,7 +7,7 @@ import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
 import { lang, t, t as tr, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, setMute } from './mutes.ts'
-import { spamOf } from './spam.ts'
+import { spamAccountOf, spamOf } from './spam.ts'
 import { swoosh } from './swoosh.ts'
 import { base, detect } from './lang.ts'
 
@@ -995,12 +995,13 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
       </span>
     </footer>
   )
-  const spam = spamOf(c)
+  const spam = spamOf(c), spamAccount = spam == null ? spamAccountOf(c.author.fid) : null
   const name = (
     <>
       <a class="name" href={userPath(c.author)} onClick={stop}>{nameOf(c.author)}</a>
       <span class="handle">@{handle(c.author)}</span>
       {spam != null && <span class="spam-tag" title={t('How likely spam.quilcast.com thinks this cast is spam')}>{t('Spam {n}%', { n: spam })}</span>}
+      {spamAccount != null && <span class="spam-tag" title={t('How likely spam.quilcast.com thinks this is a spam account')}>{t('Spam account {n}%', { n: spamAccount })}</span>}
     </>
   )
   if (focus) {

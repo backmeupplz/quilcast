@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "إكرامية 1$ إلى @{name}",
   "Tipped @{name} $1": "أرسلت إكرامية 1$ إلى @{name}",
   "Table": "جدول",
-  "Column": "عمود"
+  "Column": "عمود",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "تُقيَّم الحسابات من ملفها الشخصي ومنشوراتها الأخيرة؛ وإخفاء حساب مزعج يزيل منشوراته وردوده من كل مكان.",
+  "How likely spam.quilcast.com thinks this is a spam account": "مدى ترجيح spam.quilcast.com أن هذا حساب مزعج",
+  "Spam account {n}%": "حساب مزعج {n}%",
+  "Spam accounts": "الحسابات المزعجة"
 }

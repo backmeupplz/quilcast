@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "打賞 @{name} $1",
   "Tipped @{name} $1": "已打賞 @{name} $1",
   "Table": "表格",
-  "Column": "欄"
+  "Column": "欄",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "帳號依據其個人資料與近期投稿判定；隱藏垃圾帳號會讓它的投稿與回覆在所有地方消失。",
+  "How likely spam.quilcast.com thinks this is a spam account": "spam.quilcast.com 判斷這是垃圾帳號的可能性",
+  "Spam account {n}%": "垃圾帳號 {n}%",
+  "Spam accounts": "垃圾帳號"
 }

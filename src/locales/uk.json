@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "$1 чайових @{name}",
   "Tipped @{name} $1": "Надіслано $1 чайових @{name}",
   "Table": "Таблиця",
-  "Column": "Стовпець"
+  "Column": "Стовпець",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Акаунти оцінюються за профілем і останніми кастами; якщо приховати спам-акаунт, його касти й відповіді зникнуть усюди.",
+  "How likely spam.quilcast.com thinks this is a spam account": "Наскільки ймовірно, за оцінкою spam.quilcast.com, що це спам-акаунт",
+  "Spam account {n}%": "Спам-акаунт {n}%",
+  "Spam accounts": "Спам-акаунти"
 }

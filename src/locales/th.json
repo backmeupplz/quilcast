@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "ทิป $1 ให้ @{name}",
   "Tipped @{name} $1": "ให้ทิป $1 แก่ @{name} แล้ว",
   "Table": "ตาราง",
-  "Column": "คอลัมน์"
+  "Column": "คอลัมน์",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "บัญชีถูกประเมินจากโปรไฟล์และแคสต์ล่าสุด การซ่อนบัญชีสแปมจะเอาแคสต์และการตอบกลับของบัญชีนั้นออกทุกที่",
+  "How likely spam.quilcast.com thinks this is a spam account": "โอกาสที่ spam.quilcast.com คิดว่านี่เป็นบัญชีสแปม",
+  "Spam account {n}%": "บัญชีสแปม {n}%",
+  "Spam accounts": "บัญชีสแปม"
 }

@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "$ 1 fooi aan @{name}",
   "Tipped @{name} $1": "@{name} $ 1 fooi gegeven",
   "Table": "Tabel",
-  "Column": "Kolom"
+  "Column": "Kolom",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Accounts worden beoordeeld op hun profiel en recente casts; een spamaccount verbergen haalt zijn casts en antwoorden overal weg.",
+  "How likely spam.quilcast.com thinks this is a spam account": "Hoe waarschijnlijk dit volgens spam.quilcast.com een spamaccount is",
+  "Spam account {n}%": "Spamaccount {n}%",
+  "Spam accounts": "Spamaccounts"
 }

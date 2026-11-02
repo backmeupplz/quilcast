@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "@{name} için 1 $ bahşiş",
   "Tipped @{name} $1": "@{name} kullanıcısına 1 $ bahşiş verildi",
   "Table": "Tablo",
-  "Column": "Sütun"
+  "Column": "Sütun",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Hesaplar profillerine ve son castlerine göre değerlendirilir; bir spam hesabını gizlemek onun castlerini ve yanıtlarını her yerden kaldırır.",
+  "How likely spam.quilcast.com thinks this is a spam account": "spam.quilcast.com'a göre bunun bir spam hesabı olma olasılığı",
+  "Spam account {n}%": "Spam hesabı %{n}",
+  "Spam accounts": "Spam hesapları"
 }

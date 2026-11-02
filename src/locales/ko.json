@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "@{name}님에게 $1 팁",
   "Tipped @{name} $1": "@{name}님에게 $1 팁을 보냈습니다",
   "Table": "표",
-  "Column": "열"
+  "Column": "열",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "계정은 프로필과 최근 캐스트로 판단합니다. 스팸 계정을 숨기면 그 계정의 캐스트와 답글이 모든 곳에서 사라집니다.",
+  "How likely spam.quilcast.com thinks this is a spam account": "spam.quilcast.com이 판단한 스팸 계정일 가능성",
+  "Spam account {n}%": "스팸 계정 {n}%",
+  "Spam accounts": "스팸 계정"
 }

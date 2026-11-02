@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "Tip $1 cho @{name}",
   "Tipped @{name} $1": "Đã tip $1 cho @{name}",
   "Table": "Bảng",
-  "Column": "Cột"
+  "Column": "Cột",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Tài khoản được đánh giá dựa trên hồ sơ và các cast gần đây; ẩn một tài khoản spam sẽ gỡ các cast và trả lời của nó ở mọi nơi.",
+  "How likely spam.quilcast.com thinks this is a spam account": "Khả năng đây là tài khoản spam theo spam.quilcast.com",
+  "Spam account {n}%": "Tài khoản spam {n}%",
+  "Spam accounts": "Tài khoản spam"
 }

@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "Tip $1 ke @{name}",
   "Tipped @{name} $1": "Memberi tip $1 ke @{name}",
   "Table": "Tabel",
-  "Column": "Kolom"
+  "Column": "Kolom",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Akun dinilai dari profil dan cast terbarunya; menyembunyikan akun spam menghapus cast dan balasannya di mana saja.",
+  "How likely spam.quilcast.com thinks this is a spam account": "Seberapa besar kemungkinan ini akun spam menurut spam.quilcast.com",
+  "Spam account {n}%": "Akun spam {n}%",
+  "Spam accounts": "Akun spam"
 }

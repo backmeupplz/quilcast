@@ -1108,5 +1108,9 @@
   "Tip @{name} $1": "Pourboire de 1 $ à @{name}",
   "Tipped @{name} $1": "Pourboire de 1 $ envoyé à @{name}",
   "Table": "Tableau",
-  "Column": "Colonne"
+  "Column": "Colonne",
+  "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Les comptes sont jugés sur leur profil et leurs casts récents ; masquer un compte de spam retire ses casts et ses réponses partout.",
+  "How likely spam.quilcast.com thinks this is a spam account": "Probabilité que ce soit un compte de spam selon spam.quilcast.com",
+  "Spam account {n}%": "Compte de spam {n} %",
+  "Spam accounts": "Comptes de spam"
 }
