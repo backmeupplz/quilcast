@@ -4,7 +4,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { Resvg } from '@resvg/resvg-js'
-import { cut, ends, esc, exactly, FONTS, graphemes, guess, initial, kind, LAYERED, measure, metrics, pictures, source, textSvg, width, wrap } from './text.mjs'
+import { cut, ends, esc, exactly, FONTS, graphemes, guess, initial, kind, LAYERED, layout, measure, metrics, pictures, richSvg, source, textSvg, width, wrap } from './text.mjs'
+import { MD, styled } from '../src/shared.ts'
 
 const cp = (...c) => String.fromCodePoint(...c)
 const ZWJ = 0x200d, VS16 = 0xfe0f
@@ -472,4 +473,22 @@ test('fancy letters no card font has draw as the plain letters they stand for; e
   assert.equal(clean('ȷď𝐛𝐛'), 'ȷďbb') // @jenna's name: mathematical bold b
   assert.equal(clean('𝓈𝒸𝓇𝒾𝓅𝓉 𝕕𝕠𝕦𝕓𝕝𝕖 Ｗｉｄｅ'), 'script double Wide')
   assert.equal(clean('漢字 🙂 café ﬁ'), '漢字 🙂 café fi') // ﬁ isn't in Inter either
+})
+
+test('a Markdown table on a card is its rows in columns, header bold, aligned as typed, cut with a "…" row', () => {
+  const md = styled('# Fees\n\n| Chain | Fee |\n|-|-:|\n| **Base** | $0.001 |\n| Ethereum with a very long name indeed | $1.20 |\n| Optimism | $0.002 |\n\n~~old~~ text')
+  const items = layout(md.text, md.marks, 40, 600, 20)
+  const rows = items.filter((it) => it.cells)
+  assert.deepEqual(rows.map((r) => r.cells.map((c) => c.l)), [['Chain', 'Fee'], ['Base', '$0.001'], [rows[2].cells[0].l, '$1.20'], ['Optimism', '$0.002']])
+  assert.match(rows[2].cells[0].l, /^Ethereum.*…$/)
+  assert.ok(rows.every((r) => r.cells[1].x === rows[0].cells[1].x && r.cells[0].x + r.cells[0].w < r.cells[1].x && r.width <= 600))
+  assert.ok(rows[0].cells[0].mark(0) & MD.bold && !(rows[3].cells[0].mark(0) & MD.bold))
+  assert.equal(rows[0].cells[1].align, MD.right)
+  // a half-line gap above and below the table, struck text after it
+  assert.deepEqual(items.map((it) => it.h), [1, 0.5, 1, 1, 1, 1, 0.5, 1])
+  assert.ok(items.at(-1).mark(0) & MD.strike)
+  assert.match(richSvg(items, { x: 0, y: 40, lh: 52, size: 40, fill: '#fff', accent: '#a9f', code: '#fc8', muted: '#999' }), /Optimism/)
+  // three and a half lines' room: the title, the gap, the header and a "…" row saying there's more
+  const cut = layout(md.text, md.marks, 40, 600, 3.5)
+  assert.deepEqual(cut.map((it) => it.l ?? it.cells.map((c) => c.l).join('|')), ['Fees', '', 'Chain|Fee', '…'])
 })

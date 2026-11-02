@@ -497,32 +497,109 @@ export function textSvg(lines, { x, y, lh = 0, size, bold = false, weight = bold
   return [paint].flat().map(layer).join('') + pics
 }
 
-/** Wrapped lines of styled() text (src/shared.ts) drawn with their Markdown's look: runs of one look each placed where
- *  the one before ends, bold for **bold** and headings, slanted for *italic*, in color for links, mentions and code,
- *  and quotes muted behind a bar. `lines` come from wrap(text), so each is found in the text in order; one that isn't
- *  (wrap dropped a character XML can't hold) is drawn plain. */
-export function richSvg(raw, given, lines, { x, y, lh, size, fill, accent, code, muted }) {
-  // the text as wrap saw it (clean), each character keeping its look
+// styled() text's table cells end in this (CELL in src/shared.ts)
+const CELL = '\x1f'
+// text as wrap sees it (clean), each character keeping the look it had at raw's offset `at` in the styled() text
+function cleaned(raw, given, at) {
   let text = ''
   const marks = []
-  let at = 0
   for (const ch of raw) {
     const c = clean(ch)
     text += c
     for (let n = 0; n < c.length; n++) marks.push(given[at] || 0)
     at += ch.length
   }
-  let out = ''
+  return { text, marks }
+}
+// wrapped lines found in their cleaned text in order, each with its characters' looks (a line that isn't found, as
+// when wrap dropped a character XML can't hold, is drawn plain); the "…" wrap adds looks like what it follows
+const found = (ls, { text, marks }) => {
   let from = 0
-  const space = width(' ', size)
-  lines.forEach((l, i) => {
-    const by = y + i * lh
+  return ls.map((l) => {
     const body = l.endsWith('…') ? l.slice(0, -1) : l
     const k = body ? text.indexOf(body, from) : -1
     if (k >= 0) from = k + body.length
-    // the "…" wrap adds looks like what it follows
-    const mark = (j) => (k < 0 ? 0 : marks[k + Math.min(j, body.length - 1)] || 0)
-    if (mark(0) & 32) out += `<rect x="${num(x - 22)}" y="${num(by - size * 0.85)}" width="4" height="${num(lh)}" rx="2" fill="${muted}"/>`
+    return { l, mark: (j) => (k < 0 ? 0 : marks[k + Math.min(j, body.length - 1)] || 0) }
+  })
+}
+const isBold = (marks) => marks.some((m) => m & 17)
+
+/** styled() text (src/shared.ts) in at most n lines (a fraction too) of max px, for richSvg: wrap()'s lines, except that a table's rows
+ *  stay a line each with their cells in columns, each column as wide as its widest cell or an even share of what's
+ *  left, a cell too wide for it ending in "…". A blank line, the gap between blocks, takes half a line (its `h`), and a
+ *  table always has one above it. When it doesn't all fit, the last line or row says so with a "…". */
+export function layout(raw, given, size, max, n) {
+  const bold = isBold(given)
+  const out = []
+  let used = 0
+  const push = (it) => (out.push(it), (used += it.h))
+  const gap = () => push({ l: '', mark: () => 0, h: 0.5 })
+  // runs of table rows and of other lines, each line with where it starts
+  const groups = []
+  let at = 0
+  for (const l of raw.split('\n')) {
+    const row = l.includes(CELL)
+    if (groups.at(-1)?.row === row) groups.at(-1).lines.push([l, at])
+    else groups.push({ row, lines: [[l, at]] })
+    at += l.length + 1
+  }
+  const more = () => {
+    while (out.at(-1)?.l === '') used -= out.pop().h
+    const last = out.at(-1)
+    if (!last || last.l?.endsWith('…')) return
+    if (last.cells) out[out.length - 1] = { cells: [{ l: '…', mark: () => 0, x: 0, w: max, align: 0 }], h: 1 }
+    // wrap's own "…" for a line with more after it, which may give up its last word for it
+    else out[out.length - 1] = { ...last, l: wrap(`${last.l}\nx`, size, max, 1, { bold })[0] }
+  }
+  for (const g of groups) {
+    if (g.row && out.length && out.at(-1).l !== '' && used + 1.5 <= n) gap()
+    const room = Math.floor(n - used)
+    if (room <= 0) return more(), out
+    if (!g.row) {
+      const text = g.lines.map(([l]) => l).join('\n')
+      // blank lines take half a line, so wrap may have more lines than the room it was given
+      const tall = (ls) => ls.reduce((a, l) => a + (l ? 1 : 0.5), 0)
+      let ls = wrap(text || ' ', size, max, room, { bold })
+      for (let r = room + 1; ; r++) {
+        const next = wrap(text || ' ', size, max, r, { bold })
+        if (next.length <= ls.length || tall(next) > n - used) break
+        ls = next
+      }
+      for (const it of found(ls, cleaned(text, given, g.lines[0][1]))) push({ ...it, h: it.l ? 1 : 0.5 })
+      // wrap drops blank lines at the end, here the gap before a table
+      if (g.lines.at(-1)[0] === '' && used + 1.5 <= n) gap()
+      continue
+    }
+    const rows = g.lines.map(([l, s]) => l.split(CELL).map((c) => ((s += c.length + 1), cleaned(c, given, s - c.length - 1))))
+    const cols = Math.max(...rows.map((r) => r.length))
+    const pad = Math.min(size * 0.9, max / cols / 4)
+    const nat = Array.from({ length: cols }, (_, k) => Math.max(0, ...rows.map((r) => (r[k] ? (isBold(r[k].marks) ? drawnBold : width)(r[k].text, size) : 0))))
+    // the narrowest columns get all they need, the rest share what's left evenly
+    const w = Array(cols).fill(0)
+    let left = max - pad * (cols - 1)
+    ;[...nat.keys()].sort((a, b) => nat[a] - nat[b]).forEach((k, i) => (left -= w[k] = Math.max(0, Math.min(nat[k], left / (cols - i)))))
+    const xs = w.map((_, k) => w.slice(0, k).reduce((a, b) => a + b, 0) + pad * k)
+    const align = w.map((_, k) => rows.map((r) => r[k]?.marks.find((m) => m & 384)).find(Boolean) & 384)
+    const tw = xs[cols - 1] + w[cols - 1]
+    rows.slice(0, room).forEach((r, i) =>
+      push({
+        cells: r.map((c, k) => ({ ...found([c.text && (wrap(c.text, size, w[k], 1, { bold: isBold(c.marks) })[0] || '')], c)[0], x: xs[k], w: w[k], align: align[k] })),
+        rule: i === rows.length - 1 ? 0 : i ? 1 : 2,
+        width: tw,
+        h: 1,
+      }))
+    if (rows.length > room) return more(), out
+  }
+  return out
+}
+
+/** Lines from layout() drawn with their Markdown's look: runs of one look each placed where the one before ends, bold
+ *  for **bold**, headings and table headers, slanted for *italic*, struck through for ~~strike~~, in color for links,
+ *  mentions and code, quotes muted behind a bar, and table rows as columns under a rule. */
+export function richSvg(items, { x, y, lh, size, fill, accent, code, muted }) {
+  const space = width(' ', size)
+  const line = (l, mark, x, by) => {
+    let out = ''
     let cx = x
     for (let j = 0; j < l.length; ) {
       const m = mark(j)
@@ -533,15 +610,36 @@ export function richSvg(raw, given, lines, { x, y, lh, size, fill, accent, code,
       cx += (run.length - run.trimStart().length) * space
       if (core) {
         const bold = !!(m & 17)
-        const svg = textSvg([core], { x: cx, y: by, size, bold, fill: m & 8 ? accent : m & 4 ? code : m & 32 ? muted : fill })
+        const color = m & 8 ? accent : m & 4 ? code : m & 32 ? muted : fill
+        // measured, not guessed: a generous guess would leave a gap before the next run (the line's last needs none
+        // unless it's struck through)
+        const rw = e < l.length || m & 64 ? exactly(() => ends(core, size, bold)) : 0
+        let svg = textSvg([core], { x: cx, y: by, size, bold, fill: color })
+        if (m & 64) svg += `<rect x="${num(cx)}" y="${num(by - size * 0.34)}" width="${num(rw)}" height="${num(Math.max(2, size * 0.06))}" fill="${color}"/>`
         // slanted about the baseline, so the run stays where it was laid out
         out += m & 2 ? `<g transform="translate(${num(by * 0.2126)} 0) skewX(-12)">${svg}</g>` : svg
-        // measured, not guessed: a generous guess would leave a gap before the next run (the line's last needs none)
-        if (e < l.length) cx += exactly(() => ends(core, size, bold))
+        cx += rw
       }
       if (core) cx += (run.length - run.trimEnd().length) * space
       j = e
     }
+    return out
+  }
+  let out = ''
+  let by = y - lh
+  items.forEach((it, i) => {
+    by += lh * (i ? items[i - 1].h : 1)
+    if (!it.cells) {
+      if (it.mark(0) & 32) out += `<rect x="${num(x - 22)}" y="${num(by - size * 0.85)}" width="4" height="${num(lh)}" rx="2" fill="${muted}"/>`
+      out += line(it.l, it.mark, x, by)
+      return
+    }
+    for (const c of it.cells) {
+      const cw = c.align && c.l ? exactly(() => ends(c.l, size, !!(c.mark(0) & 17))) : 0
+      out += line(c.l, c.mark, x + c.x + (c.align & 128 ? c.w - cw : c.align & 256 ? (c.w - cw) / 2 : 0), by)
+    }
+    // a rule under the header, fainter ones between rows, halfway to the next row's capitals
+    if (it.rule) out += `<rect x="${num(x)}" y="${num(by + size * 0.4)}" width="${num(it.width)}" height="2" fill="${muted}" fill-opacity="${it.rule === 2 ? 0.6 : 0.2}"/>`
   })
   return out
 }

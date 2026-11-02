@@ -30,7 +30,7 @@ import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
 import { channels, search } from './channels.mjs'
 import { cardArt, cardMeta, tierOf } from './cards.mjs'
-import { cut, ends, esc, exactly, FONTS, initial, pictures, richSvg, textSvg, width, wrap } from './text.mjs'
+import { cut, ends, esc, exactly, FONTS, initial, layout, pictures, richSvg, textSvg, width, wrap } from './text.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
@@ -213,7 +213,7 @@ async function card(c) {
   const textW = tile ? 600 : 1040
   const size = text.length < 90 ? 46 : text.length < 200 ? 38 : 32
   // (links already show short, as the app does; bold text is measured as such, so a line of it can't run long)
-  const lines = wrap(text || ' ', size, textW, Math.floor(300 / (size * 1.32)), { bold: md.marks.some((m) => m & 17) })
+  const lines = layout(text, md.marks, size, textW, 300 / (size * 1.32))
   const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
@@ -226,7 +226,7 @@ async function card(c) {
   ${pfp ? `<image href="${pfp}" x="84" y="76" width="88" height="88" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : initial(name, 128, 136, 40, '#9893a5')}
   ${textSvg([wrap(name, 34, (tile ? 680 : 1100) - 196, 1)[0] || ''], { x: 196, y: 112, size: 34, bold: true, fill: '#edebf3' })}
   ${textSvg([`@${cut(a.username || a.fid, 40)}`], { x: 196, y: 150, size: 26, fill: '#9893a5' })}
-  ${richSvg(md.text, md.marks, lines, { x: 84, y: 232, lh: size * 1.32, size, ...INK })}
+  ${richSvg(lines, { x: 84, y: 232, lh: size * 1.32, size, ...INK })}
   ${tile ? `<rect x="712" y="${ty}" width="420" height="${th}" rx="28" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>` : ''}
   ${pic ? `<image href="${pic}" x="712" y="${ty}" width="420" height="${th}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pic)"/>` : ''}
   ${v?.video ? `<circle cx="922" cy="282" r="46" fill="#000" fill-opacity="0.55"/><path d="M908 258v48l40-24z" fill="#fff"/>` : ''}
@@ -543,11 +543,11 @@ async function collectible(c) {
   if (short) {
     const size = box ? (short.length < 90 ? 48 : short.length < 200 ? 40 : 34) : short.length < 60 ? 72 : short.length < 140 ? 60 : short.length < 280 ? 48 : short.length < 500 ? 40 : 34
     const lh = Math.round(size * 1.3)
-    const lines = wrap(short, size, W, box ? Math.floor(280 / lh) : Math.floor((BOTTOM - TOP) / lh), { bold: md.marks.some((m) => m & 17) })
-    const h = lines.length * lh
+    const lines = layout(short, md.marks, size, W, (box ? 280 : BOTTOM - TOP) / lh)
+    const h = lines.reduce((a, l) => a + l.h, 0) * lh
     // alone, the text is centered in the space; the first baseline is about one size below the line's top
     const top = box ? TOP : TOP + Math.max(0, (BOTTOM - TOP - h) / 2)
-    body += richSvg(md.text, md.marks, lines, { x: X, y: top + size, lh, size, ...INK })
+    body += richSvg(lines, { x: X, y: top + size, lh, size, ...INK })
     y = top + h + 36
   }
   if (box) {

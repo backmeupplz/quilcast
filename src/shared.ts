@@ -809,9 +809,11 @@ export function remap(was: string, start: number, end: number, now: string): [nu
 }
 
 /** How a character of styled() text looked, as bits: strong, em, code, a link (or mention, or channel), a heading's,
- *  a quote's. */
-export const MD = { bold: 1, italic: 2, code: 4, link: 8, heading: 16, quote: 32 }
-const BITS: Record<string, number> = { strong: MD.bold, em: MD.italic, code: MD.code, a: MD.link, span: MD.link, blockquote: MD.quote, h1: MD.heading, h2: MD.heading, h3: MD.heading, h4: MD.heading, h5: MD.heading, h6: MD.heading }
+ *  a quote's, struck through, and a table cell's alignment. */
+export const MD = { bold: 1, italic: 2, code: 4, link: 8, heading: 16, quote: 32, strike: 64, right: 128, center: 256 }
+const BITS: Record<string, number> = { strong: MD.bold, em: MD.italic, code: MD.code, a: MD.link, span: MD.link, blockquote: MD.quote, s: MD.strike, h1: MD.heading, h2: MD.heading, h3: MD.heading, h4: MD.heading, h5: MD.heading, h6: MD.heading }
+/** What ends each cell of a table row in styled() text: the cards draw the row as columns, meta tags as "a · b". */
+export const CELL = '\x1f'
 /** Cast text as it reads, without its Markdown (unmarkdown), with how each UTF-16 unit of it looked (MD bits), for
  *  share cards: what markdown() draws, flattened (lists keep their bullets and numbers, a link shows its label). */
 export function styled(text: string): { text: string; marks: number[] } {
@@ -826,12 +828,14 @@ export function styled(text: string): { text: string; marks: number[] } {
   }
   for (const [all, close, tag, start, ent] of markdown(text).matchAll(/<(\/?)(\w+)[^>]*?(?: start="(\d+)")?>|&#(\d+);|[^<&]+/g)) {
     if (ent) put(String.fromCharCode(+ent))
-    else if (!tag) put(all)
+    // (the cell separator never comes from the text itself)
+    else if (!tag) put(all.replaceAll(CELL, ''))
     else if (tag === 'ul' || tag === 'ol') close ? (lists.pop(), put('\n')) : lists.push(tag === 'ol' ? +(start || 1) : 0)
     else if (tag === 'li') !close && put(`\n${'  '.repeat(lists.length - 1)}${lists.at(-1) ? `${lists[lists.length - 1]++}. ` : '• '}`)
-    else if (tag === 'td' || tag === 'th') close && put(' · ')
+    // a header cell is bold; a cell keeps its column's alignment
+    else if (tag === 'td' || tag === 'th') close ? (open.pop(), put(CELL)) : open.push((tag === 'th' ? MD.bold : 0) | (all.includes('md-right') ? MD.right : all.includes('md-center') ? MD.center : 0))
     // a row's last cell drops its separator
-    else if (tag === 'tr') close && (out.endsWith(' · ') && ((out = out.slice(0, -3)), (marks.length -= 3)), put('\n'))
+    else if (tag === 'tr') close && (out.endsWith(CELL) && ((out = out.slice(0, -1)), marks.length--), put('\n'))
     else {
       if (/^(h\d|blockquote|pre|hr|table)$/.test(tag)) put('\n')
       if (BITS[tag]) close ? open.pop() : open.push(BITS[tag])
@@ -842,7 +846,7 @@ export function styled(text: string): { text: string; marks: number[] } {
   return { text: out.slice(lead, lead + kept), marks: marks.slice(lead, lead + kept) }
 }
 /** Cast text as it reads, without its Markdown, for meta tags (see styled). */
-export const unmarkdown = (text: string) => styled(text).text
+export const unmarkdown = (text: string) => styled(text).text.replaceAll(CELL, ' · ')
 
 /** Cast text as HTML, with Markdown: headings, **bold**, *italic*, ~~strike~~, `code` and fenced blocks, [links](…), ![pictures](…),
  *  lists, > quotes, rules and tables. Text between those keeps its line breaks as typed (.text is pre-wrap), so a cast
