@@ -15,9 +15,14 @@ const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(sr
 const cast = (n, extra = {}) => ({ hash: '0x' + String(n).repeat(40), text: `cast number ${n}`, timestamp: '2026-01-02T00:00:00Z', embeds: [], author: { fid: n, username: `user${n}` }, reactions: { likes_count: 5, recasts_count: 0 }, replies: { count: 0 }, ...extra })
 // a stand-in Hypersnap node: the trending feed the home page is drawn from; its first cast's pictures make the first one the
 // page's lead (index.html waits for it before loading the app)
+// page; the app asks it too when its settings point at it (the phone tests), for Following and Trending: one cast in a
+// channel with a long name, a long link and big counts, the widest a card gets
+const busy = cast(4, { text: 'see https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=more on /base', parent_url: 'https://farcaster.xyz/~/channel/a-channel-with-a-rather-long-name', reactions: { likes_count: 12345, recasts_count: 6789 }, replies: { count: 4321 } })
 const node = createServer((q, r) => {
   r.setHeader('content-type', 'application/json')
-  if (q.url.startsWith('/v2/farcaster/feed/trending')) return r.end(JSON.stringify({ casts: [cast(1, { embeds: [{ url: 'https://imagedelivery.net/abc/one/original' }, { url: 'https://imagedelivery.net/abc/two/original' }] }), cast(2), cast(3)] }))
+  r.setHeader('access-control-allow-origin', '*')
+  if (q.url.startsWith('/v2/farcaster/feed/trending')) return r.end(JSON.stringify({ casts: [cast(1, { embeds: [{ url: 'https://imagedelivery.net/abc/one/original' }, { url: 'https://imagedelivery.net/abc/two/original' }] }), cast(2), cast(3), busy] }))
+  if (q.url.startsWith('/v2/farcaster/feed/following')) return r.end(JSON.stringify({ casts: [busy, cast(2)] }))
   r.end('{}')
 })
 const nodePort = await listen(node)
@@ -61,10 +66,11 @@ after(async () => (await browser?.close(), proxy.closeAllConnections(), proxy.cl
 
 /**
  * Open the home page through the slow line, with `storage` in localStorage; its errors are collected. `edit` changes
- * the page, `hold` is how long its body takes, and `fail` is a glob for requests that fail.
+ * the page, `hold` is how long its body takes, `fail` is a glob for requests that fail, and `phone` makes it a 390 px
+ * phone.
  */
-async function open(storage = {}, { edit, hold, fail } = {}) {
-  const ctx = await browser.newContext()
+async function open(storage = {}, { edit, hold, fail, phone } = {}) {
+  const ctx = await browser.newContext(phone ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : {})
   // nothing leaves this machine: the app's node, avatars and pictures elsewhere don't answer
   await ctx.route((u) => !['127.0.0.1', 'localhost'].includes(u.hostname), (r) => r.abort())
   if (fail) await ctx.route(fail, (r) => r.fulfill({ status: 404, body: 'gone' }))
@@ -120,4 +126,22 @@ test('signed in, app code that fails to load says so, with a Reload button, inst
   assert.match(await crash.innerText(), /Something went wrong/)
   assert.equal(await crash.getByRole('button', { name: 'Reload' }).count(), 1)
   await close()
+})
+
+// a phone's page never scrolls sideways: 0.46.0's sixth cast action made every page with casts 30 px too wide
+test('on a phone, the page with casts and the tab bar fits the screen, signed out, signed in and in Quorum mode', async () => {
+  const me = JSON.stringify([{ phrase: '', custody: '0x' + '0'.repeat(39) + '1', fid: 9, username: 'me', done: true }])
+  const nodeAt = { node: `http://127.0.0.1:${nodePort}` }
+  for (const [who, storage] of [
+    ['signed out', { 'quilcast:settings': JSON.stringify(nodeAt) }],
+    ['signed in', { 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify(nodeAt) }],
+    ['Quorum mode', { 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify({ ...nodeAt, quorum: true }) }],
+  ]) {
+    const { page, close } = await open(storage, { phone: true, hold: 1 })
+    await drawn(page)
+    await page.locator('#app article.cast footer').first().waitFor({ timeout: 30e3 })
+    const { wide, page: w } = await page.evaluate(() => ({ wide: document.documentElement.scrollWidth, page: innerWidth }))
+    assert.ok(wide <= w, `${who}: the page is ${wide} px wide on a ${w} px screen`)
+    await close()
+  }
 })

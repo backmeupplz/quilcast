@@ -157,7 +157,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .name { color: var(--ink); font-weight: 700; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; }
 .handle, .dot, time { color: var(--muted); }
 .cast header .handle { overflow: hidden; text-overflow: ellipsis; flex-shrink: 3; min-width: 0; }
-.chan { margin-inline-start: auto; padding-inline-start: 8px; color: var(--muted); font-size: 13px; flex: none; }
+.chan { margin-inline-start: auto; padding-inline-start: 8px; color: var(--muted); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .spam-tag { flex: none; padding: 0 6px; border-radius: calc(99px * var(--rs, 1)); background: color-mix(in srgb, var(--like) 14%, transparent); color: var(--like); font-size: 12px; font-weight: 650; line-height: 1.5; }
 .cast.focus .who .spam-tag { align-self: flex-start; }
 .replying { font-size: 14px; color: var(--muted); margin-top: 1px; }
