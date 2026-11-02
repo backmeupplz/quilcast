@@ -1085,5 +1085,9 @@
   "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "Spam olma olasılığı en az bu kadar olan castler olasılığı gösteren bir etiket alır ya da gizlenir. Kendi Laya modelimiz her yeni cast'i okur.",
   "How likely spam.quilcast.com thinks this cast is spam": "spam.quilcast.com'a göre bu cast'in spam olma olasılığı",
   "Spam threshold": "Spam eşiği",
-  "Spam {n}%": "Spam %{n}"
+  "Spam {n}%": "Spam %{n}",
+  "Open this link?": "Bu bağlantı açılsın mı?",
+  "A link's text can say anything. This one goes to:": "Bir bağlantının metni her şeyi söyleyebilir. Bu bağlantı şuraya gidiyor:",
+  "Only open it if you trust this site.": "Yalnızca bu siteye güveniyorsan aç.",
+  "Open link": "Bağlantıyı aç"
 }

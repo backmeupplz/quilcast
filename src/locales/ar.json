@@ -1085,5 +1085,9 @@
   "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "المنشورات التي يُرجَّح أنها رسائل مزعجة بهذه النسبة على الأقل تحصل على علامة بالنسبة، أو تُخفى. نموذج Laya الخاص بنا يقرأ كل منشور جديد.",
   "How likely spam.quilcast.com thinks this cast is spam": "مدى ترجيح spam.quilcast.com أن هذا المنشور رسالة مزعجة",
   "Spam threshold": "حد الرسائل المزعجة",
-  "Spam {n}%": "مزعج {n}%"
+  "Spam {n}%": "مزعج {n}%",
+  "Open this link?": "هل تفتح هذا الرابط؟",
+  "A link's text can say anything. This one goes to:": "يمكن لنص الرابط أن يقول أي شيء. هذا الرابط يذهب إلى:",
+  "Only open it if you trust this site.": "لا تفتحه إلا إذا كنت تثق بهذا الموقع.",
+  "Open link": "افتح الرابط"
 }

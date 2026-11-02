@@ -769,7 +769,8 @@ small.warn { color: var(--warn); }
 .look.on .profile + .tabs { border: 0; }
 /* the rest of the page stays readable over a busy background */
 :root[data-look] .side, :root[data-look] .extra { background: color-mix(in srgb, var(--bg) 85%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-:root[data-look] .extra { padding-inline-end: 16px; }
+/* the right column's panel (a look's, or a theme's with a picture or effects) keeps as much room on its right as on its left */
+:root:is([data-look], [data-th-img], [data-th-fx]) .extra { padding-inline-end: 24px; }
 .lk-banner { display: block; width: calc(100% + 32px); max-width: none; margin: -16px -16px 12px; max-height: 220px; object-fit: cover; }
 .lk-mood { margin-top: 6px; font-size: 0.93em; }
 .lk-mood b { color: var(--muted); font-weight: 600; }
@@ -1066,6 +1067,11 @@ body:has(.space-bar) .dock { bottom: calc(84px + env(safe-area-inset-bottom)); }
 .wallet-row .phrase { margin: 0; }
 .wallet-form { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-height: 92vh; overflow-y: auto; }
 .wallet-form h2 { margin: 0; font-size: 19px; }
+.link-sheet { max-width: 440px; }
+.link-sheet p { margin: 0; }
+.link-dest { padding: 10px 12px; background: var(--soft); border-radius: calc(10px * var(--rs, 1)); overflow-wrap: anywhere; color: var(--muted); font-size: 14px; }
+.link-dest b { color: var(--ink); font-size: 16px; }
+.link-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .wallet-form textarea { font-size: 15px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); padding: 8px 10px; min-height: 76px; background: var(--card); font-family: ui-monospace, monospace; }
 .wallet-index { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--muted); }
 .wallet-index input { width: 80px; }

@@ -1085,5 +1085,9 @@
   "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "是垃圾信息的可能性不低于此值的投稿会带上标注概率的标签，或被隐藏。我们自己的 Laya 模型会读取每条新投稿。",
   "How likely spam.quilcast.com thinks this cast is spam": "spam.quilcast.com 判断此投稿为垃圾信息的可能性",
   "Spam threshold": "垃圾信息阈值",
-  "Spam {n}%": "垃圾 {n}%"
+  "Spam {n}%": "垃圾 {n}%",
+  "Open this link?": "打开此链接？",
+  "A link's text can say anything. This one goes to:": "链接文字可以写成任何内容。此链接实际指向：",
+  "Only open it if you trust this site.": "仅在你信任此网站时打开。",
+  "Open link": "打开链接"
 }

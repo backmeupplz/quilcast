@@ -1085,5 +1085,9 @@
   "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "Cast yang setidaknya sebesar ini kemungkinannya spam diberi label beserta peluangnya, atau disembunyikan. Model Laya milik kami membaca setiap cast baru.",
   "How likely spam.quilcast.com thinks this cast is spam": "Seberapa besar kemungkinan cast ini spam menurut spam.quilcast.com",
   "Spam threshold": "Ambang spam",
-  "Spam {n}%": "Spam {n}%"
+  "Spam {n}%": "Spam {n}%",
+  "Open this link?": "Buka tautan ini?",
+  "A link's text can say anything. This one goes to:": "Teks tautan bisa bertuliskan apa saja. Tautan ini menuju ke:",
+  "Only open it if you trust this site.": "Buka hanya jika kamu memercayai situs ini.",
+  "Open link": "Buka tautan"
 }

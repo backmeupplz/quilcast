@@ -9,7 +9,7 @@ import { createServer } from 'node:http'
 import { extname, join, normalize, relative } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, imagesIn, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
+import { castText, imagesIn, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { clientIp, fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
@@ -1131,6 +1131,21 @@ createServer(async (req, res) => {
       const r = await leadImg(u).catch(() => null)
       if (!r) return res.writeHead(302, { location: u }).end()
       return res.writeHead(200, { 'content-type': r.type, 'content-length': r.body.length, 'cache-control': 'public, max-age=31536000, immutable' }).end(r.body)
+    }
+
+    // A Markdown picture in a cast (shared.ts markdown), fetched here so its host never sees who is reading (no
+    // tracking pixels) and can't point a reader's browser at their own network: public addresses only (safeGet, also
+    // after redirects), a real PNG, JPEG, GIF or WebP by its bytes, at most 8 MB and 50 megapixels, served inert.
+    // ponytail: no cache of our own, each view fetches it again; keep() the small ones if traffic grows
+    if (path === '/api/img') {
+      const target = safeUrl(url.searchParams.get('u'))
+      if (!target || target.length > 2048) return res.writeHead(400).end()
+      if (limited(`img:${ip}`, 300)) return res.writeHead(429).end()
+      const r = await previews(() => safeGet(target, { max: 8e6, timeout: 8000 })).catch(() => null)
+      const info = r?.status === 200 && !r.truncated && imageInfo(r.body)
+      if (!info || info.w * info.h > 50e6) return res.writeHead(404).end()
+      res.setHeader('content-security-policy', "default-src 'none'; sandbox")
+      return res.writeHead(200, { 'content-type': info.type, 'content-length': r.body.length, 'cache-control': 'public, max-age=86400' }).end(r.body)
     }
 
     if (path === '/api/poster') {

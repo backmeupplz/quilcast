@@ -494,7 +494,7 @@ export const shortUrl = (s: string) => ((s = s.replace(/^https?:\/\/(www\.)?/, '
 
 // --- cast text as HTML (ui.tsx RichText, server/home.mjs) ---
 const html = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
-const ext = (u: string, label: string) => `<a href="${html(u)}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
+const ext = (u: string, label: string, cls = '') => `<a${cls && ` class="${cls}"`} href="${html(u)}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
 /** Plain text with its links, @mentions and /channels made live, as HTML. */
 export const linkify = (text: string) =>
   text.split(TOKENS).map((p, i) => {
@@ -519,6 +519,10 @@ const INLINE = new RegExp([
   /(?<!\w)_(?=[^\s_])(?<em2>[\s\S]*?[^\s_])_(?!\w)/.source,
 ].join('|'), 'gi')
 
+/** Where a Markdown picture loads from: Farcaster's image CDN (where the app's own uploads go) as it is, anything else
+ *  through our /api/img (server/index.mjs), so the picture's host never sees who is reading. */
+export const pictureSrc = (u: string) => (/^https:\/\/imagedelivery\.net\//.test(u) ? u : `/api/img?u=${encodeURIComponent(u)}`)
+
 function inline(s: string): string {
   let out = ''
   let at = 0
@@ -530,10 +534,11 @@ function inline(s: string): string {
     if (g.code !== undefined) out += `<code>${html(g.code.replace(/^ (.*[^ ].*) $/s, '$1'))}</code>`
     else if (g.src !== undefined) {
       const u = safeUrl(g.src)
-      out += u ? `<img class="md-img" src="${html(u.replace(/^http:/, 'https:'))}" alt="${html(g.alt)}" loading="lazy" referrerpolicy="no-referrer">` : html(g.alt)
+      out += u ? `<img class="md-img" src="${html(pictureSrc(u))}" alt="${html(g.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : html(g.alt)
     } else if (g.label !== undefined) {
       const u = safeUrl(g.href)
-      out += u ? ext(u, inline(g.label)) : inline(g.label)
+      // its text can say anything, so the app shows where it really goes before opening it (ui.tsx LinkSheet)
+      out += u ? ext(u, inline(g.label), 'md-link') : inline(g.label)
     } else if (g.token !== undefined) out += linkify(g.token)
     else if ((g.bold ?? g.bold2) !== undefined) out += `<strong>${inline(g.bold ?? g.bold2)}</strong>`
     else if (g.strike !== undefined) out += `<s>${inline(g.strike)}</s>`

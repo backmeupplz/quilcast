@@ -1085,5 +1085,9 @@
   "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "Casty, które co najmniej z takim prawdopodobieństwem są spamem, dostają etykietę z prawdopodobieństwem albo są ukrywane. Nasz własny model Laya czyta każdy nowy cast.",
   "How likely spam.quilcast.com thinks this cast is spam": "Jak bardzo prawdopodobne według spam.quilcast.com jest, że ten cast to spam",
   "Spam threshold": "Próg spamu",
-  "Spam {n}%": "Spam {n}%"
+  "Spam {n}%": "Spam {n}%",
+  "Open this link?": "Otworzyć ten link?",
+  "A link's text can say anything. This one goes to:": "Tekst linku może mówić cokolwiek. Ten prowadzi do:",
+  "Only open it if you trust this site.": "Otwórz go tylko, jeśli ufasz tej stronie.",
+  "Open link": "Otwórz link"
 }

@@ -13,10 +13,13 @@ test('inline formatting', () => {
   assert.equal(md('**b** *i* _i_ __b__ ~~s~~ `a*b*`'), '<strong>b</strong> <em>i</em> <em>i</em> <strong>b</strong> <s>s</s> <code>a*b*</code>')
   assert.equal(md('**bold *and em***'), '<strong>bold <em>and em</em></strong>')
   assert.equal(md('x https://a.com/a_b_c_ y'), 'x <a href="https://a.com/a_b_c_" target="_blank" rel="noopener noreferrer nofollow">a.com/a_b_c_</a> y')
-  assert.equal(md('[**docs**](https://a.com/d)'), '<a href="https://a.com/d" target="_blank" rel="noopener noreferrer nofollow"><strong>docs</strong></a>')
+  assert.equal(md('[**docs**](https://a.com/d)'), '<a class="md-link" href="https://a.com/d" target="_blank" rel="noopener noreferrer nofollow"><strong>docs</strong></a>')
   assert.equal(md('[x](javascript:alert(1))'), '[x](javascript:alert(1))')
   assert.equal(md('[x](http://localhost/a)'), 'x')
-  assert.equal(md('see ![a cat](http://i.imgur.com/c.png) and ![x](javascript:1)'), 'see <img class="md-img" src="https://i.imgur.com/c.png" alt="a cat" loading="lazy" referrerpolicy="no-referrer"> and x')
+  assert.equal(md('see ![a cat](http://i.imgur.com/c.png) and ![x](javascript:1)'), 'see <img class="md-img" src="/api/img?u=http%3A%2F%2Fi.imgur.com%2Fc.png" alt="a cat" loading="lazy" decoding="async" referrerpolicy="no-referrer"> and x')
+  assert.match(md('![](https://imagedelivery.net/a/b/original)'), /src="https:\/\/imagedelivery\.net\/a\/b\/original"/)
+  assert.match(md('[x](https://a.com) https://b.com @dwr'), /^(?:[^<]*<a [^>]*>[^<]*<\/a>){3}$/)
+  for (const a of md('[x](https://a.com) https://b.com').match(/<a [^>]*>/g)!) assert.match(a, /rel="noopener noreferrer nofollow"/)
 })
 
 test('a Markdown picture is not an embed too', async () => {

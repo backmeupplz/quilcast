@@ -1085,5 +1085,9 @@
   "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "스팸일 가능성이 이 값 이상인 캐스트는 확률이 적힌 라벨이 붙거나 숨겨집니다. 자체 Laya 모델이 모든 새 캐스트를 읽습니다.",
   "How likely spam.quilcast.com thinks this cast is spam": "spam.quilcast.com이 판단한 이 캐스트의 스팸 가능성",
   "Spam threshold": "스팸 기준값",
-  "Spam {n}%": "스팸 {n}%"
+  "Spam {n}%": "스팸 {n}%",
+  "Open this link?": "이 링크를 열까요?",
+  "A link's text can say anything. This one goes to:": "링크 텍스트는 무엇이든 쓸 수 있어요. 이 링크의 실제 주소:",
+  "Only open it if you trust this site.": "이 사이트를 신뢰할 때만 여세요.",
+  "Open link": "링크 열기"
 }

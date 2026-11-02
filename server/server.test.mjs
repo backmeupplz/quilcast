@@ -308,6 +308,10 @@ test('media is served inert, with sane ranges', async () => {
   assert.equal((await fetch(`${base}/m/0123456789abcdef01234567.html`)).status, 404)
 })
 
+test('Markdown pictures come through /api/img only from public addresses', async () => {
+  for (const u of ['http://127.0.0.1:1/a.png', 'http://192.168.1.1/a.png', 'javascript:alert(1)', 'file:///etc/passwd', '']) assert.equal((await fetch(`${base}/api/img?u=${encodeURIComponent(u)}`)).status, 400, u)
+})
+
 test('upload start rejects prototype keys and unknown types', async () => {
   for (const type of ['__proto__', 'constructor', 'text/html', 'image/svg+xml'])
     assert.equal((await fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': type, 'x-size': '10' } })).status, 415, type)

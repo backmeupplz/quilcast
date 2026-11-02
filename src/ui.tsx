@@ -18,6 +18,8 @@ export const shell = {
   // text, embeds and onDone come from mini apps; onDone gets the new cast's hash, or null if nothing was posted
   compose: (_: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void } = {}) => {},
   view: (_urls: string[], _index: number) => {},
+  // a Markdown link's real address, asked about before it opens (LinkSheet)
+  link: (_url: string) => false,
   // the account indicator in page headers (app.tsx), for phones
   me: (): ComponentChildren => null,
   // the open mini apps (miniapp.tsx keeps these current and fires 'dock'); the dock shows them next to the pinned ones
@@ -165,7 +167,14 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
 export function RichText({ text, class: cls = 'text', plain }: { text: string; class?: string; plain?: boolean }) {
   // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round. A link's click is
   // the link's, not the card's around it.
-  return <div class={cls} dir="auto" onClick={(e) => (e.target as Element).closest('a') && stop(e)} dangerouslySetInnerHTML={{ __html: plain ? linkify(text) : markdown(text) }} />
+  const click = (e: MouseEvent) => {
+    const a = (e.target as Element).closest('a')
+    if (!a) return
+    stop(e)
+    // a [label](url) link to another site first shows where it really goes
+    if (a.classList.contains('md-link') && a.host !== location.host && shell.link(a.href)) e.preventDefault()
+  }
+  return <div class={cls} dir="auto" onClick={click} dangerouslySetInnerHTML={{ __html: plain ? linkify(text) : markdown(text) }} />
 }
 
 // long text in feeds folds at 10 lines; the button shows only when something is cut
@@ -753,6 +762,35 @@ const REASONS = (): [string, string][] => [['spam', t('Spam')], ['abuse', t('Har
 
 /** The ⋯ menu's Report: why, an optional note, and blocking them too. It goes to our server, which sends it to us
  *  (server/report.mjs), so reporting works without leaving the app or having email set up. */
+/** "Open this link?": a Markdown link's text can say anything ([google.com](https://not-google.example)), so before
+ *  one opens it shows the address it really goes to, its host first (as punycode, so look-alike letters show). */
+export function LinkSheet() {
+  const [u, setU] = useState<URL | null>(null)
+  shell.link = (href) => (setU(new URL(href)), true)
+  useEffect(() => {
+    if (!u) return
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setU(null)
+    addEventListener('keydown', key)
+    return () => removeEventListener('keydown', key)
+  }, [u])
+  if (!u) return null
+  const close = () => setU(null)
+  return (
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && close()}>
+      <div class="sheet wallet-form link-sheet" role="alertdialog" aria-modal="true" aria-labelledby="link-sheet-h">
+        <h2 id="link-sheet-h">{t('Open this link?')}</h2>
+        <p>{t("A link's text can say anything. This one goes to:")}</p>
+        <p class="link-dest"><b>{u.host}</b>{u.href.slice(u.origin.length) === '/' ? '' : u.href.slice(u.origin.length)}</p>
+        <p class="muted">{t('Only open it if you trust this site.')}</p>
+        <div class="link-actions">
+          <button class="btn ghost" onClick={close}>{t('Cancel')}</button>
+          <a class="btn" href={u.href} target="_blank" rel="noopener noreferrer nofollow" onClick={close}>{t('Open link')}</a>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ReportSheet() {
   const [q, setQ] = useState<{ u: User; c?: Cast } | null>(null)
   const [reason, setReason] = useState('')

@@ -1085,5 +1085,9 @@
   "Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.": "Các cast có khả năng là spam ít nhất bằng mức này sẽ có nhãn kèm xác suất, hoặc bị ẩn. Mô hình Laya của chúng tôi đọc mọi cast mới.",
   "How likely spam.quilcast.com thinks this cast is spam": "Khả năng cast này là spam theo spam.quilcast.com",
   "Spam threshold": "Ngưỡng spam",
-  "Spam {n}%": "Spam {n}%"
+  "Spam {n}%": "Spam {n}%",
+  "Open this link?": "Mở liên kết này?",
+  "A link's text can say anything. This one goes to:": "Chữ của liên kết có thể ghi bất cứ điều gì. Liên kết này dẫn đến:",
+  "Only open it if you trust this site.": "Chỉ mở nếu bạn tin tưởng trang này.",
+  "Open link": "Mở liên kết"
 }
