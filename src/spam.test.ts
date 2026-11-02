@@ -15,7 +15,7 @@ test('scores are fetched once, labelled over the threshold, hidden only in Hide 
   await checkSpam([a, b])
   assert.deepEqual(asked, ['https://spam.quilcast.com/scores?h=0xa,0xb,0xc'], 'a known score is not asked for again')
   assert.equal(spamOf(a), 97)
-  assert.equal(spamOf(b), null, 'under the 90% default')
+  assert.equal(spamOf(b), null, 'under the 70% default')
   settings.spamAt = 50
   assert.equal(spamOf(b), 50)
   assert.equal(spamOf(c), null, 'not scored')

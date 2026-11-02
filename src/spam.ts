@@ -24,5 +24,5 @@ export function spamOf(c: Cast) {
   const s = scores.get(c.hash)
   return s != null && s * 100 >= spamAt() ? Math.round(s * 100) : null
 }
-export const spamAt = () => settings.spamAt ?? 90
+export const spamAt = () => settings.spamAt ?? 70
 export const hidesSpam = (c: Cast) => settings.spam === 'hide' && spamOf(c) != null
