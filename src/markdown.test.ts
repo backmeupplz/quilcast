@@ -117,6 +117,9 @@ test('inline formatting', () => {
   assert.equal(md('[x](http://localhost/a)'), 'x')
   assert.equal(md('see ![a cat](http://i.imgur.com/c.png) and ![x](javascript:1)'), 'see <img class="md-img" src="/api/img?u=http%3A%2F%2Fi.imgur.com%2Fc.png" alt="a cat" loading="lazy" decoding="async" referrerpolicy="no-referrer"> and x')
   assert.match(md('![](https://imagedelivery.net/a/b/original)'), /src="https:\/\/imagedelivery\.net\/a\/b\/original"/)
+  // the app's own uploads that stay on our server load straight from it too; a look-alike host still goes through /api/img
+  assert.match(md('![](https://quilcast.com/m/0123456789abcdef01234567.png)'), /src="https:\/\/quilcast\.com\/m\/0123456789abcdef01234567\.png"/)
+  assert.match(md('![](https://quilcast.com.evil.com/m/a.png)'), /src="\/api\/img\?u=/)
   assert.match(md('[x](https://a.com) https://b.com @dwr'), /^(?:[^<]*<a [^>]*>[^<]*<\/a>){3}$/)
   for (const a of md('[x](https://a.com) https://b.com').match(/<a [^>]*>/g)!) assert.match(a, /rel="noopener noreferrer nofollow"/)
 })
@@ -163,6 +166,77 @@ test('the composer formatting buttons', async () => {
   assert.equal(f('[- two\n- three]', { line: '- ' }), '[two\nthree]')
   assert.equal(f('[- two\nthree]', { line: '1. ' }), '[1. two\n2. three]')
   assert.equal(f('x\n[ti]tle', { line: '## ' }), 'x\n[## title]')
+  // a picture goes on a line of its own, the selection as its alt text, the caret after it
+  assert.equal(f('one[]two', { picture: 'up:1' }), 'one\n![](up:1)\n[]two')
+  assert.equal(f('one\n[]\ntwo', { picture: 'up:1' }), 'one\n![](up:1)[]\ntwo')
+  assert.equal(f('[]', { picture: 'up:1' }), '![](up:1)[]')
+  assert.equal(f('see [a cat]\nend', { picture: 'up:1' }), 'see \n![a cat](up:1)[]\nend')
+  assert.equal(format('[a]\nb', 0, 5, { picture: 'up:1' })[0], '![a b](up:1)')
+})
+
+test('a picture put in by the composer, once its upload is done', async () => {
+  const { format, settlePicture, imagesIn, urlsOf } = await import('./shared.ts')
+  const url = 'https://imagedelivery.net/a/b/original'
+  // two pictures between paragraphs, put in one after the other
+  let [text, a] = format('Intro\n\nOutro', 6, 6, { picture: 'uploading:a' })
+  const putA = text.slice(6, a)
+  ;[text] = format(text, a, a, { picture: 'uploading:b' })
+  assert.equal(text, 'Intro\n![](uploading:a)\n![](uploading:b)\nOutro')
+  // still uploading, the token is no link and no picture: nothing is shown or embedded for it
+  assert.deepEqual(imagesIn(text), [])
+  assert.equal(md(text).includes('uploading'), false)
+  text = settlePicture(text, 'uploading:b', url)
+  assert.equal(text, `Intro\n![](uploading:a)\n![](${url})\nOutro`)
+  // a failed one is taken out as it went in
+  text = settlePicture(text, 'uploading:a', undefined, putA)
+  assert.equal(text, `Intro\n\n![](${url})\nOutro`)
+  // the reader's Quilcast shows it in place and doesn't embed it again
+  assert.match(md(text), /^Intro\n\n<img class="md-img" src="https:\/\/imagedelivery\.net\/a\/b\/original"/)
+  assert.deepEqual(urlsOf({ text, embeds: [{ url }] }), [])
+  // one the author already deleted from the text stays deleted
+  assert.equal(settlePicture('gone', 'uploading:c', url), 'gone')
+  // one that failed or was taken out leaves its alt text where it was: the author's selection, or what the brackets hold now
+  assert.equal(settlePicture('![alt](uploading:d) end', 'uploading:d'), 'alt end')
+  let [cat] = format('see a cat\nend', 4, 9, { picture: 'uploading:k' })
+  assert.equal(cat, 'see \n![a cat](uploading:k)\nend')
+  assert.equal(settlePicture(cat, 'uploading:k', undefined, cat.slice(4, -4), 'a cat'), 'see a cat\nend')
+  ;[cat] = format('see [a]\nb cat', 4, 13, { picture: 'uploading:m' })
+  assert.equal(settlePicture(cat, 'uploading:m', undefined, cat.slice(4), '[a]\nb cat'), 'see [a]\nb cat')
+  assert.equal(settlePicture('see \n![a big cat](uploading:n)\nend!', 'uploading:n', undefined, '\n![a cat](uploading:n)\n', 'a cat'), 'see \na big cat\nend!')
+  // a failed one comes out as it went in, line breaks and all; one edited since only as far as its own line goes
+  const [put] = format('onetwo', 3, 3, { picture: 'uploading:e' })
+  assert.equal(settlePicture(put, 'uploading:e', undefined, put.slice(3, -3)), 'onetwo')
+  assert.equal(settlePicture('![a](x)\nalt](uploading:f)\nb', 'uploading:f', undefined, '\n![alt](uploading:f)\n'), '![a](x)\nalt\nb')
+  // two put in one after the other share a line break, so the second keeps its line when the first fails
+  let [two, c] = format('onetwo', 3, 3, { picture: 'uploading:g' })
+  const putG = two.slice(3, c)
+  ;[two] = format(two, c, c, { picture: 'uploading:h' })
+  assert.equal(two, 'one\n![](uploading:g)\n![](uploading:h)\ntwo')
+  assert.equal(settlePicture(two, 'uploading:g', undefined, putG), 'one\n![](uploading:h)\ntwo')
+  // and with the selection back, the second still keeps its line
+  ;[two, c] = format('one cat', 4, 7, { picture: 'uploading:p' })
+  const putP = two.slice(4, c)
+  ;[two] = format(two, c, c, { picture: 'uploading:q' })
+  assert.equal(settlePicture(two, 'uploading:p', undefined, putP, 'cat'), 'one cat\n![](uploading:q)')
+})
+
+test('the caret is found again after a picture finished uploading somewhere else in the post', async () => {
+  const { remap } = await import('./shared.ts')
+  const url = 'https://imagedelivery.net/a/b/original'
+  const was = 'one\n![](uploading:a)\ntwo three'
+  const now = was.replace('uploading:a', url)
+  // after the picture: moved along with the text after it, a selection kept whole
+  const t = was.indexOf('two')
+  assert.deepEqual(remap(was, t, t + 3, now), [now.indexOf('two'), now.indexOf('two') + 3])
+  // before it: stays
+  assert.deepEqual(remap(was, 1, 2, now), [1, 2])
+  assert.deepEqual(remap(was, 0, 0, now), [0, 0])
+  // at the end
+  assert.deepEqual(remap(was, was.length, was.length, now), [now.length, now.length])
+  // right before what changed it stays, in the middle of it it goes to the end
+  assert.deepEqual(remap(was, 8, 8, now), [8, 8])
+  assert.deepEqual(remap(was, 12, 12, now), [now.length, now.length])
+  assert.deepEqual(remap(was, 5, 7, was), [5, 7])
 })
 
 test('styled: each character of the card text knows how it looked', async () => {

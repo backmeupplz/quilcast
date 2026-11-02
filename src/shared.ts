@@ -9,8 +9,13 @@ export const embedRoom = (files: number, fixed: number) => Math.max(0, MAX_EMBED
 /** A post's attachments plus a picked GIF, which is Tenor's own URL (src/gifs.tsx, nothing is uploaded); the same
  *  attachments when the post has no room left. */
 export const withGif = <F extends { url?: string }>(files: F[], fixed: number, gif: F) => (embedRoom(files.length, fixed) ? [...files, gif] : files)
-/** A composer post's media embeds: the fixed ones, then its attachments (write.ts post adds the quote and links). */
-export const postMedia = (fixed: string[], files: { url?: string }[]) => [...fixed, ...files.map((f) => f.url!)]
+/** A composer post's media embeds: the fixed ones, then its attachments (write.ts post adds the quote and links), less
+ *  any the post's text already shows as a Markdown picture. */
+export const postMedia = (fixed: string[], files: { url?: string }[], text = '') => [...fixed, ...files.map((f) => f.url!).filter((u) => !imagesIn(text).includes(safeUrl(u) ?? u))]
+/** How many of a post's attachments go out as embeds, so how many slots its links don't get (the composer's link cards):
+ *  the ones postMedia sends. Uploads are named by their content, so one the text also shows as a picture has the
+ *  picture's URL and isn't sent. The room for attachments still counts them all (compose.tsx `room`). */
+export const sentFiles = (files: { url?: string }[], text = '') => postMedia([], files, text).length
 export const isVid = (u: string) => /\.(m3u8|mp4|webm|mov)(\?|$)/i.test(u)
 
 /** How a cast's embeds sit (ui.tsx Embeds, server/home.mjs): its pictures (one tile, however many) and videos side by
@@ -445,11 +450,47 @@ export const toUrl = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}
 export const urlsOf = (c: { text?: string; embeds?: { url?: string }[] }) => {
   // less the pictures the text already shows with Markdown (other clients still get them as embeds)
   const shown = new Set(imagesIn(c.text || ''))
-  const urls = c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : (c.text?.match(LINK_RE) || []).filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
+  const urls = c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : typed(c.text || '').filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
   return urls.filter((u) => !shown.has(u))
 }
+/** A new cast's embeds (write.ts post), at most MAX_EMBEDS: its media and a quoted cast first, then links from its text,
+ *  less the pictures the text shows with Markdown. Readers' Quilcast hides those (urlsOf), so they'd only take a slot. */
+export const castEmbeds = <Q>(text: string, media: string[], quote?: Q) => {
+  const out: (string | Q)[] = [...media, ...(quote ? [quote] : [])]
+  for (const u of textLinks(text)) if (out.length < MAX_EMBEDS) out.push(u)
+  return out.slice(0, MAX_EMBEDS)
+}
+/** The links typed in a text, as castEmbeds embeds them and the composer shows their cards: less the pictures the text
+ *  shows with Markdown, compared as safeUrl puts them (imagesIn), so https://A.com and ![](https://a.com) are one. */
+export const textLinks = (text: string) => {
+  const shown = new Set(imagesIn(text))
+  return [...new Set(typed(text).map(toUrl))].filter((u) => !shown.has(safeUrl(u) ?? u))
+}
+/** A Markdown picture, ![alt](url), as markdown() reads it (INLINE). */
+const PICTURE = /!\[[^\]\n]*\]\(([^\s()]+)\)/g
+/** The links typed in a text, less any that starts inside a Markdown picture's ![…](…): that's the picture's URL (or its
+ *  alt text), even with words stuck to its ")" (`![](https://…/original)nice`, or Japanese, which has no spaces). */
+const typed = (text: string) => {
+  const pics = [...text.matchAll(PICTURE)].map((m) => [m.index, m.index + m[0].length])
+  return [...text.matchAll(LINK_RE)].filter((m) => !pics.some(([a, b]) => m.index >= a && m.index < b)).map((m) => m[0])
+}
+/** The composer's stand-in for a picture still uploading, ![…](uploading:…) (see format's `picture`). */
+export const PICTURE_TOKEN = 'uploading:'
+// every token handed out on this page, so a broken-up stand-in is known by its token alone, and text that merely reads
+// like one ("uploading:complete") isn't
+const tokens = new Set<string>()
+/** A new stand-in's token: PICTURE_TOKEN and 8 letters or digits. */
+export const pictureToken = () => {
+  const token = PICTURE_TOKEN + Math.random().toString(36).slice(2, 10).padEnd(8, '0')
+  tokens.add(token)
+  return token
+}
+/** Whether a text still holds such a stand-in, even one the author broke up (its ![…]( gone, or its ] or ) deleted) or
+ *  moved to another post while it uploaded: that text is never sent or saved as a draft, as the stand-in would go out
+ *  as it's typed. */
+export const holdsPicture = (text: string) => text.includes(`](${PICTURE_TOKEN}`) || [...tokens].some((t) => text.includes(t))
 /** The pictures Markdown puts in a text, ![alt](url), as safe URLs. */
-export const imagesIn = (text: string) => [...text.matchAll(/!\[[^\]\n]*\]\(([^\s()]+)\)/g)].flatMap((m) => safeUrl(m[1]) ?? [])
+export const imagesIn = (text: string) => [...text.matchAll(PICTURE)].flatMap((m) => safeUrl(m[1]) ?? [])
 
 // URLs from casts, profiles and link previews are untrusted: Snapchain only checks their length, so
 // a "link" can be javascript:… or point at the viewer's own network. Only public http(s) gets through.
@@ -607,9 +648,9 @@ const INLINE = new RegExp([
   /(?<!\w)_(?=[^\s_])(?<em2>[\s\S]*?[^\s_])_(?!\w)/.source,
 ].join('|'), 'gu')
 
-/** Where a Markdown picture loads from: Farcaster's image CDN (where the app's own uploads go) as it is, anything else
+/** Where a Markdown picture loads from: Farcaster's image CDN and our own /m/ files (where the app's uploads go) as they are, anything else
  *  through our /api/img (server/index.mjs), so the picture's host never sees who is reading. */
-export const pictureSrc = (u: string) => (/^https:\/\/imagedelivery\.net\//.test(u) ? u : `/api/img?u=${encodeURIComponent(u)}`)
+export const pictureSrc = (u: string) => (/^https:\/\/(imagedelivery\.net|quilcast\.com\/m)\//.test(u) ? u : `/api/img?u=${encodeURIComponent(u)}`)
 
 function inline(s: string): string {
   let out = ''
@@ -646,12 +687,28 @@ const cells = (line: string) => line.replace(ROW, '$1').split(/(?<!\\)\|/).map((
 const isTable = (l: string, next = '') => l.includes('|') && next.includes('|') && DIVIDER.test(next) && cells(l).length === cells(next).length
 const starts = (l: string, next?: string) => FENCE.test(l) || HEADING.test(l) || RULE.test(l) || QUOTE.test(l) || ITEM.test(l) || isTable(l, next)
 
-export type Format = { mark: string } | { line: string } | { link: string }
+/** Where format's `picture` puts a new picture for the selection [start, end): there, unless the selection takes in a
+ *  picture still uploading (or is a caret inside one, or inside the token of one the author broke up), whose stand-in
+ *  would be broken up in the new one's alt text and never found again (settlePicture). That selection is let go, and
+ *  the picture goes in after it, with no alt text. */
+export function pictureSpot(text: string, start: number, end: number): [number, number] {
+  const ends = [...text.matchAll(new RegExp(`!\\[[^\\]\\n]*\\]\\(${PICTURE_TOKEN}[a-z0-9]+\\)|${PICTURE_TOKEN}[a-z0-9]+`, 'g'))]
+    .map((m) => [m.index, m.index + m[0].length])
+    .filter(([s, e]) => (start === end ? s < start && start < e : s < end && start < e))
+    .map(([, e]) => e)
+  if (!ends.length && !text.slice(start, end).includes(PICTURE_TOKEN)) return [start, end]
+  const at = Math.max(end, ...ends)
+  return [at, at]
+}
+
+export type Format = { mark: string } | { line: string } | { link: string } | { picture: string }
 /** What the composer's Markdown buttons do to the text and its selection [start, end), returning both after: `mark`
  *  wraps the selection in "**", "*", "~~" or "`" (or unwraps it when it's wrapped already), `line` starts each line
  *  the selection touches with "## ", "- ", "1. " or "> " (or takes it off when they all have it), and `link` makes
- *  the selection, or the given word, a link with its URL selected to paste over. */
+ *  the selection, or the given word, a link with its URL selected to paste over. `picture` puts ![selection](src) on a
+ *  line of its own, the selection as its alt text, with the caret after it, at its pictureSpot. */
 export function format(text: string, start: number, end: number, how: Format): [string, number, number] {
+  if ('picture' in how) [start, end] = pictureSpot(text, start, end)
   const sel = text.slice(start, end)
   if ('mark' in how) {
     const m = how.mark
@@ -659,6 +716,12 @@ export function format(text: string, start: number, end: number, how: Format): [
     if (text.slice(start - n, start) === m && text.slice(end, end + n) === m) return [text.slice(0, start - n) + sel + text.slice(end + n), start - n, end - n]
     if (sel.length >= 2 * n && sel.startsWith(m) && sel.endsWith(m)) return [text.slice(0, start) + sel.slice(n, -n) + text.slice(end), start, end - 2 * n]
     return [text.slice(0, start) + m + sel + m + text.slice(end), start + n, end + n]
+  }
+  if ('picture' in how) {
+    const before = text.slice(0, start)
+    const after = text.slice(end)
+    const pic = `${before && !before.endsWith('\n') ? '\n' : ''}![${sel.replace(/[[\]\n]+/g, ' ').trim()}](${how.picture})${after && !after.startsWith('\n') ? '\n' : ''}`
+    return [before + pic + after, start + pic.length, start + pic.length]
   }
   if ('link' in how) {
     const label = sel.trim() || how.link
@@ -674,6 +737,60 @@ export function format(text: string, start: number, end: number, how: Format): [
   const off = lines.every(has)
   const next = lines.map((l, i) => (off ? l.replace(/^(#{1,6} |> |[-*+] |\d+[.)] )/, '') : (ordered ? `${i + 1}. ` : how.line) + l.replace(/^(#{1,6} |> |[-*+] |\d+[.)] )/, ''))).join('\n')
   return [text.slice(0, from) + next + text.slice(to), from, from + next.length]
+}
+
+/** The composer's picture `token` (see format's `picture`) once its upload is done: the uploaded `url` in its place, or
+ *  with no url (it failed, or was taken out) the picture taken out again and its alt text left in its place: the `put`
+ *  text format() put in, line breaks and all, back to the `alt` selection it was made from when that's still there
+ *  whole, else the ![…](token) on its line down to the alt text it holds now. */
+export const settlePicture = (text: string, token: string, url?: string, put = '', alt = '') => {
+  const at = text.indexOf(`](${token})`)
+  if (at < 0) {
+    // the author broke its ![…](…) up while it uploaded: the token alone is still put right (the URL, or nothing), so it
+    // never goes out as it's typed, nor holds the post back (holdsPicture) once nothing is uploading for it any more
+    const bare = text.indexOf(token)
+    return bare < 0 ? text : text.slice(0, bare) + (url || '') + text.slice(bare + token.length)
+  }
+  if (url) return text.slice(0, at + 2) + url + text.slice(at + 2 + token.length)
+  if (put.includes(`](${token})`) && text.includes(put)) {
+    const i = text.indexOf(put)
+    const head = text.slice(0, i) + alt
+    const tail = text.slice(i + put.length)
+    // a picture put in right after this one shared its line break, which keeps it on a line of its own
+    return head + (head && !head.endsWith('\n') && tail.startsWith('![') ? '\n' : '') + tail
+  }
+  const from = text.lastIndexOf('![', at)
+  if (from > text.lastIndexOf('\n', at)) return text.slice(0, from) + text.slice(from + 2, at) + text.slice(at + token.length + 3)
+  return text.slice(0, at) + text.slice(at + token.length + 3)
+}
+
+/** At most `n` jobs at a time; the rest wait their turn, in order, each starting once one before it is done or failed. */
+export function queue(n: number) {
+  let busy = 0
+  const waiting: (() => void)[] = []
+  return async <T>(job: () => Promise<T>): Promise<T> => {
+    if (busy >= n) await new Promise<void>((go) => waiting.push(go))
+    else busy++
+    try {
+      return await job()
+    } finally {
+      // the slot passes straight to the next one waiting, so nothing new can take it in between
+      const next = waiting.shift()
+      if (next) next()
+      else busy--
+    }
+  }
+}
+
+/** Where a caret or selection [start, end) in `was` is in `now`, after an edit somewhere else in it (an upload done): by
+ *  the text after it, or else by the text before it, or else at the end. */
+export function remap(was: string, start: number, end: number, now: string): [number, number] {
+  if (was === now) return [start, end]
+  const sel = was.slice(start, end)
+  const tail = sel + was.slice(end)
+  if (now.endsWith(tail)) return [now.length - tail.length, now.length - was.length + end]
+  if (now.startsWith(was.slice(0, end))) return [start, end]
+  return [now.length, now.length]
 }
 
 /** How a character of styled() text looked, as bits: strong, em, code, a link (or mention, or channel), a heading's,

@@ -1,12 +1,12 @@
 // Signed writes: everything here needs the account's keys.
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { account, accounts, askUser, byName, forget, get, idOf, LINK_RE, myUser, posting, setAccount, settings, toUrl, updateAccount, users, type Account, type Cast } from './api.ts'
+import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting, setAccount, settings, updateAccount, users, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
 import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
-import { MAX_EMBEDS } from './shared.ts'
+import { castEmbeds, queue } from './shared.ts'
 
 /** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
  *  can remove it), from one the person types in for this one action, which isn't kept, not even in memory. */
@@ -178,17 +178,16 @@ const send = async (type: number, body: Uint8Array, as = account!) => {
 
 const fidByName = (name: string) => byName(name).then((u) => u.fid, () => undefined)
 
-/** A cast can carry MAX_EMBEDS embeds: uploads and a quoted cast first, then links from the text. */
+/** A cast can carry MAX_EMBEDS embeds: uploads and a quoted cast first, then links from the text (castEmbeds). */
 export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: string[]; as?: Account } = {}) {
   const m = await mentions(text, fidByName)
-  const embeds: (string | CastRef)[] = [...(o.media || []), ...(o.quote ? [o.quote] : [])]
-  for (const u of new Set((m.text.match(LINK_RE) || []).map(toUrl))) embeds.length < MAX_EMBEDS && embeds.push(u)
+  const embeds = castEmbeds(m.text, o.media || [], o.quote)
   const as = o.as || account!
-  const hash = await send(MT.CAST_ADD, castBody({ ...m, parent: o.parent || o.channel, embeds: embeds.slice(0, MAX_EMBEDS) }), as)
+  const hash = await send(MT.CAST_ADD, castBody({ ...m, parent: o.parent || o.channel, embeds }), as)
   const c: Cast = {
     hash, text, timestamp: new Date().toISOString(), author: idOf(as) === idOf(account!) ? myUser()! : users.get(as.fid!) || { fid: as.fid!, username: as.username },
     parent_hash: o.parent?.hash ?? null, parent_url: o.channel ?? null, parent_author: { fid: o.parent?.fid ?? null },
-    embeds: embeds.slice(0, MAX_EMBEDS).map((e) => (typeof e === 'string' ? { url: e } : { cast_id: e })),
+    embeds: embeds.map((e) => (typeof e === 'string' ? { url: e } : { cast_id: e })),
     reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 },
   }
   posting.set(hash, c)
@@ -238,8 +237,15 @@ async function login() {
   return { authorization: `Bearer eip191:${btoa(String.fromCharCode(...sig))}`, 'x-auth-request': JSON.stringify(authRequest) }
 }
 
-/** Upload a file in chunks through our server, which passes it to Farcaster's CDN (or keeps it). Returns the embed URL. */
-export async function upload(original: Blob, progress: Progress = () => {}) {
+// the server takes at most 3 uploads at a time from an account (server/upload.mjs MAX_ACTIVE_PER_FID), so the rest wait
+// here for their turn (several pictures picked at once, say, or attachments too) instead of failing
+const slot = queue(3)
+
+/** Upload a file in chunks through our server, which passes it to Farcaster's CDN (or keeps it). Returns the embed URL.
+ *  It waits its turn while 3 others are uploading; its progress starts once it's on its way. */
+export const upload = (original: Blob, progress: Progress = () => {}) => slot(() => uploadNow(original, progress))
+
+async function uploadNow(original: Blob, progress: Progress) {
   const file = await scrub(original)
   // the browser's key says who's uploading. A recovery phrase kept here also signs a farcaster.xyz login without asking
   // anyone, which gets the file onto Farcaster's CDN for accounts farcaster.xyz serves; nothing else asks the custody

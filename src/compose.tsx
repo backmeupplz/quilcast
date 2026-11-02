@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, accounts, findUsers, get, go, idOf, LINK_RE, loadUsers, myUser, toUrl, users, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, users, type Account, type Cast, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, format, n, isImg, isVid, linkify, markdown, postMedia, withGif, type Format } from './shared.ts'
+import { castText, embedRoom, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, withGif, type Format } from './shared.ts'
 import { ago, Avatar, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
 import type { Draft } from './write.ts'
 import { findChannels, getChannel, isMember, urlOf, type Channel } from './channels.ts'
@@ -70,9 +70,11 @@ function ChannelPicker({ value, set, fid }: { value?: string; set: (v?: string) 
   )
 }
 
-type Part = { id: number; text: string; files: Attachment[] }
+// pics: pictures being uploaded into the text (Markdown mode's picture button), each at its `token` until it's done;
+// `put` is what went into the text for it, made from the `alt` selection
+type Part = { id: number; text: string; files: Attachment[]; pics: (Attachment & { token: string; put: string; alt: string })[] }
 const LIMIT = 1024 // casts over 320 bytes go out as long casts, which allow up to 1024
-const newPart = (): Part => ({ id: Math.random(), text: '', files: [] })
+const newPart = (): Part => ({ id: Math.random(), text: '', files: [], pics: [] })
 
 // The iOS and Android apps may ask for a store rating once a few casts and replies went out: they count them and decide
 // (ios/Quilcast/RatingPrompt.swift, android/app/src/play/…/RatingPrompt.java). A browser or a Farcaster client has no
@@ -83,10 +85,19 @@ const sent = () => {
   const g = window as unknown as { webkit?: { messageHandlers?: { requestReview?: { postMessage(m: null): void } } }; QuilcastApp?: { requestReview(): void } }
   setTimeout(() => (g.webkit?.messageHandlers?.requestReview?.postMessage(null), g.QuilcastApp?.requestReview()), 2000)
 }
-const linksIn = (text: string) => [...new Set((text.match(LINK_RE) || []).map(toUrl))]
+// a picture still uploading will take this many bytes of the post once its URL is in (an imagedelivery.net one is ~95)
+const PIC = 100
+const used = (p: { text: string; pics: unknown[] }) => bytes(p.text) + p.pics.length * PIC
 // how the keyboard shortcuts read on this device
 const MOD = /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 const fmtLeft = (s?: number) => (s === undefined || !isFinite(s) ? '' : ' · ' + (s < 60 ? t('{n}s left', { n: Math.max(1, Math.round(s)) }) : t('{n} min left', { n: Math.round(s / 60) })))
+const Busy = ({ f }: { f: Attachment }) => (
+  <span class="att-busy">
+    <span class="spinner small" />
+    <span class="att-stage">{f.stage === 'processing' ? (f.video ? t('Processing video…') : t('Finishing…')) : t('Uploading {pct}%', { pct: f.pct ?? 0 }) + fmtLeft(f.left)}</span>
+    {f.stage !== 'processing' && <span class="att-bar"><i style={{ width: `${f.pct ?? 0}%` }} /></span>}
+  </span>
+)
 
 /** One post of a thread: text with @mention autocomplete, its attachments and the links it will embed. */
 function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus, attach, placeholder, remove, md }: {
@@ -101,7 +112,7 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
   useEffect(() => void (focus && ref.current?.focus()), [focus])
   // link previews follow the text once typing pauses
   useEffect(() => {
-    const t = setTimeout(() => setLinks(linksIn(part.text)), 600)
+    const t = setTimeout(() => setLinks(textLinks(part.text)), 600)
     return () => clearTimeout(t)
   }, [part.text])
   const findToken = (el: HTMLTextAreaElement) => {
@@ -135,7 +146,8 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
   }
   const grow = (el: HTMLTextAreaElement) => ((el.style.height = 'auto'), (el.style.height = el.scrollHeight + 'px'))
   useEffect(() => void (ref.current && grow(ref.current)), [part.text])
-  const slots = embedRoom(part.files.length, first ? +!!quote + embeds.length : 0)
+  // the link cards are the links castEmbeds sends: what's left after the attachments postMedia sends
+  const slots = embedRoom(sentFiles(part.files, part.text), first ? +!!quote + embeds.length : 0)
   return (
     <div class={`part${last ? '' : ' threaded'}`} onClick={onFocus}>
       <div class="editor">
@@ -161,15 +173,21 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
           {part.files.map((f) => (
             <div class={`att${f.err ? ' bad' : ''}`}>
               {f.video ? <video src={f.preview} muted /> : <img src={f.preview} alt="" />}
-              {!f.url && !f.err && (
-                <span class="att-busy">
-                  <span class="spinner small" />
-                  <span class="att-stage">{f.stage === 'processing' ? (f.video ? t('Processing video…') : t('Finishing…')) : t('Uploading {pct}%', { pct: f.pct ?? 0 }) + fmtLeft(f.left)}</span>
-                  {f.stage !== 'processing' && <span class="att-bar"><i style={{ width: `${f.pct ?? 0}%` }} /></span>}
-                </span>
-              )}
+              {!f.url && !f.err && <Busy f={f} />}
               {f.err && <span class="att-err">{t(f.err)}</span>}
               <button class="att-x" aria-label={t('Remove')} onClick={() => set({ files: part.files.filter((x) => x.id !== f.id) })}><Icon d={P.x} size={14} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      {/* pictures on their way into the text; the x takes one out of it again */}
+      {part.pics.length > 0 && (
+        <div class="attachments">
+          {part.pics.map((f) => (
+            <div class="att">
+              <img src={f.preview} alt="" />
+              <Busy f={f} />
+              <button class="att-x" aria-label={t('Remove')} onClick={() => set({ text: settlePicture(part.text, f.token, undefined, f.put, f.alt), pics: part.pics.filter((x) => x.id !== f.id) })}><Icon d={P.x} size={14} /></button>
             </div>
           ))}
         </div>
@@ -231,7 +249,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   const base = useRef<string>(undefined)
   base.current ??= snap(parts, channel)
   const empty = parts.every((p) => !p.text.trim() && !p.files.length)
-  const uploading = parts.some((p) => p.files.some((f) => !f.url && !f.err))
+  const uploading = parts.some((p) => p.pics.length || holdsPicture(p.text) || p.files.some((f) => !f.url && !f.err))
   // closing with something new in it asks first; asked twice, it goes back to editing
   const leave = () => (asking ? setAsking(false) : canDraft && !busy && !empty && snap(parts, channel) !== base.current ? setAsking(true) : onClose())
   const keep = async () => {
@@ -263,9 +281,9 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   // after a failed send took the posts that went out, `active` may point past the end
   const at = parts[active] ? active : 0
   const cur = parts[at]
-  const left = LIMIT - bytes(cur.text)
+  const left = LIMIT - used(cur)
   const filled = (p: Part, i: number) => p.text.trim() || p.files.length || fixed(i)
-  const ready = parts.every((p, i) => (filled(p, i) || (i > 0 && !p.text && !p.files.length)) && bytes(p.text) <= LIMIT && p.files.every((f) => f.url)) && filled(parts[0], 0)
+  const ready = parts.every((p, i) => (filled(p, i) || (i > 0 && !p.text && !p.files.length)) && bytes(p.text) <= LIMIT && p.files.every((f) => f.url) && !p.pics.length && !holdsPicture(p.text)) && filled(parts[0], 0)
 
   const attach = (list: FileList | null) => {
     const part = cur
@@ -291,6 +309,50 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
     update(cur.id, () => ({ text: next }))
     if (el) requestAnimationFrame(() => (el.focus(), el.setSelectionRange(a, b)))
   }
+  // Markdown mode's picture button: each picked image goes into the post at the caret, as ![selection](token) on a line
+  // of its own, and its token turns into the uploaded URL once upload() is done (EXIF stripped, as for attachments). It
+  // takes none of the attachments' room, and isn't embedded when the cast goes out (castEmbeds): other clients show the
+  // ![](…) as it's typed.
+  const picker = useRef<HTMLInputElement>(null)
+  // where the caret was when the button was pressed; other pictures may finish while the file dialog is up, so it's
+  // found again in the text as it is then (remap)
+  const picAt = useRef<{ el: HTMLTextAreaElement | null; part: number; text: string; start: number; end: number } | null>(null)
+  const pickPicture = () => {
+    const el = document.activeElement instanceof HTMLTextAreaElement ? document.activeElement : null
+    picAt.current = { el, part: cur.id, text: cur.text, start: el ? el.selectionStart : cur.text.length, end: el ? el.selectionEnd : cur.text.length }
+    picker.current?.click()
+  }
+  const pictures = (list: FileList | null) => {
+    const s = picAt.current
+    const part = parts.find((p) => p.id === s?.part)
+    const files = [...(list || [])].filter((f) => f.type.startsWith('image/'))
+    if (!s || !part || !files.length) return
+    let text = part.text
+    let [a, b] = remap(s.text, s.start, s.end, text)
+    const pics = files.map((file) => {
+      const token = pictureToken()
+      // not into the alt text of one still uploading: the new one goes after it (and so its put and alt are from there)
+      ;[a, b] = pictureSpot(text, a, b)
+      const was = a
+      const alt = text.slice(a, b)
+      ;[text, a, b] = format(text, a, b, { picture: token })
+      const pic = { id: Math.random(), token, put: text.slice(was, a), alt, preview: URL.createObjectURL(file), video: false }
+      const patch = (p: Partial<Attachment>) => update(part.id, (x) => ({ pics: x.pics.map((f) => (f.id === pic.id ? { ...f, ...p } : f)) }))
+      const done = (url?: string) => {
+        // setting the text moves a caret in it to the end, so one there is put back where it was
+        const el = document.activeElement instanceof HTMLTextAreaElement && document.activeElement.value.includes(token) ? document.activeElement : null
+        const at = el && ([el.value, el.selectionStart, el.selectionEnd] as const)
+        update(part.id, (x) => ({ text: settlePicture(x.text, token, url, pic.put, pic.alt), pics: x.pics.filter((f) => f.id !== pic.id) }))
+        if (el && at) requestAnimationFrame(() => document.activeElement === el && el.setSelectionRange(...remap(...at, el.value)))
+      }
+      w()
+        .then((m) => m.upload(file, (stage, f, secs) => patch({ stage, pct: f === undefined ? undefined : Math.round(f * 100), left: secs })))
+        .then((url) => done(url), (e) => (done(), toast(e.message)))
+      return pic
+    })
+    update(part.id, (x) => ({ text, pics: [...x.pics, ...pics] }))
+    if (s.el?.isConnected) requestAnimationFrame(() => (s.el!.focus(), s.el!.setSelectionRange(a, b)))
+  }
   // ⌘B / Ctrl+B and ⌘I / Ctrl+I in a post: bold and italic, like the buttons. The letter is the one typed, or for a
   // layout without Latin letters (Russian, say) the key where B or I sits.
   const shortcut = (e: KeyboardEvent) => {
@@ -303,16 +365,16 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   // Where the caret was, read on mousedown: by the time the click lands the focus has left the textarea, so an
   // emoji would otherwise go on the end. The textarea is only hidden while the picker is up, never unmounted,
   // so holding on to it is safe.
-  const spot = useRef<{ el: HTMLTextAreaElement; start: number; end: number } | null>(null)
+  const spot = useRef<{ el: HTMLTextAreaElement; text: string; start: number; end: number } | null>(null)
   const grabCaret = () => {
     const el = document.activeElement
-    spot.current = el instanceof HTMLTextAreaElement ? { el, start: el.selectionStart, end: el.selectionEnd } : null
+    spot.current = el instanceof HTMLTextAreaElement ? { el, text: el.value, start: el.selectionStart, end: el.selectionEnd } : null
   }
   const openEmoji = () => import('./emoji.tsx').then(setEmoji, () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.'))
   const insert = (ch: string) => {
     const s = spot.current
-    const from = Math.min(s ? s.start : cur.text.length, cur.text.length)
-    const to = Math.min(s ? s.end : cur.text.length, cur.text.length)
+    // a picture may have finished uploading while the picker was up
+    const [from, to] = s ? remap(s.text, s.start, s.end, cur.text) : [cur.text.length, cur.text.length]
     update(cur.id, (x) => ({ text: x.text.slice(0, from) + ch + x.text.slice(to) }))
     setEmoji(null)
     // back to the post with the caret after what was just put in
@@ -328,6 +390,8 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
     update(part.id, (x) => ({ files: withGif(x.files, fixed(at), { id: Math.random(), preview: url, video: false, url }) }))
     setGifs(false)
   }
+  // every attachment counts here, even one the text shows inline (not sent, see slots): the author may take that picture
+  // out of the text again, and then all of them go out, never more than MAX_EMBEDS
   const room = busy ? 0 : embedRoom(cur.files.length, fixed(at))
   const add = () => (setParts((ps) => [...ps, newPart()]), setActive(parts.length))
   const send = async () => {
@@ -343,7 +407,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
           parent: prev,
           channel: i === 0 && !parent && channel ? await urlOf(channel) : undefined,
           quote: i === 0 && quote ? { fid: quote.author.fid, hash: quote.hash } : undefined,
-          media: postMedia(i === 0 ? embeds : [], p.files),
+          media: postMedia(i === 0 ? embeds : [], p.files, p.text),
           as,
         })
         first ||= hash
@@ -408,6 +472,8 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
             ] as [string, any, Format, string?][]).map(([label, face, how, key]) => (
               <button class="icon-btn" aria-label={label} aria-keyshortcuts={key && `${MOD === '⌘' ? 'Meta' : 'Control'}+${key}`} title={key ? `${label} (${MOD}${key})` : label} onClick={() => fmt(how)}>{face}</button>
             ))}
+            <input ref={picker} type="file" accept="image/*" multiple hidden onChange={(e) => (pictures(e.currentTarget.files), (e.currentTarget.value = ''))} />
+            <button class="icon-btn" aria-label={t('Image')} title={t('Image')} disabled={busy} onClick={pickPicture}><Icon d={P.image} size={18} /></button>
           </div>
         )}
         <div class="toolbar" hidden={gifs || drafts || !!emoji}>
@@ -417,8 +483,8 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
           <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
           <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
           {!parent && <ChannelPicker value={channel} set={setChannel} fid={as.fid} />}
-          <span class={`count${left < 50 ? ' warn' : ''}`} title={bytes(cur.text) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
-            {bytes(cur.text) > 280 ? left : ''}
+          <span class={`count${left < 50 ? ' warn' : ''}`} title={used(cur) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
+            {used(cur) > 280 ? left : ''}
           </span>
           <button class="icon-btn add-part" aria-label={t('Add another post to the thread')} disabled={!filled(cur, at)} onClick={add}><Icon d={P.plus} /></button>
         </div>
