@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, pathOf, linkify, markdown, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
+import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, t, t as tr, tn } from './i18n.ts'
@@ -18,8 +18,9 @@ export const shell = {
   // text, embeds and onDone come from mini apps; onDone gets the new cast's hash, or null if nothing was posted
   compose: (_: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void } = {}) => {},
   view: (_urls: string[], _index: number) => {},
-  // a Markdown link's real address, asked about before it opens (LinkSheet)
-  link: (_url: string) => false,
+  // a Markdown link's (`label`) or look-alike link's real address, asked about before it opens (LinkSheet);
+  // `open` opens it some other way than a new tab (a mini app)
+  link: (_url: string, _o: { label?: boolean; open?: () => void } = {}) => false,
   // the account indicator in page headers (app.tsx), for phones
   me: (): ComponentChildren => null,
   // the open mini apps (miniapp.tsx keeps these current and fires 'dock'); the dock shows them next to the pinned ones
@@ -167,14 +168,17 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
 export function RichText({ text, class: cls = 'text', plain }: { text: string; class?: string; plain?: boolean }) {
   // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round. A link's click is
   // the link's, not the card's around it.
-  const click = (e: MouseEvent) => {
+  const click = (e: MouseEvent) => (e.target as Element).closest('a') && stop(e)
+  // a [label](url) link to another site, or any link to a look-alike host, first shows where it really goes. Asked
+  // while the click comes down, before the link's own listeners (inapp.ts opens links out from there); a middle
+  // click too.
+  const ask = (e: MouseEvent) => {
     const a = (e.target as Element).closest('a')
-    if (!a) return
-    stop(e)
-    // a [label](url) link to another site first shows where it really goes
-    if (a.classList.contains('md-link') && a.host !== location.host && shell.link(a.href)) e.preventDefault()
+    if (!a || (e.type === 'auxclick' && e.button !== 1)) return
+    const label = a.classList.contains('md-link')
+    if ((label || lookalike(a.href)) && a.host !== location.host && shell.link(a.href, { label })) e.preventDefault()
   }
-  return <div class={cls} dir="auto" onClick={click} dangerouslySetInnerHTML={{ __html: plain ? linkify(text) : markdown(text) }} />
+  return <div class={cls} dir="auto" onClick={click} onClickCapture={ask} onAuxClickCapture={ask} dangerouslySetInnerHTML={{ __html: plain ? linkify(text) : markdown(text) }} />
 }
 
 // long text in feeds folds at 10 lines; the button shows only when something is cut
@@ -631,9 +635,17 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   if (image && d?.image === d?.url) return <Media urls={[image]} images />
   const icon = safeUrl(d?.icon)
   const app = c && d?.app
+  const click = (e: MouseEvent) => {
+    e.stopPropagation()
+    const launch = app && !e.metaKey && !e.ctrlKey && !e.shiftKey ? () => launchApp({ ...app, icon }, { cast: c, embed: u }) : undefined
+    // a look-alike host first shows where it really goes, a mini app's too
+    if (lookalike(u) && shell.link(u, { open: launch })) e.preventDefault()
+    else if (launch) e.preventDefault(), launch()
+  }
+  // a middle click on a look-alike asks too
+  const aux = (e: MouseEvent) => e.button === 1 && lookalike(u) && (e.stopPropagation(), shell.link(u)) && e.preventDefault()
   return (
-    <a class={`linkcard${image ? ' big' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow"
-      onClick={(e) => (e.stopPropagation(), app && !e.metaKey && !e.ctrlKey && !e.shiftKey && (e.preventDefault(), launchApp({ ...app, icon }, { cast: c, embed: u })))}>
+    <a class={`linkcard${image ? ' big' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click} onAuxClick={aux}>
       {image && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(d?.image)} />}
       <span class="lc-text">
         <span class="lc-site">{icon && <Img src={icon} low />}{new URL(u).hostname.replace(/^www\./, '')}</span>
@@ -763,28 +775,33 @@ const REASONS = (): [string, string][] => [['spam', t('Spam')], ['abuse', t('Har
 /** The ⋯ menu's Report: why, an optional note, and blocking them too. It goes to our server, which sends it to us
  *  (server/report.mjs), so reporting works without leaving the app or having email set up. */
 /** "Open this link?": a Markdown link's text can say anything ([google.com](https://not-google.example)), so before
- *  one opens it shows the address it really goes to, its host first (as punycode, so look-alike letters show). */
+ *  one opens it shows the address it really goes to, its host first (as punycode, so look-alike letters show).
+ *  Any link to a look-alike host (shared.ts lookalike) asks too, with a warning and the host as it reads in Unicode. */
 export function LinkSheet() {
-  const [u, setU] = useState<URL | null>(null)
-  shell.link = (href) => (setU(new URL(href)), true)
+  const [q, setQ] = useState<{ u: URL; label?: boolean; open?: () => void } | null>(null)
+  shell.link = (href, o = {}) => (setQ({ u: new URL(href), ...o }), true)
   useEffect(() => {
-    if (!u) return
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && setU(null)
+    if (!q) return
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setQ(null)
     addEventListener('keydown', key)
     return () => removeEventListener('keydown', key)
-  }, [u])
-  if (!u) return null
-  const close = () => setU(null)
+  }, [q])
+  if (!q) return null
+  const { u, label, open } = q
+  const uni = lookalike(u.href)
+  const close = () => setQ(null)
   return (
     <div class="modal" onClick={(e) => e.target === e.currentTarget && close()}>
       <div class="sheet wallet-form link-sheet" role="alertdialog" aria-modal="true" aria-labelledby="link-sheet-h">
         <h2 id="link-sheet-h">{t('Open this link?')}</h2>
-        <p>{t("A link's text can say anything. This one goes to:")}</p>
+        {uni && <p class="link-warn">{t('This address contains Unicode characters that can look like normal letters. It might be a phishing link.')}</p>}
+        <p>{label ? t("A link's text can say anything. This one goes to:") : t('This link goes to:')}</p>
         <p class="link-dest"><b>{u.host}</b>{u.href.slice(u.origin.length) === '/' ? '' : u.href.slice(u.origin.length)}</p>
+        {uni && <p>{t('With those characters, the address reads:')} <b class="link-uni" dir="ltr">{uni}</b></p>}
         <p class="muted">{t('Only open it if you trust this site.')}</p>
         <div class="link-actions">
           <button class="btn ghost" onClick={close}>{t('Cancel')}</button>
-          <a class="btn" href={u.href} target="_blank" rel="noopener noreferrer nofollow" onClick={close}>{t('Open link')}</a>
+          <a class="btn" href={u.href} target="_blank" rel="noopener noreferrer nofollow" onClick={(e) => (open && (e.preventDefault(), open()), close())}>{t('Open link')}</a>
         </div>
       </div>
     </div>

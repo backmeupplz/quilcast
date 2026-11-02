@@ -1089,5 +1089,8 @@
   "Open this link?": "이 링크를 열까요?",
   "A link's text can say anything. This one goes to:": "링크 텍스트는 무엇이든 쓸 수 있어요. 이 링크의 실제 주소:",
   "Only open it if you trust this site.": "이 사이트를 신뢰할 때만 여세요.",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "이 주소에는 일반 글자처럼 보일 수 있는 유니코드 문자가 들어 있습니다. 피싱 링크일 수 있어요.",
+  "This link goes to:": "이 링크가 가는 곳:",
+  "With those characters, the address reads:": "그 문자로 쓰면 주소는 이렇게 보입니다:",
   "Open link": "링크 열기"
 }

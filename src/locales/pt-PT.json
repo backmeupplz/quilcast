@@ -1089,5 +1089,8 @@
   "Open this link?": "Abrir esta ligação?",
   "A link's text can say anything. This one goes to:": "O texto de uma ligação pode dizer qualquer coisa. Esta leva a:",
   "Only open it if you trust this site.": "Só a abras se confiares neste site.",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Este endereço contém caracteres Unicode que podem parecer letras normais. Pode ser uma ligação de phishing.",
+  "This link goes to:": "Esta ligação leva a:",
+  "With those characters, the address reads:": "Com esses caracteres, o endereço lê-se assim:",
   "Open link": "Abrir ligação"
 }

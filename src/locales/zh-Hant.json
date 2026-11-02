@@ -1089,5 +1089,8 @@
   "Open this link?": "開啟此連結？",
   "A link's text can say anything. This one goes to:": "連結文字可以寫成任何內容。此連結實際指向：",
   "Only open it if you trust this site.": "僅在你信任此網站時開啟。",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "此網址包含看起來可能像一般字母的 Unicode 字元，可能是釣魚連結。",
+  "This link goes to:": "此連結會前往：",
+  "With those characters, the address reads:": "用這些字元寫出來，網址顯示為：",
   "Open link": "開啟連結"
 }

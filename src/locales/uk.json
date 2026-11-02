@@ -1089,5 +1089,8 @@
   "Open this link?": "Відкрити посилання?",
   "A link's text can say anything. This one goes to:": "Текст посилання може бути будь-яким. Це посилання веде сюди:",
   "Only open it if you trust this site.": "Відкривайте, лише якщо довіряєте цьому сайту.",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "У цій адресі є символи Юнікоду, які можуть виглядати як звичайні літери. Це може бути фішингове посилання.",
+  "This link goes to:": "Це посилання веде сюди:",
+  "With those characters, the address reads:": "З цими символами адреса читається так:",
   "Open link": "Відкрити посилання"
 }

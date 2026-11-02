@@ -1089,5 +1089,8 @@
   "Open this link?": "เปิดลิงก์นี้ไหม",
   "A link's text can say anything. This one goes to:": "ข้อความของลิงก์จะเขียนว่าอะไรก็ได้ ลิงก์นี้ไปที่:",
   "Only open it if you trust this site.": "เปิดเฉพาะเมื่อคุณเชื่อถือเว็บไซต์นี้",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "ที่อยู่นี้มีอักขระ Unicode ที่อาจดูเหมือนตัวอักษรปกติ อาจเป็นลิงก์ฟิชชิง",
+  "This link goes to:": "ลิงก์นี้ไปที่:",
+  "With those characters, the address reads:": "เมื่อใช้อักขระเหล่านั้น ที่อยู่จะอ่านได้ว่า:",
   "Open link": "เปิดลิงก์"
 }

@@ -1089,5 +1089,8 @@
   "Open this link?": "Mở liên kết này?",
   "A link's text can say anything. This one goes to:": "Chữ của liên kết có thể ghi bất cứ điều gì. Liên kết này dẫn đến:",
   "Only open it if you trust this site.": "Chỉ mở nếu bạn tin tưởng trang này.",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Địa chỉ này chứa ký tự Unicode có thể trông giống chữ cái bình thường. Đây có thể là liên kết lừa đảo.",
+  "This link goes to:": "Liên kết này dẫn đến:",
+  "With those characters, the address reads:": "Với các ký tự đó, địa chỉ đọc là:",
   "Open link": "Mở liên kết"
 }

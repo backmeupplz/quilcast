@@ -1089,5 +1089,8 @@
   "Open this link?": "Bu bağlantı açılsın mı?",
   "A link's text can say anything. This one goes to:": "Bir bağlantının metni her şeyi söyleyebilir. Bu bağlantı şuraya gidiyor:",
   "Only open it if you trust this site.": "Yalnızca bu siteye güveniyorsan aç.",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Bu adres, normal harflere benzeyebilen Unicode karakterler içeriyor. Bir oltalama bağlantısı olabilir.",
+  "This link goes to:": "Bu bağlantı şuraya gidiyor:",
+  "With those characters, the address reads:": "Bu karakterlerle adres şöyle okunuyor:",
   "Open link": "Bağlantıyı aç"
 }

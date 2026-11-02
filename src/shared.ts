@@ -432,6 +432,56 @@ export function safeUrl(u?: string | null) {
   } catch {}
 }
 
+/** A link's host as written in Unicode, when it has any non-ASCII letters (an `xn--` label once parsed), else ''.
+ *  Such a host can pass for another: Cyrillic аpple.com is not apple.com. Links out check this before opening
+ *  (ui.tsx RichText, LinkCard, LinkSheet). Only the host counts: Unicode in the path or query (a Russian Wikipedia
+ *  article) can't make a link pass for another site. */
+export function lookalike(u: string) {
+  let x: URL
+  try {
+    x = new URL(u)
+  } catch {
+    return ''
+  }
+  if (!/(^|\.)xn--/i.test(x.hostname)) return ''
+  // a label that won't decode is shown as it is
+  return x.hostname.split('.').map((l) => (/^xn--/i.test(l) && puny(l.slice(4))) || l).join('.')
+}
+
+// RFC 3492 Punycode decoding, '' when broken (browsers have no toUnicode; the URL parser has already checked the label)
+const adapt = (delta: number, len: number, first: boolean) => {
+  delta = first ? Math.floor(delta / 700) : delta >> 1
+  delta += Math.floor(delta / len)
+  let k = 0
+  for (; delta > 455; k += 36) delta = Math.floor(delta / 35)
+  return k + Math.floor((36 * delta) / (delta + 38))
+}
+function puny(s: string) {
+  const d = s.lastIndexOf('-')
+  const out = [...s.slice(0, Math.max(d, 0))].map((c) => c.charCodeAt(0))
+  let n = 128, i = 0, bias = 72
+  for (let p = d > 0 ? d + 1 : 0; p < s.length; ) {
+    const old = i
+    for (let w = 1, k = 36; ; k += 36) {
+      const c = p < s.length ? s.charCodeAt(p++) : -1
+      const digit = c >= 48 && c <= 57 ? c - 22 : c >= 65 && c <= 90 ? c - 65 : c >= 97 && c <= 122 ? c - 97 : 36
+      if (digit > 35) return ''
+      i += digit * w
+      const t = k <= bias ? 1 : k >= bias + 26 ? 26 : k - bias
+      if (digit < t) break
+      w *= 36 - t
+    }
+    bias = adapt(i - old, out.length + 1, old === 0)
+    n += Math.floor(i / (out.length + 1))
+    if (n > 0x10ffff) return ''
+    i %= out.length + 1
+    out.splice(i++, 0, n)
+  }
+  const u = String.fromCodePoint(...out)
+  // one that decodes to control characters is broken
+  return /[\0-\x1f\x7f-\x9f]/.test(u) ? '' : u
+}
+
 // the app's icons (24×24 stroked paths), also drawn by the server's home page (server/home.mjs)
 export const P = {
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',

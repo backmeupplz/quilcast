@@ -1089,5 +1089,8 @@
   "Open this link?": "このリンクを開きますか？",
   "A link's text can say anything. This one goes to:": "リンクの文字は何とでも書けます。このリンクの行き先：",
   "Only open it if you trust this site.": "このサイトを信頼できる場合のみ開いてください。",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "このアドレスには、通常の文字に見える Unicode 文字が含まれています。フィッシングリンクの可能性があります。",
+  "This link goes to:": "このリンクの行き先:",
+  "With those characters, the address reads:": "それらの文字で書くと、アドレスはこう見えます:",
   "Open link": "リンクを開く"
 }

@@ -1089,5 +1089,8 @@
   "Open this link?": "Buka tautan ini?",
   "A link's text can say anything. This one goes to:": "Teks tautan bisa bertuliskan apa saja. Tautan ini menuju ke:",
   "Only open it if you trust this site.": "Buka hanya jika kamu memercayai situs ini.",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Alamat ini berisi karakter Unicode yang bisa terlihat seperti huruf biasa. Ini mungkin tautan phishing.",
+  "This link goes to:": "Tautan ini menuju ke:",
+  "With those characters, the address reads:": "Dengan karakter tersebut, alamatnya terbaca:",
   "Open link": "Buka tautan"
 }

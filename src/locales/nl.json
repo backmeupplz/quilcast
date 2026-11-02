@@ -1089,5 +1089,8 @@
   "Open this link?": "Deze link openen?",
   "A link's text can say anything. This one goes to:": "De tekst van een link kan van alles zeggen. Deze gaat naar:",
   "Only open it if you trust this site.": "Open hem alleen als je deze site vertrouwt.",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "Dit adres bevat Unicode-tekens die op gewone letters kunnen lijken. Het kan een phishinglink zijn.",
+  "This link goes to:": "Deze link gaat naar:",
+  "With those characters, the address reads:": "Met die tekens leest het adres als:",
   "Open link": "Link openen"
 }

@@ -1089,5 +1089,8 @@
   "Open this link?": "Открыть ссылку?",
   "A link's text can say anything. This one goes to:": "Текст ссылки может быть каким угодно. Эта ведёт сюда:",
   "Only open it if you trust this site.": "Открывайте, только если доверяете этому сайту.",
+  "This address contains Unicode characters that can look like normal letters. It might be a phishing link.": "В этом адресе есть символы Юникода, которые могут выглядеть как обычные буквы. Это может быть фишинговая ссылка.",
+  "This link goes to:": "Эта ссылка ведёт сюда:",
+  "With those characters, the address reads:": "С этими символами адрес читается так:",
   "Open link": "Открыть ссылку"
 }
