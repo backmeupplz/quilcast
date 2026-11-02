@@ -8,7 +8,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { createServer, request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { after, before, test } from 'node:test'
+import { after, before, describe, test } from 'node:test'
 import { webkit } from 'playwright'
 
 const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(srv.address().port)))
@@ -29,8 +29,11 @@ const nodePort = await listen(node)
 const spare = createServer()
 const port = await listen(spare)
 spare.close()
-// between the browser and the server: the home page's head at once, its body 1.5 s later (or ?hold= ms); the page's
-// first picture (through the server's /i/, which would ask Farcaster's CDN for it) never comes
+// home page bodies held back until their test lets them through, by the page's ?held= number (open's `held`)
+const gates = new Map()
+// between the browser and the server: the home page's head at once, its body when its test lets it through (?held=) or
+// right after; the page's first picture (through the server's /i/, which would ask Farcaster's CDN for it) never comes
+// (but see open's `held`)
 const proxy = createServer((q, r) => {
   const url = new URL(q.url, 'http://x')
   if (url.pathname.startsWith('/i/')) return
@@ -43,7 +46,8 @@ const proxy = createServer((q, r) => {
     for await (const c of u) s += c
     const i = s.indexOf('</head>') + 7
     r.write(s.slice(0, i))
-    setTimeout(() => r.end(s.slice(i)), Number(url.searchParams.get('hold') || 1500))
+    await gates.get(url.searchParams.get('held'))?.promise
+    r.end(s.slice(i))
   })
   // a page closed mid-request, or the server stopped at the end
   up.on('error', () => r.destroy())
@@ -64,20 +68,30 @@ before(async () => {
 })
 after(async () => (await browser?.close(), proxy.closeAllConnections(), proxy.close(), srv.kill(), node.close()))
 
+// a 1×1 PNG
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')
 /**
  * Open the home page through the slow line, with `storage` in localStorage; its errors are collected. `edit` changes
- * the page, `hold` is how long its body takes, `fail` is a glob for requests that fail, and `phone` makes it a 390 px
- * phone.
+ * the page, `held` holds its body back until `release()` (and its pictures come then), `clock` fakes the page's timers (ctx.clock), `fail` is a glob
+ * for requests that fail, and `phone` makes it a 390 px phone.
  */
-async function open(storage = {}, { edit, hold, fail, phone } = {}) {
+let gated = 0
+async function open(storage = {}, { edit, held, clock, fail, phone } = {}) {
   const ctx = await browser.newContext(phone ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : {})
+  if (clock) await ctx.clock.install()
   // nothing leaves this machine: the app's node, avatars and pictures elsewhere don't answer
   await ctx.route((u) => !['127.0.0.1', 'localhost'].includes(u.hostname), (r) => r.abort())
   if (fail) await ctx.route(fail, (r) => r.fulfill({ status: 404, body: 'gone' }))
   await ctx.addInitScript((s) => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, v)), storage)
   const page = await ctx.newPage()
   // (not waiting for the page's load, which waits for that picture)
-  const url = `http://127.0.0.1:${proxyPort}/${hold ? `?hold=${hold}` : ''}`
+  const id = String(++gated)
+  if (held) {
+    const gate = Promise.withResolvers()
+    gates.set(id, gate)
+    await ctx.route('**/i/**', async (r) => (await gate.promise, r.fulfill({ body: PNG, contentType: 'image/png' })))
+  }
+  const url = `http://127.0.0.1:${proxyPort}/${held ? `?held=${id}` : ''}`
   if (edit) await page.route(url, async (r) => {
     const res = await r.fetch()
     await r.fulfill({ response: res, body: edit(await res.text()) })
@@ -85,63 +99,71 @@ async function open(storage = {}, { edit, hold, fail, phone } = {}) {
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
   await page.goto(url, { waitUntil: 'commit' })
-  return { page, errors, close: () => ctx.close() }
+  return { page, errors, ctx, release: () => gates.get(id)?.resolve(), close: () => ctx.close() }
 }
 
 // the app's own page, in place of the server's (which has a tab bar of its own)
 const drawn = (page) => page.waitForFunction(() => document.querySelector('#app nav.tabbar') && !document.querySelector('.ssr-home'), null, { timeout: 30e3 })
 
-test('signed in, the app draws its own home page once the server\'s page is parsed', async () => {
-  const { page, errors, close } = await open({ 'quilcast:settings': '{}' })
-  await drawn(page)
-  assert.equal(await page.locator('.crash').count(), 0)
-  assert.deepEqual(errors, [])
-  await close()
-})
+// each test has a page of its own, so they all run at once
+describe('the app in WebKit', { concurrency: true }, () => {
+  test('signed in, the app draws its own home page once the server\'s page is parsed', async () => {
+    const { page, errors, release, close } = await open({ 'quilcast:settings': '{}' }, { held: true })
+    // the head's script has seen the account (data-own) with the page's body still on its way
+    await page.locator('html[data-own]').waitFor({ state: 'attached' })
+    release()
+    await drawn(page)
+    assert.equal(await page.locator('.crash').count(), 0)
+    assert.deepEqual(errors, [])
+    await close()
+  })
 
-test('signed out, the app takes over the server\'s page when its first picture and the page itself take over 3 s', async () => {
-  // the head's script loads the app 3 s in without that picture, with the page's body still on its way
-  const { page, errors, close } = await open({}, { hold: 3500 })
-  await page.locator('meta[name="quilcast:lead"]').waitFor({ state: 'attached' })
-  await drawn(page)
-  assert.deepEqual(errors, [])
-  await close()
-})
+  test('signed out, the app takes over the server\'s page when its first picture and the page itself take over 3 s', async () => {
+    // the head's script loads the app 3 s in without that picture, with the page's body still on its way: once it asked for
+    // the picture, the page's clock jumps those 3 s, and only then do the body and the picture come
+    const { page, errors, ctx, release, close } = await open({}, { held: true, clock: true })
+    await page.locator('meta[name="quilcast:lead"]').waitFor({ state: 'attached' })
+    await page.locator('link[rel="preload"][as="image"]').waitFor({ state: 'attached' })
+    await ctx.clock.fastForward(3000)
+    release()
+    await drawn(page)
+    assert.deepEqual(errors, [])
+    await close()
+  })
 
-test('an app that fails to start says so, with a Reload button, instead of leaving a blank page', async () => {
-  // no #app to draw in: the app's start throws
-  const { page, close } = await open({ 'quilcast:settings': '{}' }, { edit: (html) => html.replace('<div id="app">', '<div id="elsewhere">') })
-  const crash = page.locator('.crash[role="alert"]')
-  await crash.waitFor({ timeout: 30e3 })
-  assert.match(await crash.innerText(), /Something went wrong/)
-  assert.equal(await crash.getByRole('button', { name: 'Reload' }).count(), 1)
-  await close()
-})
+  test('an app that fails to start says so, with a Reload button, instead of leaving a blank page', async () => {
+    // no #app to draw in: the app's start throws
+    const { page, close } = await open({ 'quilcast:settings': '{}' }, { edit: (html) => html.replace('<div id="app">', '<div id="elsewhere">') })
+    const crash = page.locator('.crash[role="alert"]')
+    await crash.waitFor({ timeout: 30e3 })
+    assert.match(await crash.innerText(), /Something went wrong/)
+    assert.equal(await crash.getByRole('button', { name: 'Reload' }).count(), 1)
+    await close()
+  })
 
-test('signed in, app code that fails to load says so, with a Reload button, instead of leaving a blank page', async () => {
-  // one of the files the app's first file needs is gone (a deploy, a cache): the app's own code never runs
-  const { page, close } = await open({ 'quilcast:settings': '{}' }, { fail: '**/assets/ui-*.js' })
-  const crash = page.locator('.crash[role="alert"]')
-  await crash.waitFor({ timeout: 30e3 })
-  assert.match(await crash.innerText(), /Something went wrong/)
-  assert.equal(await crash.getByRole('button', { name: 'Reload' }).count(), 1)
-  await close()
-})
+  test('signed in, app code that fails to load says so, with a Reload button, instead of leaving a blank page', async () => {
+    // one of the files the app's first file needs is gone (a deploy, a cache): the app's own code never runs
+    const { page, close } = await open({ 'quilcast:settings': '{}' }, { fail: '**/assets/ui-*.js' })
+    const crash = page.locator('.crash[role="alert"]')
+    await crash.waitFor({ timeout: 30e3 })
+    assert.match(await crash.innerText(), /Something went wrong/)
+    assert.equal(await crash.getByRole('button', { name: 'Reload' }).count(), 1)
+    await close()
+  })
 
-// a phone's page never scrolls sideways: 0.46.0's sixth cast action made every page with casts 30 px too wide
-test('on a phone, the page with casts and the tab bar fits the screen, signed out, signed in and in Quorum mode', async () => {
+  // a phone's page never scrolls sideways: 0.46.0's sixth cast action made every page with casts 30 px too wide
   const me = JSON.stringify([{ phrase: '', custody: '0x' + '0'.repeat(39) + '1', fid: 9, username: 'me', done: true }])
   const nodeAt = { node: `http://127.0.0.1:${nodePort}` }
   for (const [who, storage] of [
     ['signed out', { 'quilcast:settings': JSON.stringify(nodeAt) }],
     ['signed in', { 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify(nodeAt) }],
-    ['Quorum mode', { 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify({ ...nodeAt, quorum: true }) }],
-  ]) {
-    const { page, close } = await open(storage, { phone: true, hold: 1 })
+    ['in Quorum mode', { 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify({ ...nodeAt, quorum: true }) }],
+  ]) test(`on a phone, the page with casts and the tab bar fits the screen, ${who}`, async () => {
+    const { page, close } = await open(storage, { phone: true })
     await drawn(page)
     await page.locator('#app article.cast footer').first().waitFor({ timeout: 30e3 })
     const { wide, page: w } = await page.evaluate(() => ({ wide: document.documentElement.scrollWidth, page: innerWidth }))
-    assert.ok(wide <= w, `${who}: the page is ${wide} px wide on a ${w} px screen`)
+    assert.ok(wide <= w, `the page is ${wide} px wide on a ${w} px screen`)
     await close()
-  }
+  })
 })

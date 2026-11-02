@@ -17,12 +17,17 @@ jobs:
     runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["backmeupplz","renovate","claude"]'), github.event.pull_request.user.login)) && 'macos-latest' || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
+      # the texts only: the screenshots are most of the repo's size, and only the files checked out are fetched
       - uses: actions/checkout@v4
         with:
+          filter: blob:none
           sparse-checkout: |
-            appstore
-            fastlane
-            scripts
+            /appstore/
+            /fastlane/
+            /scripts/
+            !*.jpg
+            !*.png
+          sparse-checkout-cone-mode: false
       - if: runner.os == 'Linux'
         uses: actions/setup-node@v4
         with:

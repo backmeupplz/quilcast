@@ -125,8 +125,10 @@ await writeFile(join(media, 'owners', '7'), PRE_NAME + '\n')
 const port = 40000 + Math.floor(Math.random() * 20000)
 const base = `http://127.0.0.1:${port}`
 let srv
+// moves the server's clock on by ms (testclock.mjs)
+const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, [new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '4000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods` }, stdio: 'ignore' })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods` }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -416,7 +418,6 @@ test('an upload given up on stops holding one of the account\'s 3 places: at onc
   }
   const put = (id, offset, body) => fetch(`${base}/api/upload/${id}?offset=${offset}`, { method: 'PUT', body })
   const state = async (id) => (await (await fetch(`${base}/api/upload/${id}`)).json())
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
   const [a, b, c] = [await open(), await open(), await open()]
   assert.equal((await put(a, 0, png.subarray(0, 20))).status, 200)
   assert.equal((await start()).status, 429)
@@ -427,11 +428,11 @@ test('an upload given up on stops holding one of the account\'s 3 places: at onc
   const d = await open()
   assert.equal((await start()).status, 429)
   // b and c never hear from their browser again (the network went); d keeps sending, more slowly than the idle limit
-  // (UPLOAD_IDLE_MS, 4 s here) between its start and its finish, but never that long between two chunks. A new upload
-  // that finds the account full makes the idle ones give way
-  await wait(2500)
+  // (UPLOAD_IDLE_MS, a minute here) between its start and its finish, but never that long between two chunks. A new
+  // upload that finds the account full makes the idle ones give way. The server's clock is moved on, not waited for
+  await later(40e3)
   assert.equal((await put(d, 0, png.subarray(0, 10))).status, 200)
-  await wait(2000)
+  await later(30e3)
   // idle as they are, b and c keep their places while nothing else needs them (a phone may only have paused the tab)
   for (const id of [b, c]) assert.equal((await state(id)).state, 'receiving')
   // one gives way per new upload, the one idle longest
