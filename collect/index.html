@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Quilcast Collect</title>
-  <meta name="description" content="Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it." />
+  <meta name="description" content="Collect any Farcaster cast or profile card as a free 1/1 NFT on Base, or see who already owns it." />
   <link rel="canonical" href="https://collect.quilcast.com/" />
   <link rel="icon" href="/icon.png" />
   <meta name="theme-color" content="#0d0c11" />
@@ -12,15 +12,15 @@
   <meta property="og:site_name" content="Quilcast" />
   <meta property="og:url" content="https://collect.quilcast.com/" />
   <meta property="og:title" content="Quilcast Collect" />
-  <meta property="og:description" content="Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it." />
+  <meta property="og:description" content="Collect any Farcaster cast or profile card as a free 1/1 NFT on Base, or see who already owns it." />
   <meta property="og:image" content="https://collect.quilcast.com/og.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Quilcast Collect: casts as 1/1 NFTs on Base" />
+  <meta property="og:image:alt" content="Quilcast Collect: casts and profile cards as 1/1 NFTs on Base" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:site" content="@quilcast" />
   <meta name="twitter:title" content="Quilcast Collect" />
-  <meta name="twitter:description" content="Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it." />
+  <meta name="twitter:description" content="Collect any Farcaster cast or profile card as a free 1/1 NFT on Base, or see who already owns it." />
   <meta name="twitter:image" content="https://collect.quilcast.com/og.png" />
   <!-- filled in by the server (server/index.mjs collectPage) with the cast's own picture and button -->
   <meta name="fc:miniapp" content="" />
@@ -38,20 +38,20 @@
       <button id="collect" type="button" hidden>Collect for free</button>
       <button id="share" type="button" hidden>Share it</button>
       <p id="status" role="status"></p>
-      <p class="muted small"><a id="cast-link" target="_blank" rel="noopener">View the cast</a> · <a id="opensea" target="_blank" rel="noopener">OpenSea</a> · <a id="contract" target="_blank" rel="noopener">Contract</a> · <a href="/">Another cast</a></p>
+      <p class="muted small"><a id="cast-link" target="_blank" rel="noopener">View the cast</a> · <a id="opensea" target="_blank" rel="noopener">OpenSea</a> · <a id="contract" target="_blank" rel="noopener">Contract</a> · <a href="/">Find another</a></p>
     </section>
     <section id="home" hidden>
       <img class="logo" src="/icon.png" width="96" height="96" alt="" />
       <h1>Quilcast Collect</h1>
-      <p class="lead">Every Farcaster cast can be collected once, for free, as a 1/1 NFT on Base. Paste a link to a cast from Farcaster or Quilcast to collect it or see who owns it.</p>
+      <p class="lead">Every Farcaster cast, and every profile as a trading card, can be collected once, for free, as a 1/1 NFT on Base. Paste a link to a cast or profile from Farcaster or Quilcast, or an @name, to collect it or see who owns it.</p>
       <form id="find" class="find">
-        <input id="link" type="text" inputmode="url" autocomplete="off" required placeholder="https://farcaster.xyz/name/0x…" aria-label="Cast link" />
-        <button id="find-go" type="submit">Find this cast</button>
+        <input id="link" type="text" inputmode="url" autocomplete="off" required placeholder="farcaster.xyz/name/0x… or @name" aria-label="Cast or profile link" />
+        <button id="find-go" type="submit">Find it</button>
       </form>
       <p id="find-status" role="status"></p>
-      <p class="muted small">In Quilcast, the gem button under every cast opens it here.</p>
+      <p class="muted small">In Quilcast, the gem button under every cast and on every profile opens it here.</p>
       <p id="count" class="muted"></p>
-      <p class="muted small"><a id="collection" target="_blank" rel="noopener">The collection on OpenSea</a> · <a id="contract2" target="_blank" rel="noopener">Contract</a></p>
+      <p class="muted small">Collections on OpenSea: <a id="collection" target="_blank" rel="noopener">casts</a> · <a id="cards" target="_blank" rel="noopener">cards</a></p>
     </section>
   </main>
 </body>

@@ -6,7 +6,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -745,12 +745,14 @@ function Profile({ id }: { id: string }) {
                 <Avatar u={u} size={72} link={false} onClick={u.fid === OGRE_FID ? (e) => ogreTap(e.currentTarget as Element) : undefined} />
                 {self ? (
                   <span class="btns">
+                    {cardButton(u.fid)}
                     <button class="btn ghost small" onClick={() => edit()} disabled={!!draft}>{t('Customize')}</button>
                     <a class="btn ghost small" href="/settings">{t('Edit profile')}</a>
                   </span>
                 ) : (
                   <span class="btns">
                     {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
+                    {cardButton(u.fid)}
                     {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
                     <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? t('Following') : t('Follow')}</button>
                     <span class="wrap-menu">
@@ -785,6 +787,12 @@ function Profile({ id }: { id: string }) {
     </>
   )
 }
+
+// Quilcast Collect: the profile's trading card, a free 1/1 NFT on Base (collect/, contracts/src/QuilcastCards.sol)
+const cardButton = (fid: number) => (
+  <button class="btn ghost small icon cl" aria-label={t('Collect')} title={t('Collect')}
+    onClick={(e) => (sparkle(e.currentTarget), launchApp({ url: `https://collect.quilcast.com/p/${fid}`, name: 'Quilcast Collect', icon: 'https://collect.quilcast.com/icon.png', splash: 'https://collect.quilcast.com/splash.png', bg: '#0d0c11' }))}><Icon d={P.collect} /></button>
+)
 
 function Search() {
   const params = new URLSearchParams(location.search)

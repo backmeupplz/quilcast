@@ -882,7 +882,7 @@ export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => vo
 // Quilcast Collect: the cast as a free 1/1 NFT on Base, or who owns it (backmeupplz/quilcast-collect)
 // The gem's burst (style.css .act.cl.go), from the start on every press; taken off by time, since with reduced motion
 // there's no animation to end.
-const sparkle = (b: HTMLElement) => {
+export const sparkle = (b: HTMLElement) => {
   b.classList.remove('go')
   void b.offsetWidth
   b.classList.add('go')

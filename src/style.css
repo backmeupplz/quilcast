@@ -185,15 +185,15 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .act.rc.on { color: var(--recast); }
 .act.on svg { animation: pop 0.25s ease; }
 @keyframes pop { 50% { transform: scale(1.25); } }
-.act.cl { position: relative; }
-.act.cl.go { color: var(--accent); }
-.act.cl.go svg { animation: gem 0.55s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.cl { position: relative; }
+.cl.go { color: var(--accent); }
+.cl.go svg { animation: gem 0.55s cubic-bezier(0.3, 1.5, 0.5, 1); }
 @keyframes gem {
   45% { transform: scale(1.4) rotateY(180deg); filter: drop-shadow(0 0 8px currentColor); }
   to { transform: rotateY(360deg); }
 }
 /* six sparks flying out of the gem */
-.act.cl.go::before {
+.cl.go::before {
   content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; pointer-events: none;
   box-shadow: 0 -15px currentColor, 13px -7px currentColor, 13px 7px currentColor, 0 15px currentColor, -13px 7px currentColor, -13px -7px currentColor;
   animation: sparks 0.5s ease-out forwards;
@@ -651,7 +651,7 @@ small.warn { color: var(--warn); }
 .spinner { width: 24px; height: 24px; margin: 24px auto; border-radius: calc(99px * var(--rs, 1)); border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
 .spinner.small { width: 22px; height: 22px; margin: 0; border-color: rgb(255 255 255 / 0.4); border-top-color: #fff; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { *, ::before { animation: none !important; } .act.cl.go::before { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, ::before { animation: none !important; } .cl.go::before { display: none; } }
 
 /* hover effects only where something can hover: a tap on a touch screen would leave them stuck on
    (tap a like, and the whole cast stays highlighted) */

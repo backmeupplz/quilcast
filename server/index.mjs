@@ -29,6 +29,7 @@ import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from 
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
 import { channels, search } from './channels.mjs'
+import { cardArt, cardMeta, tierOf } from './cards.mjs'
 import { cut, ends, esc, exactly, FONTS, initial, pictures, richSvg, textSvg, width, wrap } from './text.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
@@ -636,12 +637,15 @@ const COLLECT_DIR = new URL('../collect/', import.meta.url).pathname
 // the app reads Base, the node (who owns it) and quilcast.com (the NFT's metadata); Farcaster clients and Quilcast frame it
 const COLLECT_CSP = `default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ${BASE_RPC} ${SITE} ${NODE}; img-src 'self' data: https:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *`
 const collectIndex = readFileSync(join(COLLECT_DIR, 'index.html'), 'utf8')
-// who holds a cast's NFT: an address and their Farcaster account (kept 5 minutes), or null while nobody does (asked every time)
+const CARDS = '0x6acfccd110900d86b2aead4b7c4c9e1673669f13'
+// who holds a cast's NFT (`hash`, the token id in hex) or a profile's card (`to` CARDS): an address and their Farcaster
+// account (kept 5 minutes), or null while nobody does (asked every time)
 const owners = new Map()
-function ownerOf(hash) {
+function ownerOf(id, to = CONTRACT) {
+  const hash = `${to}:${id}`
   const hit = owners.get(hash)
   if (hit && Date.now() - hit.at < 300e3) return hit.p
-  const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: CONTRACT, data: '0x6352211e' + hash.padStart(64, '0') }, 'latest'] })
+  const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data: '0x6352211e' + id.padStart(64, '0') }, 'latest'] })
   const p = fetch(BASE_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(5000) })
     .then((r) => r.json())
     .then(async (r) => {
@@ -660,11 +664,11 @@ const ownerName = (o) => (o.user ? `@${o.user.username}` : `${o.address.slice(0,
 // each cast's square picture is drawn once and reused by the wide ones
 const squares = new Map()
 const squareOf = (hash, c) => squares.get(hash) || keep(squares, 100, hash, collectible(c))
-/** A share picture, 1200 wide and `H` tall: the NFT on the left, and on the right who collected it (or that it's free
- *  to collect) under the Quilcast Collect name. */
-async function shareCard(hash, c, o, H) {
-  const m = 56, S = H - 2 * m, x = S + 2 * m + 8, w = 1200 - x - 64
-  const inner = (await squareOf(hash, c)).replace(/<svg [^>]*>/, `<svg x="${m}" y="${m}" width="${S}" height="${S}" viewBox="0 0 1200 1200">`)
+/** A share picture, 1200 wide and `H` tall: the NFT (`square`, its SVG) on the left, and on the right who collected it
+ *  (or that it's free to collect) under the Quilcast Collect name. A profile's card (`card`) brings its own frame. */
+async function shareCard(square, o, H, card = false) {
+  const m = card ? 40 : 56, S = H - 2 * m, x = S + 2 * m + 8, w = 1200 - x - 64
+  const inner = square.replace(/<svg [^>]*>/, `<svg x="${m}" y="${m}" width="${S}" height="${S}" viewBox="0 0 1200 1200">`).replace('<rect width="1200" height="1200" fill="#0b0a10"/>', '')
   const pfp = o?.user?.pfp_url ? await dataUri(sized(o.user.pfp_url, 'w=176')) : null
   // the column (logo row, then who has it) is centered on the card's height
   let who, top
@@ -677,7 +681,7 @@ async function shareCard(hash, c, o, H) {
   ${textSvg([wrap(name, 34, w - 92, 1, { bold: true })[0] || ''], { x: x + 92, y: top + (o.user ? 190 : 208), size: 34, bold: true, fill: '#edebf3' })}
   ${o.user ? textSvg([wrap(`@${o.user.username}`, 26, w - 92, 1)[0] || ''], { x: x + 92, y: top + 226, size: 26, fill: '#9893a5' }) : ''}`
   } else {
-    const lines = wrap('Collect this cast', 46, w, 2, { bold: true })
+    const lines = wrap(card ? 'Collect this card' : 'Collect this cast', 46, w, 2, { bold: true })
     const sub = 150 + (lines.length - 1) * 56 + 64
     top = (H - sub - 8) / 2
     who = `${textSvg(lines, { x, y: top + 150, lh: 56, size: 46, bold: true, fill: '#edebf3' })}
@@ -690,20 +694,57 @@ async function shareCard(hash, c, o, H) {
     <clipPath id="cw-nft"><rect x="${m}" y="${m}" width="${S}" height="${S}" rx="28"/></clipPath>
   </defs>
   <rect width="1200" height="${H}" fill="#0d0c11"/><rect width="1200" height="${H}" fill="url(#cw-g)"/>
-  <g clip-path="url(#cw-nft)">${inner}</g>
-  <rect x="${m}" y="${m}" width="${S}" height="${S}" rx="28" fill="none" stroke="#2f2c3b" stroke-width="3"/>
+  ${card ? inner : `<g clip-path="url(#cw-nft)">${inner}</g>
+  <rect x="${m}" y="${m}" width="${S}" height="${S}" rx="28" fill="none" stroke="#2f2c3b" stroke-width="3"/>`}
   <rect x="${x}" y="${top}" width="64" height="64" rx="14" fill="url(#cw-tile)"/>
   <g transform="translate(${x + 13} ${top + 13}) scale(${38 / 24})"><path d="${P.collect}" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></g>
   <text x="${x + 84}" y="${top + 43}" font-family="Inter" font-weight="700" font-size="30" fill="#edebf3">Quilcast Collect</text>
   ${who}
 </svg>`
 }
-/** The mini app's page for `hash` (or its home page): the tags a shared link shows, the embed that opens it. */
-async function collectPage(hash) {
-  let title = 'Quilcast Collect', desc = 'Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it.'
+// A profile's card shows it as it was when the card was collected: kept then (the first time it's asked for after), and
+// until then drawn from the profile as it is now. { u, at, kept }, or null for no such account.
+async function keptCard(fid) {
+  const file = join(NFT_DIR, `card-${fid}.json`)
+  const kept = await readFile(file, 'utf8').then(JSON.parse, () => null)
+  if (kept) return kept
+  const owned = !!(await ownerOf(fid.toString(16), CARDS))
+  // collected: the profile right now, not a cached one
+  if (owned) cache.delete(`fid:${fid}`)
+  const u = await lookup(`fid:${fid}`, `/v2/farcaster/user?fid=${fid}`, (r) => (r?.user?.custody_address ? r.user : null)).catch(() => null)
+  if (!u) return null
+  const k = { u, at: Date.now(), kept: owned }
+  if (owned) await mkdir(NFT_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(k))).catch((e) => console.error('nft: keep card', e))
+  return k
+}
+const cardSquare = async (k) => cardArt(k.u, k.u.pfp_url ? await dataUri(sized(k.u.pfp_url, 'w=600')) : null, k.at)
+const CARDS_COLLECTION = {
+  name: 'Quilcast Cards',
+  description: 'Farcaster profiles as trading cards, collected on Quilcast. Every profile has one card, free to collect as a 1/1: it shows the profile as it was the day it was collected. The lower the FID, the rarer the card: Legendary (up to 1,000), Epic (up to 20,000), Rare (up to 250,000) and Common.',
+  image: `${SITE}/nft/cards.png`,
+  banner_image: `${SITE}/nft/cards-banner.png`,
+  featured_image: `${SITE}/nft/cards-banner.png`,
+  external_link: COLLECT,
+}
+
+/** The mini app's page for a cast's `hash`, a profile's card (`fid`) or its home page: the tags a shared link shows,
+ *  the embed that opens it. */
+async function collectPage(hash, fid) {
+  let title = 'Quilcast Collect', desc = 'Collect any Farcaster cast or profile card as a free 1/1 NFT on Base, or see who already owns it.'
   let og = `${COLLECT}/og.png`, embed = `${COLLECT}/embed.png`, button = 'Open Quilcast Collect', path = '/'
   const c = hash && (await keptCast(hash))
-  if (c) {
+  const k = fid && (await keptCard(fid))
+  if (k) {
+    const o = await ownerOf(fid.toString(16), CARDS)
+    const who = `@${k.u.username || fid}`
+    const v = o ? o.address.slice(2, 10) : 'open'
+    title = o ? `${who}'s card, collected by ${ownerName(o)}` : `Collect ${who}'s card`
+    desc = `${tierOf(fid).name} Quilcast Card · FID ${fid} · ${n(k.u.follower_count || 0)} followers · ${o ? 'Collected on Quilcast Collect' : 'Free to collect as a 1/1 on Base'}`
+    og = `${SITE}/nft/card/${fid}.og.png?v=${v}`
+    embed = `${SITE}/nft/card/${fid}.3x2.png?v=${v}`
+    button = o ? 'See the card' : 'Collect this card'
+    path = `/p/${fid}`
+  } else if (c) {
     const o = await ownerOf(hash)
     const who = `@${c.author?.username || c.author?.fid}`
     // the owner in the picture's address, so a link shared again after the cast is collected isn't stuck on the old one
@@ -746,6 +787,14 @@ async function castFromLink(text) {
     if (!(token = r?.nextPageToken)) break
   }
   return null
+}
+// A pasted profile link or name → its FID: quilcast.com/u/<name>, farcaster.xyz/<name>, warpcast.com/<name>, @name,
+// a bare name or FID
+async function fidFromLink(text) {
+  const s = String(text || '').trim().slice(0, 200)
+  const m = s.match(/^(?:https?:\/\/)?(?:www\.)?(?:quilcast\.com\/u|farcaster\.xyz|warpcast\.com)\/([^/?#~][^/?#]*)\/?(?:[?#].*)?$/i) || s.match(/^@?([\w.-]{1,40})$/)
+  if (!m) return null
+  return (await findUser(decodeURIComponent(m[1])).catch(() => null))?.fid || null
 }
 // collect/'s files, listed once: nothing else under it is served
 const collectFiles = new Set(readdirSync(COLLECT_DIR, { recursive: true, withFileTypes: true }).filter((d) => d.isFile() && d.name !== 'index.html').map((d) => '/' + relative(COLLECT_DIR, join(d.parentPath, d.name))))
@@ -919,11 +968,19 @@ createServer(async (req, res) => {
     // collect.quilcast.com: the Collect mini app, a page per cast (/c/<hash>, or ?cast=<hash> as Quilcast first opened it)
     if (String(req.headers.host || '').split(':')[0] === COLLECT_HOST) {
       res.setHeader('content-security-policy', COLLECT_CSP)
-      if (path === '/api/cast') {
+      if (path === '/api/find') {
         // the mini app words the errors itself
         if (limited(`resolve:${ip}`, 30)) return json(429, {})
-        const hash = await castFromLink(url.searchParams.get('url'))
-        return hash ? json(200, { hash }) : json(404, {})
+        const q = url.searchParams.get('url')
+        const hash = await castFromLink(q)
+        const fid = !hash && (await fidFromLink(q))
+        return hash ? json(200, { hash }) : fid ? json(200, { fid }) : json(404, {})
+      }
+      // a profile's card: /p/<fid>, or ?fid=
+      const fid = Number(path.match(/^\/p\/(\d{1,10})$/)?.[1] || (path === '/' && url.searchParams.get('fid')?.match(/^\d{1,10}$/)?.[0]))
+      if (fid) {
+        if (!cache.has(`fid:${fid}`) && limited(`look:${ip}`, 120)) return res.writeHead(429).end()
+        return html(await collectPage(null, fid))
       }
       // ?castHash= is how Farcaster clients hand over a cast shared to the app (the manifest's castShareUrl)
       const asked = path === '/' ? url.searchParams.get('cast') || url.searchParams.get('castHash') : undefined
@@ -1213,6 +1270,23 @@ createServer(async (req, res) => {
     }
 
     if (path === '/nft/collection.json') return json(200, COLLECTION, 'public, max-age=3600')
+    if (path === '/nft/cards.json') return json(200, CARDS_COLLECTION, 'public, max-age=3600')
+    // a profile's card: /nft/card/<fid> its metadata, .png the card, .3x2.png and .og.png what a shared link shows
+    const pc = path.match(/^\/nft\/card\/(\d{1,10})(\.png|\.3x2\.png|\.og\.png)?$/)
+    if (pc) {
+      const fid = Number(pc[1])
+      const wide = pc[2] && pc[2] !== '.png' ? (pc[2] === '.og.png' ? 630 : 800) : 0
+      if (!cache.has(`fid:${fid}`) && limited(`nft:${ip}`, 600)) return res.writeHead(429).end()
+      const k = fid && (await keptCard(fid))
+      if (!k) return res.writeHead(404, { 'access-control-allow-origin': '*' }).end()
+      if (!pc[2]) return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' }).end(JSON.stringify(cardMeta(k.u, k.at, SITE)))
+      const o = wide ? await ownerOf(fid.toString(16), CARDS) : null
+      const key = `card:${fid}:${k.kept ? k.at : 'live'}${wide ? `:${wide}:${o?.address || ''}` : ''}`
+      if (!pngs.has(key) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
+      const png = await (pngs.get(key) || keep(pngs, 100, key, renders(() => cardSquare(k).then((sq) => (wide ? shareCard(sq, o, wide, true) : sq)).then(render))))
+      // until it's collected, the card follows the profile
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': `public, max-age=${wide ? 300 : k.kept ? 86400 : 600}`, 'access-control-allow-origin': '*' }).end(png)
+    }
     // .png: the NFT itself; .3x2.png and .og.png: the pictures a shared Collect link shows, with who owns it
     const nft = path.match(/^\/nft\/0x([0-9a-f]{40})(\.png|\.3x2\.png|\.og\.png)?$/i)
     if (nft) {
@@ -1226,7 +1300,7 @@ createServer(async (req, res) => {
       if (!c) return res.writeHead(404, { 'access-control-allow-origin': '*' }).end()
       // the Collect mini app (collect.quilcast.com) reads it too
       if (!nft[2]) return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' }).end(JSON.stringify(nftMeta(c, hash)))
-      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => (wide ? shareCard(hash, c, o, wide) : squareOf(hash, c)).then(render))))
+      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => (wide ? squareOf(hash, c).then((sq) => shareCard(sq, o, wide)) : squareOf(hash, c)).then(render))))
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': `public, max-age=${wide ? 300 : 86400}` }).end(png)
     }
 

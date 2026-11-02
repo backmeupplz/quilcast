@@ -1,5 +1,6 @@
 // The Collect mini app's own pictures: its icon, splash, embed and og images in collect/, and the OpenSea collection
-// image and banner in public/nft/ (served at quilcast.com/nft/). Run `node scripts/collect-art.mjs` after changing them.
+// images and banners in public/nft/ (served at quilcast.com/nft/): collection/banner for casts, cards/cards-banner for
+// profile cards. Run `node scripts/collect-art.mjs` after changing them.
 import { Resvg } from '@resvg/resvg-js'
 import { writeFileSync } from 'node:fs'
 import { LOGO } from '../src/shared.ts'
@@ -24,6 +25,21 @@ const card = (x, y, s, rot, hue) => `<g transform="translate(${x} ${y}) rotate($
   <line x1="-130" y1="114" x2="130" y2="114" stroke="#2f2c3b" stroke-width="2"/>
   <rect x="-130" y="124" width="14" height="14" rx="4" fill="${ACCENT}"/><rect x="-108" y="127" width="64" height="8" rx="4" fill="${INK}" fill-opacity="0.6"/>
 </g>`
+const FOILS = [['#fff4c2', '#e8b94a', '#9a6a1c', '#6b4a12'], ['#ffb3f0', '#b46bff', '#5b3df5', '#4a2390'], ['#b8f3ff', '#4cc9ff', '#2f5bff', '#123d7a']]
+/** A profile's trading card, drawn abstractly (no one's real profile): foil frame, name, picture window, stats. 300×300
+ *  at scale 1; `f` is a foil from FOILS. */
+const tcard = (x, y, s, rot, f, i) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">
+  <defs><linearGradient id="f${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${f[0]}"/><stop offset="0.5" stop-color="${f[1]}"/><stop offset="0.8" stop-color="${f[2]}"/><stop offset="1" stop-color="${f[0]}"/></linearGradient></defs>
+  <rect x="-150" y="-150" width="300" height="300" rx="22" fill="url(#f${i})"/>
+  <rect x="-140" y="-140" width="280" height="280" rx="15" fill="#15131c"/><rect x="-140" y="-140" width="280" height="280" rx="15" fill="${f[3]}" fill-opacity="0.45"/>
+  <rect x="-124" y="-126" width="110" height="14" rx="7" fill="#fff" fill-opacity="0.9"/><rect x="-124" y="-104" width="60" height="9" rx="4.5" fill="${f[0]}" fill-opacity="0.8"/>
+  <rect x="84" y="-128" width="40" height="18" rx="5" fill="#fff" fill-opacity="0.9"/>
+  <rect x="-126" y="-86" width="252" height="134" rx="10" fill="url(#f${i})"/><rect x="-123" y="-83" width="246" height="128" rx="8" fill="${f[3]}"/>
+  <rect x="-45" y="-72" width="90" height="90" rx="12" fill="url(#f${i})"/><circle cy="-38" r="17" fill="#15131c" fill-opacity="0.55"/><path d="M-28 16a28 24 0 0 1 56 0z" fill="#15131c" fill-opacity="0.55"/>
+  ${[0, 1, 2].map((k) => `<rect x="${-126 + k * 86}" y="64" width="80" height="44" rx="8" fill="#000" fill-opacity="0.35" stroke="${f[1]}" stroke-opacity="0.5"/><rect x="${-116 + k * 86}" y="74" width="34" height="7" rx="3.5" fill="${f[0]}" fill-opacity="0.8"/><rect x="${-116 + k * 86}" y="88" width="48" height="11" rx="5.5" fill="#fff" fill-opacity="0.9"/>`).join('')}
+  <rect x="-126" y="118" width="252" height="10" rx="5" fill="#fff" fill-opacity="0.12"/>
+</g>`
+const tcards = (cx, cy, s) => tcard(cx - 150 * s, cy + 20 * s, s * 0.9, -9, FOILS[2], 0) + tcard(cx + 150 * s, cy + 20 * s, s * 0.9, 9, FOILS[1], 1) + tcard(cx, cy, s, 0, FOILS[0], 2)
 const svg = (w, h, body) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${bg(w, h)}${body}</svg>`
 const draw = (s, file) => writeFileSync(file, new Resvg(s, { font: { loadSystemFonts: false, fontFiles, defaultFontFamily: 'Inter' } }).render().asPng())
 const text = (x, y, size, fill, t, bold = false) => `<text x="${x}" y="${y}" font-family="Inter" font-size="${size}"${bold ? ' font-weight="700"' : ''} fill="${fill}">${t}</text>`
@@ -32,12 +48,12 @@ const cards = (cx, cy, s) => card(cx - 150 * s, cy + 20 * s, s * 0.9, -9, '#ff5c
 // icon: the tile filling the square (stores want no transparency); splash: the tile on the dark background
 draw(`<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a61ff"/><stop offset="1" stop-color="#4a2fd6"/></linearGradient></defs><rect width="1024" height="1024" fill="url(#tile)"/><g transform="translate(205 205) scale(${614 / 24})"><path d="${GEM}" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></g></svg>`, pub + 'icon.png')
 draw(svg(200, 200, tile(40, 40, 120)), pub + 'splash.png')
-// 3:2 embed and 1200×630 og: name and line on the left, a fan of collected casts on the right
+// 3:2 embed and 1200×630 og: name and line on the left, a collected cast and a profile card on the right
 const wide = (w, h) => svg(w, h, `${tile(80, h / 2 - 150, 96)}
   ${text(80, h / 2 + 18, 64, INK, 'Quilcast Collect', true)}
-  ${text(80, h / 2 + 72, 30, MUTED, 'Any cast, collected as a free 1/1 on Base')}
+  ${text(80, h / 2 + 72, 30, MUTED, 'Any cast or profile, collected as a free 1/1')}
   <g transform="translate(78 ${h / 2 + 116}) scale(1.1)"><rect width="32" height="32" rx="9" fill="${ACCENT}"/><path d="${LOGO}" fill="#fff"/></g>${text(126, h / 2 + 145, 28, INK, 'Quilcast', true)}
-  ${cards(935, h / 2 - 10, 0.74)}`)
+  ${card(860, h / 2 - 20, 0.72, -8, '#7a61ff')}${tcard(1010, h / 2 + 10, 0.78, 7, FOILS[0], 9)}`)
 draw(wide(1200, 800), pub + 'embed.png')
 draw(wide(1200, 630), pub + 'og.png')
 // OpenSea: a square collection image and a 1400×350 banner (its middle is what shows on phones)
@@ -45,3 +61,8 @@ draw(svg(1000, 1000, tile(200, 200, 600)), root + 'public/nft/collection.png')
 draw(svg(1400, 350, `${cards(215, 175, 0.55)}${cards(1185, 175, 0.55)}
   ${text(700, 168, 56, INK, 'Quilcast Collect', true).replace('<text', '<text text-anchor="middle"')}
   ${text(700, 216, 26, MUTED, 'Any cast, collected as a free 1/1 on Base').replace('<text', '<text text-anchor="middle"')}`), root + 'public/nft/banner.png')
+// the profile cards' collection: a gold card on its own, and a banner with fans of cards either side
+draw(svg(1000, 1000, tcard(500, 500, 2.3, 0, FOILS[0], 0)), root + 'public/nft/cards.png')
+draw(svg(1400, 350, `${tcards(215, 175, 0.55)}${tcards(1185, 175, 0.55).replace(/id="f(\d)"/g, 'id="g$1"').replace(/#f(\d)\)/g, '#g$1)')}
+  ${text(700, 168, 56, INK, 'Quilcast Cards', true).replace('<text', '<text text-anchor="middle"')}
+  ${text(700, 216, 26, MUTED, 'Farcaster profiles as 1/1 trading cards').replace('<text', '<text text-anchor="middle"')}`), root + 'public/nft/cards-banner.png')

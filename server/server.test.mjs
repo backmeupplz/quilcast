@@ -33,6 +33,13 @@ const hookHits = []
 const node = createServer(async (q, r) => {
   const u = new URL(q.url, 'http://x')
   r.setHeader('content-type', 'application/json')
+  // Base: fid 77's card (token 0x4d) is collected, nothing else is
+  if (u.pathname === '/rpc') {
+    let b = ''
+    for await (const c of q) b += c
+    const { data } = JSON.parse(b).params[0]
+    return r.end(JSON.stringify({ jsonrpc: '2.0', id: 1, ...(data === '0x6352211e' + '4d'.padStart(64, '0') ? { result: '0x' + 'ab'.repeat(20).padStart(64, '0') } : { error: { code: 3, message: 'execution reverted' } }) }))
+  }
   // farcaster.xyz's direct casts: echo what arrived, so the relay test can check it
   if (u.pathname === '/v2/get-dc-nonce') return r.end(JSON.stringify({ result: { nonce: 'n1' } }))
   if (u.pathname === '/v2/get-dc-auth-token') return r.end(JSON.stringify({ result: { token: u.searchParams.get('message') === 'hi' && u.searchParams.get('signature')?.length === 132 ? 'fc_dc_test' : null } }))
@@ -256,7 +263,7 @@ test('collect.quilcast.com: the mini app, a page per cast whose link shows its N
 })
 
 test('collect.quilcast.com finds a pasted cast link: a full hash anywhere in it, or a farcaster.xyz link by its first digits', async () => {
-  const find = (link) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path: `/api/cast?url=${encodeURIComponent(link)}`, headers: { host: 'collect.quilcast.com' } }, (r) => {
+  const find = (link) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path: `/api/find?url=${encodeURIComponent(link)}`, headers: { host: 'collect.quilcast.com' } }, (r) => {
     let b = ''
     r.on('data', (d) => (b += d)).on('end', () => ok(JSON.parse(b).hash))
   }).on('error', no).end())
@@ -266,6 +273,33 @@ test('collect.quilcast.com finds a pasted cast link: a full hash anywhere in it,
   assert.equal(await find(`https://farcaster.xyz/eight/0x${'e8'.repeat(4)}`), 'e8'.repeat(20))
   assert.equal(await find(`https://warpcast.com/eight/0x${'e8'.repeat(4)}?x=1`), 'e8'.repeat(20))
   for (const link of [`https://farcaster.xyz/eight/0x${'ab'.repeat(4)}`, 'https://example.com/eight/0xe8e8e8e8', 'hello']) assert.equal(await find(link), undefined, link)
+})
+
+test('a profile card: square art, metadata, the profile kept once collected, its page and a profile link found', async () => {
+  const r = await fetch(`${base}/nft/card/77`)
+  assert.equal(r.headers.get('access-control-allow-origin'), '*')
+  const m = await r.json()
+  assert.equal(m.image, 'https://quilcast.test/nft/card/77.png')
+  assert.ok(m.attributes.some((a) => a.trait_type === 'Rarity' && a.value === 'Legendary'))
+  // collected (the mock Base says so), so it's kept as it is now
+  assert.ok(existsSync(join(media, 'nft', 'card-77.json')))
+  for (const [kind, h] of [['', 1200], ['.3x2', 800], ['.og', 630]]) {
+    const png = Buffer.from(await (await fetch(`${base}/nft/card/77${kind}.png`)).arrayBuffer())
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, h], kind)
+  }
+  assert.equal((await fetch(`${base}/nft/card/0`)).status, 404)
+  assert.equal((await (await fetch(`${base}/nft/cards.json`)).json()).name, 'Quilcast Cards')
+  const get = (path) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path, headers: { host: 'collect.quilcast.com' } }, (r) => {
+    let b = ''
+    r.on('data', (d) => (b += d)).on('end', () => ok(b))
+  }).on('error', no).end())
+  const page = await get('/p/77')
+  const e = JSON.parse(page.match(/<meta name="fc:miniapp" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+  assert.equal(e.button.action.url, 'https://collect.quilcast.com/p/77')
+  assert.match(e.imageUrl, /^https:\/\/quilcast\.test\/nft\/card\/77\.3x2\.png\?v=abababab$/)
+  assert.match(page, /<title>@bell&#39;s card, collected by/)
+  assert.equal(await get('/?fid=77'), page)
+  for (const link of ['https://farcaster.xyz/eight', 'https://quilcast.com/u/eight', '@eight', 'eight']) assert.equal(JSON.parse(await get(`/api/find?url=${encodeURIComponent(link)}`)).fid, 8, link)
 })
 
 test('a control character in a name, bio or cast still gets the full card', async () => {

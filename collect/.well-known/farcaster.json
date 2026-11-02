@@ -13,20 +13,20 @@
     "buttonTitle": "Open Quilcast Collect",
     "splashImageUrl": "https://collect.quilcast.com/splash.png",
     "splashBackgroundColor": "#0d0c11",
-    "subtitle": "Collect casts as free 1/1 NFTs",
-    "tagline": "Own the cast you loved",
-    "description": "Collect any Farcaster cast as a free 1/1 NFT on Base, or see who already owns it. Each cast can be collected once; you only pay the gas.",
+    "subtitle": "Casts and profiles as 1/1 NFTs",
+    "tagline": "Own casts and profile cards",
+    "description": "Collect any Farcaster cast, or any profile as a trading card, as a free 1/1 NFT on Base. Each can be collected once; you only pay the gas.",
     "primaryCategory": "social",
     "tags": [
       "quilcast",
       "farcaster",
       "collect",
       "nft",
-      "base"
+      "cards"
     ],
     "heroImageUrl": "https://collect.quilcast.com/og.png",
     "ogTitle": "Quilcast Collect",
-    "ogDescription": "Collect any Farcaster cast as a free 1/1 NFT on Base.",
+    "ogDescription": "Collect any Farcaster cast or profile card as a free 1/1 NFT on Base.",
     "ogImageUrl": "https://collect.quilcast.com/og.png",
     "requiredChains": [
       "eip155:8453"
