@@ -17,7 +17,7 @@ jobs:
     name: iOS
     runs-on: macos-26
     # Mac only, and only for our own PRs: outsiders' PRs (bridged from GitHub by the `github` user) never run on it.
-    if: github.event_name != 'pull_request' || contains(fromJSON('["backmeupplz","renovate","claude"]'), github.event.pull_request.user.login)
+    if: github.event_name != 'pull_request' || contains(fromJSON('["backmeupplz","renovate","claude","radiant"]'), github.event.pull_request.user.login)
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
