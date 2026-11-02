@@ -1,7 +1,7 @@
 // An external wallet (MetaMask, Rabby, OKX…) as the custody address, through viem. Only loaded when someone
 // connects one. Wallets announce themselves over EIP-6963; window.ethereum is the fallback, for older wallets and
 // for the mini app host (inapp.ts leaves the client's provider there).
-import { createWalletClient, custom, type EIP1193Provider } from 'viem'
+import { bytesToHex, createPublicClient, createWalletClient, custom, encodeDeployData, erc6492SignatureValidatorAbi, erc6492SignatureValidatorByteCode, hashMessage, http, recoverMessageAddress, type EIP1193Provider } from 'viem'
 import { base, mainnet, optimism } from 'viem/chains'
 import { ID_GATEWAY, registerData } from './eth.ts'
 import { unhex, type Custody } from './fc.ts'
@@ -116,8 +116,9 @@ async function provider(key?: string): Promise<Injected> {
   return p
 }
 const client = async (key?: string) => createWalletClient({ transport: custom(await provider(key)) })
-// viem's errors carry a page of details; people need the first line
-const tidy = <T>(p: Promise<T>) => p.catch((e) => Promise.reject(new Error(e?.shortMessage || e?.message || 'The wallet refused.')))
+// viem's errors carry a page of details; people need the first line. The code stays (4001: the person declined)
+const tidy = <T>(p: Promise<T>) =>
+  p.catch((e) => Promise.reject(Object.assign(new Error(e?.shortMessage || e?.message || 'The wallet refused.'), { code: e?.code ?? e?.cause?.code })))
 
 /** Ask a wallet for its address, and remember which one it was. `key` is a choices() rdns; without one this
  *  takes the only wallet there is, the way it did before the picker. WalletConnect hands `show` the link to
@@ -165,14 +166,53 @@ const sig65 = (s: string) => {
   return b
 }
 
-export const walletCustody = (address: string): Custody => {
+/** A message signature, checked against the address it's meant to be from. A smart-contract wallet (Coinbase
+ *  Smart Wallet, Safe…) answers with a longer ERC-1271/6492 signature, which apps check on chain the same way
+ *  (Quick Auth does, on Optimism), so it goes on as it is. A wallet that signed with another of its accounts is
+ *  caught here, with an error that says so, instead of by the app the signature was for. */
+async function checked(address: string, m: Uint8Array, s: string, rpc?: string) {
+  const raw = unhex(s)
+  if (raw.length < 65) throw new Error('The wallet returned an unexpected signature.')
+  if (raw.length === 65) {
+    const sig = sig65(s)
+    // a contract wallet's 65 bytes need not be a point at all
+    if ((await recoverMessageAddress({ message: { raw: m }, signature: sig }).catch(() => '')).toLowerCase() === address.toLowerCase()) return sig
+  }
+  // not this address's own key: a contract wallet's signature goes on byte for byte (its v isn't ours to change)
+  if (!rpc) return raw
+  // a contract wallet's signature (deployed or not), or another account's: ERC-6492's universal validator tells, in one
+  // eth_call. Only a clear "no" counts: an RPC that's down or rate-limited, or a call that reverts, leaves it to the app
+  const data = encodeDeployData({ abi: erc6492SignatureValidatorAbi, bytecode: erc6492SignatureValidatorByteCode, args: [address as `0x${string}`, hashMessage({ raw: m }), bytesToHex(raw)] })
+  const said = await createPublicClient({ transport: http(rpc, { retryCount: 0 }) }).call({ data }).then((r) => r.data, () => undefined)
+  if (said && /^0x0+$/.test(said)) {
+    // a plain signature from another key is another account; a smart wallet's can also be for another chain, or broken
+    if (raw.length === 65) throw new Error("Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.")
+    throw new Error("Your wallet's signature didn't check out for this account.")
+  }
+  return raw
+}
+
+/** The wallet that holds `address`, as its custody signer. `rpc` (Optimism) checks smart-wallet signatures. */
+export const walletCustody = (address: string, rpc = 'https://mainnet.optimism.io'): Custody => {
   const account = address as `0x${string}`
   const key = keyFor(address)
+  // a smart wallet's message signature holds the chain it's on (Coinbase Smart Wallet's replaySafeHash, Safe), so a
+  // message checked on `chain` is signed there. Declining the switch is declining; a wallet that can't switch signs
+  // where it is, which a plain wallet's signature doesn't care about
+  const signer = async (chain?: keyof typeof CHAINS) => {
+    if (!chain) return client(key)
+    try {
+      return await on(chain, key)
+    } catch (e: any) {
+      if ((e?.code ?? e?.cause?.code) === 4001) throw e
+      return client(key)
+    }
+  }
   return {
     address,
     // MetaMask only signs typed data for the chain it's on, so it switches to the domain's chain first
     typed: async (t) => sig65(await tidy(on(t.domain.chainId as 1, key).then((c) => c.signTypedData({ account, ...t } as any)))),
-    message: async (m) => sig65(await tidy(client(key).then((c) => c.signMessage({ account, message: { raw: m } })))),
+    message: async (m, o) => checked(address, m, await tidy(signer(o?.chain).then((c) => c.signMessage({ account, message: { raw: m } }))), o?.local ? undefined : rpc),
   }
 }
 

@@ -1112,5 +1112,7 @@
   "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Accounts worden beoordeeld op hun profiel en recente casts; een spamaccount verbergen haalt zijn casts en antwoorden overal weg.",
   "How likely spam.quilcast.com thinks this is a spam account": "Hoe waarschijnlijk dit volgens spam.quilcast.com een spamaccount is",
   "Spam account {n}%": "Spamaccount {n}%",
-  "Spam accounts": "Spamaccounts"
+  "Spam accounts": "Spamaccounts",
+  "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Je wallet heeft getekend met een ander adres dan dat van dit account. Schakel in je wallet over naar het adres van het account en probeer het opnieuw.",
+  "Your wallet's signature didn't check out for this account.": "De handtekening van je wallet klopt niet voor dit account."
 }

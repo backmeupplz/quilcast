@@ -616,6 +616,8 @@ small.warn { color: var(--warn); }
 .splash { position: absolute; inset: 0; display: grid; place-items: center; background: var(--card); }
 .splash img { width: 96px; height: 96px; border-radius: calc(22px * var(--rs, 1)); object-fit: cover; }
 .mini-wait { position: absolute; inset-inline-start: 12px; inset-inline-end: 12px; top: 12px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: calc(12px * var(--rs, 1)); background: var(--ink); color: var(--bg); font-size: 14px; font-weight: 600; box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); }
+.mini-wait .grow { flex: 1; }
+.mini-wait .btn.ghost { color: inherit; box-shadow: inset 0 0 0 1px currentColor; }
 .mini-ask { position: absolute; inset: 0; display: flex; align-items: flex-end; background: rgb(10 8 20 / 0.45); animation: fade 0.15s; }
 .ask-card { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 18px 16px 16px; background: var(--card); border-radius: calc(18px * var(--rs, 1)) calc(18px * var(--rs, 1)) 0 0; }
 .ask-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }

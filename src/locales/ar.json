@@ -1112,5 +1112,7 @@
   "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "تُقيَّم الحسابات من ملفها الشخصي ومنشوراتها الأخيرة؛ وإخفاء حساب مزعج يزيل منشوراته وردوده من كل مكان.",
   "How likely spam.quilcast.com thinks this is a spam account": "مدى ترجيح spam.quilcast.com أن هذا حساب مزعج",
   "Spam account {n}%": "حساب مزعج {n}%",
-  "Spam accounts": "الحسابات المزعجة"
+  "Spam accounts": "الحسابات المزعجة",
+  "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "وقّعت محفظتك بعنوان مختلف عن عنوان هذا الحساب. بدّل إلى عنوان الحساب في محفظتك وحاول مرة أخرى.",
+  "Your wallet's signature didn't check out for this account.": "لم يتطابق توقيع محفظتك مع هذا الحساب."
 }

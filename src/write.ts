@@ -19,7 +19,7 @@ async function custody(a: Account) {
 
 /** Who signs for an account's custody address: the key from its phrase, or the wallet it was connected with. */
 export const custodyOf = async (a: Account): Promise<Custody> =>
-  a.wallet ? (await import('./wallet.ts')).walletCustody(a.wallet) : keyCustody(await custody(a))
+  a.wallet ? (await import('./wallet.ts')).walletCustody(a.wallet, settings.rpc) : keyCustody(await custody(a))
 
 /** An ed25519 key (`pub`, or raw in `raw`) as a signer; a key this browser doesn't have counts as one the network
  *  dropped, so send() and saveLook() add a new one. */
@@ -233,7 +233,8 @@ async function login() {
   const exp = ts + 600e3
   const authRequest = { method: 'generateToken', params: { timestamp: ts, expiresAt: exp } }
   const msg = new TextEncoder().encode(`{"method":"generateToken","params":{"expiresAt":${exp},"timestamp":${ts}}}`)
-  const sig = await (await custodyOf(account!)).message(msg)
+  // a bearer token: checked on this device only, never sent to the RPC
+  const sig = await (await custodyOf(account!)).message(msg, { local: true })
   return { authorization: `Bearer eip191:${btoa(String.fromCharCode(...sig))}`, 'x-auth-request': JSON.stringify(authRequest) }
 }
 
@@ -384,7 +385,7 @@ Version: 1
 Chain ID: 1
 Nonce: ${result.nonce}
 Issued At: ${new Date().toISOString()}`
-  const signature = '0x' + hex(await (await custodyOf(a)).message(new TextEncoder().encode(message)))
+  const signature = '0x' + hex(await (await custodyOf(a)).message(new TextEncoder().encode(message), { local: true }))
   const t = await dm('token', { method: 'POST', body: { message, signature } })
   if (!t.result?.token) throw new Error("farcaster.xyz didn't open your messages.")
   setAccount({ ...account!, dm: t.result.token })
@@ -403,7 +404,8 @@ async function mintSpaceToken(a: Account) {
   const ts = Date.now()
   const exp = ts + 30 * 864e5
   const authRequest = { method: 'generateToken', params: { timestamp: ts, expiresAt: exp } }
-  const sig = await (await custodyOf(a)).message(new TextEncoder().encode(`{"method":"generateToken","params":{"expiresAt":${exp},"timestamp":${ts}}}`))
+  // a 30-day bearer token: checked on this device only, never sent to the RPC
+  const sig = await (await custodyOf(a)).message(new TextEncoder().encode(`{"method":"generateToken","params":{"expiresAt":${exp},"timestamp":${ts}}}`), { local: true })
   const r = await fetch('/api/space/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ authRequest, bearer: `eip191:${btoa(String.fromCharCode(...sig))}` }) })
   const j = await r.json().catch(() => ({}))
   if (!j.secret) throw new Error("farcaster.xyz didn't let this account into Spaces.")
@@ -576,8 +578,11 @@ const draftKey = (a = account!) => {
       if (kept) return kept
       // the message never changes (not even its language): a different one would make a different key
       const msg = new TextEncoder().encode(`Quilcast drafts key for FID ${fid}\n\nSigning this lets Quilcast encrypt your drafts so only you can read them. It sends nothing and costs nothing.`)
-      const sig = await (await custodyOf(a)).message(msg)
-      const key = await crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', sig.slice(0, 64)), 'AES-GCM', false, ['encrypt', 'decrypt'])
+      // the signature is the key's secret, so it's never sent to the RPC to be checked
+      const sig = await (await custodyOf(a)).message(msg, { local: true })
+      // r and s of a plain signature; all of a smart wallet's, whose first bytes are the same public ABI headers for everyone
+      const secret = sig.slice(0, sig.length === 65 ? 64 : sig.length)
+      const key = await crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', secret), 'AES-GCM', false, ['encrypt', 'decrypt'])
       await kv('readwrite', (s) => s.put(key, `drafts:${fid}`)).catch(() => {})
       return key
     })().catch((e) => (draftKeys.delete(fid), Promise.reject(e))))

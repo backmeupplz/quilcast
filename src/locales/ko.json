@@ -1112,5 +1112,7 @@
   "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "계정은 프로필과 최근 캐스트로 판단합니다. 스팸 계정을 숨기면 그 계정의 캐스트와 답글이 모든 곳에서 사라집니다.",
   "How likely spam.quilcast.com thinks this is a spam account": "spam.quilcast.com이 판단한 스팸 계정일 가능성",
   "Spam account {n}%": "스팸 계정 {n}%",
-  "Spam accounts": "스팸 계정"
+  "Spam accounts": "스팸 계정",
+  "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "지갑이 이 계정과 다른 주소로 서명했습니다. 지갑에서 계정 주소로 전환한 뒤 다시 시도하세요.",
+  "Your wallet's signature didn't check out for this account.": "지갑의 서명이 이 계정에서 확인되지 않았습니다."
 }

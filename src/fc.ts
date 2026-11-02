@@ -139,7 +139,9 @@ export const hashTyped = (t: Typed) =>
   keccak_256(concat(Uint8Array.of(0x19, 1), struct('EIP712Domain', DOMAIN.filter((f) => f.name in t.domain), t.domain), struct(t.primaryType, t.types[t.primaryType], t.message)))
 
 /** Whoever signs for the custody address: a key in this browser, or an external wallet. Signatures are 65 bytes, v = 27/28. */
-export type Custody = { address: string; typed: (t: Typed) => Promise<Uint8Array>; message: (m: Uint8Array) => Promise<Uint8Array> }
+/** `message`'s `local`: check a wallet's signature only on this device, never with the RPC (a secret like the drafts key,
+ *  or a bearer token). `chain`: where the signature is checked, which a wallet switches to before it signs. */
+export type Custody = { address: string; typed: (t: Typed) => Promise<Uint8Array>; message: (m: Uint8Array, o?: { local?: boolean; chain?: 10 }) => Promise<Uint8Array> }
 export const keyCustody = (priv: Uint8Array): Custody => ({
   address: address(priv),
   typed: async (t) => sign65(hashTyped(t), priv),

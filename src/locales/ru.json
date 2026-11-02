@@ -1112,5 +1112,7 @@
   "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Аккаунты оцениваются по профилю и последним кастам; если скрыть спам-аккаунт, его касты и ответы пропадут отовсюду.",
   "How likely spam.quilcast.com thinks this is a spam account": "Насколько вероятно, по оценке spam.quilcast.com, что это спам-аккаунт",
   "Spam account {n}%": "Спам-аккаунт {n}%",
-  "Spam accounts": "Спам-аккаунты"
+  "Spam accounts": "Спам-аккаунты",
+  "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Кошелёк подписал другим адресом, а не адресом этого аккаунта. Переключитесь в кошельке на адрес аккаунта и попробуйте ещё раз.",
+  "Your wallet's signature didn't check out for this account.": "Подпись кошелька не подошла для этого аккаунта."
 }

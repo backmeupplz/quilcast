@@ -1112,5 +1112,7 @@
   "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Konton bedöms utifrån profil och senaste casts; att dölja ett spamkonto tar bort dess casts och svar överallt.",
   "How likely spam.quilcast.com thinks this is a spam account": "Hur troligt spam.quilcast.com anser att detta är ett spamkonto",
   "Spam account {n}%": "Spamkonto {n} %",
-  "Spam accounts": "Spamkonton"
+  "Spam accounts": "Spamkonton",
+  "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Din plånbok signerade med en annan adress än det här kontots. Byt till kontots adress i plånboken och försök igen.",
+  "Your wallet's signature didn't check out for this account.": "Din plånboks signatur stämde inte för det här kontot."
 }

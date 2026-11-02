@@ -1112,5 +1112,7 @@
   "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "帳號依據其個人資料與近期投稿判定；隱藏垃圾帳號會讓它的投稿與回覆在所有地方消失。",
   "How likely spam.quilcast.com thinks this is a spam account": "spam.quilcast.com 判斷這是垃圾帳號的可能性",
   "Spam account {n}%": "垃圾帳號 {n}%",
-  "Spam accounts": "垃圾帳號"
+  "Spam accounts": "垃圾帳號",
+  "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "你的錢包用了與此帳號不同的地址簽署。請在錢包中切換到該帳號的地址後再試一次。",
+  "Your wallet's signature didn't check out for this account.": "你的錢包簽名與此帳號不符。"
 }

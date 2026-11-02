@@ -1112,5 +1112,7 @@
   "Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.": "Tài khoản được đánh giá dựa trên hồ sơ và các cast gần đây; ẩn một tài khoản spam sẽ gỡ các cast và trả lời của nó ở mọi nơi.",
   "How likely spam.quilcast.com thinks this is a spam account": "Khả năng đây là tài khoản spam theo spam.quilcast.com",
   "Spam account {n}%": "Tài khoản spam {n}%",
-  "Spam accounts": "Tài khoản spam"
+  "Spam accounts": "Tài khoản spam",
+  "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Ví của bạn đã ký bằng một địa chỉ khác với địa chỉ của tài khoản này. Hãy chuyển sang địa chỉ của tài khoản trong ví và thử lại.",
+  "Your wallet's signature didn't check out for this account.": "Chữ ký từ ví của bạn không hợp lệ với tài khoản này."
 }

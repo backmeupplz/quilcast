@@ -16,6 +16,7 @@ import { castText, LOGO } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
 import { askPush, channelOf, Choose, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
+import { signSiwf } from './signin.ts'
 
 const QUILCAST_FID = 3356316
 // viem's default Polygon RPC now wants a key, so Polygon reads and sends go through publicnode
@@ -103,7 +104,7 @@ type App = {
   cast?: Cast; embed?: string; from?: string; notification?: Notice; frame?: HTMLIFrameElement; ready: boolean
   wallet?: Wallet; connected: boolean; chain: number; sol?: { wallet: SolWallet; account: { address: string } }; media: boolean
   button?: { text: string; loading: boolean; disabled: boolean; hidden: boolean }; back: boolean
-  ask?: Ask; waiting?: string; uuid: string; pair?: { uri: string; img: string; cancel: () => void }
+  ask?: Ask; waiting?: string; stop?: () => void; uuid: string; pair?: { uri: string; img: string; cancel: () => void }
 }
 const apps: App[] = []
 let shown: number | null = null
@@ -716,9 +717,7 @@ async function signIn(app: App, o: any = {}) {
   draft()
   if (!(await ask(app, { title: t('Sign in to {site}?', { site: app.name }), yes: t('Sign in'), body: t('{host} will know you as @{name} (fid {fid}). This signs a sign-in message with your account.', { host: app.host, name: handle(me), fid: me.fid }) })))
     return { error: { type: 'rejected_by_user' } }
-  const message = draft()
-  const sig = await waitFor(app, a.wallet ? t('Check your wallet') : t('Signing…'), () => custody.message(new TextEncoder().encode(message)))
-  return { result: { message, signature: '0x' + hex(sig), authMethod: 'custody' } }
+  return signSiwf(app, custody, draft(), { wait: (f) => waitFor(app, a.wallet ? t('Check your wallet') : t('Signing…'), f), toast, update })
 }
 
 async function addApp(app: App) {
@@ -966,7 +965,7 @@ function Window({ app }: { app: App }) {
           // apps that never call ready() still show up after a while
           onLoad={() => setTimeout(() => void (app.ready || ((app.ready = true), update())), 5000)} />
         {!app.ready && <div class="splash" style={{ background: app.bg }}>{app.icon ? <Img src={app.icon} /> : <span class="spinner" />}</div>}
-        {app.waiting && <div class="mini-wait" role="status"><span class="spinner small" />{app.waiting}</div>}
+        {app.waiting && <div class="mini-wait" role="status"><span class="spinner small" /><span class="grow">{app.waiting}</span>{app.stop && <button class="btn ghost small" onClick={app.stop}>{t('Cancel')}</button>}</div>}
         {app.ask && <AskCard app={app} />}
         {app.pair && (
           <div class="mini-ask" role="dialog" aria-label={t('WalletConnect QR code')}>
