@@ -146,3 +146,11 @@ test('a like and its undo in the same second still get different timestamps (a t
   const b = await envelope(MT.REACTION_ADD, 3, body, key)
   assert.notEqual(a.hash, b.hash)
 })
+
+test("a link card without a title shows the link's page", async () => {
+  const { pathOf } = await import('./shared.ts')
+  assert.equal(pathOf('https://www.cbc.ca/news/canada/bc-time-changes-9.7400476'), 'news/canada/bc-time-changes-9.7400476')
+  assert.equal(pathOf('https://a.com/caf%C3%A9/'), 'café')
+  assert.equal(pathOf('https://a.com/'), '')
+  assert.equal(pathOf('https://a.com/%E0%A4%A'), '')
+})

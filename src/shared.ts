@@ -490,6 +490,14 @@ export const P = {
 
 // links, @mentions and /channels inside cast text
 export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@[a-z0-9][a-z0-9.-]*[a-z0-9]|(?<![\\w/:])\\/[a-z0-9-]{2,}(?![\\w/]))`, 'gi')
+/** A link's page as people read it (its decoded path), for the link card of a site that won't tell us its title. */
+export const pathOf = (u: string) => {
+  try {
+    return decodeURIComponent(new URL(u).pathname).replace(/^\/+|\/+$/g, '')
+  } catch {
+    return ''
+  }
+}
 export const shortUrl = (s: string) => ((s = s.replace(/^https?:\/\/(www\.)?/, '')), s.length > 40 ? s.slice(0, 40) + '…' : s)
 
 // --- cast text as HTML (ui.tsx RichText, server/home.mjs) ---

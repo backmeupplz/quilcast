@@ -2,7 +2,7 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { boxOf, castOf, castText, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
+import { boxOf, castOf, pathOf, castText, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -137,7 +137,7 @@ export function body(d, version, now = Date.now()) {
     const ico = safeUrl(p?.icon)
     return `<a class="linkcard${image ? ' big' : ''}" href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${image ? img(sized(image, 'w=1200'), 'lc-img', '', true) : ''}` +
       `<span class="lc-text"><span class="lc-site">${ico ? img(ico, '', '', true) : ''}${esc(new URL(u).hostname.replace(/^www\./, ''))}</span>` +
-      `${p?.title ? `<b class="lc-title">${esc(p.title)}</b>` : ''}${p?.description ? `<span class="lc-desc">${esc(p.description)}</span>` : ''}</span>${p?.button ? `<span class="lc-btn">${esc(p.button)}</span>` : ''}</a>`
+      `${p?.title ? `<b class="lc-title">${esc(p.title)}</b>` : !p?.description && pathOf(u) ? `<span class="lc-desc">${esc(pathOf(u))}</span>` : ''}${p?.description ? `<span class="lc-desc">${esc(p.description)}</span>` : ''}</span>${p?.button ? `<span class="lc-btn">${esc(p.button)}</span>` : ''}</a>`
   }
   const space = (id) => `<a class="space-card" href="/spaces/${esc(id)}"><span class="space-card-top">${icon(P.mic)}<small>Space</small></span><b>Live audio Space</b><small>Listen on Quilcast</small></a>`
   const embeds = (c) => {
