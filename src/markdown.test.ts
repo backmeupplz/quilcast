@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { LINK_RE, linkify, markdown as md } from './shared.ts'
 
 test('plain casts render as before: text, line breaks, links, mentions, channels', () => {
-  assert.equal(md('gm\n\nhi @dwr see quilcast.com on /base'), 'gm\n\nhi <a href="/u/dwr">@dwr</a> see <a href="https://quilcast.com/" target="_blank" rel="noopener noreferrer nofollow">quilcast.com</a> on <span class="chan-ref">/base</span>')
+  assert.equal(md('gm\n\nhi @dwr see quilcast.com on /base'), 'gm\n\nhi <a href="/u/dwr">@dwr</a> see <a href="https://quilcast.com/" target="_blank" rel="noopener noreferrer nofollow">quilcast.com</a> on <a class="chan-ref" href="/channel/base">/base</a>')
   assert.equal(md('<b>x</b> & "y"'), '&#60;b&#62;x&#60;/b&#62; &#38; &#34;y&#34;')
   assert.equal(md('5 * 3 = 15, snake_case_name, @some_x_handle'), '5 * 3 = 15, snake_case_name, <a href="/u/some">@some</a>_x_handle')
   assert.equal(md('born in\n1990. Then more'), 'born in\n1990. Then more')
@@ -50,7 +50,7 @@ test('a bare domain glued to a letter of another script links nothing, not just 
   assert.equal(linkify('Quilcast.COM and HTTPS://X.com'), `${a('quilcast.com', 'Quilcast.COM')} and ${a('x.com', 'HTTPS://X.com')}`)
   for (const s of ['\u017ftripe.com', '\u212ax.com', 'x.co\u212a', 'http\u017f://x.com']) assert.ok(!linkify(s).includes('<a'), s)
   assert.equal(linkify('https://аpple.com'), a('xn--pple-43d.com', 'аpple.com'))
-  assert.equal(md('**quilcast.com**, @dwr on /base'), `<strong>${a('quilcast.com')}</strong>, <a href="/u/dwr">@dwr</a> on <span class="chan-ref">/base</span>`)
+  assert.equal(md('**quilcast.com**, @dwr on /base'), `<strong>${a('quilcast.com')}</strong>, <a href="/u/dwr">@dwr</a> on <a class="chan-ref" href="/channel/base">/base</a>`)
 })
 
 test('long runs of invisible characters or labels around a domain take linear time', () => {
@@ -104,8 +104,8 @@ test('long runs of invisible characters or labels around a domain take linear ti
 
 test('mentions, channels and emphasis treat ſ and the Kelvin sign as letters, not s and k', () => {
   for (const s of ['@Kelvin', '@aſb', '/ſtar', '/Kb']) assert.equal(md(s), s)
-  assert.equal(md('@DWR on /Base'), '<a href="/u/DWR">@DWR</a> on <span class="chan-ref">/Base</span>')
-  assert.equal(md('ſ/base K@dwr ſ_x_'), 'ſ<span class="chan-ref">/base</span> K<a href="/u/dwr">@dwr</a> ſ<em>x</em>')
+  assert.equal(md('@DWR on /Base'), '<a href="/u/DWR">@DWR</a> on <a class="chan-ref" href="/channel/base">/Base</a>')
+  assert.equal(md('ſ/base K@dwr ſ_x_'), 'ſ<a class="chan-ref" href="/channel/base">/base</a> K<a href="/u/dwr">@dwr</a> ſ<em>x</em>')
 })
 
 test('inline formatting', () => {

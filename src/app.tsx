@@ -1561,6 +1561,9 @@ function Dock() {
   )
 }
 
+// the phone tab bar's own tabs when signed in (the rest go under ⋮)
+const MAIN_TABS = ['', 'search', 'notifications', 'messages', 'u']
+
 function App() {
   const [, force] = useState(0)
   const [compose, setCompose] = useState<Parameters<typeof shell.compose>[0] | null>(null)
@@ -1574,7 +1577,7 @@ function App() {
   useEffect(() => {
     if (!more) return
     const key = (e: KeyboardEvent) => e.key === 'Escape' && setMore(false)
-    const tap = (e: PointerEvent) => !(e.target as Element).closest?.('.q-tabbar') && setMore(false)
+    const tap = (e: PointerEvent) => !(e.target as Element).closest?.('.tabbar') && setMore(false)
     addEventListener('keydown', key)
     addEventListener('pointerdown', tap)
     return () => (removeEventListener('keydown', key), removeEventListener('pointerdown', tap))
@@ -1692,16 +1695,28 @@ function App() {
           </div>
           {more && (
             <div class="q-tab-more" id="q-more">
-              {[...nav.filter(([k]) => ['wallet', 'search', 'apps'].includes(k) && !(!me && k === 'search')), ['settings', t('Settings'), P.gear] as [string, string, string]].map(([k, label, d]) => tab(k, label, d, true))}
+              {[...nav.filter(([k]) => ['wallet', 'search', 'channel', 'apps'].includes(k) && !(!me && k === 'search')), ['settings', t('Settings'), P.gear] as [string, string, string]].map(([k, label, d]) => tab(k, label, d, true))}
             </div>
           )}
         </nav>
       ) : (
+        // five tabs fit a phone; signed in, the rest are under ⋮
         <nav class="tabbar" aria-label={t('Main')}>
-          {nav.filter(([k]) => k !== 'channel').map(([k, label, d]) => <a class={on(k) ? 'on' : ''} {...navProps(k)} aria-label={label}>{ico(k, d)}</a>)}
+          {(me ? nav.filter(([k]) => MAIN_TABS.includes(k)) : nav).map(([k, label, d]) => <a class={on(k) ? 'on' : ''} {...navProps(k)} aria-label={label}>{ico(k, d)}</a>)}
+          {me && (
+            <span class="tab-more">
+              <button class={nav.some(([k]) => !MAIN_TABS.includes(k) && on(k)) ? 'on' : ''} aria-label={t('More')} aria-haspopup="menu" aria-expanded={more} onClick={() => setMore(!more)}><span class="ico"><Icon d={P.vmore} size={22} /></span></button>
+              {more && (
+                <div class="menu up right" role="menu">
+                  {nav.filter(([k]) => !MAIN_TABS.includes(k)).map(([k, label, d]) => <a role="menuitem" class={on(k) ? 'on' : ''} {...navProps(k)} onClick={() => setMore(false)}>{ico(k, d)}{label}</a>)}
+                </div>
+              )}
+            </span>
+          )}
         </nav>
       )}
-      {me && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={quorum ? P.plus : P.pen} size={22} /></button>}
+      {/* not over the ⋮ menu */}
+      {me && !more && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={quorum ? P.plus : P.pen} size={22} /></button>}
       {me && <Dock />}
       {compose && <Composer {...compose} onClose={() => setCompose(null)} />}
       {viewer && <Lightbox {...viewer} close={() => setViewer(null)} />}

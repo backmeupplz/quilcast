@@ -588,7 +588,7 @@ export const linkify = (text: string) =>
   text.split(TOKENS).map((p, i) => {
     if (i % 2 === 0) return html(p)
     if (p[0] === '@') return `<a href="/u/${html(p.slice(1))}">${html(p)}</a>`
-    if (p[0] === '/') return `<span class="chan-ref">${html(p)}</span>`
+    if (p[0] === '/') return `<a class="chan-ref" href="/channel/${html(p.slice(1).toLowerCase())}">${html(p)}</a>`
     const u = safeUrl(toUrl(p))
     return u ? ext(u, html(shortUrl(p))) : html(p)
   }).join('')

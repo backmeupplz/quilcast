@@ -94,6 +94,12 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
   }
   .tabbar a { display: grid; place-items: center; flex: 0 1 52px; min-width: 0; height: 40px; color: var(--muted); border-radius: calc(12px * var(--rs, 1)); }
   .tabbar a.on { color: var(--ink); }
+  .tab-more { position: relative; display: grid; flex: 0 1 52px; min-width: 0; }
+  .tab-more > button { display: grid; place-items: center; height: 40px; border: 0; background: none; color: var(--muted); border-radius: calc(12px * var(--rs, 1)); }
+  .tab-more > button.on { color: var(--ink); }
+  .tab-more .menu { width: 220px; inset-inline-end: 4px; }
+  .tab-more .menu a { display: flex; height: auto; place-items: initial; color: var(--ink); }
+  .tab-more .menu a.on { background: var(--soft); }
   .fab {
     display: grid !important; place-items: center; position: fixed; inset-inline-end: 16px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 6;
     width: 54px; height: 54px; border-radius: calc(99px * var(--rs, 1)); border: 0; background: var(--accent); color: var(--on-accent, #fff);
@@ -172,8 +178,9 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .text .md-right { text-align: end; }
 .text .md-center { text-align: center; }
 
-.cast footer { display: flex; justify-content: space-between; max-width: 420px; margin: 6px 0 -6px -8px; }
-.act { display: inline-flex; align-items: center; gap: 4px; min-width: 60px; border: 0; background: none; color: var(--muted); padding: 6px 8px; border-radius: calc(99px * var(--rs, 1)); font-size: 13px; font-variant-numeric: tabular-nums; }
+/* up to 60 px an action, so a count doesn't move the icons, and less when six don't fit (a phone's card) */
+.cast footer { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 60px); justify-content: space-between; max-width: 420px; margin: 6px 0 -6px -8px; }
+.act { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; color: var(--muted); padding: 6px 8px; border-radius: calc(99px * var(--rs, 1)); font-size: 13px; font-variant-numeric: tabular-nums; }
 .act.lk.on { color: var(--like); }
 .act.rc.on { color: var(--recast); }
 .act.on svg { animation: pop 0.25s ease; }
@@ -1688,7 +1695,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   & .name { font-weight: 600; color: var(--ink); }
   & .cast .text { font-size: 15px; line-height: 22px; }
   & .cast.focus .text { font-size: 16px; line-height: 24px; }
-  & .cast footer { justify-content: flex-start; gap: 16px; max-width: none; margin: 6px 0 -6px -8px; }
+  & .cast footer { display: flex; justify-content: flex-start; gap: 16px; max-width: none; margin: 6px 0 -6px -8px; }
   & .cast footer > :last-child { margin-inline-start: auto; }
   & .cast.focus footer { justify-content: flex-start; }
   & .act { gap: 6px; min-width: 0; border-radius: var(--q-rm); color: var(--muted); font-size: 13px; font-weight: 500; }
