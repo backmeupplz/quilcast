@@ -199,6 +199,25 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
   animation: sparks 0.5s ease-out forwards;
 }
 @keyframes sparks { from { transform: scale(0.3); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+/* a held Like charges (the heart fills, swells and glows), then tips $1: a bigger pop, sparks and a rising $1 (CastCard),
+   both from the heart's middle (8px padding + half its 18px).
+   .tip stays until the next press so the like's own pop doesn't replay when it comes off. */
+.act.lk { position: relative; touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.act.lk.hold, .act.lk.tip { color: var(--like); }
+.act.lk.hold svg { fill: currentColor; animation: charge 0.6s cubic-bezier(0.5, 0, 0.9, 0.6) both; }
+@keyframes charge { from { fill-opacity: 0; } to { fill-opacity: 1; transform: scale(1.7); filter: drop-shadow(0 0 7px currentColor); } }
+.act.lk.tip svg { fill: currentColor; animation: tipped 0.6s cubic-bezier(0.3, 1.5, 0.5, 1); }
+@keyframes tipped { 0% { transform: scale(1.7); } 35% { transform: scale(2.1) rotate(-12deg); filter: drop-shadow(0 0 12px currentColor); } }
+:root:not([data-ogre]) .act.lk.tip::before {
+  content: ''; position: absolute; left: 17px; top: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; pointer-events: none;
+  box-shadow: 0 -20px currentColor, 14px -14px var(--accent), 20px 0 currentColor, 14px 14px var(--accent), 0 20px currentColor, -14px 14px var(--accent), -20px 0 currentColor, -14px -14px var(--accent);
+  animation: sparks 0.55s ease-out forwards;
+}
+.act.lk.tip::after {
+  content: '$1'; position: absolute; left: 17px; bottom: 70%; translate: -50% 0; font-size: 15px; font-weight: 800; color: var(--like); pointer-events: none; opacity: 0;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--like) 60%, transparent); animation: rise 1s ease-out forwards;
+}
+@keyframes rise { 0% { transform: translateY(6px) scale(0.5); opacity: 0; } 20% { transform: translateY(-6px) scale(1.25); opacity: 1; } 60% { opacity: 1; } 100% { transform: translateY(-30px); opacity: 0; } }
 
 .cast.focus { display: block; cursor: default; padding: 14px 16px 6px; }
 .cast.focus header { align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -651,7 +670,7 @@ small.warn { color: var(--warn); }
 .spinner { width: 24px; height: 24px; margin: 24px auto; border-radius: calc(99px * var(--rs, 1)); border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
 .spinner.small { width: 22px; height: 22px; margin: 0; border-color: rgb(255 255 255 / 0.4); border-top-color: #fff; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { *, ::before { animation: none !important; } .cl.go::before { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, ::before { animation: none !important; } .cl.go::before, .act.lk.tip::before { display: none; } }
 
 /* hover effects only where something can hover: a tap on a touch screen would leave them stuck on
    (tap a like, and the whole cast stays highlighted) */

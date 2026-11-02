@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "“{term}”에 맞는 채널이 없어요.",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "/{id}에는 멤버만 캐스트할 수 있어서 farcaster.xyz의 채널에는 보이지 않아요.",
   "The channel list couldn't be loaded. Try again in a bit.": "채널 목록을 불러오지 못했어요. 잠시 후 다시 시도하세요.",
-  "member|members": "멤버"
+  "member|members": "멤버",
+  "@{name} has no address to tip.": "@{name}님은 팁을 받을 주소가 없습니다.",
+  "A tip needs $1 of USDC on Base in {name}.": "팁을 보내려면 {name}에 Base의 USDC $1이 필요합니다.",
+  "Add a wallet in Settings → Wallets to tip.": "팁을 보내려면 설정 → 지갑에서 지갑을 추가하세요.",
+  "Like (hold to tip $1)": "좋아요 (길게 눌러 $1 팁)",
+  "Tip @{name} $1": "@{name}님에게 $1 팁",
+  "Tipped @{name} $1": "@{name}님에게 $1 팁을 보냈습니다"
 }

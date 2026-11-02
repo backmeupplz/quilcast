@@ -38,6 +38,10 @@ export const transferTx = (t: TokenId, to: string, amount: bigint) =>
     ? { to: t.address, data: encodeFunctionData({ abi: erc20Abi, functionName: 'transfer', args: [to as `0x${string}`, amount] }), value: '0x0' }
     : { to, data: '0x', value: '0x' + amount.toString(16) }
 
+/** Where a tip goes (walletmove.tsx tip): the primary verified address, else any verified one, else the custody one. */
+export const tipAddress = (u: { custody_address?: string; verified_addresses?: { primary?: { eth_address?: string }; eth_addresses?: string[] } }) =>
+  u.verified_addresses?.primary?.eth_address || u.verified_addresses?.eth_addresses?.[0] || u.custody_address
+
 /** Approval for exactly `amount`, to LI.FI only. */
 export const approveTx = (t: TokenId, amount: bigint) => ({ to: t.address!, data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [LIFI, amount] }), value: '0x0' })
 

@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "Nessun canale corrisponde a “{term}”.",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Solo i membri possono pubblicare in /{id}, quindi farcaster.xyz non lo mostrerà lì.",
   "The channel list couldn't be loaded. Try again in a bit.": "Impossibile caricare l’elenco dei canali. Riprova tra poco.",
-  "member|members": "membro|membri"
+  "member|members": "membro|membri",
+  "@{name} has no address to tip.": "@{name} non ha un indirizzo per le mance.",
+  "A tip needs $1 of USDC on Base in {name}.": "Una mancia richiede 1 $ in USDC su Base in {name}.",
+  "Add a wallet in Settings → Wallets to tip.": "Aggiungi un wallet in Impostazioni → Wallet per dare mance.",
+  "Like (hold to tip $1)": "Mi piace (tieni premuto per una mancia di 1 $)",
+  "Tip @{name} $1": "Mancia di 1 $ a @{name}",
+  "Tipped @{name} $1": "Mancia di 1 $ inviata a @{name}"
 }

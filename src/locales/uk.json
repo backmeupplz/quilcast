@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "Немає каналів за запитом «{term}».",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Публікувати в /{id} можуть лише учасники, тож на farcaster.xyz цього там не буде видно.",
   "The channel list couldn't be loaded. Try again in a bit.": "Не вдалося завантажити список каналів. Спробуйте трохи згодом.",
-  "member|members": "учасник|учасники|учасників"
+  "member|members": "учасник|учасники|учасників",
+  "@{name} has no address to tip.": "У @{name} немає адреси для чайових.",
+  "A tip needs $1 of USDC on Base in {name}.": "Для чайових у {name} потрібен $1 в USDC у мережі Base.",
+  "Add a wallet in Settings → Wallets to tip.": "Щоб давати чайові, додайте гаманець у Налаштуваннях → Гаманці.",
+  "Like (hold to tip $1)": "Подобається (утримуйте, щоб дати $1 чайових)",
+  "Tip @{name} $1": "$1 чайових @{name}",
+  "Tipped @{name} $1": "Надіслано $1 чайових @{name}"
 }

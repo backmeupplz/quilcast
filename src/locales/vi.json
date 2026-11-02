@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "Không có kênh nào khớp với “{term}”.",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Chỉ thành viên mới đăng được trong /{id}, nên farcaster.xyz sẽ không hiện bài này ở đó.",
   "The channel list couldn't be loaded. Try again in a bit.": "Không tải được danh sách kênh. Hãy thử lại sau ít phút.",
-  "member|members": "thành viên"
+  "member|members": "thành viên",
+  "@{name} has no address to tip.": "@{name} không có địa chỉ để nhận tiền tip.",
+  "A tip needs $1 of USDC on Base in {name}.": "Tip cần $1 USDC trên Base trong {name}.",
+  "Add a wallet in Settings → Wallets to tip.": "Thêm ví trong Cài đặt → Ví để gửi tip.",
+  "Like (hold to tip $1)": "Thích (giữ để tip $1)",
+  "Tip @{name} $1": "Tip $1 cho @{name}",
+  "Tipped @{name} $1": "Đã tip $1 cho @{name}"
 }

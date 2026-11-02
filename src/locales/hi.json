@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "“{term}” से कोई चैनल मेल नहीं खाता।",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "/{id} में सिर्फ़ सदस्य कास्ट कर सकते हैं, इसलिए farcaster.xyz इसे वहाँ नहीं दिखाएगा।",
   "The channel list couldn't be loaded. Try again in a bit.": "चैनलों की सूची लोड नहीं हो सकी। थोड़ी देर में फिर से कोशिश करें।",
-  "member|members": "सदस्य|सदस्य"
+  "member|members": "सदस्य|सदस्य",
+  "@{name} has no address to tip.": "@{name} के पास टिप पाने का कोई पता नहीं है।",
+  "A tip needs $1 of USDC on Base in {name}.": "टिप के लिए {name} में Base पर $1 का USDC चाहिए।",
+  "Add a wallet in Settings → Wallets to tip.": "टिप देने के लिए सेटिंग्स → वॉलेट में एक वॉलेट जोड़ें।",
+  "Like (hold to tip $1)": "पसंद (दबाकर रखें, $1 टिप दें)",
+  "Tip @{name} $1": "@{name} को $1 टिप",
+  "Tipped @{name} $1": "@{name} को $1 टिप दी"
 }

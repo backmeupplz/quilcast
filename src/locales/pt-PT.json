@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "Nenhum canal corresponde a “{term}”.",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Só os membros podem publicar em /{id}, por isso o farcaster.xyz não vai mostrar isto lá.",
   "The channel list couldn't be loaded. Try again in a bit.": "Não foi possível carregar a lista de canais. Tenta novamente daqui a pouco.",
-  "member|members": "membro|membros"
+  "member|members": "membro|membros",
+  "@{name} has no address to tip.": "@{name} não tem endereço para gorjetas.",
+  "A tip needs $1 of USDC on Base in {name}.": "Uma gorjeta precisa de 1 US$ em USDC na Base em {name}.",
+  "Add a wallet in Settings → Wallets to tip.": "Adicione uma carteira em Definições → Carteiras para dar gorjetas.",
+  "Like (hold to tip $1)": "Gosto (mantenha premido para dar 1 US$ de gorjeta)",
+  "Tip @{name} $1": "Gorjeta de 1 US$ para @{name}",
+  "Tipped @{name} $1": "Deu 1 US$ de gorjeta a @{name}"
 }

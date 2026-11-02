@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "Geen kanaal gevonden voor ‘{term}’.",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Alleen leden kunnen casten in /{id}, dus farcaster.xyz laat dit daar niet zien.",
   "The channel list couldn't be loaded. Try again in a bit.": "De kanalenlijst kon niet worden geladen. Probeer het zo nog eens.",
-  "member|members": "lid|leden"
+  "member|members": "lid|leden",
+  "@{name} has no address to tip.": "@{name} heeft geen adres voor een fooi.",
+  "A tip needs $1 of USDC on Base in {name}.": "Voor een fooi heeft {name} $ 1 aan USDC op Base nodig.",
+  "Add a wallet in Settings → Wallets to tip.": "Voeg een wallet toe via Instellingen → Wallets om fooi te geven.",
+  "Like (hold to tip $1)": "Vind ik leuk (vasthouden voor $ 1 fooi)",
+  "Tip @{name} $1": "$ 1 fooi aan @{name}",
+  "Tipped @{name} $1": "@{name} $ 1 fooi gegeven"
 }

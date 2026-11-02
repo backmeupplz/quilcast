@@ -12,6 +12,9 @@ import { base, detect } from './lang.ts'
 
 // keys and crypto load only when someone signs in or writes
 export const w = () => import('./write.ts')
+// called apart from its .then: Vite folds `import(…).then(fn)` into its preload, and a failed tip (no USDC) inside it
+// counts as a chunk that didn't load, which reloads the page (app.tsx reloadOnce)
+const wm = () => import('./walletmove.tsx')
 
 // module-level hooks the shell fills in, so any component can toast or open the composer
 export const shell = {
@@ -888,6 +891,7 @@ export const sparkle = (b: HTMLElement) => {
   b.classList.add('go')
   setTimeout(() => b.classList.remove('go'), 600)
 }
+const HOLD = 600
 const COLLECT = (hash: string): AppMeta => ({ url: `https://collect.quilcast.com/c/${hash}`, name: 'Quilcast Collect', icon: 'https://collect.quilcast.com/icon.png', splash: 'https://collect.quilcast.com/splash.png', bg: '#0d0c11' })
 
 /** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row; `owner` is
@@ -909,6 +913,25 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
     redraw((x) => x + 1)
     w().then((m) => m.react(type, on, c)).catch((e) => (before ? taps.set(k, before) : taps.delete(k), redraw((x) => x + 1), toast(e.message)))
   }
+  // holding Like for HOLD ms tips the author $1 (walletmove.tsx tip) and likes the cast; `charge` draws it (style.css
+  // .act.lk.hold/.tip) as state, since Preact rewrites the button's class when `liked` flips
+  const [charge, setCharge] = useState<'' | ' hold' | ' tip'>('')
+  const timer = useRef(0), fired = useRef(false)
+  const press = (e: PointerEvent) => {
+    fired.current = false
+    if (e.button || !account?.done || account.fid === c.author.fid) return
+    setCharge(' hold')
+    timer.current = window.setTimeout(() => {
+      fired.current = true
+      setCharge(' tip')
+      navigator.vibrate?.(30)
+      if (!liked) toggle(1, true, c.reactions.likes_count)
+      const name = c.author.username || String(c.author.fid)
+      wm().then((m) => m.tip(c.author)).then(() => shell.toast(t('Tipped @{name} $1', { name })), (e) => toast(e.message))
+    }, HOLD)
+  }
+  // let go (or scrolled away) early: just a tap
+  const release = () => (clearTimeout(timer.current), charge === ' hold' && setCharge(''))
   const share = () => {
     const url = `${location.origin}/c/${c.hash}`
     navigator.share ? navigator.share({ url }).catch(() => {}) : navigator.clipboard.writeText(url).then(() => toast('Link copied'))
@@ -924,7 +947,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
   const sending = posting.get(c.hash) === c
   const ch = channelOf(c.parent_url)
   const parentUser = c.parent_author?.fid ? users.get(c.parent_author.fid) : undefined
-  const like = <button class={`act lk${liked ? ' on' : ''}`} aria-label={t('Like')} onClick={() => toggle(1, !liked, c.reactions.likes_count)}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
+  const like = <button class={`act lk${liked ? ' on' : ''}${charge}`} aria-label={t('Like')} title={t('Like (hold to tip $1)')} onPointerDown={press} onPointerUp={release} onPointerLeave={release} onPointerCancel={release} onContextMenu={(e) => e.preventDefault()} onClick={() => (fired.current ? (fired.current = false) : toggle(1, !liked, c.reactions.likes_count))}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
   const actions = (
     <footer onClick={stop}>
       {/* Quorum mode's order is Like, Reply, Recast */}

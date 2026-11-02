@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "“{term}” ile eşleşen kanal yok.",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "/{id} kanalında yalnızca üyeler paylaşım yapabilir, bu yüzden farcaster.xyz bunu orada göstermez.",
   "The channel list couldn't be loaded. Try again in a bit.": "Kanal listesi yüklenemedi. Biraz sonra tekrar dene.",
-  "member|members": "üye|üye"
+  "member|members": "üye|üye",
+  "@{name} has no address to tip.": "@{name} için bahşiş adresi yok.",
+  "A tip needs $1 of USDC on Base in {name}.": "Bahşiş için {name} içinde Base üzerinde 1 $ USDC gerekir.",
+  "Add a wallet in Settings → Wallets to tip.": "Bahşiş vermek için Ayarlar → Cüzdanlar'dan bir cüzdan ekleyin.",
+  "Like (hold to tip $1)": "Beğen (1 $ bahşiş için basılı tut)",
+  "Tip @{name} $1": "@{name} için 1 $ bahşiş",
+  "Tipped @{name} $1": "@{name} kullanıcısına 1 $ bahşiş verildi"
 }

@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "لا توجد قنوات تطابق «{term}».",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "النشر في /{id} للأعضاء فقط، لذا لن يظهر هذا هناك على farcaster.xyz.",
   "The channel list couldn't be loaded. Try again in a bit.": "تعذّر تحميل قائمة القنوات. حاول مرة أخرى بعد قليل.",
-  "member|members": "عضو|عضو|عضوان|أعضاء|عضوًا|عضو"
+  "member|members": "عضو|عضو|عضوان|أعضاء|عضوًا|عضو",
+  "@{name} has no address to tip.": "لا يملك @{name} عنوانًا لاستلام الإكرامية.",
+  "A tip needs $1 of USDC on Base in {name}.": "تحتاج الإكرامية إلى 1$ من USDC على Base في {name}.",
+  "Add a wallet in Settings → Wallets to tip.": "أضف محفظة من الإعدادات ← المحافظ لإرسال إكرامية.",
+  "Like (hold to tip $1)": "إعجاب (اضغط مطولًا لإرسال إكرامية 1$)",
+  "Tip @{name} $1": "إكرامية 1$ إلى @{name}",
+  "Tipped @{name} $1": "أرسلت إكرامية 1$ إلى @{name}"
 }

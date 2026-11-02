@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "Żaden kanał nie pasuje do „{term}”.",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "Tylko członkowie mogą publikować w /{id}, więc farcaster.xyz tego tam nie pokaże.",
   "The channel list couldn't be loaded. Try again in a bit.": "Nie udało się wczytać listy kanałów. Spróbuj ponownie za chwilę.",
-  "member|members": "członek|członków|członków"
+  "member|members": "członek|członków|członków",
+  "@{name} has no address to tip.": "@{name} nie ma adresu do napiwków.",
+  "A tip needs $1 of USDC on Base in {name}.": "Napiwek wymaga 1 $ w USDC na Base w {name}.",
+  "Add a wallet in Settings → Wallets to tip.": "Dodaj portfel w Ustawieniach → Portfele, aby dawać napiwki.",
+  "Like (hold to tip $1)": "Polub (przytrzymaj, by dać 1 $ napiwku)",
+  "Tip @{name} $1": "Napiwek 1 $ dla @{name}",
+  "Tipped @{name} $1": "Dano 1 $ napiwku @{name}"
 }

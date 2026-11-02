@@ -256,7 +256,7 @@ export async function findUsers(q: string) {
 }
 
 // viewer_context comes from nodes with Hypersnap PR #43 when asked with viewer_fid
-export type User = { fid: number; viewer_context?: { following?: boolean; followed_by?: boolean }; username?: string; display_name?: string; pfp_url?: string; profile?: { bio?: { text?: string } }; follower_count?: number; following_count?: number; custody_address?: string }
+export type User = { fid: number; viewer_context?: { following?: boolean; followed_by?: boolean }; username?: string; display_name?: string; pfp_url?: string; profile?: { bio?: { text?: string } }; follower_count?: number; following_count?: number; custody_address?: string; verified_addresses?: { primary?: { eth_address?: string }; eth_addresses?: string[] } }
 export type Cast = {
   hash: string; text: string; timestamp: string; author: User; parent_hash?: string | null; parent_url?: string | null; parent_author?: { fid: number | null }
   embeds: { url?: string; cast_id?: { fid: number; hash: string } }[]

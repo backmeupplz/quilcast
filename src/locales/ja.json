@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "「{term}」に一致するチャンネルはありません。",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "/{id} にキャストできるのはメンバーだけなので、farcaster.xyz のチャンネルには表示されません。",
   "The channel list couldn't be loaded. Try again in a bit.": "チャンネル一覧を読み込めませんでした。少し経ってからもう一度お試しください。",
-  "member|members": "メンバー"
+  "member|members": "メンバー",
+  "@{name} has no address to tip.": "@{name} にはチップを送れるアドレスがありません。",
+  "A tip needs $1 of USDC on Base in {name}.": "チップには {name} に Base 上の USDC が $1 必要です。",
+  "Add a wallet in Settings → Wallets to tip.": "チップを送るには、設定 → ウォレットでウォレットを追加してください。",
+  "Like (hold to tip $1)": "いいね（長押しで $1 のチップ）",
+  "Tip @{name} $1": "@{name} に $1 のチップ",
+  "Tipped @{name} $1": "@{name} に $1 のチップを送りました"
 }

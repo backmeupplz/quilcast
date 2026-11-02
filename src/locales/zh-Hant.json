@@ -1100,5 +1100,11 @@
   "No channels match “{term}”.": "沒有符合「{term}」的頻道。",
   "Only members can cast in /{id}, so farcaster.xyz won't show this there.": "只有成員能在 /{id} 發文，所以 farcaster.xyz 不會在那裡顯示這則。",
   "The channel list couldn't be loaded. Try again in a bit.": "無法載入頻道清單，請稍後再試。",
-  "member|members": "位成員"
+  "member|members": "位成員",
+  "@{name} has no address to tip.": "@{name} 沒有可接收打賞的地址。",
+  "A tip needs $1 of USDC on Base in {name}.": "打賞需要 {name} 中有 Base 上價值 $1 的 USDC。",
+  "Add a wallet in Settings → Wallets to tip.": "請在設定 → 錢包中新增錢包後再打賞。",
+  "Like (hold to tip $1)": "讚（長按打賞 $1）",
+  "Tip @{name} $1": "打賞 @{name} $1",
+  "Tipped @{name} $1": "已打賞 @{name} $1"
 }

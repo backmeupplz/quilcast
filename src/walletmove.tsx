@@ -2,13 +2,13 @@
 // aggregators and bridges (Uniswap, KyberSwap, 1inch, Across, Stargate, Relay…) and returns one transaction to its own
 // contract, which tokens.ts checks before anything is signed. Keys are decrypted from src/vault.ts only to sign.
 import { useEffect, useState } from 'preact/hooks'
-import { createPublicClient, createWalletClient, formatUnits, http, parseUnits, type Chain } from 'viem'
+import { createPublicClient, createWalletClient, erc20Abi, formatUnits, http, parseUnits, type Chain } from 'viem'
 import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains'
 import { getUser, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { Icon, P, toast } from './ui.tsx'
-import { allowance, approveTx, quote, tokensOn, transferStatus, transferTx, type ListedToken, type Quote } from './tokens.ts'
-import { signerOf, type WalletEntry } from './vault.ts'
+import { allowance, approveTx, quote, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
+import { activeWallet, signerOf, type WalletEntry } from './vault.ts'
 import { CHAINS, Coin, type Holding } from './walletui.tsx'
 
 const VIEM: Record<number, Chain> = { 8453: base, 1: mainnet, 10: optimism, 42161: arbitrum, 137: polygon }
@@ -47,7 +47,7 @@ async function recipient(s: string): Promise<{ address: `0x${string}`; who: stri
   }
   const name = s.replace(/^@/, '')
   if (!/^[a-z0-9][a-z0-9.-]{0,40}$/i.test(name)) throw new Error('Enter an address, an ENS name or a Farcaster @username.')
-  const u = (await getUser(name).catch(() => null)) as (User & { verified_addresses?: { primary?: { eth_address?: string }; eth_addresses?: string[] } }) | null
+  const u = await getUser(name).catch(() => null)
   if (!u) throw new Error(t('No one goes by @{name}.', { name }))
   const a = u.verified_addresses?.primary?.eth_address || u.verified_addresses?.eth_addresses?.[0]
   if (!a) throw new Error(t('@{name} has no verified Ethereum address.', { name: u.username || name }))
@@ -98,6 +98,18 @@ function track(d: Done & { from: string; label: string }): Pending {
     poll(360)
   }, () => set(t('Still waiting. Check the transaction on the explorer.'), true))
   return p
+}
+
+/** A long-pressed like (ui.tsx CastCard): $1 of USDC on Base from the active Quilcast wallet to `u`. */
+export async function tip(u: User) {
+  const to = tipAddress(u)
+  if (!to) throw new Error(t('@{name} has no address to tip.', { name: u.username || u.fid }))
+  const w = activeWallet()
+  if (!w) throw new Error(t('Add a wallet in Settings → Wallets to tip.'))
+  const usdc = { chain: 8453, address: USDC[8453] }, amount = 10n ** 6n
+  const has = await pub(8453).readContract({ address: usdc.address, abi: erc20Abi, functionName: 'balanceOf', args: [w.address] })
+  if (has < amount) throw new Error(t('A tip needs $1 of USDC on Base in {name}.', { name: w.name }))
+  return track({ chain: 8453, hash: await send(w, 8453, transferTx(usdc, to, amount)), from: w.address, label: t('Tip @{name} $1', { name: u.username || u.fid }) })
 }
 
 function Sent({ d, close }: { d: Pending; close: () => void }) {
