@@ -8,6 +8,7 @@ import { legacy } from './channels.ts'
 import { lang, t, t as tr, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, setMute } from './mutes.ts'
 import { spamOf } from './spam.ts'
+import { swoosh } from './swoosh.ts'
 import { base, detect } from './lang.ts'
 
 // keys and crypto load only when someone signs in or writes
@@ -891,7 +892,8 @@ export const sparkle = (b: HTMLElement) => {
   b.classList.add('go')
   setTimeout(() => b.classList.remove('go'), 600)
 }
-const HOLD = 600
+// how long Like is held to tip; the swoosh (swoosh.ts) starts SOUND ms in, so a plain tap stays silent
+const HOLD = 2000, SOUND = 250
 const COLLECT = (hash: string): AppMeta => ({ url: `https://collect.quilcast.com/c/${hash}`, name: 'Quilcast Collect', icon: 'https://collect.quilcast.com/icon.png', splash: 'https://collect.quilcast.com/splash.png', bg: '#0d0c11' })
 
 /** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row; `owner` is
@@ -916,22 +918,28 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
   // holding Like for HOLD ms tips the author $1 (walletmove.tsx tip) and likes the cast; `charge` draws it (style.css
   // .act.lk.hold/.tip) as state, since Preact rewrites the button's class when `liked` flips
   const [charge, setCharge] = useState<'' | ' hold' | ' tip'>('')
-  const timer = useRef(0), fired = useRef(false)
+  const timer = useRef(0), fired = useRef(false), sound = useRef<ReturnType<typeof swoosh> | undefined>(undefined)
   const press = (e: PointerEvent) => {
     fired.current = false
     if (e.button || !account?.done || account.fid === c.author.fid) return
     setCharge(' hold')
     timer.current = window.setTimeout(() => {
+      sound.current = swoosh(HOLD - SOUND)
+      timer.current = window.setTimeout(fire, HOLD - SOUND)
+    }, SOUND)
+    const fire = () => {
       fired.current = true
+      sound.current?.done()
+      sound.current = undefined
       setCharge(' tip')
       navigator.vibrate?.(30)
       if (!liked) toggle(1, true, c.reactions.likes_count)
       const name = c.author.username || String(c.author.fid)
       wm().then((m) => m.tip(c.author)).then(() => shell.toast(t('Tipped @{name} $1', { name })), (e) => toast(e.message))
-    }, HOLD)
+    }
   }
   // let go (or scrolled away) early: just a tap
-  const release = () => (clearTimeout(timer.current), charge === ' hold' && setCharge(''))
+  const release = () => (clearTimeout(timer.current), sound.current?.stop(), (sound.current = undefined), charge === ' hold' && setCharge(''))
   const share = () => {
     const url = `${location.origin}/c/${c.hash}`
     navigator.share ? navigator.share({ url }).catch(() => {}) : navigator.clipboard.writeText(url).then(() => toast('Link copied'))

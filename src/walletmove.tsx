@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { createPublicClient, createWalletClient, erc20Abi, formatUnits, http, parseUnits, type Chain } from 'viem'
 import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains'
-import { getUser, type User } from './api.ts'
+import { account, getUser, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { Icon, P, toast } from './ui.tsx'
 import { allowance, approveTx, quote, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
@@ -100,16 +100,21 @@ function track(d: Done & { from: string; label: string }): Pending {
   return p
 }
 
-/** A long-pressed like (ui.tsx CastCard): $1 of USDC on Base from the active Quilcast wallet to `u`. */
+/** A long-pressed like (ui.tsx CastCard): $1 of USDC on Base to `u`, from the active Quilcast wallet, or else from
+ *  the wallet the account signed in with (MetaMask, Rabby, WalletConnect…), which asks to confirm it. */
 export async function tip(u: User) {
   const to = tipAddress(u)
   if (!to) throw new Error(t('@{name} has no address to tip.', { name: u.username || u.fid }))
-  const w = activeWallet()
-  if (!w) throw new Error(t('Add a wallet in Settings → Wallets to tip.'))
+  const w = activeWallet(), from = (w?.address || account?.wallet) as `0x${string}` | undefined
+  if (!from) throw new Error(t('Add a wallet in Settings → Wallets to tip.'))
   const usdc = { chain: 8453, address: USDC[8453] }, amount = 10n ** 6n
-  const has = await pub(8453).readContract({ address: usdc.address, abi: erc20Abi, functionName: 'balanceOf', args: [w.address] })
-  if (has < amount) throw new Error(t('A tip needs $1 of USDC on Base in {name}.', { name: w.name }))
-  return track({ chain: 8453, hash: await send(w, 8453, transferTx(usdc, to, amount)), from: w.address, label: t('Tip @{name} $1', { name: u.username || u.fid }) })
+  const has = await pub(8453).readContract({ address: usdc.address, abi: erc20Abi, functionName: 'balanceOf', args: [from] })
+  if (has < amount) throw new Error(t('A tip needs $1 of USDC on Base in {name}.', { name: w?.name || short(from) }))
+  const tx = transferTx(usdc, to, amount)
+  // the import on its own line: a failed send inside import(…).then() would count as a chunk that didn't load (ui.tsx wm)
+  const connected = w ? undefined : await import('./wallet.ts')
+  const hash = connected ? await connected.sendTx(from, tx.to, tx.data, 0n, 8453) : await send(w!, 8453, tx)
+  return track({ chain: 8453, hash, from, label: t('Tip @{name} $1', { name: u.username || u.fid }) })
 }
 
 function Sent({ d, close }: { d: Pending; close: () => void }) {

@@ -2,7 +2,7 @@
 // connects one. Wallets announce themselves over EIP-6963; window.ethereum is the fallback, for older wallets and
 // for the mini app host (inapp.ts leaves the client's provider there).
 import { createWalletClient, custom, type EIP1193Provider } from 'viem'
-import { mainnet, optimism } from 'viem/chains'
+import { base, mainnet, optimism } from 'viem/chains'
 import { ID_GATEWAY, registerData } from './eth.ts'
 import { unhex, type Custody } from './fc.ts'
 
@@ -145,8 +145,8 @@ export async function pair(show?: (uri: string) => void) {
   }
 }
 
-const CHAINS = { 1: mainnet, 10: optimism }
-async function on(id: 1 | 10, key?: string) {
+const CHAINS = { 1: mainnet, 10: optimism, 8453: base }
+async function on(id: keyof typeof CHAINS, key?: string) {
   const c = await client(key)
   if ((await c.getChainId()) === id) return c
   try {
@@ -179,8 +179,8 @@ export const walletCustody = (address: string): Custody => {
 /** Pay for IdGateway.register from the wallet on Optimism. Returns the tx hash. */
 export const register = (address: string, value: bigint) => sendTx(address, ID_GATEWAY, registerData(address), value)
 
-/** Send a transaction on Optimism from the wallet. Returns the tx hash. */
-export async function sendTx(address: string, to: string, data: string, value = 0n) {
+/** Send a transaction from the wallet, on Optimism unless `chain` says otherwise. Returns the tx hash. */
+export async function sendTx(address: string, to: string, data: string, value = 0n, chain: keyof typeof CHAINS = 10) {
   const account = address as `0x${string}`
-  return tidy(on(10, keyFor(address)).then((c) => c.sendTransaction({ account, chain: optimism, to: to as `0x${string}`, data: data as `0x${string}`, value })))
+  return tidy(on(chain, keyFor(address)).then((c) => c.sendTransaction({ account, chain: CHAINS[chain], to: to as `0x${string}`, data: data as `0x${string}`, value })))
 }
