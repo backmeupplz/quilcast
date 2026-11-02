@@ -22,9 +22,6 @@ const finish = async (a: Account) => {
   go('/')
 }
 
-// the iOS and Android apps have no browser wallet to connect to
-const inApp = navigator.userAgent.includes('QuilcastApp/')
-
 const Steps = ({ steps, at }: { steps: string[]; at: number }) => (
   <ol class="steps">{steps.map((s, i) => <li class={i < at ? 'done' : i === at ? 'now' : ''}>{s}</li>)}</ol>
 )
@@ -47,10 +44,10 @@ export function Join({ step }: { step?: string }) {
         <b>{t('I already have an account')}</b>
         <span>{t('Sign in with the recovery phrase from Warpcast, Quorum or any other Farcaster app.')}</span>
       </button>
-      {!inApp && <button class="choice" onClick={() => go('/join/wallet')}>
+      <button class="choice" onClick={() => go('/join/wallet')}>
         <b>{t('Use a wallet')}</b>
         <span>{t('Connect MetaMask, Rabby or another wallet that owns a Farcaster account, or create one paid from it. The wallet keeps its keys and you approve each signature.')}</span>
-      </button>}
+      </button>
     </div>
   )
 }
