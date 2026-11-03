@@ -263,7 +263,13 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner }: { load: (cursor
   return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
     initial={() => (cacheKey === '0:trending' && boot) || (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
     load={async (cursor) => {
-      const r = await load(cursor)
+      let r = await load(cursor)
+      // a tab that keeps only some casts (a profile's Casts or Replies) can get whole pages with none to keep, like a bot
+      // that only ever replies: read on within this one load, so the skeleton stays put instead of flashing page after
+      // page. ponytail: after 10 such pages it stops and shows the empty note; anything older is out of reach here
+      const filtered = keep && !thread
+      for (let i = 0; filtered && i < 10 && r.casts.length && !r.casts.some(keep) && r.next?.cursor; i++) r = await load(r.next.cursor)
+      const nothing = filtered && !r.casts.some(keep)
       if (!cursor) shown.current = new Set()
       let casts = thread ? await threads(r.casts, shown.current) : keep ? r.casts.filter(keep) : r.casts
       // the server's page (at most a minute old) keeps its order on top, with fresh counts, and the rest goes under
@@ -278,7 +284,7 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner }: { load: (cursor
           save(`quilcast:feed:${cacheKey}`, casts.slice(0, 20))
         } catch {}
       }
-      return { items: casts, cursor: r.casts.length ? r.next?.cursor || null : null }
+      return { items: casts, cursor: r.casts.length && !nothing ? r.next?.cursor || null : null }
     }} />
 }
 
