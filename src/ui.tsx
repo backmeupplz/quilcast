@@ -10,6 +10,7 @@ import { blockOf, hides, muteOf, setMute } from './mutes.ts'
 import { spamAccountOf, spamOf } from './spam.ts'
 import { swoosh } from './swoosh.ts'
 import { base, detect } from './lang.ts'
+import { bound, FIT, TAP_ZOOM, zoomAt, type Zoom } from './zoom.ts'
 
 // keys and crypto load only when someone signs in or writes
 export const w = () => import('./write.ts')
@@ -22,7 +23,8 @@ export const shell = {
   toast: (_: string) => {},
   // text, embeds and onDone come from mini apps; onDone gets the new cast's hash, or null if nothing was posted
   compose: (_: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void } = {}) => {},
-  view: (_urls: string[], _index: number) => {},
+  // opens the image viewer (Viewer)
+  view: (urls: string[], index: number) => openViewer(urls, index),
   // a Markdown link's (`label`) or look-alike link's real address, asked about before it opens (LinkSheet);
   // `open` opens it some other way than a new tab (a mini app)
   link: (_url: string, _o: { label?: boolean; open?: () => void } = {}) => false,
@@ -371,28 +373,202 @@ export function Media({ urls: given, images }: { urls: string[]; images?: boolea
   )
 }
 
-/** Full-screen image viewer: arrows, keyboard and swipe move between images. */
+// The open viewer has a history entry of its own (the page's address, its pictures in the entry's state), so Back (the
+// browser's, Android's, an iOS edge swipe) pops that entry and closes the viewer, leaving the page under it where it
+// was. ✕, Escape and the backdrop go back too, so closing leaves no entry behind; Forward opens it again. This listener
+// is added as the app loads, before any page's, so a pop that only closes or reopens the viewer never reaches the
+// router (app.tsx useRoute), which would scroll the page to the top.
+type Viewing = { urls: string[]; index: number }
+const VIEWING = 'quilcast:viewing'
+const viewingIn = (s: unknown): Viewing | null => (s as Record<string, Viewing> | null)?.[VIEWING] ?? null
+// the one on screen: a page reloaded on the viewer's entry opens it again
+let viewing = viewingIn(history.state)
+// the address under the open viewer while its entry is the current one, and the last one it was open on (Forward)
+let under = viewing ? location.href : ''
+let last = under
+// closeViewer's Back is on its way: the viewer neither opens nor reopens until it lands
+let closing = false
+let unstick: ReturnType<typeof setTimeout> | undefined
+const show = (v: Viewing | null) => ((viewing = v), dispatchEvent(new Event('lightbox')))
+function openViewer(urls: string[], index: number) {
+  if (viewing || closing) return
+  under = last = location.href
+  history.pushState({ [VIEWING]: { urls, index } }, '')
+  show({ urls, index })
+}
+// gone at once; its entry is popped right after, and the listener lets that pop go
+function closeViewer() {
+  if (!viewing) return
+  show(null)
+  if (!viewingIn(history.state)) return void (under = '')
+  closing = true
+  history.back()
+  // (in case that Back leaves this page, and Forward brings it back from the cache)
+  clearTimeout(unstick)
+  unstick = setTimeout(() => (closing = false), 1000)
+}
+addEventListener('popstate', (e) => {
+  const v = viewingIn(history.state), was = closing
+  // (not the app's own, which go() sends right away)
+  if (e.isTrusted) (closing = false), clearTimeout(unstick)
+  if (under && !v && location.href === under) {
+    // its entry popped, by Back or closeViewer
+    under = ''
+    e.stopImmediatePropagation()
+    if (viewing) show(null)
+  } else if (v && !viewing && !was && location.href === last) {
+    // onto its entry again by Forward, right after Back
+    under = location.href
+    e.stopImmediatePropagation()
+    show(v)
+  } else {
+    // anywhere else, which the page routes to: the viewer goes, and an entry of its reached from elsewhere is a plain
+    // page now
+    if (v) history.replaceState(null, '')
+    under = last = ''
+    if (viewing) show(null)
+  }
+})
+
+/** The image viewer, while one is open (shell.view). */
+export function Viewer() {
+  const [v, setV] = useState(viewing)
+  useEffect(() => {
+    const f = () => setV(viewing)
+    f()
+    addEventListener('lightbox', f)
+    return () => removeEventListener('lightbox', f)
+  }, [])
+  return v && <Lightbox {...v} close={closeViewer} />
+}
+
+type Pt = { x: number; y: number }
+const middle = (p: Pt[]) => ({ x: p.reduce((s, q) => s + q.x, 0) / p.length, y: p.reduce((s, q) => s + q.y, 0) / p.length })
+const spread = (p: Pt[]) => (p.length > 1 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 0)
+
+/** Full-screen image viewer: arrows, keyboard and swipe move between images. A double tap (or click) zooms in on its
+ *  spot and back out, two fingers pinch, and a zoomed picture pans under a finger or the mouse (zoom.ts). */
 export function Lightbox({ urls, index, close }: { urls: string[]; index: number; close: () => void }) {
   const [i, setI] = useState(index)
+  const [z, setZ] = useState(FIT)
+  // kept current between renders, for the gesture's handlers
+  const zoom = useRef(z)
+  const zoomTo = (v: Zoom) => ((zoom.current = v), setZ(v))
   const many = urls.length > 1
-  const step = (d: number) => many && setI((x) => (x + d + urls.length) % urls.length)
-  const touch = useRef(0)
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => (e.key === 'Escape' ? close() : e.key === 'ArrowRight' ? step(1) : e.key === 'ArrowLeft' ? step(-1) : null)
-    addEventListener('keydown', key)
+  // each picture starts fitted
+  const step = (d: number) => many && (setI((x) => (x + d + urls.length) % urls.length), zoomTo(FIT))
+  const box = useRef<HTMLDivElement>(null)
+  const pic = useRef<HTMLImageElement>(null)
+  // the fingers (or the mouse) down on it now
+  const pts = useRef(new Map<number, Pt>())
+  // the gesture under way: where it began (a swipe's start); the zoom, and the fingers' middle and spread, when it, its
+  // latest finger or a pan began; whether it has moved, and whether two fingers ever pinched in it
+  const g = useRef<{ from: Pt; z: Zoom; at: Pt; d: number; moved: boolean; pinched: boolean } | null>(null)
+  const [held, setHeld] = useState(false)
+  // the click that ends a drag, a pinch or a double tap isn't a tap on the backdrop
+  const noClick = useRef(false)
+  const lastTap = useRef({ t: -1e9, x: 0, y: 0 })
+  // keys are the viewer's while it's open, before the page's (Quorum's / would go to Search under it); added as it's
+  // drawn, so Escape right after it opens closes it
+  useLayoutEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      e.stopPropagation()
+      const k = e.key, v = zoom.current
+      // (Ctrl/⌘ with + − 0 zoom the browser)
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (k === 'Escape') shut()
+      else if (k === 'ArrowRight' || k === 'ArrowLeft') step(k === 'ArrowRight' ? 1 : -1)
+      // + and − zoom about the middle, 0 fits it again
+      else if (k === '+' || k === '=' || k === '-') zoomTo(fit(zoomAt(v, k === '-' ? v.z / 1.5 : v.z * 1.5, { x: 0, y: 0 })))
+      else if (k === '0') zoomTo(FIT)
+    }
+    addEventListener('keydown', key, true)
     document.body.style.overflow = 'hidden'
-    return () => (removeEventListener('keydown', key), (document.body.style.overflow = ''))
+    return () => (removeEventListener('keydown', key, true), (document.body.style.overflow = ''))
   }, [])
+  // Forward, or a reload, opens it on the picture it was left on; once the pictures settle, as WebKit throws past 100
+  // replaceStates in 10 s (a held arrow key)
+  // (and at once when ✕, Escape or the backdrop close it first: shut)
+  const kept = useRef({ shown: i, saved: index })
+  kept.current.shown = i
+  const keep = () => {
+    const k = kept.current
+    if (k.shown === k.saved) return
+    try {
+      if (viewingIn(history.state)) history.replaceState({ [VIEWING]: { urls, index: k.shown } }, ''), (k.saved = k.shown)
+    } catch {}
+  }
+  useEffect(() => {
+    const t = setTimeout(keep, 500)
+    return () => clearTimeout(t)
+  }, [i])
+  const shut = () => (keep(), close())
+  // a point from the screen's middle, where the fitted picture sits
+  const rel = (p: Pt) => {
+    const r = box.current!.getBoundingClientRect()
+    return { x: p.x - r.left - r.width / 2, y: p.y - r.top - r.height / 2 }
+  }
+  const fit = (v: Zoom) => bound(v, pic.current!.offsetWidth, pic.current!.offsetHeight, box.current!.clientWidth, box.current!.clientHeight)
+  const begin = () => {
+    const p = [...pts.current.values()], s = g.current
+    g.current = { from: s?.from ?? middle(p), z: zoom.current, at: middle(p), d: spread(p), moved: s?.moved ?? false, pinched: (s?.pinched ?? false) || p.length > 1 }
+  }
+  // `cancel`: the browser took the pointer, or a mouse button came up where the page didn't see it
+  const up = (e: PointerEvent, cancel = e.type === 'pointercancel') => {
+    const s = g.current
+    if (!s || !pts.current.delete(e.pointerId)) return
+    if (pts.current.size) return begin()
+    g.current = null
+    setHeld(false)
+    if (cancel) return
+    if (s.moved || s.pinched) {
+      // a swipe at 1× moves between the pictures (a finger's: a mouse drag doesn't)
+      const dx = e.clientX - s.from.x
+      if (!s.pinched && s.z.z === 1 && e.pointerType !== 'mouse' && Math.abs(dx) > 50) step(dx < 0 ? 1 : -1)
+      return
+    }
+    // a second tap soon after the first and near it zooms in on that spot of the picture, or anywhere back out
+    const t = lastTap.current
+    const twice = e.timeStamp - t.t < 300 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 30
+    lastTap.current = twice ? { t: -1e9, x: 0, y: 0 } : { t: e.timeStamp, x: e.clientX, y: e.clientY }
+    if (!twice) return
+    if (zoom.current.z > 1) zoomTo(FIT), (noClick.current = true)
+    else if (e.target === pic.current) zoomTo(fit(zoomAt(FIT, TAP_ZOOM, rel({ x: e.clientX, y: e.clientY })))), (noClick.current = true)
+  }
   const src = safeUrl(urls[i])
   return (
-    <div class="lightbox" role="dialog" aria-label={t('Image viewer')} onClick={close}
-      onTouchStart={(e) => (touch.current = e.touches[0].clientX)}
-      onTouchEnd={(e) => {
-        const dx = e.changedTouches[0].clientX - touch.current
-        Math.abs(dx) > 50 && step(dx < 0 ? 1 : -1)
-      }}>
-      <img src={src} alt="" referrerpolicy="no-referrer" onClick={stop} />
-      <button class="lb-btn lb-close" aria-label={t('Close')} onClick={close}><Icon d={P.x} size={22} /></button>
+    <div ref={box} class={`lightbox${held ? ' held' : ''}`} role="dialog" aria-modal="true" aria-label={t('Image viewer')}
+      // a tap on the backdrop closes it, unless the picture is zoomed in
+      onClick={() => !noClick.current && zoom.current.z === 1 && shut()}
+      onPointerDown={(e) => {
+        if ((e.target as Element).closest('button, a') || e.button) return
+        // (a mouse's, left over from a button that came up outside the page)
+        pts.current.delete(e.pointerId)
+        if (!pts.current.size) (g.current = null), (noClick.current = false)
+        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        begin()
+        setHeld(true)
+      }}
+      onPointerMove={(e) => {
+        const s = g.current
+        if (!s || !pts.current.has(e.pointerId)) return
+        if (e.pointerType === 'mouse' && !e.buttons) return up(e, true)
+        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        const p = [...pts.current.values()], m = middle(p)
+        if (!s.moved && (p.length > 1 || Math.hypot(m.x - s.at.x, m.y - s.at.y) > 10)) {
+          s.moved = noClick.current = true
+          // a pan starts from here, not with a jump of the 10 px it took to tell it from a tap
+          if (p.length === 1) s.at = m
+        }
+        // two fingers scale it about the spot they began on, which follows their middle; one pans it once zoomed
+        if (p.length > 1 && s.d) zoomTo(fit(zoomAt(s.z, (s.z.z * spread(p)) / s.d, rel(s.at), rel(m))))
+        else if (p.length === 1 && s.z.z > 1 && s.moved) zoomTo(fit({ ...s.z, x: s.z.x + m.x - s.at.x, y: s.z.y + m.y - s.at.y }))
+      }}
+      onPointerUp={(e) => up(e)} onPointerCancel={(e) => up(e)}>
+      {/* keyed: the next picture comes in fitted, not shrinking from the last one's zoom */}
+      <img key={i} ref={pic} src={src} alt="" referrerpolicy="no-referrer" draggable={false} onClick={stop}
+        style={{ transform: `translate(${z.x}px, ${z.y}px) scale(${z.z})` }} />
+      <button class="lb-btn lb-close" aria-label={t('Close')} onClick={shut}><Icon d={P.x} size={22} /></button>
       {many && (
         <>
           <button class="lb-btn lb-prev" aria-label={t('Previous image')} onClick={(e) => (stop(e), step(-1))}><Icon d={P.back} size={22} /></button>

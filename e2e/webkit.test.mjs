@@ -166,4 +166,110 @@ describe('the app in WebKit', { concurrency: true }, () => {
     assert.ok(wide <= w, `the page is ${wide} px wide on a ${w} px screen`)
     await close()
   })
+
+  // #417: Back closes the image viewer and stays on the page, and a double tap zooms in on the spot and back out
+  test('on a phone, Back closes the image viewer, which zooms on a double tap', async () => {
+    const { page, ctx, errors, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { phone: true })
+    // the cast's pictures, 800×600
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#48c"/></svg>'
+    await ctx.route('https://imagedelivery.net/**', (r) => r.fulfill({ body: svg, contentType: 'image/svg+xml' }))
+    await drawn(page)
+    const pics = page.locator('#app article.cast button.img')
+    await pics.first().waitFor({ timeout: 30e3 })
+    const where = await page.evaluate(() => location.href)
+    const box = page.locator('.lightbox')
+    const img = box.locator('img')
+    const scale = () => img.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a)
+    const scaled = (a) => page.waitForFunction((a) => Math.abs(new DOMMatrix(getComputedStyle(document.querySelector('.lightbox img')).transform).a - a) < 1e-6, a)
+    const openIt = async () => (await pics.first().click(), await box.waitFor(), await img.evaluate((el) => el.decode()))
+    const dbl = async (p) => (await page.touchscreen.tap(p.x, p.y), await page.waitForTimeout(80), await page.touchscreen.tap(p.x, p.y))
+    // fingers on the picture: [type, finger, x, y] (pointer events, which the viewer's gestures go by)
+    const touch = (steps) => page.evaluate((steps) => {
+      const el = document.querySelector('.lightbox img')
+      for (const [type, id, x, y] of steps) el.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: 'touch', isPrimary: id === 1 }))
+    }, steps)
+    const swipe = (x, y, dx) => touch([['pointerdown', 1, x, y], ['pointermove', 1, x + dx / 3, y], ['pointermove', 1, x + dx, y], ['pointerup', 1, x + dx, y]])
+    const count = () => box.locator('.lb-count').innerText()
+    // the page's own listeners, after the app's: the router hears a pop only if this does
+    await page.evaluate(() => ((window.pops = 0), addEventListener('popstate', () => window.pops++)))
+    const pops = () => page.evaluate(() => window.pops)
+    // the backdrop, below the picture even when zoomed
+    const backdrop = { x: 20, y: 830 }
+
+    await page.evaluate(() => scrollTo(0, 60))
+    await openIt()
+    const y = await page.evaluate(() => scrollY)
+    const r = await img.boundingBox()
+    const mid = { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    // a swipe at 1× goes to the next picture
+    assert.equal(await count(), '1 / 2')
+    await swipe(mid.x, mid.y, -120)
+    await box.locator('.lb-count', { hasText: '2 / 2' }).waitFor()
+    await img.evaluate((el) => el.decode())
+
+    // a double tap on the picture's right half zooms in there: that spot stays under the finger
+    const at = { x: r.x + r.width * 0.75, y: mid.y }
+    await dbl(at)
+    await scaled(2.5)
+    const z = await img.boundingBox()
+    assert.ok(Math.abs(z.x + z.width * 0.75 - at.x) < 2, 'the tapped spot moved')
+    // zoomed, a swipe pans it instead of moving on, and a tap on the backdrop doesn't close it
+    const x0 = z.x
+    await swipe(mid.x, mid.y, 60)
+    await page.waitForFunction((x0) => document.querySelector('.lightbox img').getBoundingClientRect().x > x0 + 30, x0)
+    assert.equal(await count(), '2 / 2')
+    await page.touchscreen.tap(backdrop.x, backdrop.y)
+    await page.waitForTimeout(400)
+    assert.equal(await box.count(), 1)
+    assert.equal(await scale(), 2.5)
+    // and a double tap zooms back out
+    await dbl(mid)
+    await scaled(1)
+    await page.waitForTimeout(400)
+
+    // two fingers spread twice as far apart zoom it in twice; 0 fits it again, + zooms in
+    await touch([['pointerdown', 1, mid.x - 50, mid.y], ['pointerdown', 2, mid.x + 50, mid.y], ['pointermove', 2, mid.x + 100, mid.y], ['pointermove', 2, mid.x + 150, mid.y], ['pointerup', 2, mid.x + 150, mid.y], ['pointerup', 1, mid.x - 50, mid.y]])
+    await scaled(2)
+    assert.equal(await count(), '2 / 2')
+    await page.keyboard.press('0')
+    await scaled(1)
+    await page.keyboard.press('+')
+    await scaled(1.5)
+
+    // Back closes it on the same page, where it was (the router, which scrolls a page it goes to to the top, never
+    // heard it); Forward opens it again, on the picture it was left on; Back once more
+    await page.waitForTimeout(600)
+    await page.evaluate(() => history.back())
+    await box.waitFor({ state: 'detached' })
+    assert.equal(await page.evaluate(() => location.href), where)
+    assert.equal(await page.evaluate(() => scrollY), y)
+    await page.evaluate(() => history.forward())
+    await box.waitFor()
+    assert.equal(await count(), '2 / 2')
+    // closed right after a swipe, Forward still opens it on the picture it was left on
+    await img.evaluate((el) => el.decode())
+    await swipe(mid.x, mid.y, 120)
+    await box.locator('.lb-count', { hasText: '1 / 2' }).waitFor()
+    await box.getByRole('button', { name: 'Close' }).click()
+    await box.waitFor({ state: 'detached' })
+    await page.waitForFunction(() => !history.state?.['quilcast:viewing'])
+    await page.evaluate(() => history.forward())
+    await box.waitFor()
+    assert.equal(await count(), '1 / 2')
+    await page.evaluate(() => history.back())
+    await box.waitFor({ state: 'detached' })
+
+    // ✕, Escape and a tap on the backdrop close it without leaving its history entry behind
+    for (const shut of [() => box.getByRole('button', { name: 'Close' }).click(), () => page.keyboard.press('Escape'), () => page.touchscreen.tap(backdrop.x, backdrop.y)]) {
+      await openIt()
+      assert.ok(await page.evaluate(() => history.state?.['quilcast:viewing']))
+      await shut()
+      await box.waitFor({ state: 'detached' })
+      await page.waitForFunction(() => !history.state?.['quilcast:viewing'])
+      assert.equal(await page.evaluate(() => location.href), where)
+    }
+    assert.equal(await pops(), 0)
+    assert.deepEqual(errors, [])
+    await close()
+  })
 })

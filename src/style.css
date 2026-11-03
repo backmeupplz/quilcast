@@ -251,8 +251,10 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .imgs.n1 { border: var(--bw, 1px) var(--bs, solid) var(--line); }
 .imgs.n1 img { width: auto; max-width: 100%; height: auto; max-height: 510px; min-height: 120px; min-width: 120px; }
 .more-imgs { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / 0.5); color: #fff; font-size: 26px; font-weight: 700; }
-.lightbox { position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 0.95); display: grid; place-items: center; animation: fade 0.15s; }
-.lightbox > img { max-width: calc(100vw - 32px); max-height: calc(100vh - 96px); object-fit: contain; border-radius: calc(6px * var(--rs, 1)); }
+.lightbox { position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 0.95); display: grid; place-items: center; animation: fade 0.15s; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; }
+/* zoomed by Lightbox's gestures, which have the fingers to themselves (touch-action): eased, except under a finger */
+.lightbox > img { max-width: calc(100vw - 32px); max-height: calc(100vh - 96px); object-fit: contain; border-radius: calc(6px * var(--rs, 1)); transition: transform 0.2s; }
+.lightbox.held > img { transition: none; }
 .lb-btn { position: absolute; width: 44px; height: 44px; border-radius: calc(99px * var(--rs, 1)); border: 0; display: grid; place-items: center; background: rgb(255 255 255 / 0.12); color: #fff; }
 .lb-close { top: 14px; inset-inline-start: 14px; }
 .lb-prev { inset-inline-start: 14px; top: 50%; translate: 0 -50%; }

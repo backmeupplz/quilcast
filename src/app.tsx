@@ -6,7 +6,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, Lightbox, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -1590,7 +1590,6 @@ function App() {
   const [compose, setCompose] = useState<Parameters<typeof shell.compose>[0] | null>(null)
   const [r0, r1, r2] = useRoute()
   const unread = useUnread()
-  const [viewer, setViewer] = useState<{ urls: string[]; index: number } | null>(null)
   // Quorum mode's ⋮ row on phones, folded again on every page change
   const [more, setMore] = useState(false)
   useEffect(() => setMore(false), [r0, r1])
@@ -1607,7 +1606,6 @@ function App() {
   const composing = useRef(false)
   composing.current = !!compose
   shell.compose = (o = {}) => (o.onDone && composing.current ? o.onDone(null) : setCompose(o))
-  shell.view = (urls, index) => setViewer({ urls, index })
   // the theme editor sits over the whole app, so every page can be seen in the draft
   const [editing, setEditing] = useState<{ start: Theme | null } | null>(null)
   shell.editTheme = (th) => setEditing({ start: th === undefined ? theme : th })
@@ -1740,7 +1738,7 @@ function App() {
       {me && !more && !['join', 'settings', 'messages'].includes(r0) && <button class="fab" aria-label={t('New cast')} onClick={() => setCompose({})}><Icon d={quorum ? P.plus : P.pen} size={22} /></button>}
       {me && <Dock />}
       {compose && <Composer {...compose} onClose={() => setCompose(null)} />}
-      {viewer && <Lightbox {...viewer} close={() => setViewer(null)} />}
+      <Viewer />
       <PhraseAsk />
       <ReportSheet />
       <LinkSheet />
