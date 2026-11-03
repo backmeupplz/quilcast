@@ -1114,5 +1114,7 @@
   "Spam account {n}%": "บัญชีสแปม {n}%",
   "Spam accounts": "บัญชีสแปม",
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "กระเป๋าเงินของคุณลงนามด้วยที่อยู่อื่นที่ไม่ใช่ของบัญชีนี้ สลับไปใช้ที่อยู่ของบัญชีในกระเป๋าเงินแล้วลองอีกครั้ง",
-  "Your wallet's signature didn't check out for this account.": "ลายเซ็นจากวอลเล็ตของคุณใช้ไม่ได้กับบัญชีนี้"
+  "Your wallet's signature didn't check out for this account.": "ลายเซ็นจากวอลเล็ตของคุณใช้ไม่ได้กับบัญชีนี้",
+  "Not spam": "ไม่ใช่สแปม",
+  "Thanks! We'll check that label.": "ขอบคุณ! เราจะตรวจสอบป้ายนี้"
 }

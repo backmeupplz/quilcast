@@ -884,8 +884,12 @@ export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => vo
     )
   const m = muteOf(u.fid)
   const b = blockOf(u.fid)
+  // on a cast or an account spam.quilcast.com labelled: one tap tells us the label is wrong (server/report.mjs)
+  const labelled = (c && spamOf(c) != null) || spamAccountOf(u.fid) != null
+  const notSpam = () => (done(), w().then((x) => x.sendReport({ fid: u.fid, hash: c?.hash, reason: 'not_spam', text: '' })).then(() => toast(t("Thanks! We'll check that label.")), (e) => toast(e.message)))
   return (
     <>
+      {labelled && <button role="menuitem" onClick={notSpam}><Icon d={P.check} />{t('Not spam')}</button>}
       <button role="menuitem" onClick={() => ask('users', m)}><Icon d={P.mute} />{m ? t('Unmute @{name}', { name: handle(u) }) : t('Mute @{name}', { name: handle(u) })}</button>
       <button role="menuitem" class="danger" onClick={() => ask('blocks', b)}><Icon d={P.block} />{b ? t('Unblock @{name}', { name: handle(u) }) : t('Block @{name}', { name: handle(u) })}</button>
       <button role="menuitem" class="danger" onClick={() => (done(), shell.report(u, c))}><Icon d={P.flag} />{c ? t('Report this cast') : t('Report @{name}', { name: handle(u) })}</button>

@@ -1114,5 +1114,7 @@
   "Spam account {n}%": "스팸 계정 {n}%",
   "Spam accounts": "스팸 계정",
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "지갑이 이 계정과 다른 주소로 서명했습니다. 지갑에서 계정 주소로 전환한 뒤 다시 시도하세요.",
-  "Your wallet's signature didn't check out for this account.": "지갑의 서명이 이 계정에서 확인되지 않았습니다."
+  "Your wallet's signature didn't check out for this account.": "지갑의 서명이 이 계정에서 확인되지 않았습니다.",
+  "Not spam": "스팸 아님",
+  "Thanks! We'll check that label.": "감사합니다! 이 라벨을 확인할게요."
 }

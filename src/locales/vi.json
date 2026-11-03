@@ -1114,5 +1114,7 @@
   "Spam account {n}%": "Tài khoản spam {n}%",
   "Spam accounts": "Tài khoản spam",
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Ví của bạn đã ký bằng một địa chỉ khác với địa chỉ của tài khoản này. Hãy chuyển sang địa chỉ của tài khoản trong ví và thử lại.",
-  "Your wallet's signature didn't check out for this account.": "Chữ ký từ ví của bạn không hợp lệ với tài khoản này."
+  "Your wallet's signature didn't check out for this account.": "Chữ ký từ ví của bạn không hợp lệ với tài khoản này.",
+  "Not spam": "Không phải spam",
+  "Thanks! We'll check that label.": "Cảm ơn! Chúng tôi sẽ kiểm tra nhãn đó."
 }

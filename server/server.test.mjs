@@ -65,6 +65,9 @@ const node = createServer(async (q, r) => {
   // Quorum's skin gallery
   if (u.pathname === '/skins') return r.end(JSON.stringify({ has_more: true, total: 2, entries: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5, author_address: 'Qmx', manifest: 'big' }, { id: '../etc', name: 'bad' }] }))
   if (u.pathname === `/skins/${SKIN_ID}`) return r.end(JSON.stringify({ id: SKIN_ID, manifest: JSON.stringify(SKIN) }))
+  if (u.pathname === '/tg/bottg-token/sendMessage') return hookHits.push({ path: u.pathname, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
+  if (u.pathname === '/spam/scores') return r.end(JSON.stringify({ [u.searchParams.get('h')]: 0.97 }))
+  if (u.pathname === '/spam/users') return r.end(JSON.stringify({ [u.searchParams.get('fid')]: null }))
   if (u.pathname === '/report-hook') return hookHits.push({ path: u.pathname + u.search, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
   if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : u.searchParams.get('fid') === '9' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer9)).toString('hex') }] : [] }))
   // @eight's casts, two pages, for finding a cast from a farcaster.xyz link's first digits (the Collect mini app)
@@ -128,7 +131,7 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods` }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam` }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -468,6 +471,12 @@ test('reports: kept and sent to the webhook, anonymous or signed by the reporter
   assert.deepEqual(hookHits.map((h) => h.path), ['/report-hook?to=mods', '/report-hook?to=mods'])
   assert.match(hookHits[0].body.text, /Harassment or hate[\s\S]*\/c\/0xabab[\s\S]*From: signed out[\s\S]*mean/)
   assert.match(hookHits[1].body.text, /Spam[\s\S]*Account: https:\/\/quilcast\.test\/u\/9[\s\S]*From: https:\/\/quilcast\.test\/u\/7/)
+  // Not spam goes to Telegram (@frdy_bot), not the webhook, with the cast's and the account's scores
+  assert.equal((await send({ fid: 9, hash, reason: 'not_spam' })).status, 200)
+  for (let i = 0; i < 50 && hookHits.length < 3; i++) await new Promise((r) => setTimeout(r, 50))
+  assert.equal(hookHits[2].path, '/tg/bottg-token/sendMessage')
+  assert.equal(hookHits[2].body.chat_id, '76')
+  assert.match(hookHits[2].body.text, /isn't spam[\s\S]*\/c\/0xabab\S* \(spam 97%\)[\s\S]*\/u\/9 \(spam account not scored yet\)[\s\S]*spam\/\?c=0xabab/)
 })
 
 test('the DM relay carries the token to the direct-cast endpoints and nowhere else', async () => {

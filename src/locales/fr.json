@@ -1114,5 +1114,7 @@
   "Spam account {n}%": "Compte de spam {n} %",
   "Spam accounts": "Comptes de spam",
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Ton portefeuille a signé avec une autre adresse que celle de ce compte. Passe à l’adresse du compte dans ton portefeuille et réessaie.",
-  "Your wallet's signature didn't check out for this account.": "La signature de ton portefeuille n'est pas valide pour ce compte."
+  "Your wallet's signature didn't check out for this account.": "La signature de ton portefeuille n'est pas valide pour ce compte.",
+  "Not spam": "Pas du spam",
+  "Thanks! We'll check that label.": "Merci ! Nous allons vérifier cette étiquette."
 }

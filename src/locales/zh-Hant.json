@@ -1114,5 +1114,7 @@
   "Spam account {n}%": "垃圾帳號 {n}%",
   "Spam accounts": "垃圾帳號",
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "你的錢包用了與此帳號不同的地址簽署。請在錢包中切換到該帳號的地址後再試一次。",
-  "Your wallet's signature didn't check out for this account.": "你的錢包簽名與此帳號不符。"
+  "Your wallet's signature didn't check out for this account.": "你的錢包簽名與此帳號不符。",
+  "Not spam": "不是垃圾訊息",
+  "Thanks! We'll check that label.": "謝謝！我們會核查這個標籤。"
 }

@@ -1114,5 +1114,7 @@
   "Spam account {n}%": "スパムアカウント {n}%",
   "Spam accounts": "スパムアカウント",
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "ウォレットがこのアカウントとは別のアドレスで署名しました。ウォレットでアカウントのアドレスに切り替えて、もう一度お試しください。",
-  "Your wallet's signature didn't check out for this account.": "ウォレットの署名がこのアカウントで確認できませんでした。"
+  "Your wallet's signature didn't check out for this account.": "ウォレットの署名がこのアカウントで確認できませんでした。",
+  "Not spam": "スパムではない",
+  "Thanks! We'll check that label.": "ありがとうございます！このラベルを確認します。"
 }
