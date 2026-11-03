@@ -920,6 +920,8 @@ const noindex = (h) => h.replace(/\s*<link rel="canonical" href="[^"]*" \/>/, ''
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.json': 'application/json', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' }
 
 // static files under a path without their extension: About (plain HTML for crawlers), the legal pages the stores link to, and Apple's universal links file
+// the standalone pages in the app's other languages (public/<lang>/<page>.html), each at its own address
+const TRANSLATED = /^\/(?:ar|de|es|fr|hi|id|it|ja|ko|nl|pl|pt-br|pt-pt|ru|sv|th|tr|uk|vi|zh-hans|zh-hant)\/(?:about|privacy|terms|safety|delete)$/
 const PAGES = { '/about': 'about.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
 
 // dist/ never changes while we run: its files are read once, and compressed once per encoding
@@ -1385,7 +1387,7 @@ createServer(async (req, res) => {
     }
 
     if (path === '/') return homePage()
-    const file = normalize(join(DIST, PAGES[path] || path))
+    const file = normalize(join(DIST, PAGES[path] || (TRANSLATED.test(path) ? path.slice(1) + '.html' : path)))
     if (file.startsWith(DIST) && extname(file)) {
       const page = extname(file) === '.html'
       const read = page ? readFile(file).then((b) => Buffer.from(String(b).replace(LEGAL_LINK, `<style>${LEGAL_CSS}</style>`))) : readFile(file)

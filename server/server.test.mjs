@@ -844,3 +844,11 @@ test('standalone pages inline their stylesheet, allowed by its hash, and ask Clo
   const hash = createHash('sha256').update(css).digest('base64')
   assert.ok(r.headers.get('content-security-policy').includes(`'sha256-${hash}'`))
 })
+
+test('the standalone pages are served in the other languages at their own addresses, with the stylesheet inlined', async () => {
+  const r = await fetch(base + '/de/privacy')
+  const html = await r.text()
+  assert.equal(r.status, 200)
+  assert.match(html, /<html lang="de">/)
+  assert.ok(html.includes('<link rel="canonical" href="https://quilcast.com/de/privacy" />') && !html.includes('href="/legal.css"'))
+})

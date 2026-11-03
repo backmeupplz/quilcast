@@ -6,3 +6,9 @@ h1 { font-size: 30px; line-height: 1.2; margin: 0 0 4px; }
 h2 { font-size: 19px; margin: 28px 0 6px; }
 .muted { color: var(--muted); }
 a { color: var(--accent); }
+body { overflow-wrap: break-word }
+.note { margin-top: 28px }
+nav.langs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 28px 0 0; padding-top: 16px; border-top: 1px solid var(--muted); font-size: 16px }
+nav.langs a { display: inline-block; padding: 5px 8px; min-height: 24px }
+nav.langs a[aria-current] { font-weight: 700; color: inherit; text-decoration: none }
+main ul, main ol { padding-inline-start: 1.5em }
