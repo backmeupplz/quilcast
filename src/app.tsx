@@ -1704,7 +1704,6 @@ function App() {
         <div class="about">
           <b>{t('About Quilcast')}</b>
           <p>{t('A small, open Farcaster client that reads from and posts to Quilibrium\'s Hypersnap network, with your keys kept in your browser.')}</p>
-          {!app && <PlayBadge />}
           <p class="foot"><Version /></p>
           <p class="foot ogre-only"><a href="/shrek/credits.html" target="_blank">{t('Shrek credits')}</a></p>
         </div>
