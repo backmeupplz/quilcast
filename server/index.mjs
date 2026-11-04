@@ -806,6 +806,10 @@ const cache = new Map()
 const pngs = new Map()
 // a miss isn't kept, so the next request asks the node again
 const lookup = (k, path, pick) => cache.get(k) || keep(cache, 1000, k, fetchJson(NODE + path).then((r) => pick(r) || (cache.delete(k), null)))
+// follow counts move, so people and the pictures showing their counts are looked up again every 10 minutes
+// (a collected card is kept: it shows the profile as it was)
+const STALE = /^(fid:|u:|card:\d+:live)/
+setInterval(() => { for (const m of [cache, pngs]) for (const k of m.keys()) STALE.test(k) && m.delete(k) }, 600e3).unref()
 const getCast = (hash) => lookup(hash, `/v2/farcaster/cast?identifier=${hash}&type=hash`, (r) => r?.cast)
 // the node's answer; null when it says there's no such thing, a throw when it fails
 async function nodeJson(path) {
@@ -1340,7 +1344,6 @@ createServer(async (req, res) => {
       if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
       const p = await getProfile(ogUser[1]).catch(() => null)
       if (!p) return res.writeHead(404).end()
-      // ponytail: a card stays until it falls out of the cache or the server restarts; key it by a profile hash if edits must show sooner
       const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => profileCard(p.u).then(render))))
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }).end(png)
     }

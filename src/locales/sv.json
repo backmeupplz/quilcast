@@ -1116,5 +1116,6 @@
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Din plånbok signerade med en annan adress än det här kontots. Byt till kontots adress i plånboken och försök igen.",
   "Your wallet's signature didn't check out for this account.": "Din plånboks signatur stämde inte för det här kontot.",
   "Not spam": "Inte spam",
-  "Thanks! We'll check that label.": "Tack! Vi kollar den etiketten."
+  "Thanks! We'll check that label.": "Tack! Vi kollar den etiketten.",
+  "Android app": "Android-app"
 }

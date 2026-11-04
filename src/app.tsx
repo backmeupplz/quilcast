@@ -11,7 +11,7 @@ import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
 import { checkAccounts, spamAccountOf, spamAt } from './spam.ts'
-import { channelFeed, findChannels, getChannel, type Channel } from './channels.ts'
+import { findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
 
@@ -73,7 +73,8 @@ function PhraseAsk() {
   )
 }
 
-const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a></>
+const PLAY = 'https://play.google.com/store/apps/details?id=com.borodutch.quilcast'
+const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a>{!app && <> · <a href={PLAY} target="_blank" rel="noopener">{t('Android app')}</a></>}</>
 // the iOS and Android apps put their own version in the user agent
 const app = navigator.userAgent.match(/QuilcastApp\/(\S+) \((\w+)\)/)
 const feedback = `mailto:support@borodutch.com?subject=${encodeURIComponent('Quilcast feedback')}&body=${encodeURIComponent(`\n\nQuilcast v${__VERSION__}${app ? `, ${app[2]} app ${app[1]}` : ''}`)}`
@@ -217,7 +218,8 @@ const ask = (() => {
 })()
 async function threads(casts: Cast[], shown: Set<string>) {
   const units = await Promise.all(casts.map(async (c): Promise<Cast | null> => {
-    if (!c.parent_hash) return c
+    // a recast shows on its own, whoever the cast replies to
+    if (!c.parent_hash || c.recaster) return c
     const parent = await ask(() => fetchCast(c.parent_hash!))
     if (!parent) return null
     const to = parent.author.fid
@@ -260,7 +262,7 @@ let boot: Cast[] | null = null
 function Feed({ load, k, empty, keep, cacheKey, thread, owner }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number }) {
   // the posts this feed shows so far, for threads(); a first page starts over
   const shown = useRef(new Set<string>())
-  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
+  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => !silenced(c.recaster?.fid) && ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
     initial={() => (cacheKey === '0:trending' && boot) || (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
     load={async (cursor) => {
       let r = await load(cursor)
@@ -328,13 +330,14 @@ function Home() {
       )}
       {!account?.done && (
         <div class="banner">
-          <div><b>{t('Farcaster without the middlemen')}</b><p>{app ? t('Quilcast talks straight to the Hypersnap network, and your keys never leave this device.') : t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p></div>
+          <div><b>{t('Farcaster without the middlemen')}</b><p>{app ? t('Quilcast talks straight to the Hypersnap network, and your keys never leave this device.') : t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p>
+            {!app && /Android/.test(navigator.userAgent) && <p><a href={PLAY} target="_blank" rel="noopener">{t('Android app')}</a></p>}</div>
           <a class="btn small" href="/join">{t('Join')}</a>
         </div>
       )}
       {/* replies show in Following with their conversation (threads()); Trending keeps top-level casts */}
       <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={trendy} thread={tab === 'following'}
-        load={(cursor) => (tab === 'following' ? get('/v2/farcaster/feed/following', { fid: account!.fid, limit: 50, cursor }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
+        load={(cursor) => (tab === 'following' ? get('/v2/farcaster/feed/following', { fid: account!.fid, limit: 50, cursor, with_recasts: 'true' }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
     </>
   )
 }
@@ -394,22 +397,6 @@ const group = (notes: Note[]) => {
 // ponytail: the node returns at most 100 reactions or quotes per cast and can't page them, so lists stop there
 const quotesOf = async (hash: string, limit = 100) => (await get('/v2/farcaster/cast/quotes', { identifier: hash, type: 'hash', limit })).casts as Cast[]
 
-// Hypersnap's notifications leave recasts out, so they're looked up for our casts that have some (one request each)
-// ponytail: only our 25 newest casts are covered; recast notifications on the node would cover the rest
-async function recastNotes(): Promise<Note[]> {
-  const me = account!.fid
-  const casts = (await get('/v2/farcaster/feed/user/casts', { fid: me, limit: 25 })).casts as Cast[]
-  const lists = await Promise.all(
-    casts.filter((c) => c.reactions.recasts_count > 0).map((c) =>
-      get('/v2/farcaster/reactions/cast', { hash: c.hash, types: 'recasts', limit: 100 }).then(
-        (r) => (r.reactions as { user: User; reaction_timestamp: string }[]).filter((x) => x.user.fid !== me).map((x): Note => ({ type: 'recasts', cast: c, user: x.user, timestamp: x.reaction_timestamp })),
-        () => [],
-      ),
-    ),
-  )
-  return lists.flat()
-}
-
 type AppNote = { id: string; app: string; name: string; icon?: string; notificationId: string; title: string; body: string; targetUrl: string; at: number }
 /** This browser's mini app notifications, kept by our server under the account's inbox secret. */
 const appNotes = (): Promise<AppNote[]> =>
@@ -440,9 +427,6 @@ function AppNotes() {
 function Notifications() {
   const [tab, setTab] = useState<'all' | 'replies' | 'apps'>('all')
   const [round, reload] = useReload()
-  // one lookup per visit or reload: switching tabs reuses it
-  const extra = useMemo(() => (account?.done ? recastNotes().catch(() => []) : Promise.resolve([])), [round])
-  const held = useRef<Note[]>([])
   useEffect(() => {
     // opening or refreshing the page marks everything up to now as seen
     localStorage.setItem(seenKey(), String(Date.now()))
@@ -458,15 +442,11 @@ function Notifications() {
         id={(n) => `${n.type}:${n.cast?.hash}:${n.user.fid}:${n.timestamp}`}
         row={(ns) => group(ns.filter((n) => !silenced(n.user.fid) && !(n.cast && !ACT(n.type) && hides(n.cast)))).map((g) => <NoteRow key={g.key} g={g} />)}
         load={async (cursor) => {
-          const [r, qs] = await Promise.all([get('/v2/farcaster/notifications', { fid: account!.fid, limit: 50, cursor }, true), cursor ? held.current : extra])
+          // quotes, replies deeper in our threads and recasts come with Hypersnap PR #42's flag
+          const r = await get('/v2/farcaster/notifications', { fid: account!.fid, limit: 50, cursor, include_quotes_and_deep_replies: 'true' }, true)
           const notes = r.notifications as Note[]
           const next = notes.length ? r.next?.cursor || null : null
-          // recasts slot in by time; ones older than this page wait for a later one
-          const edge = next ? notes[notes.length - 1].timestamp : ''
-          held.current = qs.filter((q) => q.timestamp < edge)
-          const items = [...notes, ...qs.filter((q) => q.timestamp >= edge)]
-            .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-            .filter((n) => n.user && (tab === 'all' || (n.cast && !ACT(n.type))))
+          const items = notes.filter((n) => n.user && (tab === 'all' || (n.cast && !ACT(n.type))))
           // the node sends notification casts with zero counts (unliking one showed -1), so casts shown with their
           // counts get them from one bulk lookup
           const shown = items.flatMap((n) => (n.cast && !ACT(n.type) ? [n.cast] : []))
@@ -492,7 +472,7 @@ function useUnread() {
     // unchanged values keep the same object, so nothing re-renders
     const set = (k: keyof typeof unread, v: boolean) => setUnread((u) => (u[k] === v ? u : { ...u, [k]: v }))
     const check = () =>
-      Promise.all([get('/v2/farcaster/notifications', { fid: account!.fid, limit: 1 }, true).catch(() => null), appNotes()]).then(([r, notes]) => {
+      Promise.all([get('/v2/farcaster/notifications', { fid: account!.fid, limit: 1, include_quotes_and_deep_replies: 'true' }, true).catch(() => null), appNotes()]).then(([r, notes]) => {
         const t = Math.max((r?.notifications[0] && Date.parse(r.notifications[0].timestamp)) || 0, notes[0]?.at || 0)
         set('notifications', !!t && t > Number(localStorage.getItem(seenKey()) || 0))
       })
@@ -895,7 +875,7 @@ function ChannelPage({ id }: { id: string }) {
   const [round, reload] = useReload()
   // when the directory can't be had, the casts under the usual URL still show
   useEffect(() => void getChannel(id).then((x) => setC(x || { id, url: `https://warpcast.com/~/channel/${id}`, name: id, followers: 0, members: 0, open: true })), [id])
-  const load = useMemo(() => c && channelFeed(c.url, (cursor) => get('/v2/farcaster/feed/parent_urls', { parent_urls: c.url, limit: 25, cursor })), [c, round])
+  const load = useMemo(() => c && ((cursor?: string) => get('/v2/farcaster/feed/parent_urls', { parent_urls: c.url, limit: 25, cursor })), [c, round])
   return (
     <>
       <Header title={c?.name || `/${id}`} action={<button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={reload}><Icon d={P.refresh} /></button>} />

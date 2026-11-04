@@ -1090,7 +1090,7 @@ const COLLECT = (hash: string): AppMeta => ({ url: `https://collect.quilcast.com
  *  the profile it's shown on (see hides()). */
 export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number }) {
   // `mine` is what the node said at sign-in, and its counts include those; taps since then adjust from there
-  const was = useMemo(() => [mine.likes.has(c.hash), mine.recasts.has(c.hash)], [c.hash, mineVersion])
+  const was = useMemo(() => [c.viewer_context?.liked ?? mine.likes.has(c.hash), c.viewer_context?.recasted ?? mine.recasts.has(c.hash)], [c.hash, mineVersion])
   const [, redraw] = useState(0)
   const [liked, likes] = tapped(1, c.hash, was[0], c.reactions.likes_count)
   const [recast, recasts] = tapped(2, c.hash, was[1], c.reactions.recasts_count)
@@ -1201,6 +1201,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
     <article class={`cast${line ? ' line' : ''}`} data-href={`/c/${c.hash}`} onPointerDown={() => cards.set(c.hash, c)} onClick={() => go(`/c/${c.hash}`)}>
       <div class="rail"><Avatar u={c.author} /></div>
       <div class="body">
+        {c.recaster && <div class="replying"><Icon d={P.recast} size={14} /> {t('Recast by')} <a href={userPath(c.recaster)} onClick={stop}>{nameOf(c.recaster)}</a></div>}
         <header>
           {name}
           <span class="dot">·</span>

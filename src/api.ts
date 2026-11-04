@@ -201,6 +201,8 @@ export function once<T>(key: string, f: () => Promise<T>, fresh = false): Promis
 }
 
 export function get<T = any>(path: string, q: Record<string, string | number | undefined> = {}, fresh = false): Promise<T> {
+  // nodes with Hypersnap PR #43 then say whether the viewer liked/recast each cast and follows each author
+  if (account?.fid && path.startsWith('/v2/farcaster/')) q = { viewer_fid: account.fid, ...q }
   const qs = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined) as [string, string][])
   const url = `${settings.node}${path}?${qs}`
   return once(url, async () => {
@@ -266,6 +268,9 @@ export type Cast = {
   // a reply in Home carries the casts shown above it (root first), and `gap` when some were skipped
   up?: Cast[]; gap?: boolean
   thread_hash?: string | null
+  // from nodes with Hypersnap PR #43 (asked with viewer_fid), and #40 on a following feed asked with_recasts
+  viewer_context?: { liked?: boolean; recasted?: boolean }
+  recaster?: User
 }
 
 // authors we've seen, so replies can say who they reply to

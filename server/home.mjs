@@ -170,7 +170,7 @@ export function body(d, version, now = Date.now()) {
     `<a class="btn cast-btn" href="/join" aria-label="Join">${icon(P.user)}<span>Join</span></a></nav>` +
     `<aside class="extra"><a class="searchbox" href="/search">${icon(P.search, 16)}<span>Search people and casts</span></a><div class="about"><b>About Quilcast</b>` +
     `<p>A small, open Farcaster client that reads from and posts to Quilibrium's Hypersnap network, with your keys kept in your browser.</p>` +
-    `<p class="foot">v${esc(version)} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">Source</a></p><p class="foot ogre-only"><a href="/shrek/credits.html" target="_blank">Shrek credits</a></p></div></aside>` +
+    `<p class="foot">v${esc(version)} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">Source</a> · <a href="https://play.google.com/store/apps/details?id=com.borodutch.quilcast" target="_blank" rel="noopener">Android app</a></p><p class="foot ogre-only"><a href="/shrek/credits.html" target="_blank">Shrek credits</a></p></div></aside>` +
     `<nav class="tabbar" aria-label="Main">${nav.map(([h, label, p]) => `<a class="${h === '/' ? 'on' : ''}" href="${h}" aria-label="${label}">${ico(p)}</a>`).join('')}</nav>` +
     `<main class="col"><div class="phead"><div class="phead-row"><a class="brand only-mobile" href="/" aria-label="Quilcast home">${logo(26)}</a><h1>Home</h1></div></div>` +
     `<div class="banner"><div><b>Farcaster without the middlemen</b><p>Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.</p></div><a class="btn small" href="/join">Join</a></div>` +

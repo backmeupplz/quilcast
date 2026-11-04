@@ -1116,5 +1116,6 @@
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "وقّعت محفظتك بعنوان مختلف عن عنوان هذا الحساب. بدّل إلى عنوان الحساب في محفظتك وحاول مرة أخرى.",
   "Your wallet's signature didn't check out for this account.": "لم يتطابق توقيع محفظتك مع هذا الحساب.",
   "Not spam": "ليس مزعجًا",
-  "Thanks! We'll check that label.": "شكرًا! سنراجع هذه العلامة."
+  "Thanks! We'll check that label.": "شكرًا! سنراجع هذه العلامة.",
+  "Android app": "تطبيق أندرويد"
 }

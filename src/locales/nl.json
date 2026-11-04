@@ -1116,5 +1116,6 @@
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Je wallet heeft getekend met een ander adres dan dat van dit account. Schakel in je wallet over naar het adres van het account en probeer het opnieuw.",
   "Your wallet's signature didn't check out for this account.": "De handtekening van je wallet klopt niet voor dit account.",
   "Not spam": "Geen spam",
-  "Thanks! We'll check that label.": "Bedankt! We kijken dat label na."
+  "Thanks! We'll check that label.": "Bedankt! We kijken dat label na.",
+  "Android app": "Android-app"
 }

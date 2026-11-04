@@ -1116,5 +1116,6 @@
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Sua carteira assinou com um endereço diferente do desta conta. Mude para o endereço da conta na sua carteira e tente de novo.",
   "Your wallet's signature didn't check out for this account.": "A assinatura da sua carteira não confere para esta conta.",
   "Not spam": "Não é spam",
-  "Thanks! We'll check that label.": "Valeu! Vamos verificar esse rótulo."
+  "Thanks! We'll check that label.": "Valeu! Vamos verificar esse rótulo.",
+  "Android app": "App para Android"
 }

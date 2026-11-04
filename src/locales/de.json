@@ -1116,5 +1116,6 @@
   "Your wallet signed with a different address than this account's. Switch to the account's address in your wallet and try again.": "Deine Wallet hat mit einer anderen Adresse signiert als der dieses Accounts. Wechsle in deiner Wallet zur Adresse des Accounts und versuche es noch einmal.",
   "Your wallet's signature didn't check out for this account.": "Die Signatur deiner Wallet passt nicht zu diesem Account.",
   "Not spam": "Kein Spam",
-  "Thanks! We'll check that label.": "Danke! Wir prüfen diese Markierung."
+  "Thanks! We'll check that label.": "Danke! Wir prüfen diese Markierung.",
+  "Android app": "Android-App"
 }
