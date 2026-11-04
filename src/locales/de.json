@@ -1117,5 +1117,6 @@
   "Your wallet's signature didn't check out for this account.": "Die Signatur deiner Wallet passt nicht zu diesem Account.",
   "Not spam": "Kein Spam",
   "Thanks! We'll check that label.": "Danke! Wir prüfen diese Markierung.",
-  "Android app": "Android-App"
+  "Android app": "Android-App",
+  "Quilcast is on Google Play": "Quilcast gibt es bei Google Play"
 }

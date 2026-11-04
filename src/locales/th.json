@@ -1117,5 +1117,6 @@
   "Your wallet's signature didn't check out for this account.": "ลายเซ็นจากวอลเล็ตของคุณใช้ไม่ได้กับบัญชีนี้",
   "Not spam": "ไม่ใช่สแปม",
   "Thanks! We'll check that label.": "ขอบคุณ! เราจะตรวจสอบป้ายนี้",
-  "Android app": "แอป Android"
+  "Android app": "แอป Android",
+  "Quilcast is on Google Play": "Quilcast มีบน Google Play แล้ว"
 }

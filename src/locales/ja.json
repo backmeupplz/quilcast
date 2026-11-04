@@ -1117,5 +1117,6 @@
   "Your wallet's signature didn't check out for this account.": "ウォレットの署名がこのアカウントで確認できませんでした。",
   "Not spam": "スパムではない",
   "Thanks! We'll check that label.": "ありがとうございます！このラベルを確認します。",
-  "Android app": "Androidアプリ"
+  "Android app": "Androidアプリ",
+  "Quilcast is on Google Play": "QuilcastがGoogle Playに登場"
 }

@@ -894,7 +894,10 @@ export const cards = new Map<string, Cast>()
 const castCache = new Map<string, Promise<Cast | null>>()
 export const fetchCast = (hash: string) => {
   hash = hash.replace(/^0x/, '').toLowerCase()
-  if (!castCache.has(hash)) castCache.set(hash, get('/v2/farcaster/cast', { identifier: hash, type: 'hash', viewer_fid: account?.fid }).then((r) => r.cast, () => null).then((c) => (got.set(`c:${hash}`, c), c)))
+  // one this tab just sent is asked for with its author: asked by hash alone before it lands, the node remembers it
+  // as missing for 10 minutes (Hypersnap's missing_casts), and so would we
+  const fid = posting.get(hash)?.author.fid
+  if (!castCache.has(hash)) castCache.set(hash, get('/v2/farcaster/cast', { identifier: hash, type: 'hash', fid, viewer_fid: account?.fid }).then((r) => r.cast, () => null).then((c) => (got.set(`c:${hash}`, c), c || (fid && castCache.delete(hash)), c)))
   return castCache.get(hash)!
 }
 

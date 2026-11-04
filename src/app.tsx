@@ -73,10 +73,24 @@ function PhraseAsk() {
   )
 }
 
-const PLAY = 'https://play.google.com/store/apps/details?id=com.borodutch.quilcast'
-const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a>{!app && <> · <a href={PLAY} target="_blank" rel="noopener">{t('Android app')}</a></>}</>
 // the iOS and Android apps put their own version in the user agent
 const app = navigator.userAgent.match(/QuilcastApp\/(\S+) \((\w+)\)/)
+const PLAY = 'https://play.google.com/store/apps/details?id=com.borodutch.quilcast'
+// Google's own badge (public/google-play.png); not shown inside our apps
+const android = !app && /Android/.test(navigator.userAgent)
+const PlayBadge = () => <a class="play-badge" href={PLAY} target="_blank" rel="noopener"><img src="/google-play.png" alt="Get it on Google Play" width={646} height={250} /></a>
+/** On an Android browser, signed in: the app on Google Play, at the top of Home until it's closed. */
+function PlayBanner() {
+  const [hidden, setHidden] = useState(() => read('quilcast:play-hidden', false))
+  if (!android || hidden) return null
+  return (
+    <div class="banner">
+      <div><b>{t('Quilcast is on Google Play')}</b><PlayBadge /></div>
+      <button class="icon-btn" aria-label={t('Close')} onClick={() => (save('quilcast:play-hidden', true), setHidden(true))}><Icon d={P.x} size={16} /></button>
+    </div>
+  )
+}
+const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a>{!app && <> · <a href={PLAY} target="_blank" rel="noopener">{t('Android app')}</a></>}</>
 const feedback = `mailto:support@borodutch.com?subject=${encodeURIComponent('Quilcast feedback')}&body=${encodeURIComponent(`\n\nQuilcast v${__VERSION__}${app ? `, ${app[2]} app ${app[1]}` : ''}`)}`
 
 /** A translated sentence with one {key} placeholder filled by an element, so translators can move it. */
@@ -331,10 +345,11 @@ function Home() {
       {!account?.done && (
         <div class="banner">
           <div><b>{t('Farcaster without the middlemen')}</b><p>{app ? t('Quilcast talks straight to the Hypersnap network, and your keys never leave this device.') : t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p>
-            {!app && /Android/.test(navigator.userAgent) && <p><a href={PLAY} target="_blank" rel="noopener">{t('Android app')}</a></p>}</div>
+            {android && <PlayBadge />}</div>
           <a class="btn small" href="/join">{t('Join')}</a>
         </div>
       )}
+      {account?.done && <PlayBanner />}
       {/* replies show in Following with their conversation (threads()); Trending keeps top-level casts */}
       <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={trendy} thread={tab === 'following'}
         load={(cursor) => (tab === 'following' ? get('/v2/farcaster/feed/following', { fid: account!.fid, limit: 50, cursor, with_recasts: 'true' }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
@@ -593,8 +608,9 @@ function Thread({ hash }: { hash: string }) {
     const sent = posting.get(hash)
     const seen = sent || cards.get(hash)
     if (seen) setC(seen), parents(seen)
+    // until a cast we sent has landed it's asked for with its author, so the node never remembers it as missing (fetchCast)
     const load = (tries: number): unknown =>
-      conversation(hash).then(
+      (sent ? get('/v2/farcaster/cast', { identifier: hash, type: 'hash', fid: sent.author.fid }, true) : Promise.resolve()).then(() => conversation(hash)).then(
         async (r) => {
           const cast: Cast = r.conversation.cast
           await hydrateParents([cast, ...(cast.direct_replies || [])])
@@ -671,7 +687,7 @@ function Profile({ id }: { id: string }) {
     getUser(k?.fid ?? id).then((u) => {
       setU(u)
       checkAccounts([u.fid]).then(() => live && setSpamChecked((x) => x + 1))
-      isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))
+      Promise.resolve(u.viewer_context?.following ?? isFollowing(u.fid)).then((f) => ((was.current = f), setFollowing(f)))
       followsMe(u).then((f) => live && setFollowsYou(f))
     }, (e) => {
       if (!live) return
@@ -1686,6 +1702,7 @@ function App() {
         <div class="about">
           <b>{t('About Quilcast')}</b>
           <p>{t('A small, open Farcaster client that reads from and posts to Quilibrium\'s Hypersnap network, with your keys kept in your browser.')}</p>
+          {!app && <PlayBadge />}
           <p class="foot"><Version /></p>
           <p class="foot ogre-only"><a href="/shrek/credits.html" target="_blank">{t('Shrek credits')}</a></p>
         </div>

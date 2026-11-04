@@ -1117,5 +1117,6 @@
   "Your wallet's signature didn't check out for this account.": "你的钱包签名与此账号不符。",
   "Not spam": "不是垃圾信息",
   "Thanks! We'll check that label.": "谢谢！我们会核查这个标签。",
-  "Android app": "Android 应用"
+  "Android app": "Android 应用",
+  "Quilcast is on Google Play": "Quilcast 已上架 Google Play"
 }
