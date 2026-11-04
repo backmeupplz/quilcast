@@ -1,7 +1,7 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { crashed, started } from './crash.ts'
-import { account, accounts, amFollowing, askUser, findUsers, follow, followsMe, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, isMe, askUser, findUsers, follow, followsMe, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
@@ -664,7 +664,8 @@ const looksMod = () => import('./looks.tsx')
 
 function Profile({ id }: { id: string }) {
   const [u, setU] = useState<User | null>(() => known(id))
-  const [err, setErr] = useState('')
+  const [err, setErr] = useState<(Error & { status?: number }) | null>(null)
+  const [tries, setTries] = useState(0)
   const [tab, setTab] = useState<'casts' | 'replies'>('casts')
   const [following, setFollowing] = useState<boolean | null>(null)
   // they follow the viewer; shown only once known, so nothing jumps while it's asked
@@ -681,7 +682,7 @@ function Profile({ id }: { id: string }) {
   useEffect(() => {
     const k = known(id)
     setU(k)
-    setErr('')
+    setErr(null)
     setTab('casts')
     setLook(null)
     setDraft(null)
@@ -692,9 +693,14 @@ function Profile({ id }: { id: string }) {
       checkAccounts([u.fid]).then(() => live && setSpamChecked((x) => x + 1))
       isFollowing(u.fid).then((f) => ((was.current = f), setFollowing(f)))
       followsMe(u).then((f) => live && setFollowsYou(f))
-    }, () => setErr(t('No one goes by that name.')))
+    }, (e) => {
+      if (!live) return
+      setErr(e)
+      // the node is down: the signed-in user is still who this browser says they are
+      if (e.status !== 404) setU((x) => x || (isMe(id) ? myUser() : null))
+    })
     return () => void (live = false)
-  }, [id])
+  }, [id, tries])
   const self = account?.fid === u?.fid
   // a shared design (`design`, an id) is put on top of the look being edited
   const edit = (design?: string) =>
@@ -743,7 +749,11 @@ function Profile({ id }: { id: string }) {
         {shown && <L.Bg l={shown} />}
         {shown && <L.Fx fx={shown.fx} />}
         <Header title={u ? nameOf(u) : t('Profile')} />
-        {err && <div class="note">{err}</div>}
+        {err && !u && (
+          <div class="note">
+            {err.status === 404 ? t('No one goes by that name.') : <>{t('Couldn\'t load: {error}', { error: err.message })} <button class="link-btn" onClick={() => setTries((x) => x + 1)}>{t('Retry')}</button></>}
+          </div>
+        )}
         {!u && !err && <div class="spinner" />}
         {u && (
           <>
@@ -774,7 +784,7 @@ function Profile({ id }: { id: string }) {
               <div class="handle">@{handle(u)} <span class="pill">fid {u.fid}</span>{!self && followsYou && <span class="pill">{t('Follows you')}</span>}{spamAccountOf(u.fid) != null && <span class="spam-tag" title={t('How likely spam.quilcast.com thinks this is a spam account')}>{t('Spam account {n}%', { n: spamAccountOf(u.fid)! })}</span>}{!self && (blockOf(u.fid) || muteOf(u.fid)) && <span class="pill">{blockOf(u.fid) ? t('Blocked') : t('Muted')} {untilText((blockOf(u.fid) || muteOf(u.fid))!.until)}</span>}</div>
               {shown && <L.Mood l={shown} />}
               {u.profile?.bio?.text && <RichText text={u.profile.bio.text} />}
-              <div class="counts"><a href={`${userPath(u)}/following`}><b>{n(u.following_count)}</b> {t('following')}</a><a href={`${userPath(u)}/followers`}><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</a></div>
+              {u.follower_count !== undefined && <div class="counts"><a href={`${userPath(u)}/following`}><b>{n(u.following_count)}</b> {t('following')}</a><a href={`${userPath(u)}/followers`}><b>{n(followers)}</b> {tn(followers, 'follower', 'followers')}</a></div>}
             </section>)}
             {shown && <L.Sections l={shown} u={u} edit={draft ? editLook : undefined} />}
             <div class="lk-box lk-feed">

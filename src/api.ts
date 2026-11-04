@@ -205,7 +205,8 @@ export function get<T = any>(path: string, q: Record<string, string | number | u
   const url = `${settings.node}${path}?${qs}`
   return once(url, async () => {
     const r = await fetch(url)
-    if (!r.ok) throw new Error((await r.text().catch(() => '')) || `HTTP ${r.status}`)
+    // the status rides along, so a caller can tell "not there" (404) from "the node is down" (5xx)
+    if (!r.ok) throw Object.assign(new Error((await r.text().catch(() => '')) || `HTTP ${r.status}`), { status: r.status })
     return r.json()
   }, fresh)
 }
@@ -282,10 +283,12 @@ export async function hydrateParents(casts: Cast[]) {
 /** By username. The node's by-username only knows fnames, so ENS names like "shoni.eth" come from search (exact match only). */
 export async function byName(name: string): Promise<User> {
   name = name.toLowerCase()
-  const r = await get('/v2/farcaster/user/by-username', { username: name }).catch(() => null)
+  const r = await get('/v2/farcaster/user/by-username', { username: name }).catch((e) => {
+    if (e.status !== 404) throw e
+  })
   if (r?.user) return r.user
   const u = (await findUsers(name)).find((x) => x.username?.toLowerCase() === name)
-  if (!u) throw new Error('User not found')
+  if (!u) throw Object.assign(new Error('User not found'), { status: 404 })
   return u
 }
 /** A user fresh from the node (by FID, or by username for anything else); also remembered in `users`. */
@@ -295,6 +298,8 @@ export async function getUser(id: number | string) {
   return u
 }
 /** The signed-in user as far as we know them. */
-export const myUser = (): User | null => (account?.fid ? users.get(account.fid) || { fid: account.fid, username: account.username } : null)
+export const myUser = (): User | null => (account?.fid ? users.get(account.fid) || { fid: account.fid, username: account.username, display_name: account.display } : null)
+/** Whether a profile link (a FID or a username) is the signed-in user. */
+export const isMe = (id: string) => !!account?.fid && (id === String(account.fid) || id.toLowerCase() === account.username?.toLowerCase())
 /** Casts this tab just sent, shown as "Posting…" until the node has indexed them. */
 export const posting = new Map<string, Cast>()

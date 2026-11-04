@@ -47,7 +47,9 @@ async function recipient(s: string): Promise<{ address: `0x${string}`; who: stri
   }
   const name = s.replace(/^@/, '')
   if (!/^[a-z0-9][a-z0-9.-]{0,40}$/i.test(name)) throw new Error('Enter an address, an ENS name or a Farcaster @username.')
-  const u = await getUser(name).catch(() => null)
+  const u = await getUser(name).catch((e) => {
+    if (e.status !== 404) throw e
+  })
   if (!u) throw new Error(t('No one goes by @{name}.', { name }))
   const a = u.verified_addresses?.primary?.eth_address || u.verified_addresses?.eth_addresses?.[0]
   if (!a) throw new Error(t('@{name} has no verified Ethereum address.', { name: u.username || name }))

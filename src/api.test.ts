@@ -33,3 +33,22 @@ test('a tapped like or recast counts once, whatever count the cast comes back wi
   assert.deepEqual(tapped(1, 'b', true, 3), [false, 2]) // a like the node counted, undone
   assert.deepEqual(tapped(1, 'b', false, 0), [false, 0]) // the node said it was liked, its count lagged: never -1
 })
+
+test('a node that is down is not a user who is missing', async () => {
+  Object.assign(globalThis, { addEventListener: () => {}, dispatchEvent: () => true })
+  ;(globalThis as any).localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+  const { getUser, forget } = await import('./api.ts')
+  const real = globalThis.fetch
+  const answer = (status: number, body: string) => (globalThis.fetch = (async () => new Response(body, { status })) as typeof fetch)
+  try {
+    answer(502, 'error code: 502')
+    await assert.rejects(getUser('alice'), { status: 502, message: 'error code: 502' })
+    forget()
+    let n = 0
+    globalThis.fetch = (async () => (n++ ? new Response('{"users":[]}') : new Response('{"message":"User not found"}', { status: 404 }))) as typeof fetch
+    await assert.rejects(getUser('alice'), { status: 404 })
+  } finally {
+    globalThis.fetch = real
+    forget()
+  }
+})
