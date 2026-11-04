@@ -84,9 +84,11 @@ function PlayBanner() {
   const [hidden, setHidden] = useState(() => read('quilcast:play-hidden', false))
   if (!android || hidden) return null
   return (
-    <div class="banner">
-      <div><b>{t('Quilcast is on Google Play')}</b><PlayBadge /></div>
-      <button class="icon-btn" aria-label={t('Close')} onClick={() => (save('quilcast:play-hidden', true), setHidden(true))}><Icon d={P.x} size={16} /></button>
+    <div class="play-card">
+      <img class="play-icon" src="/icon.png" alt="" width={56} height={56} />
+      <div class="play-text"><b>{t('Quilcast for Android')}</b><span>{t('Free on Google Play')}</span></div>
+      <PlayBadge />
+      <button class="icon-btn play-x" aria-label={t('Close')} onClick={() => (save('quilcast:play-hidden', true), setHidden(true))}><Icon d={P.x} size={16} /></button>
     </div>
   )
 }
