@@ -9,7 +9,7 @@ import { PRESETS as EFFECTS } from './fx.ts'
 import { GifPicker } from './gifs.tsx'
 import { EditSticker, focusSticker } from './looks.tsx'
 import { BG_MODES, BORDERS, cleanTheme, DEFAULTS, FONTS, FX, HOLIDAYS, isLookImg, LIMITS, NAME_FX, ownMedia, sized, themeId, themeVars, type Theme } from './shared.ts'
-import { CARD, dressed, Img, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
+import { CARD, dressed, Img, keepLibrary, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
 
 // --- built-in themes ---
 // two of Quorum's sample skins (theme/skins/samples.ts) and a few of our own; GIFs are Tenor's
@@ -300,7 +300,7 @@ export function ThemeSettings() {
       </nav>
       {tab === 'mine' && (kept.length ? kept.map((s) => (
         <Row th={s.theme} meta={{ id: s.id, quorum: s.quorum }} sub={s.quorum ? t('From Quorum') : undefined}
-          del={() => (localStorage.setItem('quilcast:themes', JSON.stringify(kept.filter((x) => x !== s))), force((x) => x + 1))} />
+          del={() => (keepLibrary(kept.filter((x) => x !== s)), force((x) => x + 1))} />
       )) : <p class="hint">{t('Themes you make, apply or import are kept here.')}</p>)}
       {tab === 'built' && BUILT_IN.map((th) => <Row th={th} />)}
       {tab === 'quorum' && <Gallery />}

@@ -1122,6 +1122,6 @@
   "Free on Google Play": "Google Playで無料",
   "Sync themes": "テーマを同期",
   "Themes sync with this account": "テーマはこのアカウントと同期されます",
-  "Wear the same theme, light or dark and holiday themes on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "このアカウントで同期しているすべての端末で、同じテーマ、ライト/ダーク、季節のテーマを使います。Farcaster の鍵で署名し、Quilcast がアカウントと一緒に保存します。",
+  "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "テーマ、保存したテーマ、ライト/ダーク、季節のテーマ、Quorum モードを、このアカウントで同期しているすべての端末でそろえます。Farcaster の鍵で署名し、Quilcast がアカウントと一緒に保存します。",
   "Wearing the themes from your other devices": "ほかの端末のテーマを適用しました"
 }

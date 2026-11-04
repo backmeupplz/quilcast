@@ -106,6 +106,13 @@ test('cleanPrefs keeps a synced theme, light or dark, holidays and the stamp', (
   assert.equal(cleanPrefs(null), null)
   assert.equal(cleanPrefs({ mode: 'dark' }), null)
   assert.equal(cleanPrefs({ at: -1 }), null)
-  assert.deepEqual(cleanPrefs({ at: 3, theme: { evil: 1 }, mode: 'light' }), { theme: null, mode: 'light', holidays: true, at: 3 })
-  assert.deepEqual(cleanPrefs({ at: 3, theme: { base: 'light', ink: 'red' }, holidays: false }), { theme: { base: 'light' }, mode: 'system', holidays: false, at: 3 })
+  assert.deepEqual(cleanPrefs({ at: 3, theme: { evil: 1 }, mode: 'light' }), { theme: null, library: [], mode: 'light', holidays: true, quorum: false, at: 3 })
+  assert.deepEqual(cleanPrefs({ at: 3, theme: { base: 'light', ink: 'red' }, holidays: false, quorum: true }), { theme: { base: 'light' }, library: [], mode: 'system', holidays: false, quorum: true, at: 3 })
+  // the library: valid themes once each (the first wins), ids only in their shapes, at most 40
+  const lib = cleanPrefs({ at: 1, library: [
+    { theme: { name: 'A', bg: '#000000' }, id: 'abcdefghij', quorum: 'skin_1' }, { theme: { name: 'A', bg: '#000000' }, id: 'zzzzzzzzzz' },
+    { theme: { evil: 1 } }, { theme: { name: 'B' }, id: '../../etc', quorum: 'x'.repeat(65) }, null, 'x',
+  ] })!.library
+  assert.deepEqual(lib, [{ theme: { name: 'A', bg: '#000000' }, id: 'abcdefghij', quorum: 'skin_1' }, { theme: { name: 'B' } }])
+  assert.equal(cleanPrefs({ at: 1, library: Array.from({ length: 60 }, (_, i) => ({ theme: { name: `T${i}` } })) })!.library.length, 40)
 })

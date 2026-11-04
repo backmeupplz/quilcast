@@ -1122,6 +1122,6 @@
   "Free on Google Play": "在 Google Play 免费下载",
   "Sync themes": "同步主题",
   "Themes sync with this account": "主题已与此账号同步",
-  "Wear the same theme, light or dark and holiday themes on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "在此账号同步的每台设备上使用相同的主题、浅色或深色模式和节日主题。由你的 Farcaster 密钥签名，Quilcast 将其与你的账号一起保存。",
+  "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "你的主题、保存的主题、浅色或深色模式、节日主题和 Quorum 模式，在此账号同步的每台设备上都保持一致。由你的 Farcaster 密钥签名，Quilcast 将其与你的账号一起保存。",
   "Wearing the themes from your other devices": "已使用你其他设备上的主题"
 }

@@ -580,12 +580,12 @@ test('prefs: theme sync kept per account, read and written only with its key', a
   }
   assert.equal((await fetch(`${base}/api/prefs/7`)).status, 401)
   assert.equal(await (await call('GET', 7)).json(), null)
-  const body = JSON.stringify({ theme: { name: 'Xmas', base: 'dark', bg: '#102030', evil: 'x' }, mode: 'nope', holidays: false, at: 5 })
+  const body = JSON.stringify({ theme: { name: 'Xmas', base: 'dark', bg: '#102030', evil: 'x' }, library: [{ theme: { name: 'Kept' }, id: 'abcdefghij' }, { theme: {} }], mode: 'nope', holidays: false, quorum: true, at: 5 })
   assert.equal((await call('PUT', 7, body, 'quilcast-prefs-read')).status, 401)
   assert.equal((await call('PUT', 8, body)).status, 403)
   assert.equal((await call('PUT', 7, '{"theme":null}')).status, 400)
   assert.equal((await call('PUT', 7, body)).status, 200)
-  assert.deepEqual(await (await call('GET', 7)).json(), { theme: { name: 'Xmas', base: 'dark', bg: '#102030' }, mode: 'system', holidays: false, at: 5 })
+  assert.deepEqual(await (await call('GET', 7)).json(), { theme: { name: 'Xmas', base: 'dark', bg: '#102030' }, library: [{ theme: { name: 'Kept' }, id: 'abcdefghij' }], mode: 'system', holidays: false, quorum: true, at: 5 })
 })
 
 test('drafts: sealed boxes kept per account, read and written only with its key', async () => {

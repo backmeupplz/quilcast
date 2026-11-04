@@ -1459,7 +1459,7 @@ function Settings() {
                 {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.syncThemes === v ? 'on' : ''} disabled={syncing} onClick={() => (v ? syncOn() : ((settings.syncThemes = false), saveSettings(), force((x) => x + 1)))}>{label}</button>)}
               </div>
             </div>
-            <p class="hint">{t('Wear the same theme, light or dark and holiday themes on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.')}</p>
+            <p class="hint">{t('Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.')}</p>
           </section>
         )}
         <section>
@@ -1475,7 +1475,7 @@ function Settings() {
           <div class="setting">
             <h2>{t('Quorum mode')}</h2>
             <div class="seg">
-              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.quorum === v ? 'on' : ''} onClick={() => ((settings.quorum = v as boolean), saveSettings(), applyTheme(), dispatchEvent(new Event('quorum')), force((x) => x + 1))}>{label}</button>)}
+              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.quorum === v ? 'on' : ''} onClick={() => ((settings.quorum = v as boolean), saveSettings(), applyTheme(), dispatchEvent(new Event('quorum')), themeChanged(), force((x) => x + 1))}>{label}</button>)}
             </div>
           </div>
           <p class="hint">{t("Quilcast laid out like Quilibrium's Quorum app: its sidebar, apps on the right, and the wallet docked beside an open mini app.")}</p>

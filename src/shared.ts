@@ -406,12 +406,27 @@ export type Timed<T> = { v: T; until?: number }
 export type Mutes = { words: Timed<string>[]; users: Timed<number>[]; blocks: Timed<number>[] }
 const live = (x: Timed<unknown>, now: number) => !x.until || x.until > now
 // --- theme sync (src/prefs.ts, server/prefs.mjs) ---
-/** What Settings → Sync themes keeps with the account: the worn theme, light or dark, holiday themes, and when they last changed. */
-export type Prefs = { theme: Theme | null; mode: 'system' | 'light' | 'dark'; holidays: boolean; at: number }
+/** A theme kept in the library (Settings → Theme → Mine); a shared one keeps its link id, a Quorum one its skin id. */
+export type Saved = { theme: Theme; id?: string; quorum?: string }
+export const LIBRARY_MAX = 40
+/** The library's valid entries, the same theme once (the first one winning), at most LIBRARY_MAX. */
+export function cleanLibrary(xs: unknown): Saved[] {
+  const seen = new Set<string>()
+  return (Array.isArray(xs) ? xs : []).flatMap((x: any): Saved[] => {
+    const th = cleanTheme(x?.theme)
+    const k = JSON.stringify(th)
+    if (!Object.keys(th).length || seen.has(k)) return []
+    seen.add(k)
+    return [{ theme: th, ...(typeof x.id === 'string' && /^[\w-]{10}$/.test(x.id) && { id: x.id }), ...(typeof x.quorum === 'string' && /^[\w-]{1,64}$/.test(x.quorum) && { quorum: x.quorum }) }]
+  }).slice(0, LIBRARY_MAX)
+}
+/** What Settings → Sync themes keeps with the account: the worn theme, the library, light or dark, holiday themes,
+ *  Quorum mode, and when they last changed. */
+export type Prefs = { theme: Theme | null; library: Saved[]; mode: 'system' | 'light' | 'dark'; holidays: boolean; quorum: boolean; at: number }
 export function cleanPrefs(x: any): Prefs | null {
   if (!x || typeof x !== 'object' || !Number.isSafeInteger(x.at) || x.at < 0) return null
   const th = cleanTheme(x.theme)
-  return { theme: Object.keys(th).length ? th : null, mode: pick(x.mode, ['system', 'light', 'dark'] as const) || 'system', holidays: x.holidays !== false, at: x.at }
+  return { theme: Object.keys(th).length ? th : null, library: cleanLibrary(x.library), mode: pick(x.mode, ['system', 'light', 'dark'] as const) || 'system', holidays: x.holidays !== false, quorum: x.quorum === true, at: x.at }
 }
 
 /** Mutes cut down to what's allowed and still running; the same word or person once, the later entry winning. */

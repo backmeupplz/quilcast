@@ -21,7 +21,7 @@ export async function getPrefs(req, fid, node) {
 export const dropPrefs = (fid) => rm(file(fid)).then(() => true, () => false)
 
 export async function putPrefs(req, fid, node) {
-  const body = await readText(req, 20e3)
+  const body = await readText(req, 600e3)
   await keySigned(req, 'quilcast-prefs', fid, body, node)
   const p = cleanPrefs(parseJson(body))
   if (!p) throw fail(400, 'bad prefs')

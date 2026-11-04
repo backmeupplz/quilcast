@@ -1,16 +1,23 @@
-// Theme sync (Settings → Sync themes): the worn theme, light or dark and holiday themes, kept with the account on our
-// server (server/prefs.mjs, signed with its Farcaster key), so every device it's signed in on that syncs wears the same.
-// Each change here goes up at once and is stamped; a device whose stamp differs from the server's takes the server's.
+// Theme sync (Settings → Sync themes): the worn theme, the theme library, light or dark, holiday themes and Quorum
+// mode, kept with the account on our server (server/prefs.mjs, signed with its Farcaster key), so every device it's
+// signed in on that syncs wears the same. Each change here goes up at once and is stamped; a device whose stamp
+// differs from the server's takes the server's.
 import { account, read, save, saveSettings, settings } from './api.ts'
 import { cleanPrefs, type Prefs } from './shared.ts'
-import { theme, toast, wear } from './ui.tsx'
+import { keepLibrary, library, theme, toast, wear } from './ui.tsx'
 import { fetchPrefs, savePrefs } from './write.ts'
 
 export const AT = 'quilcast:themeAt'
-const mine = (at = read(AT, 0)): Prefs => ({ theme, mode: settings.theme as Prefs['mode'], holidays: settings.holidays !== false, at })
+const mine = (at = read(AT, 0)): Prefs =>
+  ({ theme, library: library(), mode: settings.theme as Prefs['mode'], holidays: settings.holidays !== false, quorum: !!settings.quorum, at })
 function take(p: Prefs) {
-  settings.theme = p.mode, settings.holidays = p.holidays, saveSettings(), save(AT, p.at)
+  const quorum = !!settings.quorum !== p.quorum
+  settings.theme = p.mode, settings.holidays = p.holidays, settings.quorum = p.quorum, saveSettings(), save(AT, p.at)
+  keepLibrary(p.library, true)
   wear(p.theme, true, true)
+  // Quorum mode is CSS under :root[data-quorum] and its own shell (app.tsx applyTheme)
+  p.quorum ? (document.documentElement.dataset.quorum = '') : delete document.documentElement.dataset.quorum
+  quorum && dispatchEvent(new Event('quorum'))
   dispatchEvent(new Event('prefs'))
 }
 
@@ -26,15 +33,20 @@ export async function pull() {
   if (got && got.at !== read(AT, 0)) take(got)
 }
 
-/** Settings turned sync on: the newer of this device's and the account's wins. On a tie (neither changed since sync
- *  came out) the one wearing a theme does, so turning it on never takes a theme off for the plain app. */
+/** Settings turned sync on: the newer of this device's and the account's settings wins. On a tie (neither changed
+ *  since sync came out) the one wearing a theme does, so turning it on never takes a theme off for the plain app.
+ *  Either way the libraries are joined, so no device loses a theme it kept. */
 export async function turnOn(): Promise<'took' | 'sent'> {
   const got = cleanPrefs(await fetchPrefs(true))
   const at = read(AT, 0)
-  if (got && (got.at > at || (got.at === at && (got.theme || !theme)))) return take(got), 'took'
-  // a newer stamp, so the account's other devices take this one
-  const p = mine(got ? Math.max(Date.now(), got.at + 1) : at)
+  if (!got) return await savePrefs(mine()), 'sent'
+  const took = got.at > at || (got.at === at && (!!got.theme || !theme))
+  const lib = took ? [...got.library, ...library()] : [...library(), ...got.library]
+  if (took) take({ ...got, library: lib })
+  else keepLibrary(lib, true)
+  // a newer stamp, so the account's other devices take the joined result
+  const p = mine(Math.max(Date.now(), got.at + 1))
   save(AT, p.at)
   await savePrefs(p)
-  return 'sent'
+  return took ? 'took' : 'sent'
 }

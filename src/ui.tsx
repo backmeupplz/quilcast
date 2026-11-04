@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
+import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -704,18 +704,21 @@ export function wear(th: Theme | null, keep = false, synced = false) {
 }
 
 /** The theme, light or dark, or holiday themes changed here: stamp it, and send it up when Settings sync themes (prefs.ts). */
+let sending = false
 export function themeChanged() {
   save('quilcast:themeAt', Date.now())
-  if (settings.syncThemes && account?.done) import('./prefs.ts').then((m) => m.push())
+  // a theme applied from the library changes both at once: one request
+  if (!settings.syncThemes || !account?.done || sending) return
+  sending = true
+  queueMicrotask(() => ((sending = false), import('./prefs.ts').then((m) => m.push())))
 }
 
 /** Themes this browser has tried, newest first (Settings > Theme lists them); a shared one keeps its link id. */
-export type Saved = { theme: Theme; id?: string; quorum?: string }
-export const library = () => read<Saved[]>('quilcast:themes', []).map((x) => ({ ...x, theme: cleanTheme(x?.theme) })).filter((x) => Object.keys(x.theme).length)
-export const remember = (x: Saved) => {
-  const same = (y: Saved) => JSON.stringify(y.theme) === JSON.stringify(x.theme)
-  save('quilcast:themes', [x, ...library().filter((y) => !same(y))].slice(0, 40))
-}
+export type { Saved }
+export const library = () => cleanLibrary(read<Saved[]>('quilcast:themes', []))
+/** Keep the library as `xs` (`synced`: it came from the account, so it doesn't go back up). */
+export const keepLibrary = (xs: Saved[], synced = false) => (save('quilcast:themes', cleanLibrary(xs)), synced || themeChanged())
+export const remember = (x: Saved) => keepLibrary([x, ...library()])
 
 // a theme's stickers are placed on the screen, a bit smaller than a share of it on wide ones
 export const screenUnit = (w: number) => `calc(min(1vw, 6px) * ${w})`
