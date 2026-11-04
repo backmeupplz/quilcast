@@ -1,7 +1,7 @@
 // cleanLook is the only thing between a stored look and the page's CSS, so hostile input has to come out inert.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ampItem, cleanDesign, cleanLook, isLookImg, lookImages, lookVars } from './shared.ts'
+import { ampItem, cleanDesign, cleanLook, cleanPrefs, isLookImg, lookBase, lookImages, lookPage, lookVars } from './shared.ts'
 
 test('cleanLook keeps valid settings and drops everything else', () => {
   const l = cleanLook({
@@ -80,4 +80,32 @@ test('Winamp list lines: videos in any link form, and a link with a playlist is 
   assert.deepEqual(ampItem('https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI'), { id: 'PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI', pl: 1 })
   assert.deepEqual(ampItem('https://music.youtube.com/playlist?list=OLAK5uy_kNWq9zW2'), { id: 'OLAK5uy_kNWq9zW2', pl: 1 })
   assert.equal(ampItem('hello'), undefined)
+})
+
+test('a look keeps the page its colors were picked on, whichever the viewer wears', () => {
+  // light text on a see-through dark box, no page color (a real one): dark everywhere, never white text on light grey
+  const l = cleanLook({ text: '#f2f2f2', muted: '#9a9a9a', box: '#111111', boxAlpha: 33 })
+  assert.equal(lookBase(l), 'dark')
+  assert.equal(lookPage(l), '#0b0b0f')
+  const v = lookVars(l)
+  assert.equal(v.colorScheme, 'dark')
+  assert.equal(v['--ink'], '#f2f2f2')
+  assert.equal(v['--line'], '#23232b')
+  assert.equal(lookBase(cleanLook({ text: '#222222' })), 'light')
+  assert.equal(lookBase(cleanLook({ bg: '#fffbe0' })), 'light')
+  assert.equal(lookBase(cleanLook({ box: '#202040' })), 'dark')
+  assert.equal(lookPage(cleanLook({ bg: '#123456', text: '#ffffff' })), '#123456')
+  // a look without colors follows the viewer's light or dark
+  const plain = cleanLook({ banner: 'https://media.tenor.com/abc/x.webp', font: 'courier' })
+  assert.equal(lookBase(plain), undefined)
+  assert.equal(lookPage(plain), undefined)
+  assert.equal(lookVars(plain)['--bg'], undefined)
+})
+
+test('cleanPrefs keeps a synced theme, light or dark, holidays and the stamp', () => {
+  assert.equal(cleanPrefs(null), null)
+  assert.equal(cleanPrefs({ mode: 'dark' }), null)
+  assert.equal(cleanPrefs({ at: -1 }), null)
+  assert.deepEqual(cleanPrefs({ at: 3, theme: { evil: 1 }, mode: 'light' }), { theme: null, mode: 'light', holidays: true, at: 3 })
+  assert.deepEqual(cleanPrefs({ at: 3, theme: { base: 'light', ink: 'red' }, holidays: false }), { theme: { base: 'light' }, mode: 'system', holidays: false, at: 3 })
 })

@@ -25,6 +25,7 @@ import { getDesign, getLook, listLooks, loadLooks, putDesign, putLook } from './
 import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
+import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
@@ -49,6 +50,7 @@ const TRANSLATOR = { key: process.env.OPENROUTER_API_KEY, url: process.env.OPENR
 loadMutes(DATA)
 loadReports(DATA)
 loadDrafts(DATA)
+loadPrefs(DATA)
 loadThemes(DATA)
 loadOwners()
 channels()
@@ -1065,6 +1067,17 @@ createServer(async (req, res) => {
       const r = await (req.method === 'GET' ? getMutes : putMutes)(req, fid, NODE).catch((e) => e)
       const err = r instanceof Error
       if (err && !r.status) console.error('mutes', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // theme sync (server/prefs.mjs)
+    const prefs = path.match(/^\/api\/prefs\/([1-9]\d{0,9})$/)
+    if (prefs) {
+      const fid = Number(prefs[1])
+      if (req.method !== 'GET' && req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
+      if (limited(`prefs:${ip}`, 120, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      const r = await (req.method === 'GET' ? getPrefs : putPrefs)(req, fid, NODE).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('prefs', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
     }
     // drafts, sealed in the browser (server/drafts.mjs)

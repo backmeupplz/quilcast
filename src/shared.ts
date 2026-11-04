@@ -234,9 +234,28 @@ export function readableOn(bg: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.187 ? '#0b0b0f' : '#ffffff'
 }
 
-/** The look's colors and font as CSS variables on the profile's wrapper; the app's styles take them from there. */
+/** Light or dark: what a look's colors were picked against (its text, else its page or boxes). A look that sets none
+ *  fits either, so it has none and follows the viewer's. */
+export function lookBase(l: Look): 'light' | 'dark' | undefined {
+  const c = l.text || l.bg || l.box
+  if (!c) return
+  const darkOn = readableOn(c) === '#ffffff'
+  // light text wants a dark page; a dark page or box is a dark one
+  return (l.text ? !darkOn : darkOn) ? 'dark' : 'light'
+}
+/** The page color behind a look: its own, else its base's, so light text never lands on a light viewer's white. */
+export const lookPage = (l: Look) => l.bg || (lookBase(l) && DEFAULTS[lookBase(l)!].bg)
+
+/** The look's colors and font as CSS variables on the profile's wrapper; the app's styles take them from there. A look
+ *  with a base gets that base's colors for whatever it leaves out, whichever the viewer wears. */
 export function lookVars(l: Look) {
   const v: Record<string, string> = {}
+  const base = lookBase(l)
+  if (base) {
+    const d = DEFAULTS[base]
+    Object.assign(v, { colorScheme: base, '--bg': d.bg, '--card': d.card, '--ink': d.ink, '--muted': d.muted, '--line': d.line, '--soft': d.soft, '--hover': `rgb(${rgb(d.ink)} / 0.04)`,
+      '--accent': d.accent, '--accent-soft': `rgb(${rgb(d.accent)} / 0.16)`, '--on-accent': d.onAccent, '--like': d.like, '--recast': d.recast, '--warn': d.warn })
+  }
   if (l.text) (v['--ink'] = l.text), (v['--soft'] = `rgb(${rgb(l.text)} / 0.08)`), (v['--hover'] = `rgb(${rgb(l.text)} / 0.04)`)
   if (l.muted) v['--muted'] = l.muted
   if (l.link) (v['--accent'] = l.link), (v['--accent-soft'] = `rgb(${rgb(l.link)} / 0.16)`)
@@ -386,6 +405,15 @@ export const themeId = (s: string) => s.trim().match(/^(?:https?:\/\/[^/]+)?(?:\
 export type Timed<T> = { v: T; until?: number }
 export type Mutes = { words: Timed<string>[]; users: Timed<number>[]; blocks: Timed<number>[] }
 const live = (x: Timed<unknown>, now: number) => !x.until || x.until > now
+// --- theme sync (src/prefs.ts, server/prefs.mjs) ---
+/** What Settings → Sync themes keeps with the account: the worn theme, light or dark, holiday themes, and when they last changed. */
+export type Prefs = { theme: Theme | null; mode: 'system' | 'light' | 'dark'; holidays: boolean; at: number }
+export function cleanPrefs(x: any): Prefs | null {
+  if (!x || typeof x !== 'object' || !Number.isSafeInteger(x.at) || x.at < 0) return null
+  const th = cleanTheme(x.theme)
+  return { theme: Object.keys(th).length ? th : null, mode: pick(x.mode, ['system', 'light', 'dark'] as const) || 'system', holidays: x.holidays !== false, at: x.at }
+}
+
 /** Mutes cut down to what's allowed and still running; the same word or person once, the later entry winning. */
 export function cleanMutes(raw: any, now = Date.now()): Mutes {
   const list = <T,>(xs: unknown, ok: (v: any) => T | undefined, max: number) => {

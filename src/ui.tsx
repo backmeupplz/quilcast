@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
+import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, cleanDesign, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -676,9 +676,11 @@ export const dressed = () => theme ?? (settings.holidays === false ? null : holi
 export let worn = dressed()
 let vars: string[] = []
 let face: { url: string; f?: FontFace } | undefined
-/** Show `th` on the page (null: the plain app); `keep` also makes it this browser's theme. */
-export function wear(th: Theme | null, keep = false) {
+/** Show `th` on the page (null: the plain app); `keep` also makes it this browser's theme (and, unless `synced` says it
+ *  came from there, sends it to the account when Settings sync themes). */
+export function wear(th: Theme | null, keep = false, synced = false) {
   if (keep) (theme = th), th ? save('quilcast:theme', th) : localStorage.removeItem('quilcast:theme')
+  if (keep && !synced) themeChanged()
   // taking a theme off leaves the holiday's on
   if (keep && !th) th = dressed()
   const root = document.documentElement
@@ -699,6 +701,12 @@ export function wear(th: Theme | null, keep = false) {
   }
   worn = th
   dispatchEvent(new Event('theme'))
+}
+
+/** The theme, light or dark, or holiday themes changed here: stamp it, and send it up when Settings sync themes (prefs.ts). */
+export function themeChanged() {
+  save('quilcast:themeAt', Date.now())
+  if (settings.syncThemes && account?.done) import('./prefs.ts').then((m) => m.push())
 }
 
 /** Themes this browser has tried, newest first (Settings > Theme lists them); a shared one keeps its link id. */
@@ -874,7 +882,7 @@ export function DesignCard({ id, by }: { id: string; by?: User }) {
   return (
     <div class="design look on" style={lookVars(d)} onClick={stop}>
       <div class={`lk-bg ${d.bgMode || 'tile'}`} aria-hidden="true"
-        style={{ backgroundColor: d.bg, backgroundImage: d.bgImg ? `url("${d.bgImg}")` : undefined, '--lk-dim': d.bgDim ? String(d.bgDim / 100) : undefined }} />
+        style={{ backgroundColor: lookPage(d), backgroundImage: d.bgImg ? `url("${d.bgImg}")` : undefined, '--lk-dim': d.bgDim ? String(d.bgDim / 100) : undefined }} />
       <div class="lk-box">
         <span class="design-who">
           {by ? <Avatar u={by} size={36} link={false} /> : <Logo size={36} />}

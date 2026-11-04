@@ -1119,5 +1119,9 @@
   "Thanks! We'll check that label.": "Cảm ơn! Chúng tôi sẽ kiểm tra nhãn đó.",
   "Android app": "Ứng dụng Android",
   "Quilcast for Android": "Quilcast cho Android",
-  "Free on Google Play": "Miễn phí trên Google Play"
+  "Free on Google Play": "Miễn phí trên Google Play",
+  "Sync themes": "Đồng bộ giao diện",
+  "Themes sync with this account": "Giao diện được đồng bộ với tài khoản này",
+  "Wear the same theme, light or dark and holiday themes on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "Dùng cùng giao diện, chế độ sáng hoặc tối và giao diện ngày lễ trên mọi thiết bị mà tài khoản này đồng bộ. Khóa Farcaster của bạn ký chúng, và Quilcast lưu chúng cùng tài khoản của bạn.",
+  "Wearing the themes from your other devices": "Đang dùng giao diện từ các thiết bị khác của bạn"
 }

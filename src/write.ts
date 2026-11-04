@@ -561,6 +561,11 @@ export async function sendReport(r: { fid: number; hash?: string; reason: string
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || "The report couldn't be sent. Try again.")
 }
 export const saveMutes = (m: object) => keyFetch(`/api/mutes/${account!.fid}`, 'quilcast-mutes', 'PUT', JSON.stringify(m))
+/** The account's synced theme settings (src/prefs.ts). `ask` lets it add a key (Settings turning sync on); without it,
+ *  like fetchMutes, it answers null when this browser has no working key. */
+export const fetchPrefs = (ask = false, a = account!) =>
+  ask || ((a.pub || a.signer) && a.scopes === SCOPES_VERSION) ? keyFetch(`/api/prefs/${a.fid}`, 'quilcast-prefs-read', 'GET', '', ask ? 3 : 1) : Promise.resolve(null)
+export const savePrefs = (p: object) => keyFetch(`/api/prefs/${account!.fid}`, 'quilcast-prefs', 'PUT', JSON.stringify(p))
 
 // --- drafts ---
 // Kept on our server (server/drafts.mjs), each sealed with AES-GCM under a key only the account's custody can make: the

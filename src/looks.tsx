@@ -8,7 +8,7 @@ import { t } from './i18n.ts'
 import { PRESETS as EFFECTS, start } from './fx.ts'
 import { ProfileAmp } from './amp.tsx'
 import { BASE, museum, skinShot, type MuseumSkin } from './skin.ts'
-import { ampItem, cleanDesign, cleanLook, DESIGN_KEYS, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look, type Sticker } from './shared.ts'
+import { ampItem, cleanDesign, cleanLook, DESIGN_KEYS, lookPage, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look, type Sticker } from './shared.ts'
 import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 import { GifPicker } from './gifs.tsx'
 
@@ -24,9 +24,9 @@ export const vars = lookVars
 
 /** The page background, a layer behind everything while the profile is open. */
 export const Bg = ({ l }: { l: Look }) =>
-  l.bg || l.bgImg ? (
+  lookPage(l) || l.bgImg ? (
     <div class={`lk-bg ${l.bgMode || 'tile'}`} aria-hidden="true"
-      style={{ backgroundColor: l.bg, backgroundImage: l.bgImg ? `url("${l.bgImg}")` : undefined, '--lk-dim': l.bgDim ? String(l.bgDim / 100) : undefined }} />
+      style={{ backgroundColor: lookPage(l), backgroundImage: l.bgImg ? `url("${l.bgImg}")` : undefined, '--lk-dim': l.bgDim ? String(l.bgDim / 100) : undefined }} />
   ) : null
 
 /** The look's effect (src/fx.ts), on a canvas over the page background and behind the boxes, that never takes a click. */

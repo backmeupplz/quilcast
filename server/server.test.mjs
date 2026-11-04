@@ -572,6 +572,22 @@ test('mutes: private to the account, read and written only with its key', async 
   assert.equal((await call('GET', 7, '', { key: ed25519.utils.randomSecretKey() })).status, 403)
 })
 
+test('prefs: theme sync kept per account, read and written only with its key', async () => {
+  const call = (method, fid, body = '', what = method === 'GET' ? 'quilcast-prefs-read' : 'quilcast-prefs') => {
+    const ts = Date.now()
+    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), signer)).toString('hex')
+    return fetch(`${base}/api/prefs/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: { 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': sig } })
+  }
+  assert.equal((await fetch(`${base}/api/prefs/7`)).status, 401)
+  assert.equal(await (await call('GET', 7)).json(), null)
+  const body = JSON.stringify({ theme: { name: 'Xmas', base: 'dark', bg: '#102030', evil: 'x' }, mode: 'nope', holidays: false, at: 5 })
+  assert.equal((await call('PUT', 7, body, 'quilcast-prefs-read')).status, 401)
+  assert.equal((await call('PUT', 8, body)).status, 403)
+  assert.equal((await call('PUT', 7, '{"theme":null}')).status, 400)
+  assert.equal((await call('PUT', 7, body)).status, 200)
+  assert.deepEqual(await (await call('GET', 7)).json(), { theme: { name: 'Xmas', base: 'dark', bg: '#102030' }, mode: 'system', holidays: false, at: 5 })
+})
+
 test('drafts: sealed boxes kept per account, read and written only with its key', async () => {
   const call = (method, fid, body = '', { key = signer, what = method === 'GET' ? 'quilcast-drafts-read' : 'quilcast-drafts' } = {}) => {
     const ts = Date.now()
@@ -809,6 +825,8 @@ test('deleting an account: only with its own key, and only files it alone put he
   assert.equal((await fetch(`${base}/api/look/7`, { method: 'PUT', body, headers: sign('quilcast-look', 7, signer, Date.now(), body) })).status, 200)
   const mutes = JSON.stringify({ words: [{ v: 'gm' }], users: [], blocks: [] })
   assert.equal((await fetch(`${base}/api/mutes/7`, { method: 'PUT', body: mutes, headers: sign('quilcast-mutes', 7, signer, Date.now(), mutes) })).status, 200)
+  const prefs = JSON.stringify({ theme: null, mode: 'dark', holidays: true, at: 1 })
+  assert.equal((await fetch(`${base}/api/prefs/7`, { method: 'PUT', body: prefs, headers: sign('quilcast-prefs', 7, signer, Date.now(), prefs) })).status, 200)
   const draft = JSON.stringify({ id: crypto.randomUUID(), box: 'aXY=.c2VhbGVk' })
   assert.equal((await fetch(`${base}/api/drafts/7`, { method: 'PUT', body: draft, headers: sign('quilcast-drafts', 7, signer, Date.now(), draft) })).status, 200)
   await writeFile(join(media, 'translations', 'de', `${'7a'.repeat(20)}.json`), '{"from":"en","text":"x"}')
@@ -833,6 +851,7 @@ test('deleting an account: only with its own key, and only files it alone put he
   assert.ok(!existsSync(join(media, mine)))
   for (const n of [both, theirs, OLD_NAME, PRE_NAME, themePic, stray, '0123456789abcdef01234567.png']) assert.ok(existsSync(join(media, n)), n)
   assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
+  assert.ok(!existsSync(join(media, 'prefs', '7.json')))
   assert.ok(!existsSync(join(media, 'mutes', '7.json')) && !existsSync(join(media, 'drafts', '7')) && !existsSync(join(media, 'owners', '7')))
   assert.ok(!existsSync(join(media, 'translations', 'de', `${'7a'.repeat(20)}.json`)) && existsSync(join(media, 'translations', 'de', `${'9a'.repeat(20)}.json`)))
   // asked again (a lost reply), the same answer; a new deletion finds nothing more: the shared file is fid 9's alone now

@@ -1119,5 +1119,9 @@
   "Thanks! We'll check that label.": "Tack! Vi kollar den etiketten.",
   "Android app": "Android-app",
   "Quilcast for Android": "Quilcast för Android",
-  "Free on Google Play": "Gratis på Google Play"
+  "Free on Google Play": "Gratis på Google Play",
+  "Sync themes": "Synka teman",
+  "Themes sync with this account": "Teman synkas med det här kontot",
+  "Wear the same theme, light or dark and holiday themes on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "Samma tema, ljust eller mörkt läge och högtidsteman på alla enheter där det här kontot synkar dem. Din Farcaster-nyckel signerar dem och Quilcast sparar dem med ditt konto.",
+  "Wearing the themes from your other devices": "Använder temana från dina andra enheter"
 }

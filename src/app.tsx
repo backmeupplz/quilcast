@@ -6,7 +6,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, pushOn } from './ui.tsx'
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -1290,6 +1290,20 @@ function Settings() {
   const [forgetting, setForgetting] = useState(0)
   const [saving, setSaving] = useState(false)
   const photo = useRef<HTMLInputElement>(null)
+  // theme sync (prefs.ts): turning it on signs with the account's key, and another device's settings may come in
+  const [syncing, setSyncing] = useState(false)
+  useEffect(() => {
+    const f = () => force((x) => x + 1)
+    addEventListener('prefs', f)
+    return () => removeEventListener('prefs', f)
+  }, [])
+  const syncOn = () => {
+    setSyncing(true)
+    import('./prefs.ts').then((m) => m.turnOn()).then((r) => {
+      settings.syncThemes = true, saveSettings()
+      toast(r === 'took' ? t('Wearing the themes from your other devices') : t('Themes sync with this account'))
+    }, (e) => toast(e.message)).finally(() => (setSyncing(false), force((x) => x + 1)))
+  }
   useEffect(() => {
     if (!account?.fid) return
     get('/v1/userDataByFid', { fid: account.fid }).then((r) => {
@@ -1423,7 +1437,7 @@ function Settings() {
           <div class="setting">
             <h2>{t('Light or dark')}</h2>
             <div class="seg">
-              {[['system', t('System')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, label]) => <button class={settings.theme === k ? 'on' : ''} onClick={() => ((settings.theme = k), saveSettings(), applyTheme(), force((x) => x + 1))}>{label}</button>)}
+              {[['system', t('System')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, label]) => <button class={settings.theme === k ? 'on' : ''} onClick={() => ((settings.theme = k), saveSettings(), applyTheme(), themeChanged(), force((x) => x + 1))}>{label}</button>)}
             </div>
           </div>
           {theme?.base && <p class="hint">{t('Your theme picks its own; this counts when you wear none.')}</p>}
@@ -1432,11 +1446,22 @@ function Settings() {
           <div class="setting">
             <h2>{t('Holiday themes')}</h2>
             <div class="seg">
-              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={(settings.holidays !== false) === v ? 'on' : ''} onClick={() => ((settings.holidays = v as boolean), saveSettings(), wear(dressed()), force((x) => x + 1))}>{label}</button>)}
+              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={(settings.holidays !== false) === v ? 'on' : ''} onClick={() => ((settings.holidays = v as boolean), saveSettings(), wear(dressed()), themeChanged(), force((x) => x + 1))}>{label}</button>)}
             </div>
           </div>
           <p class="hint">{t('Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.')}</p>
         </section>
+        {account?.done && (
+          <section>
+            <div class="setting">
+              <h2>{t('Sync themes')}</h2>
+              <div class="seg">
+                {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.syncThemes === v ? 'on' : ''} disabled={syncing} onClick={() => (v ? syncOn() : ((settings.syncThemes = false), saveSettings(), force((x) => x + 1)))}>{label}</button>)}
+              </div>
+            </div>
+            <p class="hint">{t('Wear the same theme, light or dark and holiday themes on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.')}</p>
+          </section>
+        )}
         <section>
           <div class="setting">
             <h2>{t('Japanese mode')}</h2>
@@ -1554,6 +1579,8 @@ addEventListener('vite:preloadError', reloadOnce)
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && vaultOpened) kv('readonly', (s) => s.count()).catch(reloadOnce)
 })
+// a theme picked on another device shows up when this one comes back (prefs.ts)
+document.addEventListener('visibilitychange', () => void (document.visibilityState === 'visible' && settings.syncThemes && import('./prefs.ts').then((m) => m.pull())))
 
 const useRoute = () => {
   const [p, setP] = useState(location.pathname)
@@ -1633,6 +1660,7 @@ function App() {
     loadMine().then(f)
     account?.fid && getUser(account.fid).then(f, () => {})
     syncMutes()
+    settings.syncThemes && import('./prefs.ts').then((m) => m.pull())
   }, [account?.fid])
   const me = account?.done ? myUser() : null
   shell.me = () => me && <HeaderMe me={me} />
@@ -1671,7 +1699,7 @@ function App() {
     const p = navProps(k)
     return <a class={on(k) ? 'on' : ''} {...p} aria-label={named ? undefined : label} onClick={(e) => (setMore(false), p.onClick?.(e))}>{ico(k, d)}{named && <small>{label}</small>}</a>
   }
-  const setMode = (mode: 'light' | 'dark') => ((settings.theme = mode), saveSettings(), applyTheme(), force((x) => x + 1))
+  const setMode = (mode: 'light' | 'dark') => ((settings.theme = mode), saveSettings(), applyTheme(), themeChanged(), force((x) => x + 1))
   return (
     <>
     {/* outside .app, so a theme's size (zoom) leaves its background and stickers alone */}
