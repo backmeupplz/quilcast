@@ -134,6 +134,9 @@ jobs:
 
   ios:
     needs: version
+    # Repo variable STORE_APPSTORE_PAUSED=true skips the iPhone app, so a release doesn't replace a submission Apple is
+    # still reviewing (Play, the APK and F-Droid still ship)
+    if: vars.STORE_APPSTORE_PAUSED != 'true'
     runs-on: macos-26
     # The first release with every locale's 120 screenshots waits for the build, then uploads them all
     timeout-minutes: 180
