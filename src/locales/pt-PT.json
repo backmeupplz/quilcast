@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "A tua ligação WalletConnect a {address} tem de ser renovada. Lê isto com a carteira do teu telemóvel ou abre-o numa app de carteira neste dispositivo.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "A tua carteira ligou um endereço diferente do desta conta. Muda para o endereço da conta na tua carteira e tenta de novo.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "A tua carteira não respondeu. Verifica se a transação foi feita antes de tentares de novo.",
-  "Your wallet didn't answer. Try again to reconnect it.": "A tua carteira não respondeu. Tenta de novo para a voltar a ligar."
+  "Your wallet didn't answer. Try again to reconnect it.": "A tua carteira não respondeu. Tenta de novo para a voltar a ligar.",
+  "{app} (asleep)": "{app} (em repouso)"
 }

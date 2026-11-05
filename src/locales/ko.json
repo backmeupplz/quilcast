@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "{address}와의 WalletConnect 연결을 갱신해야 해요. 휴대폰의 지갑으로 이 코드를 스캔하거나 이 기기의 지갑 앱에서 여세요.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "지갑이 이 계정과 다른 주소를 연결했어요. 지갑에서 계정의 주소로 전환한 뒤 다시 시도하세요.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "지갑이 응답하지 않았어요. 다시 시도하기 전에 거래가 처리됐는지 확인하세요.",
-  "Your wallet didn't answer. Try again to reconnect it.": "지갑이 응답하지 않았어요. 다시 시도하면 다시 연결할 수 있어요."
+  "Your wallet didn't answer. Try again to reconnect it.": "지갑이 응답하지 않았어요. 다시 시도하면 다시 연결할 수 있어요.",
+  "{app} (asleep)": "{app} (절전 중)"
 }

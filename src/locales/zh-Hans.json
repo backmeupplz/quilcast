@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "你与 {address} 的 WalletConnect 连接需要更新。请用手机上的钱包扫描，或在此设备的钱包应用中打开。",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "你的钱包连接了与此账号不同的地址。请在钱包中切换到此账号的地址后重试。",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "你的钱包没有回应。重试之前，请先确认交易是否已完成。",
-  "Your wallet didn't answer. Try again to reconnect it.": "你的钱包没有响应。请重试以重新连接。"
+  "Your wallet didn't answer. Try again to reconnect it.": "你的钱包没有响应。请重试以重新连接。",
+  "{app} (asleep)": "{app}（休眠中）"
 }

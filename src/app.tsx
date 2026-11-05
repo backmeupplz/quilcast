@@ -1672,10 +1672,15 @@ function Dock() {
   return (
     <nav class={`dock${shown ? ' behind' : ''}`} aria-label={t('Mini apps dock')}>
       {/* the one on screen scrolls into view when there are more than fit */}
-      {items.map(({ m, open }) => (
-        <button class={`${open ? 'open' : ''}${open && shown === open.id ? ' on' : ''}`} ref={(el) => void (el && open && shown === open.id && el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))}
-          aria-label={m.name || new URL(m.url).host} title={m.name} onClick={() => (open ? show(open.id) : launchApp(m))}><AppIcon src={m.icon} name={m.name} /></button>
-      ))}
+      {items.map(({ m, open }) => {
+        // a sleeping app (miniapp.tsx unloaded its frame) says so; a tap loads it again
+        const name = m.name || new URL(m.url).host
+        const label = open?.asleep ? t('{app} (asleep)', { app: name }) : name
+        return (
+          <button class={`${open ? 'open' : ''}${open?.asleep ? ' asleep' : ''}${open && shown === open.id ? ' on' : ''}`} ref={(el) => void (el && open && shown === open.id && el.scrollIntoView({ block: 'nearest', inline: 'nearest' }))}
+            aria-label={label} title={open?.asleep ? label : m.name} onClick={() => (open ? show(open.id) : launchApp(m))}><AppIcon src={m.icon} name={m.name} /></button>
+        )
+      })}
     </nav>
   )
 }

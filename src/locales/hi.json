@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "{address} से आपका WalletConnect कनेक्शन नवीनीकृत करना होगा। इसे अपने फ़ोन के वॉलेट से स्कैन करें, या इस डिवाइस पर किसी वॉलेट ऐप में खोलें।",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "आपके वॉलेट ने इस खाते के पते से अलग पता कनेक्ट किया। अपने वॉलेट में खाते के पते पर जाएँ और फिर से कोशिश करें।",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "आपके वॉलेट ने जवाब नहीं दिया। फिर से कोशिश करने से पहले देख लें कि लेनदेन हुआ या नहीं।",
-  "Your wallet didn't answer. Try again to reconnect it.": "आपके वॉलेट ने जवाब नहीं दिया। उसे फिर से जोड़ने के लिए दोबारा कोशिश करें।"
+  "Your wallet didn't answer. Try again to reconnect it.": "आपके वॉलेट ने जवाब नहीं दिया। उसे फिर से जोड़ने के लिए दोबारा कोशिश करें।",
+  "{app} (asleep)": "{app} (स्लीप में)"
 }

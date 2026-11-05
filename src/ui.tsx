@@ -31,7 +31,7 @@ export const shell = {
   // the account indicator in page headers (app.tsx), for phones
   me: (): ComponentChildren => null,
   // the open mini apps (miniapp.tsx keeps these current and fires 'dock'); the dock shows them next to the pinned ones
-  dock: { apps: [] as { id: number; url: string; name: string; icon?: string }[], shown: null as number | null, show: (_id: number) => {} },
+  dock: { apps: [] as { id: number; url: string; name: string; icon?: string; asleep?: boolean }[], shown: null as number | null, show: (_id: number) => {} },
   // opens the theme editor (themes.tsx) on a theme, or on the one being worn
   editTheme: (_?: Theme | null) => {},
   // opens the Report sheet (ReportSheet) for a person, or one of their casts

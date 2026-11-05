@@ -663,6 +663,9 @@ small.warn { color: var(--warn); }
 /* open apps get a dot under them; pinned ones that aren't open don't */
 .dock button { position: relative; }
 .dock button.open::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 4px; height: 4px; margin-left: -2px; border-radius: calc(99px * var(--rs, 1)); background: var(--muted); }
+/* a sleeping app (its frame unloaded until it's opened again) is faded, with a hollow dot */
+.dock button.asleep .app-icon { opacity: 0.5; filter: grayscale(1); }
+.dock button.asleep::after { background: none; box-shadow: inset 0 0 0 1px var(--muted); }
 .dock { padding-bottom: 8px; }
 .dock .app-icon { width: 34px; height: 34px; font-size: 14px; border-radius: calc(9px * var(--rs, 1)); }
 .app-open { display: flex; gap: 8px; }

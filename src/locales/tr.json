@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "{address} ile WalletConnect bağlantının yenilenmesi gerekiyor. Bunu telefonundaki cüzdanla tara ya da bu cihazdaki bir cüzdan uygulamasında aç.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Cüzdanın bu hesabınkinden farklı bir adres bağladı. Cüzdanında hesabın adresine geç ve yeniden dene.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Cüzdanın yanıt vermedi. Yeniden denemeden önce işlemin gerçekleşip gerçekleşmediğini kontrol et.",
-  "Your wallet didn't answer. Try again to reconnect it.": "Cüzdanın yanıt vermedi. Yeniden bağlamak için tekrar dene."
+  "Your wallet didn't answer. Try again to reconnect it.": "Cüzdanın yanıt vermedi. Yeniden bağlamak için tekrar dene.",
+  "{app} (asleep)": "{app} (uykuda)"
 }

@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "La tua connessione WalletConnect a {address} va rinnovata. Scansiona questo con il wallet sul tuo telefono, oppure aprilo in un'app wallet su questo dispositivo.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Il tuo wallet ha collegato un indirizzo diverso da quello di questo account. Passa all'indirizzo dell'account nel tuo wallet e riprova.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Il tuo wallet non ha risposto. Controlla se la transazione è andata a buon fine prima di riprovare.",
-  "Your wallet didn't answer. Try again to reconnect it.": "Il tuo wallet non ha risposto. Riprova per ricollegarlo."
+  "Your wallet didn't answer. Try again to reconnect it.": "Il tuo wallet non ha risposto. Riprova per ricollegarlo.",
+  "{app} (asleep)": "{app} (in sospensione)"
 }

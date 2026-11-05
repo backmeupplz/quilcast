@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Koneksi WalletConnect-mu ke {address} perlu diperbarui. Pindai ini dengan dompet di ponselmu, atau buka di aplikasi dompet di perangkat ini.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Dompetmu menghubungkan alamat yang berbeda dari alamat akun ini. Beralihlah ke alamat akun di dompetmu lalu coba lagi.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Dompetmu tidak menjawab. Periksa apakah transaksinya sudah berhasil sebelum mencoba lagi.",
-  "Your wallet didn't answer. Try again to reconnect it.": "Dompetmu tidak menjawab. Coba lagi untuk menghubungkannya kembali."
+  "Your wallet didn't answer. Try again to reconnect it.": "Dompetmu tidak menjawab. Coba lagi untuk menghubungkannya kembali.",
+  "{app} (asleep)": "{app} (tidur)"
 }

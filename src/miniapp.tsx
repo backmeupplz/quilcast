@@ -2,7 +2,8 @@
 // postMessage, in the Comlink shape the official SDK (@farcaster/miniapp-sdk) speaks. Only the calls in
 // `calls` are answered, with checked arguments; anything else is refused. Wallet requests go to the
 // person's browser wallets (EIP-6963 for Ethereum, Wallet Standard for Solana), after the checks in
-// guard.ts. Several apps can be open at once: one shows, the rest wait in the dock with their iframes alive.
+// guard.ts. Several apps can be open at once: one shows, the rest wait in the dock, and the ones left there a while
+// go to sleep (sleep.ts): their frame is unloaded until they're opened again.
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useState } from 'preact/hooks'
 import { formatUnits, parseUnits } from 'viem'
@@ -17,6 +18,7 @@ import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, t
 import { askPush, channelOf, Choose, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
+import { awake, sleepers } from './sleep.ts'
 
 const QUILCAST_FID = 3356316
 // viem's default Polygon RPC now wants a key, so Polygon reads and sends go through publicnode
@@ -105,14 +107,38 @@ type App = {
   wallet?: Wallet; connected: boolean; chain: number; sol?: { wallet: SolWallet; account: { address: string } }; media: boolean
   button?: { text: string; loading: boolean; disabled: boolean; hidden: boolean }; back: boolean
   ask?: Ask; waiting?: string; stop?: () => void; uuid: string; pair?: { uri: string; img: string; cancel: () => void }
+  // asleep: its frame is unloaded (sleep.ts); hidAt: when it last went into the dock
+  asleep?: boolean; hidAt?: number; calls: number
 }
 const apps: App[] = []
 let shown: number | null = null
 let ids = 0
 let root: HTMLElement | undefined
 
-const show = (app: App | null) => ((shown = app?.id ?? null), update())
 const narrow = () => matchMedia('(max-width: 559px), (max-width: 699px) and (max-height: 599px)').matches
+
+/** An app in the middle of something (a call to us still running, a prompt, a wallet request, a pairing) or that may
+ *  be using the camera and microphone never sleeps. */
+const busy = (app: App) => !!(app.calls || app.ask || app.pair || app.waiting || app.media)
+/** Unload the frames of the apps that waited in the dock too long (all of them when `all`); their dock icons stay. */
+function nap(all = false) {
+  const tired = sleepers(apps, shown, Date.now(), awake(narrow() || inApp), busy, all)
+  // a sleeping app's page is gone: messages from its old frame are ignored, and it shows its splash when it wakes
+  for (const app of tired) (app.asleep = true), (app.frame = undefined), (app.ready = false), (app.button = undefined), (app.back = false)
+  tired.length && update()
+}
+// a phone may kill a page in the background that holds too much, so everything waiting in the dock sleeps first
+addEventListener('visibilitychange', () => document.hidden && (narrow() || inApp) && nap(true))
+
+const show = (app: App | null) => {
+  const was = apps.find((a) => a.id === shown)
+  if (was && was !== app) was.hidAt = Date.now()
+  // a sleeping app loads again, from its splash
+  if (app) app.asleep = false
+  shown = app?.id ?? null
+  nap()
+  update()
+}
 
 /** Open a mini app, or bring it forward if it's already open. */
 export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; from?: string; notification?: Notice } = {}) {
@@ -121,11 +147,11 @@ export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; from?: st
   const { origin, host } = new URL(url)
   const open = apps.find((a) => a.url === url)
   if (open) return show(open)
-  if (!root) render(<Host />, (root = document.body.appendChild(document.createElement('div'))))
+  if (!root) render(<Host />, (root = document.body.appendChild(document.createElement('div')))), setInterval(nap, 30_000)
   const bg = /^#[0-9a-f]{3,8}$/i.test(m.bg || '') ? m.bg : undefined
   const app: App = {
     id: ++ids, url, origin, host, name: (m.name || host).slice(0, 60), icon: safeUrl(m.splash) || safeUrl(m.icon), bg, ...ctx,
-    ready: false, connected: false, chain: base.id, media: Object.hasOwn(allowed('media'), origin), back: false, uuid: crypto.randomUUID(),
+    ready: false, connected: false, chain: base.id, media: Object.hasOwn(allowed('media'), origin), back: false, uuid: crypto.randomUUID(), calls: 0,
   }
   app.wallet = remembered(app) || wallets.find((w) => w.key === read('quilcast:wallet', '')) || wallets[0]
   apps.push(app)
@@ -850,7 +876,11 @@ addEventListener('message', (e) => {
     out = Promise.reject(err)
   }
   const fail = (err: any) => post(app, { id: d.id, type: 'HANDLER', name: 'throw', value: { isError: true, value: { message: String(err?.message || err), name: 'Error' } } })
-  Promise.resolve(out).then((value) => {
+  // the app stays awake until its call is answered (sleep.ts)
+  app.calls++
+  const p = Promise.resolve(out)
+  p.finally(() => app.calls--).catch(() => {})
+  p.then((value) => {
     try {
       app.frame?.contentWindow?.postMessage({ id: d.id, type: 'RAW', value }, app.origin)
     } catch (err) {
@@ -960,10 +990,11 @@ function Window({ app }: { app: App }) {
       </header>
       <div class="mini-body">
         {/* its own origin (never ours, see launch), no top navigation or location; camera and mic only once allowed */}
-        <iframe ref={(el) => void (el && (app.frame = el))} src={src(app)} title={app.name} allow={`clipboard-write; web-share${app.media ? '; camera; microphone' : ''}`}
+        {!app.asleep && <iframe ref={(el) => void (el && (app.frame = el))} src={src(app)} title={app.name} allow={`clipboard-write; web-share${app.media ? '; camera; microphone' : ''}`}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
           // apps that never call ready() still show up after a while
-          onLoad={() => setTimeout(() => void (app.ready || ((app.ready = true), update())), 5000)} />
+          // (only while that frame is still the app's: one put to sleep meanwhile shows its splash again when it wakes)
+          onLoad={(e) => { const f = e.currentTarget; setTimeout(() => void (app.frame === f && !app.ready && ((app.ready = true), update())), 5000) }} />}
         {!app.ready && <div class="splash" style={{ background: app.bg }}>{app.icon ? <Img src={app.icon} /> : <span class="spinner" />}</div>}
         {app.waiting && <div class="mini-wait" role="status"><span class="spinner small" /><span class="grow">{app.waiting}</span>{app.stop && <button class="btn ghost small" onClick={app.stop}>{t('Cancel')}</button>}</div>}
         {app.ask && <AskCard app={app} />}
@@ -989,7 +1020,7 @@ function Host() {
   const [, force] = useState(0)
   update = () => force((x) => x + 1)
   // the dock lives in the app shell (it also shows pinned apps before any is open); tell it what's open
-  shell.dock = { apps: apps.map(({ id, url, name, icon }) => ({ id, url, name, icon })), shown, show: (id) => show(shown === id ? null : apps.find((a) => a.id === id) || null) }
+  shell.dock = { apps: apps.map(({ id, url, name, icon, asleep }) => ({ id, url, name, icon, asleep })), shown, show: (id) => show(shown === id ? null : apps.find((a) => a.id === id) || null) }
   useEffect(() => void dispatchEvent(new Event('dock')))
   // Quorum mode's title bar buttons come and go with the setting
   useEffect(() => {
@@ -997,7 +1028,7 @@ function Host() {
     addEventListener('quorum', f)
     return () => removeEventListener('quorum', f)
   }, [])
-  // the windows keep their order, so iframes never move in the DOM (moving one reloads it)
+  // the windows keep their order, so iframes never move in the DOM (moving one reloads it); a sleeping one has none
   return <>{apps.map((app) => <Window key={app.id} app={app} />)}</>
 }
 

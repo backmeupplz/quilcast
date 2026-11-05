@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "ต้องต่ออายุการเชื่อมต่อ WalletConnect กับ {address} สแกนสิ่งนี้ด้วยวอลเล็ตในโทรศัพท์ หรือเปิดในแอปวอลเล็ตบนอุปกรณ์นี้",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "วอลเล็ตของคุณเชื่อมต่อที่อยู่อื่นที่ไม่ใช่ของบัญชีนี้ สลับไปที่ที่อยู่ของบัญชีในวอลเล็ตแล้วลองอีกครั้ง",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "วอลเล็ตของคุณไม่ตอบกลับ ตรวจสอบว่าธุรกรรมสำเร็จหรือไม่ก่อนลองอีกครั้ง",
-  "Your wallet didn't answer. Try again to reconnect it.": "วอลเล็ตของคุณไม่ตอบกลับ ลองอีกครั้งเพื่อเชื่อมต่อใหม่"
+  "Your wallet didn't answer. Try again to reconnect it.": "วอลเล็ตของคุณไม่ตอบกลับ ลองอีกครั้งเพื่อเชื่อมต่อใหม่",
+  "{app} (asleep)": "{app} (พักอยู่)"
 }

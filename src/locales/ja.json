@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "{address} との WalletConnect 接続を更新する必要があります。スマートフォンのウォレットでこれをスキャンするか、この端末のウォレットアプリで開いてください。",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "ウォレットがこのアカウントとは別のアドレスを接続しました。ウォレットでアカウントのアドレスに切り替えて、もう一度お試しください。",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "ウォレットから応答がありませんでした。もう一度試す前に、取引が完了したかどうかを確認してください。",
-  "Your wallet didn't answer. Try again to reconnect it.": "ウォレットから応答がありませんでした。もう一度試すと再接続できます。"
+  "Your wallet didn't answer. Try again to reconnect it.": "ウォレットから応答がありませんでした。もう一度試すと再接続できます。",
+  "{app} (asleep)": "{app}（スリープ中）"
 }

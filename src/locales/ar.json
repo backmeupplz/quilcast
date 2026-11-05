@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "يجب تجديد اتصال WalletConnect بالعنوان {address}. امسح هذا الرمز بالمحفظة على هاتفك، أو افتحه في تطبيق محفظة على هذا الجهاز.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "ربطت محفظتك عنوانًا مختلفًا عن عنوان هذا الحساب. انتقل إلى عنوان الحساب في محفظتك ثم حاول مرة أخرى.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "لم تستجب محفظتك. تحقق مما إذا كانت المعاملة قد تمت قبل أن تحاول مرة أخرى.",
-  "Your wallet didn't answer. Try again to reconnect it.": "لم تردّ محفظتك. حاول مجددًا لإعادة توصيلها."
+  "Your wallet didn't answer. Try again to reconnect it.": "لم تردّ محفظتك. حاول مجددًا لإعادة توصيلها.",
+  "{app} (asleep)": "{app} (نائم)"
 }

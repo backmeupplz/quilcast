@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Подключение WalletConnect к {address} нужно обновить. Отсканируйте это кошельком на телефоне или откройте в приложении кошелька на этом устройстве.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Ваш кошелёк подключил другой адрес, а не адрес этого аккаунта. Переключитесь в кошельке на адрес аккаунта и попробуйте ещё раз.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Кошелёк не ответил. Прежде чем пробовать ещё раз, проверьте, прошла ли транзакция.",
-  "Your wallet didn't answer. Try again to reconnect it.": "Кошелёк не ответил. Попробуйте ещё раз, чтобы переподключить его."
+  "Your wallet didn't answer. Try again to reconnect it.": "Кошелёк не ответил. Попробуйте ещё раз, чтобы переподключить его.",
+  "{app} (asleep)": "{app} (спит)"
 }

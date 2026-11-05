@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Din WalletConnect-anslutning till {address} måste förnyas. Skanna detta med plånboken i din telefon, eller öppna det i en plånboksapp på den här enheten.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Din plånbok anslöt en annan adress än kontots. Byt till kontots adress i plånboken och försök igen.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Din plånbok svarade inte. Kontrollera om transaktionen gick igenom innan du försöker igen.",
-  "Your wallet didn't answer. Try again to reconnect it.": "Din plånbok svarade inte. Försök igen för att ansluta den på nytt."
+  "Your wallet didn't answer. Try again to reconnect it.": "Din plånbok svarade inte. Försök igen för att ansluta den på nytt.",
+  "{app} (asleep)": "{app} (vilar)"
 }

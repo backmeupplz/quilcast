@@ -1130,5 +1130,6 @@
   "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Kết nối WalletConnect tới {address} cần được làm mới. Hãy quét mã này bằng ví trên điện thoại, hoặc mở trong một ứng dụng ví trên thiết bị này.",
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Ví của bạn đã kết nối một địa chỉ khác với địa chỉ của tài khoản này. Hãy chuyển sang địa chỉ của tài khoản trong ví rồi thử lại.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Ví của bạn không phản hồi. Hãy kiểm tra xem giao dịch đã được thực hiện chưa trước khi thử lại.",
-  "Your wallet didn't answer. Try again to reconnect it.": "Ví của bạn không phản hồi. Hãy thử lại để kết nối lại ví."
+  "Your wallet didn't answer. Try again to reconnect it.": "Ví của bạn không phản hồi. Hãy thử lại để kết nối lại ví.",
+  "{app} (asleep)": "{app} (đang ngủ)"
 }
