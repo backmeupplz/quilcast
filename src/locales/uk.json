@@ -1133,5 +1133,14 @@
   "Full screen": "На весь екран",
   "Exit full screen": "Вийти з повноекранного режиму",
   "Fill the monitor": "На весь монітор",
-  "{app} (asleep)": "{app} (спить)"
+  "{app} (asleep)": "{app} (спить)",
+  "Pin to profile": "Закріпити в профілі",
+  "Unpin from profile": "Відкріпити з профілю",
+  "Pinned": "Закріплено",
+  "Pinned to your profile": "Закріплено у вашому профілі",
+  "Unpinned from your profile": "Відкріплено з вашого профілю",
+  "Sign in again to pin a cast.": "Увійдіть знову, щоб закріпити каст.",
+  "You can only pin your own casts.": "Закріплювати можна лише власні касти.",
+  "Too many pins, try again in a few minutes.": "Забагато закріплень, спробуйте за кілька хвилин.",
+  "Replies can't be pinned.": "Відповіді не можна закріпити."
 }

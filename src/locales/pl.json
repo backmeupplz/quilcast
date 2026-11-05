@@ -1133,5 +1133,14 @@
   "Full screen": "Pełny ekran",
   "Exit full screen": "Zamknij pełny ekran",
   "Fill the monitor": "Wypełnij cały monitor",
-  "{app} (asleep)": "{app} (uśpiona)"
+  "{app} (asleep)": "{app} (uśpiona)",
+  "Pin to profile": "Przypnij do profilu",
+  "Unpin from profile": "Odepnij od profilu",
+  "Pinned": "Przypięty",
+  "Pinned to your profile": "Przypięto do twojego profilu",
+  "Unpinned from your profile": "Odpięto od twojego profilu",
+  "Sign in again to pin a cast.": "Zaloguj się ponownie, aby przypiąć cast.",
+  "You can only pin your own casts.": "Możesz przypinać tylko własne casty.",
+  "Too many pins, try again in a few minutes.": "Za dużo przypięć, spróbuj ponownie za kilka minut.",
+  "Replies can't be pinned.": "Odpowiedzi nie można przypiąć."
 }

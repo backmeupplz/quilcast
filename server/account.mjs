@@ -3,13 +3,14 @@
 // A big account has many casts to read, and no request may outlive the proxy's 60 s, so the work runs in the background:
 // the first call starts it, and each call (signed again) waits up to 20 s and answers { state: 'running' } until it can
 // answer { state: 'done', … }. Running it again later is safe: what's gone stays gone.
-// What goes: the profile look, mutes, synced theme settings, drafts, translations kept of its casts (read from the node, never from the
+// What goes: the profile look and pinned cast, mutes, synced theme settings, drafts, translations kept of its casts (read from the node, never from the
 // browser), and the photos and videos only this account put on our volume (upload.mjs keeps who). A file someone else
 // uploaded too, a theme's picture, or one from before uploads were recorded stays: `kept` counts those among the files
 // the account uploaded or its casts and profile link to, so the app can say so (and point to email).
 import { dropDrafts } from './drafts.mjs'
 import { dropLook, keySigned } from './looks.mjs'
 import { dropMutes } from './mutes.mjs'
+import { dropPin } from './pins.mjs'
 import { dropPrefs } from './prefs.mjs'
 import { fail, fetchJson, gate } from './net.mjs'
 import { dropTranslations } from './translate.mjs'
@@ -80,5 +81,6 @@ async function run(fid, node, site) {
   const kept = new Set([...seen].filter((name) => !gone.includes(name)).concat([...linked].filter((name) => owners.get(name)?.has('legacy')))).size + skipped
   const [look, mutes, drafts, translations] = [await dropLook(fid), await dropMutes(fid), await dropDrafts(fid), await dropTranslations(hashes)]
   await dropPrefs(fid)
+  await dropPin(fid)
   return { media, kept, look, mutes, drafts, translations }
 }

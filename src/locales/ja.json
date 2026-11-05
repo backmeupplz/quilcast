@@ -1133,5 +1133,14 @@
   "Full screen": "全画面表示",
   "Exit full screen": "全画面表示を終了",
   "Fill the monitor": "モニター全体に表示",
-  "{app} (asleep)": "{app}（スリープ中）"
+  "{app} (asleep)": "{app}（スリープ中）",
+  "Pin to profile": "プロフィールに固定",
+  "Unpin from profile": "プロフィールの固定を解除",
+  "Pinned": "固定済み",
+  "Pinned to your profile": "プロフィールに固定しました",
+  "Unpinned from your profile": "プロフィールの固定を解除しました",
+  "Sign in again to pin a cast.": "キャストを固定するにはもう一度サインインしてください。",
+  "You can only pin your own casts.": "固定できるのは自分のキャストだけです。",
+  "Too many pins, try again in a few minutes.": "固定の操作が多すぎます。数分後にもう一度お試しください。",
+  "Replies can't be pinned.": "返信は固定できません。"
 }

@@ -1133,5 +1133,14 @@
   "Full screen": "เต็มหน้าจอ",
   "Exit full screen": "ออกจากโหมดเต็มหน้าจอ",
   "Fill the monitor": "เต็มจอมอนิเตอร์",
-  "{app} (asleep)": "{app} (พักอยู่)"
+  "{app} (asleep)": "{app} (พักอยู่)",
+  "Pin to profile": "ปักหมุดไว้ที่โปรไฟล์",
+  "Unpin from profile": "เลิกปักหมุดจากโปรไฟล์",
+  "Pinned": "ปักหมุดแล้ว",
+  "Pinned to your profile": "ปักหมุดไว้ที่โปรไฟล์ของคุณแล้ว",
+  "Unpinned from your profile": "เลิกปักหมุดจากโปรไฟล์ของคุณแล้ว",
+  "Sign in again to pin a cast.": "ลงชื่อเข้าใช้อีกครั้งเพื่อปักหมุดแคสต์",
+  "You can only pin your own casts.": "คุณปักหมุดได้เฉพาะแคสต์ของตัวเองเท่านั้น",
+  "Too many pins, try again in a few minutes.": "ปักหมุดบ่อยเกินไป ลองอีกครั้งในอีกไม่กี่นาที",
+  "Replies can't be pinned.": "ไม่สามารถปักหมุดการตอบกลับได้"
 }

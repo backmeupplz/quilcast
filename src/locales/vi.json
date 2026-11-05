@@ -1133,5 +1133,14 @@
   "Full screen": "Toàn màn hình",
   "Exit full screen": "Thoát toàn màn hình",
   "Fill the monitor": "Lấp đầy màn hình",
-  "{app} (asleep)": "{app} (đang ngủ)"
+  "{app} (asleep)": "{app} (đang ngủ)",
+  "Pin to profile": "Ghim lên hồ sơ",
+  "Unpin from profile": "Bỏ ghim khỏi hồ sơ",
+  "Pinned": "Đã ghim",
+  "Pinned to your profile": "Đã ghim lên hồ sơ của bạn",
+  "Unpinned from your profile": "Đã bỏ ghim khỏi hồ sơ của bạn",
+  "Sign in again to pin a cast.": "Đăng nhập lại để ghim một cast.",
+  "You can only pin your own casts.": "Bạn chỉ có thể ghim cast của chính mình.",
+  "Too many pins, try again in a few minutes.": "Ghim quá nhiều lần, hãy thử lại sau vài phút.",
+  "Replies can't be pinned.": "Không thể ghim câu trả lời."
 }

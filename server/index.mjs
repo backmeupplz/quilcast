@@ -26,6 +26,7 @@ import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
+import { getPin, loadPins, putPin } from './pins.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, clip, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { rss, shown } from './feed.mjs'
@@ -52,6 +53,7 @@ loadMutes(DATA)
 loadReports(DATA)
 loadDrafts(DATA)
 loadPrefs(DATA)
+loadPins(DATA)
 loadThemes(DATA)
 loadOwners()
 channels()
@@ -1097,6 +1099,20 @@ createServer(async (req, res) => {
       const r = await putLook(req, fid, NODE).catch((e) => e)
       const err = r instanceof Error
       if (err && !r.status) console.error('look', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // pinned casts (server/pins.mjs): public like looks, saved signed
+    const pin = path.match(/^\/api\/pin\/([1-9]\d{0,9})$/)
+    if (pin) {
+      const fid = Number(pin[1])
+      if (req.method === 'GET') return limited(`pin:${ip}`, 300) ? json(429, null) : json(200, await getPin(fid))
+      if (req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
+      if (limited(`pinip:${ip}`, 30, 600e3)) return json(429, { error: 'Too many pins, try again in a few minutes.' })
+      // the per-account limit counts signed saves only, or anyone could lock someone's pin with unsigned ones; its own
+      // prefix, as an address (the last X-Forwarded-For hop, unchecked) may look like a FID
+      const r = await putPin(req, fid, NODE, () => limited(`pinfid:${fid}`, 30, 600e3)).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('pin', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
     }
     // the ⋯ menu's Report (server/report.mjs)

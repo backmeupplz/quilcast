@@ -1133,5 +1133,14 @@
   "Full screen": "Volledig scherm",
   "Exit full screen": "Volledig scherm sluiten",
   "Fill the monitor": "Hele monitor vullen",
-  "{app} (asleep)": "{app} (slaapt)"
+  "{app} (asleep)": "{app} (slaapt)",
+  "Pin to profile": "Vastzetten op profiel",
+  "Unpin from profile": "Losmaken van profiel",
+  "Pinned": "Vastgezet",
+  "Pinned to your profile": "Vastgezet op je profiel",
+  "Unpinned from your profile": "Losgemaakt van je profiel",
+  "Sign in again to pin a cast.": "Log opnieuw in om een cast vast te zetten.",
+  "You can only pin your own casts.": "Je kunt alleen je eigen casts vastzetten.",
+  "Too many pins, try again in a few minutes.": "Te vaak vastgezet, probeer het over een paar minuten opnieuw.",
+  "Replies can't be pinned.": "Reacties kunnen niet worden vastgezet."
 }

@@ -1133,5 +1133,14 @@
   "Full screen": "Layar penuh",
   "Exit full screen": "Keluar dari layar penuh",
   "Fill the monitor": "Penuhi monitor",
-  "{app} (asleep)": "{app} (tidur)"
+  "{app} (asleep)": "{app} (tidur)",
+  "Pin to profile": "Sematkan ke profil",
+  "Unpin from profile": "Lepas sematan dari profil",
+  "Pinned": "Disematkan",
+  "Pinned to your profile": "Disematkan ke profilmu",
+  "Unpinned from your profile": "Sematan dilepas dari profilmu",
+  "Sign in again to pin a cast.": "Masuk lagi untuk menyematkan cast.",
+  "You can only pin your own casts.": "Kamu hanya bisa menyematkan cast milikmu sendiri.",
+  "Too many pins, try again in a few minutes.": "Terlalu sering menyematkan, coba lagi dalam beberapa menit.",
+  "Replies can't be pinned.": "Balasan tidak bisa disematkan."
 }

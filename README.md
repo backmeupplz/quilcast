@@ -56,6 +56,7 @@ Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App 
 | `server/unfurl.mjs` | `/api/unfurl`: Open Graph metadata for link previews, public hosts only |
 | `src/themes.tsx`, `server/themes.mjs` | App themes: the editor, Settings > Theme, Quorum export (`toSkin`); sharing them and converting Quorum skins (`fromSkin`, its inline pictures and font stored on the media volume). The engine (`wear`, `ThemeLayers`, `ThemeCard`) is in `src/ui.tsx`, the format (`cleanTheme`, `themeVars`) in `src/shared.ts` |
 | `src/looks.tsx`, `server/looks.mjs` | Profile looks: showing and editing them, and storing them (one JSON file per FID on the data volume) |
+| `src/castpin.ts`, `server/pins.mjs` | Pinned casts: the one cast a profile shows first (the ⋯ menu's Pin to profile), kept as one JSON file per FID until Hypersnap has a profile pin |
 | `src/quorum.tsx`, `src/activity.ts` | Quorum mode: the right column, the composer row, the light/dark switch and the wallet panel's open state (the sidebar is in `src/app.tsx`, the panel in `src/walletui.tsx`, the look under `:root[data-quorum]` in `src/style.css`); explorer transactions as the panel's Activity |
 | `src/fx.ts` | Profile effects: one small particle engine and the presets it draws |
 | `src/amp.tsx`, `src/skin.ts` | The profile Winamp and its skin reader |

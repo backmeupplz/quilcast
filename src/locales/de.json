@@ -1133,5 +1133,14 @@
   "Full screen": "Vollbild",
   "Exit full screen": "Vollbild beenden",
   "Fill the monitor": "Ganzen Bildschirm füllen",
-  "{app} (asleep)": "{app} (schläft)"
+  "{app} (asleep)": "{app} (schläft)",
+  "Pin to profile": "Im Profil anheften",
+  "Unpin from profile": "Vom Profil lösen",
+  "Pinned": "Angeheftet",
+  "Pinned to your profile": "In deinem Profil angeheftet",
+  "Unpinned from your profile": "Von deinem Profil gelöst",
+  "Sign in again to pin a cast.": "Melde dich erneut an, um einen Cast anzuheften.",
+  "You can only pin your own casts.": "Du kannst nur deine eigenen Casts anheften.",
+  "Too many pins, try again in a few minutes.": "Zu oft angeheftet, versuch es in ein paar Minuten noch einmal.",
+  "Replies can't be pinned.": "Antworten können nicht angeheftet werden."
 }

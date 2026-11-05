@@ -69,6 +69,16 @@ const node = createServer(async (q, r) => {
   if (u.pathname === '/spam/scores') return r.end(JSON.stringify({ [u.searchParams.get('h')]: 0.97 }))
   if (u.pathname === '/spam/users') return r.end(JSON.stringify({ [u.searchParams.get('fid')]: null }))
   if (u.pathname === '/report-hook') return hookHits.push({ path: u.pathname + u.search, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
+  // pinnable casts: fid 7 wrote 0x7a…, 0x7b… and 0x7c…, and the reply 0x7d…; asking for a 0x5e… cast finds the node
+  // failing, a 0x42… one rate-limited. Another FID's cast is "not found" with a 400, like Hypersnap answers.
+  if (u.pathname === '/v1/castById') {
+    const hash = u.searchParams.get('hash')
+    if (hash === '0x' + '5e'.repeat(20)) return (r.statusCode = 500), r.end('{}')
+    if (hash === '0x' + '42'.repeat(20)) return (r.statusCode = 429), r.end('{}')
+    const parentCastId = hash === '0x' + '7d'.repeat(20) ? { fid: 9, hash: '0x' + '9a'.repeat(20) } : null
+    if (u.searchParams.get('fid') === '7' && ['7a', '7b', '7c', '7d'].some((x) => hash === '0x' + x.repeat(20))) return r.end(JSON.stringify({ hash, data: { fid: 7, castAddBody: { text: 'mine', parentCastId } } }))
+    return (r.statusCode = 400), r.end(JSON.stringify({ errCode: 'not_found', details: 'cast not found' }))
+  }
   if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : u.searchParams.get('fid') === '9' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer9)).toString('hex') }] : [] }))
   // @eight's casts, two pages, for finding a cast from a farcaster.xyz link's first digits (the Collect mini app)
   if (u.pathname === '/v2/farcaster/user/by-username' && u.searchParams.get('username') === 'eight') return r.end(JSON.stringify({ user: { fid: 8, username: 'eight' } }))
@@ -713,6 +723,68 @@ test('profile looks: saved only with a key the node lists for that FID, cleaned,
   assert.deepEqual(await (await fetch(`${base}/api/looks`)).json(), [])
 })
 
+test('pinned casts: only your own cast, signed with a key the node lists for that FID, public, and removable', async () => {
+  const put = (fid, pin, { key = signer, ts = Date.now(), as = fid } = {}) => {
+    const body = JSON.stringify(pin)
+    const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-pin:${as}:${ts}:${body}`), key)).toString('hex')
+    return fetch(`${base}/api/pin/${fid}`, { method: 'PUT', body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
+  }
+  const get = async (fid) => (await fetch(`${base}/api/pin/${fid}`)).json()
+  const mine = '0x' + '7a'.repeat(20)
+  assert.equal(await get(7), null)
+  // someone else's key, another FID's signature, an old one, or a look's signature: nothing is pinned
+  assert.equal((await put(7, { hash: mine }, { key: ed25519.utils.randomSecretKey() })).status, 403)
+  assert.equal((await put(8, { hash: mine })).status, 403)
+  assert.equal((await put(7, { hash: mine }, { as: 8 })).status, 401)
+  assert.equal((await put(7, { hash: mine }, { ts: Date.now() - 600e3 })).status, 401)
+  const body = JSON.stringify({ hash: mine })
+  const ts = Date.now()
+  const lookSig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-look:7:${ts}:${body}`), signer)).toString('hex')
+  assert.equal((await fetch(`${base}/api/pin/7`, { method: 'PUT', body, headers: { 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': lookSig } })).status, 401)
+  // not a hash, someone else's cast (or none at all), its own reply, or a node that fails or rate-limits
+  assert.equal((await put(7, { hash: 'nope' })).status, 400)
+  const theirs = await put(7, { hash: '0x' + '9a'.repeat(20) })
+  assert.deepEqual([theirs.status, await theirs.json()], [400, { error: 'You can only pin your own casts.' }])
+  const reply = await put(7, { hash: '0x' + '7d'.repeat(20) })
+  assert.deepEqual([reply.status, await reply.json()], [400, { error: "Replies can't be pinned." }])
+  assert.equal((await put(7, { hash: '0x' + '5e'.repeat(20) })).status, 502)
+  assert.equal((await put(7, { hash: '0x' + '42'.repeat(20) })).status, 502)
+  assert.equal(await get(7), null)
+  // its own cast pins, uppercase or not, with 0x or bare like the node's feeds give it, and everyone can read it
+  assert.deepEqual(await (await put(7, { hash: '7c'.repeat(20) })).json(), { hash: '0x' + '7c'.repeat(20) })
+  const r = await put(7, { hash: mine.toUpperCase().replace('0X', '0x') })
+  assert.equal(r.status, 200)
+  assert.deepEqual(await r.json(), { hash: mine })
+  assert.deepEqual(await get(7), { hash: mine })
+  // a new pin replaces the old one, and null unpins
+  assert.equal((await put(7, { hash: '0x' + '7b'.repeat(20) })).status, 200)
+  assert.deepEqual(await get(7), { hash: '0x' + '7b'.repeat(20) })
+  // two saves at once both land, and the pin is one of them
+  const both = await Promise.all(['7a', '7c'].map((x) => put(7, { hash: '0x' + x.repeat(20) })))
+  assert.deepEqual(both.map((x) => x.status), [200, 200])
+  const now = (await get(7)).hash
+  assert.ok(['7a', '7c'].some((x) => now === '0x' + x.repeat(20)), now)
+  assert.equal((await put(7, null)).status, 200)
+  assert.equal(await get(7), null)
+  assert.equal((await fetch(`${base}/api/pin/7`, { method: 'DELETE' })).status, 405)
+  // unsigned saves from many addresses don't use up the account's own limit: it can still pin and unpin
+  for (let i = 1; i <= 35; i++) {
+    const r = await fetch(`${base}/api/pin/7`, { method: 'PUT', body: 'null', headers: { 'x-forwarded-for': `198.51.100.${i}` } })
+    assert.equal(r.status, 401)
+  }
+  assert.equal((await put(7, { hash: mine })).status, 200)
+  assert.deepEqual(await get(7), { hash: mine })
+  assert.equal((await put(7, null)).status, 200)
+  // nor do ones from an address that reads like the FID: addresses and accounts are counted apart
+  for (let i = 1; i <= 30; i++) {
+    const r = await fetch(`${base}/api/pin/7`, { method: 'PUT', body: 'null', headers: { 'x-forwarded-for': '7' } })
+    assert.equal(r.status, 401)
+  }
+  assert.equal((await fetch(`${base}/api/pin/7`, { method: 'PUT', body: 'null', headers: { 'x-forwarded-for': '7' } })).status, 429)
+  assert.equal((await put(7, { hash: mine })).status, 200)
+  assert.equal((await put(7, null)).status, 200)
+})
+
 test('shared designs: only the style is kept, under a stable id', async () => {
   const share = (look) => fetch(`${base}/api/design`, { method: 'POST', body: JSON.stringify(look) })
   const r = await share({ bg: '#FF00FF', font: 'impact', about: 'mine', top: [1], text: 'red;x', fx: 'snow', fxAlpha: 140, boxAlpha: 30 })
@@ -901,9 +973,11 @@ test('deleting an account: only with its own key, and only files it alone put he
   const hash = '0x' + '7a'.repeat(20)
   fid7.casts = [cast(hash, [theirs, stray]), cast('0x' + '7b'.repeat(20), [both]), cast('0x' + '7c'.repeat(20), [], `see https://quilcast.test/m/${mine}`)]
   fid7.profile = [{ data: { userDataBody: { type: 'USER_DATA_TYPE_PFP', value: `https://quilcast.test/m/${OLD_NAME}` } } }]
-  // the rest of what's kept for fid 7: its look, mutes, a draft and a translation of one of its casts
+  // the rest of what's kept for fid 7: its look, pinned cast, mutes, a draft and a translation of one of its casts
   const body = JSON.stringify({ bg: '#123456' })
   assert.equal((await fetch(`${base}/api/look/7`, { method: 'PUT', body, headers: sign('quilcast-look', 7, signer, Date.now(), body) })).status, 200)
+  const pin = JSON.stringify({ hash: '0x' + '7c'.repeat(20) })
+  assert.equal((await fetch(`${base}/api/pin/7`, { method: 'PUT', body: pin, headers: sign('quilcast-pin', 7, signer, Date.now(), pin) })).status, 200)
   const mutes = JSON.stringify({ words: [{ v: 'gm' }], users: [], blocks: [] })
   assert.equal((await fetch(`${base}/api/mutes/7`, { method: 'PUT', body: mutes, headers: sign('quilcast-mutes', 7, signer, Date.now(), mutes) })).status, 200)
   const prefs = JSON.stringify({ theme: null, mode: 'dark', holidays: true, at: 1 })
@@ -933,6 +1007,8 @@ test('deleting an account: only with its own key, and only files it alone put he
   for (const n of [both, theirs, OLD_NAME, PRE_NAME, themePic, stray, '0123456789abcdef01234567.png']) assert.ok(existsSync(join(media, n)), n)
   assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
   assert.ok(!existsSync(join(media, 'prefs', '7.json')))
+  assert.equal(await (await fetch(`${base}/api/pin/7`)).json(), null)
+  assert.ok(!existsSync(join(media, 'pins', '7.json')))
   assert.ok(!existsSync(join(media, 'mutes', '7.json')) && !existsSync(join(media, 'drafts', '7')) && !existsSync(join(media, 'owners', '7')))
   assert.ok(!existsSync(join(media, 'translations', 'de', `${'7a'.repeat(20)}.json`)) && existsSync(join(media, 'translations', 'de', `${'9a'.repeat(20)}.json`)))
   // asked again (a lost reply), the same answer; a new deletion finds nothing more: the shared file is fid 9's alone now

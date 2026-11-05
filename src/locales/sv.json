@@ -1133,5 +1133,14 @@
   "Full screen": "Helskärm",
   "Exit full screen": "Avsluta helskärm",
   "Fill the monitor": "Fyll hela skärmen",
-  "{app} (asleep)": "{app} (vilar)"
+  "{app} (asleep)": "{app} (vilar)",
+  "Pin to profile": "Fäst på profilen",
+  "Unpin from profile": "Lossa från profilen",
+  "Pinned": "Fäst",
+  "Pinned to your profile": "Fäst på din profil",
+  "Unpinned from your profile": "Lossad från din profil",
+  "Sign in again to pin a cast.": "Logga in igen för att fästa en cast.",
+  "You can only pin your own casts.": "Du kan bara fästa dina egna casts.",
+  "Too many pins, try again in a few minutes.": "Du har fäst för många gånger, försök igen om några minuter.",
+  "Replies can't be pinned.": "Svar kan inte fästas."
 }

@@ -1133,5 +1133,14 @@
   "Full screen": "전체 화면",
   "Exit full screen": "전체 화면 종료",
   "Fill the monitor": "모니터 가득 채우기",
-  "{app} (asleep)": "{app} (절전 중)"
+  "{app} (asleep)": "{app} (절전 중)",
+  "Pin to profile": "프로필에 고정",
+  "Unpin from profile": "프로필 고정 해제",
+  "Pinned": "고정됨",
+  "Pinned to your profile": "프로필에 고정했어요",
+  "Unpinned from your profile": "프로필 고정을 해제했어요",
+  "Sign in again to pin a cast.": "캐스트를 고정하려면 다시 로그인하세요.",
+  "You can only pin your own casts.": "내 캐스트만 고정할 수 있어요.",
+  "Too many pins, try again in a few minutes.": "고정을 너무 많이 했어요. 몇 분 후에 다시 시도하세요.",
+  "Replies can't be pinned.": "답글은 고정할 수 없어요."
 }

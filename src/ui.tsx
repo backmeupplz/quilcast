@@ -9,6 +9,7 @@ import { lang, t, t as tr, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, setMute } from './mutes.ts'
 import { spamAccountOf, spamOf } from './spam.ts'
 import { swoosh } from './swoosh.ts'
+import { pinKey, pinnedCast, setPinnedCast, usePinnedCast } from './castpin.ts'
 import { base, detect } from './lang.ts'
 import { bound, FIT, TAP_ZOOM, zoomAt, type Zoom } from './zoom.ts'
 
@@ -1108,7 +1109,7 @@ const COLLECT = (hash: string): AppMeta => ({ url: `https://collect.quilcast.com
 
 /** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row; `owner` is
  *  the profile it's shown on (see hides()). */
-export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number }) {
+export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number; onTop?: boolean }) {
   // `mine` is what the node said at sign-in, and its counts include those; taps since then adjust from there
   const was = useMemo(() => [c.viewer_context?.liked ?? mine.likes.has(c.hash), c.viewer_context?.recasted ?? mine.recasts.has(c.hash)], [c.hash, mineVersion])
   const [, redraw] = useState(0)
@@ -1155,10 +1156,27 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
     navigator.share ? navigator.share({ url }).catch(() => {}) : navigator.clipboard.writeText(url).then(() => toast('Link copied'))
   }
   // the delete button asks once more in the same spot
+  const own = !!account?.done && account.fid === c.author.fid
+  // the signed-in FID on your own casts, else 0
+  const me = (own && account?.fid) || 0
   const del = () => {
     if (!sure) return setSure(true)
     setMore(false)
-    w().then((m) => m.deleteCast(c.hash)).then(() => (setGone(true), toast('Deleted')), (e) => toast(e.message))
+    const hash = pinKey(c.hash), a = account!
+    w().then((m) => m.deleteCast(c.hash).then(() => {
+      setGone(true)
+      toast('Deleted')
+      // a deleted pinned cast would only be skipped on the profile; it's unpinned too, quietly
+      if (me && pinnedCast(me) === hash) m.savePin(null, a).then(() => setPinnedCast(me, null), () => {})
+    })).catch((e) => toast(e.message))
+  }
+  // the profile's pinned cast (castpin.ts), for the ⋯ menu's Pin or Unpin on your own top-level casts
+  const pin = usePinnedCast(me)
+  const isPin = pin === pinKey(c.hash)
+  const pinIt = () => {
+    setMore(false)
+    const a = account!
+    w().then((m) => m.savePin(isPin ? null : pinKey(c.hash), a)).then((h) => (setPinnedCast(me, h), h ? toast('Pinned to your profile') : toast('Unpinned from your profile')), (e) => toast(e.message))
   }
   // a cast opened on its own page shows whatever mutes say
   if (gone || (!focus && hides(c, owner))) return null
@@ -1187,8 +1205,11 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
         <button class="act" aria-label={t('More')} aria-haspopup="menu" onClick={() => (setMore(!more), setSure(false))}><Icon d={P.more} /></button>
         {more && (
           <Menu class="right" close={() => setMore(false)}>
-            {account?.done && account.fid === c.author.fid
-              ? <button role="menuitem" class="danger" onClick={del}><Icon d={P.trash} />{sure ? t('Delete this cast?') : t('Delete')}</button>
+            {own
+              ? <>
+                  {!sending && (!c.parent_hash || isPin) && <button role="menuitem" onClick={pinIt} disabled={pin === undefined}><Icon d={P.pin} />{isPin ? t('Unpin from profile') : t('Pin to profile')}</button>}
+                  <button role="menuitem" class="danger" onClick={del}><Icon d={P.trash} />{sure ? t('Delete this cast?') : t('Delete')}</button>
+                </>
               : <SilenceItems u={c.author} c={c} done={() => setMore(false)} />}
           </Menu>
         )}
@@ -1221,6 +1242,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner }: { c: C
     <article class={`cast${line ? ' line' : ''}`} data-href={`/c/${c.hash}`} onPointerDown={() => cards.set(c.hash, c)} onClick={() => go(`/c/${c.hash}`)}>
       <div class="rail"><Avatar u={c.author} /></div>
       <div class="body">
+        {onTop && <div class="replying"><Icon d={P.pin} size={14} /> {t('Pinned')}</div>}
         {c.recaster && <div class="replying"><Icon d={P.recast} size={14} /> {t('Recast by')} <a href={userPath(c.recaster)} onClick={stop}>{nameOf(c.recaster)}</a></div>}
         <header>
           {name}

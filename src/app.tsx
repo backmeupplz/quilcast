@@ -12,6 +12,7 @@ import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
 import { checkAccounts, spamAccountOf, spamAt } from './spam.ts'
+import { listSkip, pinKey, usePinnedCast } from './castpin.ts'
 import { findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
@@ -336,10 +337,11 @@ function Unit({ c, owner }: { c: Cast; owner?: number }) {
 let boot: Cast[] | null = null
 // `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately; `owner` is the profile
 // it's on. A conversation with a muted post in it is left out whole.
-function Feed({ load, k, empty, keep, cacheKey, thread, owner }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number }) {
+// `skip`: a cast shown above the feed already (a profile's pinned cast), left out of it
+function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number; skip?: string | null }) {
   // the posts this feed shows so far, for threads(); a first page starts over
   const shown = useRef(new Set<string>())
-  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => !silenced(c.recaster?.fid) && ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
+  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => !silenced(c.recaster?.fid) && (!skip || pinKey(c.hash) !== skip) && ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
     initial={() => (cacheKey === '0:trending' && boot) || (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
     load={async (cursor) => {
       let r = await load(cursor)
@@ -761,6 +763,10 @@ function Profile({ id }: { id: string }) {
     return () => void (live = false)
   }, [id, tries])
   const self = account?.fid === u?.fid
+  // the cast they pinned (castpin.ts), shown first on Casts and left out of the list under it
+  const pin = usePinnedCast(u?.fid ?? 0)
+  // the pin PinnedCast drew on top or found gone; the list leaves it out only then (listSkip)
+  const [settled, setSettled] = useState<string | null>(null)
   // a shared design (`design`, an id) is put on top of the look being edited
   const edit = (design?: string) =>
     Promise.all([looksMod(), loaded.current, design ? designOf(design) : null]).then(([m, l, des]) => {
@@ -866,8 +872,11 @@ function Profile({ id }: { id: string }) {
               {!self && blockOf(u.fid) ? (
                 <div class="note">{t('You blocked @{name}, so their casts are hidden.', { name: handle(u) })} <button class="link-btn" onClick={() => setMute('blocks', u.fid, false).catch((e) => toast(e.message))}>{t('Unblock')}</button></div>
               ) : (
-                <Feed k={`${u.fid}${tab}`} owner={u.fid} empty={tab === 'casts' ? t('No casts yet.') : t('No replies yet.')} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
-                  load={(cursor) => userCasts(u.fid, tab, cursor)} />
+                <>
+                  {tab === 'casts' && pin && <PinnedCast key={pin} hash={pin} owner={u.fid} settle={setSettled} />}
+                  <Feed k={`${u.fid}${tab}`} owner={u.fid} skip={tab === 'casts' ? listSkip(pin, settled) : null} empty={tab === 'casts' ? t('No casts yet.') : t('No replies yet.')} keep={tab === 'casts' ? (c) => !c.parent_hash : (c) => !!c.parent_hash}
+                    load={(cursor) => userCasts(u.fid, tab, cursor)} />
+                </>
               )}
             </div>
           </>
@@ -878,6 +887,35 @@ function Profile({ id }: { id: string }) {
       )}
     </>
   )
+}
+
+/** A profile's pinned cast, labelled. One that's gone (deleted, or never theirs) quietly shows nothing. It's read fresh
+ *  (fetchCast keeps a miss for good) and drawn at once from a list it was just in. `settle(hash)` once it's drawn or
+ *  known gone (null once it's off the page), so the list under it leaves it out only then: a read that fails (offline,
+ *  a 5xx) leaves it in the list. */
+function PinnedCast({ hash, owner, settle }: { hash: string; owner: number; settle: (hash: string | null) => void }) {
+  const mine = (x?: Cast | null) => (x && x.author.fid === owner ? x : null)
+  // pins keep 0x…, lists the node's bare hex
+  const bare = hash.slice(2)
+  // a card kept from a tapped recast would say "Recast by" above "Pinned"
+  const [c, setC] = useState<Cast | null>(() => {
+    const x = mine(cards.get(bare) || cards.get(hash))
+    return x && { ...x, recaster: undefined }
+  })
+  useEffect(() => {
+    let live = true
+    const gone = () => (setC(null), settle(hash))
+    get('/v2/farcaster/cast', { identifier: bare, type: 'hash', fid: owner }, true).then(
+      (r) => live && (mine(r?.cast) ? setC(mine(r?.cast)) : gone()),
+      (e) => live && e?.status === 404 && gone(),
+    )
+    return () => void (live = false)
+  }, [hash, owner])
+  useEffect(() => void (c && settle(hash)), [c, hash])
+  // gone from the page (another tab or profile): what it settled goes too, so coming back the list keeps the pin until
+  // this mount has drawn it again
+  useEffect(() => () => settle(null), [hash])
+  return c && <CastCard c={c} owner={owner} onTop />
 }
 
 // Quilcast Collect: the profile's trading card, a free 1/1 NFT on Base (collect/, contracts/src/QuilcastCards.sol)

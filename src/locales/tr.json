@@ -1133,5 +1133,14 @@
   "Full screen": "Tam ekran",
   "Exit full screen": "Tam ekrandan çık",
   "Fill the monitor": "Tüm monitörü kapla",
-  "{app} (asleep)": "{app} (uykuda)"
+  "{app} (asleep)": "{app} (uykuda)",
+  "Pin to profile": "Profile sabitle",
+  "Unpin from profile": "Profilden sabitlemeyi kaldır",
+  "Pinned": "Sabitlenmiş",
+  "Pinned to your profile": "Profiline sabitlendi",
+  "Unpinned from your profile": "Profilinden sabitleme kaldırıldı",
+  "Sign in again to pin a cast.": "Bir cast sabitlemek için yeniden giriş yap.",
+  "You can only pin your own casts.": "Yalnızca kendi castlerini sabitleyebilirsin.",
+  "Too many pins, try again in a few minutes.": "Çok fazla sabitleme, birkaç dakika sonra tekrar dene.",
+  "Replies can't be pinned.": "Yanıtlar sabitlenemez."
 }

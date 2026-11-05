@@ -1133,5 +1133,14 @@
   "Full screen": "全螢幕",
   "Exit full screen": "結束全螢幕",
   "Fill the monitor": "填滿螢幕",
-  "{app} (asleep)": "{app}（休眠中）"
+  "{app} (asleep)": "{app}（休眠中）",
+  "Pin to profile": "置頂到個人檔案",
+  "Unpin from profile": "從個人檔案取消置頂",
+  "Pinned": "已置頂",
+  "Pinned to your profile": "已置頂到你的個人檔案",
+  "Unpinned from your profile": "已從你的個人檔案取消置頂",
+  "Sign in again to pin a cast.": "請重新登入以置頂 cast。",
+  "You can only pin your own casts.": "你只能置頂自己的 cast。",
+  "Too many pins, try again in a few minutes.": "置頂操作過多，請幾分鐘後再試。",
+  "Replies can't be pinned.": "回覆無法置頂。"
 }

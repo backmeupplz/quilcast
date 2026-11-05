@@ -1133,5 +1133,14 @@
   "Full screen": "Plein écran",
   "Exit full screen": "Quitter le plein écran",
   "Fill the monitor": "Remplir l'écran",
-  "{app} (asleep)": "{app} (en veille)"
+  "{app} (asleep)": "{app} (en veille)",
+  "Pin to profile": "Épingler au profil",
+  "Unpin from profile": "Désépingler du profil",
+  "Pinned": "Épinglé",
+  "Pinned to your profile": "Épinglé sur ton profil",
+  "Unpinned from your profile": "Désépinglé de ton profil",
+  "Sign in again to pin a cast.": "Reconnecte-toi pour épingler un cast.",
+  "You can only pin your own casts.": "Tu ne peux épingler que tes propres casts.",
+  "Too many pins, try again in a few minutes.": "Trop d’épinglages, réessaie dans quelques minutes.",
+  "Replies can't be pinned.": "Les réponses ne peuvent pas être épinglées."
 }

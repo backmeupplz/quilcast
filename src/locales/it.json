@@ -1133,5 +1133,14 @@
   "Full screen": "Schermo intero",
   "Exit full screen": "Esci dallo schermo intero",
   "Fill the monitor": "Riempi il monitor",
-  "{app} (asleep)": "{app} (in sospensione)"
+  "{app} (asleep)": "{app} (in sospensione)",
+  "Pin to profile": "Fissa sul profilo",
+  "Unpin from profile": "Non fissare più sul profilo",
+  "Pinned": "Fissato",
+  "Pinned to your profile": "Fissato sul tuo profilo",
+  "Unpinned from your profile": "Non più fissato sul tuo profilo",
+  "Sign in again to pin a cast.": "Accedi di nuovo per fissare un cast.",
+  "You can only pin your own casts.": "Puoi fissare solo i tuoi cast.",
+  "Too many pins, try again in a few minutes.": "Troppe modifiche, riprova tra qualche minuto.",
+  "Replies can't be pinned.": "Le risposte non si possono fissare."
 }

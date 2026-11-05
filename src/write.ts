@@ -551,6 +551,11 @@ export async function eraseFarcaster(progress: (step: EraseStep | 'find', done: 
 /** Save the account's profile look on our server (null goes back to plain), signed with its Farcaster key. */
 export const saveLook = (look: object | null) => keyFetch(`/api/look/${account!.fid}`, 'quilcast-look', 'PUT', JSON.stringify(look))
 
+/** Pin one of account `a`'s casts to the top of its profile on our server (null unpins), signed with its Farcaster key,
+ *  whichever account is selected meanwhile. Answers the pinned hash, or null. */
+export const savePin = (hash: string | null, a = account!) =>
+  keyFetch(`/api/pin/${a.fid}`, 'quilcast-pin', 'PUT', JSON.stringify(hash && { hash }), 3, a).then((j) => (j?.hash as string | undefined) || null)
+
 /** The account's mutes and blocks from our server, or null when this browser has no working key yet (reading them
  *  never adds one, so it can't ask for the recovery phrase). */
 export const fetchMutes = (a = account!) =>

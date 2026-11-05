@@ -1133,5 +1133,14 @@
   "Full screen": "पूर्ण स्क्रीन",
   "Exit full screen": "पूर्ण स्क्रीन से बाहर निकलें",
   "Fill the monitor": "पूरा मॉनिटर भरें",
-  "{app} (asleep)": "{app} (स्लीप में)"
+  "{app} (asleep)": "{app} (स्लीप में)",
+  "Pin to profile": "प्रोफ़ाइल पर पिन करें",
+  "Unpin from profile": "प्रोफ़ाइल से अनपिन करें",
+  "Pinned": "पिन किया गया",
+  "Pinned to your profile": "आपकी प्रोफ़ाइल पर पिन किया गया",
+  "Unpinned from your profile": "आपकी प्रोफ़ाइल से अनपिन किया गया",
+  "Sign in again to pin a cast.": "कास्ट पिन करने के लिए फिर से साइन इन करें।",
+  "You can only pin your own casts.": "आप सिर्फ़ अपनी ही कास्ट पिन कर सकते हैं।",
+  "Too many pins, try again in a few minutes.": "बहुत ज़्यादा पिन, कुछ मिनट बाद फिर से कोशिश करें।",
+  "Replies can't be pinned.": "जवाबों को पिन नहीं किया जा सकता।"
 }
