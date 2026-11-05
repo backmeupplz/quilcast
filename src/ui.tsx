@@ -307,10 +307,13 @@ export const thumbOf = (c: Cast) => {
   return urls.find(isImg) || poster(urls.find(isVid))
 }
 
-// HLS plays natively in Safari and Chrome; Firefox-based browsers get hls.js, loaded on first play
+// HLS goes through hls.js (loaded on first play) wherever MediaSource exists. canPlayType can't decide it: Chrome
+// answers "maybe" and plays nothing. iPhone Safari has no MediaSource and plays HLS natively
 export function Video({ src }: { src: string }) {
   const ref = useRef<HTMLVideoElement>(null)
-  const hls = src.includes('.m3u8') && !document.createElement('video').canPlayType('application/vnd.apple.mpegurl')
+  const hls = src.includes('.m3u8') && typeof MediaSource !== 'undefined'
+  const player = useRef<{ destroy(): void } | null>(null)
+  useEffect(() => () => { player.current?.destroy(); player.current = null }, [src])
   const [ready, setReady] = useState(!hls)
   // its box takes the video's shape: the poster's, from the server (warm) or read here once it shows, then the video's
   // own once it plays; 16:9 while nothing is known
@@ -329,13 +332,15 @@ export function Video({ src }: { src: string }) {
   }, [src])
   const start = async (e: Event) => {
     e.stopPropagation()
+    setReady(true)
     // the full build: Farcaster's streams carry audio as a separate rendition, which hls.js/light drops
     const { default: Hls } = await import('hls.js')
-    const h = new Hls()
+    if (player.current || !ref.current) return
+    const h = (player.current = new Hls())
+    // play once the manifest is in; before that there's nothing to play
+    h.on(Hls.Events.MANIFEST_PARSED, () => ref.current?.play().catch(() => {}))
     h.loadSource(src)
-    h.attachMedia(ref.current!)
-    setReady(true)
-    ref.current!.play().catch(() => {})
+    h.attachMedia(ref.current)
   }
   return (
     <div class={box ? 'vid shaped' : 'vid'} style={box} onClick={stop}>
