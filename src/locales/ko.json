@@ -1123,5 +1123,12 @@
   "Sync themes": "테마 동기화",
   "Themes sync with this account": "테마가 이 계정과 동기화됩니다",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "테마, 보관한 테마, 라이트 또는 다크, 휴일 테마, Quorum 모드를 이 계정이 동기화하는 모든 기기에서 똑같이 사용합니다. Farcaster 키로 서명하고 Quilcast가 계정과 함께 보관합니다.",
-  "Wearing the themes from your other devices": "다른 기기의 테마를 적용했어요"
+  "Wearing the themes from your other devices": "다른 기기의 테마를 적용했어요",
+  "Reconnect": "다시 연결",
+  "Reconnect your wallet": "지갑 다시 연결",
+  "Wallet connected": "지갑을 연결했어요",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "{address}와의 WalletConnect 연결을 갱신해야 해요. 휴대폰의 지갑으로 이 코드를 스캔하거나 이 기기의 지갑 앱에서 여세요.",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "지갑이 이 계정과 다른 주소를 연결했어요. 지갑에서 계정의 주소로 전환한 뒤 다시 시도하세요.",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "지갑이 응답하지 않았어요. 다시 시도하기 전에 거래가 처리됐는지 확인하세요.",
+  "Your wallet didn't answer. Try again to reconnect it.": "지갑이 응답하지 않았어요. 다시 시도하면 다시 연결할 수 있어요."
 }

@@ -1123,5 +1123,12 @@
   "Sync themes": "Temaları eşitle",
   "Themes sync with this account": "Temalar bu hesapla eşitleniyor",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "Teman, sakladığın temalar, açık veya koyu mod, bayram temaları ve Quorum modu, bu hesabın eşitlediği her cihazda aynı. Farcaster anahtarın onları imzalar, Quilcast da hesabınla birlikte saklar.",
-  "Wearing the themes from your other devices": "Diğer cihazlarındaki temalar kullanılıyor"
+  "Wearing the themes from your other devices": "Diğer cihazlarındaki temalar kullanılıyor",
+  "Reconnect": "Yeniden bağla",
+  "Reconnect your wallet": "Cüzdanını yeniden bağla",
+  "Wallet connected": "Cüzdan bağlandı",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "{address} ile WalletConnect bağlantının yenilenmesi gerekiyor. Bunu telefonundaki cüzdanla tara ya da bu cihazdaki bir cüzdan uygulamasında aç.",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Cüzdanın bu hesabınkinden farklı bir adres bağladı. Cüzdanında hesabın adresine geç ve yeniden dene.",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Cüzdanın yanıt vermedi. Yeniden denemeden önce işlemin gerçekleşip gerçekleşmediğini kontrol et.",
+  "Your wallet didn't answer. Try again to reconnect it.": "Cüzdanın yanıt vermedi. Yeniden bağlamak için tekrar dene."
 }

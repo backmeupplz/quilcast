@@ -1123,5 +1123,12 @@
   "Sync themes": "Synchronizuj motywy",
   "Themes sync with this account": "Motywy synchronizują się z tym kontem",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "Twój motyw, zachowane motywy, tryb jasny lub ciemny, motywy świąteczne i tryb Quorum, takie same na każdym urządzeniu, na którym to konto je synchronizuje. Twój klucz Farcaster je podpisuje, a Quilcast przechowuje je z Twoim kontem.",
-  "Wearing the themes from your other devices": "Używasz teraz motywów z innych urządzeń"
+  "Wearing the themes from your other devices": "Używasz teraz motywów z innych urządzeń",
+  "Reconnect": "Połącz ponownie",
+  "Reconnect your wallet": "Połącz portfel ponownie",
+  "Wallet connected": "Portfel połączony",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Twoje połączenie WalletConnect z {address} trzeba odnowić. Zeskanuj to portfelem w telefonie albo otwórz w aplikacji portfela na tym urządzeniu.",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Twój portfel połączył inny adres niż adres tego konta. Przełącz się w portfelu na adres konta i spróbuj ponownie.",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Twój portfel nie odpowiedział. Sprawdź, czy transakcja przeszła, zanim spróbujesz ponownie.",
+  "Your wallet didn't answer. Try again to reconnect it.": "Twój portfel nie odpowiedział. Spróbuj ponownie, aby połączyć go od nowa."
 }

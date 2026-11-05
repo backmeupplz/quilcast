@@ -1123,5 +1123,12 @@
   "Sync themes": "Thema's synchroniseren",
   "Themes sync with this account": "Thema's worden gesynchroniseerd met dit account",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "Je thema, je bewaarde thema's, licht of donker, feestdagthema's en Quorum-modus, hetzelfde op elk apparaat waar dit account ze synchroniseert. Je Farcaster-sleutel ondertekent ze en Quilcast bewaart ze bij je account.",
-  "Wearing the themes from your other devices": "Je draagt nu de thema's van je andere apparaten"
+  "Wearing the themes from your other devices": "Je draagt nu de thema's van je andere apparaten",
+  "Reconnect": "Opnieuw verbinden",
+  "Reconnect your wallet": "Verbind je wallet opnieuw",
+  "Wallet connected": "Wallet verbonden",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Je WalletConnect-verbinding met {address} moet worden vernieuwd. Scan dit met de wallet op je telefoon, of open het in een wallet-app op dit apparaat.",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Je wallet heeft een ander adres verbonden dan dat van dit account. Schakel in je wallet over naar het adres van het account en probeer het opnieuw.",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Je wallet reageerde niet. Controleer of de transactie is gelukt voordat je het opnieuw probeert.",
+  "Your wallet didn't answer. Try again to reconnect it.": "Je wallet reageerde niet. Probeer het opnieuw om hem opnieuw te verbinden."
 }

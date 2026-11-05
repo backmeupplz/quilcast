@@ -1,7 +1,7 @@
 import { generateMnemonic, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, accounts, get, getUser, go, idOf, setAccount, settings, USER_DATA, type Account } from './api.ts'
+import { account, accounts, askUser, get, getUser, go, idOf, setAccount, settings, USER_DATA, type Account } from './api.ts'
 import { balance, fidOf, register, registerPrice } from './eth.ts'
 import { address, custodyKey, fnameProof } from './fc.ts'
 import { t } from './i18n.ts'
@@ -278,7 +278,8 @@ function Setup() {
     setErr('')
     setPaying(true)
     try {
-      await (await import('./wallet.ts')).register(addr, price)
+      // coming back to this step a week later, a WalletConnect session may have ended
+      await (await import('./wallet.ts')).register(addr, price, () => askUser.pair(addr))
       setStep('register')
     } catch (e: any) {
       setErr(e.message)

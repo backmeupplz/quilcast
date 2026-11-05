@@ -1123,5 +1123,12 @@
   "Sync themes": "Sinkronkan tema",
   "Themes sync with this account": "Tema disinkronkan dengan akun ini",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "Temamu, tema yang kamu simpan, mode terang atau gelap, tema hari raya, dan mode Quorum, sama di setiap perangkat tempat akun ini menyinkronkannya. Kunci Farcaster-mu menandatanganinya, dan Quilcast menyimpannya bersama akunmu.",
-  "Wearing the themes from your other devices": "Memakai tema dari perangkatmu yang lain"
+  "Wearing the themes from your other devices": "Memakai tema dari perangkatmu yang lain",
+  "Reconnect": "Hubungkan ulang",
+  "Reconnect your wallet": "Hubungkan ulang dompetmu",
+  "Wallet connected": "Dompet terhubung",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Koneksi WalletConnect-mu ke {address} perlu diperbarui. Pindai ini dengan dompet di ponselmu, atau buka di aplikasi dompet di perangkat ini.",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Dompetmu menghubungkan alamat yang berbeda dari alamat akun ini. Beralihlah ke alamat akun di dompetmu lalu coba lagi.",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Dompetmu tidak menjawab. Periksa apakah transaksinya sudah berhasil sebelum mencoba lagi.",
+  "Your wallet didn't answer. Try again to reconnect it.": "Dompetmu tidak menjawab. Coba lagi untuk menghubungkannya kembali."
 }

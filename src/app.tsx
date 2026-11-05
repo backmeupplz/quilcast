@@ -73,6 +73,66 @@ function PhraseAsk() {
   )
 }
 
+// whether an address connected through WalletConnect: wallet.ts keeps which wallet each one used (spelled out here, since
+// wallet.ts only loads for a connect), under the key vault.ts may not have moved it from yet
+const viaWalletConnect = (address: string) => ['quilcast:connectedWith', 'quilcast:wallets'].some((k) => read<any>(k, {})?.[address.toLowerCase()] === 'walletconnect')
+
+/** The QR code that pairs a WalletConnect account's wallet again, asked when its session ended and the account has to
+ *  sign (wallet.ts), or from Settings. wallet.ts repair() checks the wallet came back with the account's address; the
+ *  action then goes on by itself. Everything asked for while it's open waits for the same pairing. */
+function PairAsk() {
+  const [address, setAddress] = useState('')
+  const [code, setCode] = useState<{ uri: string; img: string }>()
+  const [err, setErr] = useState('')
+  const waiting = useRef<{ done: () => void; fail: (e: unknown) => void }[]>([])
+  // each attempt's number; a cancelled or replaced one finishing late changes nothing
+  const run = useRef(0)
+  const settle = (e?: unknown) => {
+    const l = waiting.current
+    waiting.current = []
+    run.current++
+    setAddress('')
+    setCode(undefined)
+    setErr('')
+    l.forEach((x) => (e ? x.fail(e) : x.done()))
+  }
+  const start = async (a: string) => {
+    const me = ++run.current
+    setErr('')
+    setCode(undefined)
+    // a chunk that didn't load is a failure like any other, with Try again
+    const w = await import('./wallet.ts').catch((e) => void (me === run.current && setErr(e?.message || 'The wallet refused.')))
+    w?.repair(a, async (uri) => {
+      const img = uri && (await w.qr(uri))
+      if (me === run.current) setCode(uri ? { uri, img } : undefined)
+    }).then(() => me === run.current && settle(), (e) => me === run.current && setErr(e?.message || 'The wallet refused.'))
+  }
+  askUser.pair = (a) =>
+    new Promise((done, fail) => {
+      waiting.current.push({ done, fail })
+      if (waiting.current.length === 1) {
+        setAddress(a)
+        start(a)
+      }
+    })
+  if (!address) return null
+  const cancel = () => settle(Object.assign(new Error('You declined.'), { code: 4001 }))
+  return (
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && cancel()}>
+      <div class="sheet wallet-form pair" role="dialog" aria-label={t('Reconnect your wallet')}>
+        <div class="move-top"><h2>{t('Reconnect your wallet')}</h2></div>
+        <p class="hint">{t('Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.', { address: `${address.slice(0, 6)}…${address.slice(-4)}` })}</p>
+        {code ? <img src={code.img} alt={t('WalletConnect QR code')} /> : !err && <div class="spinner" />}
+        {err && <p class="hint warn">{t(err)}</p>}
+        <div class="sheet-btns">
+          <button type="button" class="btn ghost" onClick={cancel}>{t('Cancel')}</button>
+          {err ? <button class="btn" onClick={() => start(address)}>{t('Try again')}</button> : code && <a class="btn" href={code.uri}>{t('Open in a wallet app')}</a>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // the iOS and Android apps put their own version in the user agent
 const app = navigator.userAgent.match(/QuilcastApp\/(\S+) \((\w+)\)/)
 const PLAY = 'https://play.google.com/store/apps/details?id=com.borodutch.quilcast'
@@ -1517,7 +1577,10 @@ function Settings() {
           <section>
             <h2>{t('Keys')}</h2>
             {account.wallet ? (
-              <p class="hint"><With s={t('This account belongs to the wallet {wallet}, which keeps its own keys. Quilcast only holds a signing key for this browser.')} k="wallet"><code>{account.wallet}</code></With></p>
+              <>
+                <p class="hint"><With s={t('This account belongs to the wallet {wallet}, which keeps its own keys. Quilcast only holds a signing key for this browser.')} k="wallet"><code>{account.wallet}</code></With></p>
+                {viaWalletConnect(account.wallet) && <div class="setting"><span>WalletConnect</span><button class="btn ghost small" onClick={() => askUser.pair(account!.wallet!).then(() => toast('Wallet connected'), (e) => e?.code !== 4001 && toast(e.message))}>{t('Reconnect')}</button></div>}
+              </>
             ) : account.phrase ? (
               <>
                 <p class="hint">{t('Your recovery phrase controls your account and also works in Quorum and Warpcast. It lives only in this browser, so keep a copy somewhere safe.')}</p>
@@ -1776,6 +1839,7 @@ function App() {
       {compose && <Composer {...compose} onClose={() => setCompose(null)} />}
       <Viewer />
       <PhraseAsk />
+      <PairAsk />
       <ReportSheet />
       <LinkSheet />
       <Toast />

@@ -1123,5 +1123,12 @@
   "Sync themes": "ซิงค์ธีม",
   "Themes sync with this account": "ธีมซิงค์กับบัญชีนี้แล้ว",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "ธีมของคุณ ธีมที่เก็บไว้ โหมดสว่างหรือมืด ธีมวันหยุด และโหมด Quorum เหมือนกันบนทุกอุปกรณ์ที่บัญชีนี้ซิงค์ไว้ คีย์ Farcaster ของคุณเป็นผู้ลงนาม และ Quilcast เก็บไว้กับบัญชีของคุณ",
-  "Wearing the themes from your other devices": "ใช้ธีมจากอุปกรณ์อื่นของคุณแล้ว"
+  "Wearing the themes from your other devices": "ใช้ธีมจากอุปกรณ์อื่นของคุณแล้ว",
+  "Reconnect": "เชื่อมต่อใหม่",
+  "Reconnect your wallet": "เชื่อมต่อวอลเล็ตอีกครั้ง",
+  "Wallet connected": "เชื่อมต่อวอลเล็ตแล้ว",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "ต้องต่ออายุการเชื่อมต่อ WalletConnect กับ {address} สแกนสิ่งนี้ด้วยวอลเล็ตในโทรศัพท์ หรือเปิดในแอปวอลเล็ตบนอุปกรณ์นี้",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "วอลเล็ตของคุณเชื่อมต่อที่อยู่อื่นที่ไม่ใช่ของบัญชีนี้ สลับไปที่ที่อยู่ของบัญชีในวอลเล็ตแล้วลองอีกครั้ง",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "วอลเล็ตของคุณไม่ตอบกลับ ตรวจสอบว่าธุรกรรมสำเร็จหรือไม่ก่อนลองอีกครั้ง",
+  "Your wallet didn't answer. Try again to reconnect it.": "วอลเล็ตของคุณไม่ตอบกลับ ลองอีกครั้งเพื่อเชื่อมต่อใหม่"
 }

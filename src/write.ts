@@ -17,9 +17,11 @@ async function custody(a: Account) {
   return custodyKey(phrase, false)
 }
 
-/** Who signs for an account's custody address: the key from its phrase, or the wallet it was connected with. */
+/** Who signs for an account's custody address: the key from its phrase, or the wallet it was connected with (paired
+ *  again first when it's a WalletConnect one whose session ended). */
 export const custodyOf = async (a: Account): Promise<Custody> =>
-  a.wallet ? (await import('./wallet.ts')).walletCustody(a.wallet, settings.rpc) : keyCustody(await custody(a))
+  a.wallet ? (await import('./wallet.ts')).walletCustody(a.wallet, settings.rpc, repairer(a.wallet)) : keyCustody(await custody(a))
+const repairer = (address: string) => () => askUser.pair(address)
 
 /** An ed25519 key (`pub`, or raw in `raw`) as a signer; a key this browser doesn't have counts as one the network
  *  dropped, so send() and saveLook() add a new one. */
@@ -86,7 +88,7 @@ async function replaceSigner(a = account!) {
 /** A transaction on Optimism from the account's custody: its wallet, or the phrase key (which needs a little ETH there).
  *  `data` is built with the same custody, so a phrase that has to be typed in is asked for once. */
 async function custodyTx(a: Account, to: string, data: (c: Custody) => Promise<string>) {
-  if (a.wallet) return (await import('./wallet.ts')).sendTx(a.wallet, to, await data(await custodyOf(a)))
+  if (a.wallet) return (await import('./wallet.ts')).sendTx(a.wallet, to, await data(await custodyOf(a)), 0n, 10, repairer(a.wallet))
   const key = await custody(a)
   const { address } = keyCustody(key)
   if ((await balance(settings.rpc, address)) === 0n) throw new Error(t("Your account address {address} needs a little ETH on Optimism (a cent's worth) to pay for this.", { address }))

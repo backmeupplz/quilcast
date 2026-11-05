@@ -1123,5 +1123,12 @@
   "Sync themes": "Синхронізувати теми",
   "Themes sync with this account": "Теми синхронізуються з цим акаунтом",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "Ваша тема, збережені теми, світлий чи темний режим, святкові теми й режим Quorum, однакові на кожному пристрої, де цей акаунт їх синхронізує. Ваш ключ Farcaster їх підписує, а Quilcast зберігає їх разом з акаунтом.",
-  "Wearing the themes from your other devices": "Увімкнено теми з інших ваших пристроїв"
+  "Wearing the themes from your other devices": "Увімкнено теми з інших ваших пристроїв",
+  "Reconnect": "Перепідключити",
+  "Reconnect your wallet": "Підключіть гаманець знову",
+  "Wallet connected": "Гаманець підключено",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Підключення WalletConnect до {address} треба оновити. Відскануйте це гаманцем на телефоні або відкрийте в застосунку гаманця на цьому пристрої.",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Ваш гаманець підключив іншу адресу, а не адресу цього акаунта. Перемкніться в гаманці на адресу акаунта й спробуйте ще раз.",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Гаманець не відповів. Перш ніж пробувати ще раз, перевірте, чи пройшла транзакція.",
+  "Your wallet didn't answer. Try again to reconnect it.": "Гаманець не відповів. Спробуйте ще раз, щоб перепідключити його."
 }

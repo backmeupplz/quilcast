@@ -1123,5 +1123,12 @@
   "Sync themes": "同步主题",
   "Themes sync with this account": "主题已与此账号同步",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "你的主题、保存的主题、浅色或深色模式、节日主题和 Quorum 模式，在此账号同步的每台设备上都保持一致。由你的 Farcaster 密钥签名，Quilcast 将其与你的账号一起保存。",
-  "Wearing the themes from your other devices": "已使用你其他设备上的主题"
+  "Wearing the themes from your other devices": "已使用你其他设备上的主题",
+  "Reconnect": "重新连接",
+  "Reconnect your wallet": "重新连接你的钱包",
+  "Wallet connected": "钱包已连接",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "你与 {address} 的 WalletConnect 连接需要更新。请用手机上的钱包扫描，或在此设备的钱包应用中打开。",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "你的钱包连接了与此账号不同的地址。请在钱包中切换到此账号的地址后重试。",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "你的钱包没有回应。重试之前，请先确认交易是否已完成。",
+  "Your wallet didn't answer. Try again to reconnect it.": "你的钱包没有响应。请重试以重新连接。"
 }

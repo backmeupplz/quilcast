@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { createPublicClient, createWalletClient, erc20Abi, formatUnits, http, parseUnits, type Chain } from 'viem'
 import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains'
-import { account, getUser, type User } from './api.ts'
+import { account, askUser, getUser, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { Icon, P, toast } from './ui.tsx'
 import { allowance, approveTx, quote, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
@@ -115,7 +115,7 @@ export async function tip(u: User) {
   const tx = transferTx(usdc, to, amount)
   // the import on its own line: a failed send inside import(…).then() would count as a chunk that didn't load (ui.tsx wm)
   const connected = w ? undefined : await import('./wallet.ts')
-  const hash = connected ? await connected.sendTx(from, tx.to, tx.data, 0n, 8453) : await send(w!, 8453, tx)
+  const hash = connected ? await connected.sendTx(from, tx.to, tx.data, 0n, 8453, () => askUser.pair(from)) : await send(w!, 8453, tx)
   return track({ chain: 8453, hash, from, label: t('Tip @{name} $1', { name: u.username || u.fid }) })
 }
 

@@ -1123,5 +1123,12 @@
   "Sync themes": "Đồng bộ giao diện",
   "Themes sync with this account": "Giao diện được đồng bộ với tài khoản này",
   "Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.": "Giao diện của bạn, các giao diện đã lưu, chế độ sáng hoặc tối, giao diện ngày lễ và chế độ Quorum, giống nhau trên mọi thiết bị mà tài khoản này đồng bộ. Khóa Farcaster của bạn ký chúng, và Quilcast lưu chúng cùng tài khoản của bạn.",
-  "Wearing the themes from your other devices": "Đang dùng giao diện từ các thiết bị khác của bạn"
+  "Wearing the themes from your other devices": "Đang dùng giao diện từ các thiết bị khác của bạn",
+  "Reconnect": "Kết nối lại",
+  "Reconnect your wallet": "Kết nối lại ví của bạn",
+  "Wallet connected": "Đã kết nối ví",
+  "Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.": "Kết nối WalletConnect tới {address} cần được làm mới. Hãy quét mã này bằng ví trên điện thoại, hoặc mở trong một ứng dụng ví trên thiết bị này.",
+  "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Ví của bạn đã kết nối một địa chỉ khác với địa chỉ của tài khoản này. Hãy chuyển sang địa chỉ của tài khoản trong ví rồi thử lại.",
+  "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Ví của bạn không phản hồi. Hãy kiểm tra xem giao dịch đã được thực hiện chưa trước khi thử lại.",
+  "Your wallet didn't answer. Try again to reconnect it.": "Ví của bạn không phản hồi. Hãy thử lại để kết nối lại ví."
 }
