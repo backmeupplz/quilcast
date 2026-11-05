@@ -94,6 +94,26 @@ const node = createServer(async (q, r) => {
     { hash: '0x' + 'a2'.repeat(20), parent_hash: '0x' + 'a1'.repeat(20), text: 'a trending reply', timestamp: '2026-01-02T00:00:00Z', embeds: [], author: { fid: 3, username: 'bob' }, reactions: {}, replies: {} },
     { hash: '0x' + 'a3'.repeat(20), text: 'join my space', timestamp: '2026-01-02T00:00:00Z', embeds: [{ url: 'https://farcaster.xyz/~/spaces/abc' }], author: { fid: 4, username: 'cat' }, reactions: {}, replies: {} },
   ] }))
+  // farcaster.xyz's channel directory: /memes under its old-style parent URL, /dev under the usual one
+  if (u.pathname === '/v2/all-channels') return r.end(JSON.stringify({ result: { channels: [
+    { id: 'memes', url: MEMES, name: 'Memes & <stuff>', description: 'the memes channel', imageUrl: 'https://img.test/memes.png', followerCount: 9 },
+    { id: 'dev', url: 'https://farcaster.xyz/~/channel/dev', name: 'Dev', followerCount: 5 },
+  ] } }))
+  // a channel's casts, only for the URL it really has: a top-level cast and (left out of feeds) a reply
+  if (u.pathname === '/v2/farcaster/feed/parent_urls') return r.end(JSON.stringify({ casts: u.searchParams.get('parent_urls') === MEMES ? [
+    { hash: '0x' + 'c1'.repeat(20), text: 'a meme <b>&amp;</b>', timestamp: '2026-01-03T00:00:00Z', parent_url: MEMES, author: { fid: 3, username: 'bob', display_name: 'Bob' }, embeds: [{ url: 'https://img.test/meme.png' }] },
+    { hash: '0x' + 'c2'.repeat(20), parent_hash: '0x' + 'c1'.repeat(20), text: 'a reply in memes', timestamp: '2026-01-04T00:00:00Z', author: { fid: 4, username: 'cat' } },
+  ] : [] }))
+  // @six mostly replies, so their feed reads a second page; while sixDown their casts fail
+  if (u.pathname === '/v2/farcaster/user/by-username' && u.searchParams.get('username') === 'six') return r.end(JSON.stringify({ user: { fid: 6, username: 'six', custody_address: address(key) } }))
+  if (u.pathname === '/v2/farcaster/feed/user/casts' && u.searchParams.get('fid') === '6') {
+    if (sixDown) return (r.statusCode = 500), r.end('{}')
+    const later = u.searchParams.get('cursor') === 'p2'
+    const c = (b, top) => ({ hash: '0x' + b.repeat(20), text: `${top ? 'top' : 'reply'} ${b}`, timestamp: `2026-01-${later ? '01' : '02'}T00:00:${b}Z`, author: { fid: 6, username: 'six' }, ...(!top && { parent_hash: '0x' + 'ab'.repeat(20) }) })
+    return r.end(JSON.stringify(later ? { casts: [c('51', true), c('52')] } : { casts: [c('41', true), c('42'), c('43')], next: { cursor: 'p2' } }))
+  }
+  // fid 5 has no fname, so no profile casts or feed
+  if (u.pathname === '/v2/farcaster/user' && u.searchParams.get('fid') === '5') return r.end(JSON.stringify({ user: { fid: 5, username: 'fid:5', custody_address: address(key) } }))
   // a profile page's latest casts; nobody is called "nobody"
   if (u.pathname === '/v2/farcaster/feed/user/casts') return r.end(JSON.stringify({ casts: [{ hash: 'ef'.repeat(20), text: evil, timestamp: '2026-01-02T00:00:00Z', author: { fid: 1 } }, { hash: '12'.repeat(20), parent_hash: 'ab'.repeat(20), text: 'a reply', timestamp: '2026-01-01T00:00:00Z' }] }))
   if (u.searchParams.get('username') === 'nobody') return (r.statusCode = 404), r.end('{"message":"User not found"}')
@@ -113,6 +133,8 @@ const SKIN = {
   font: { family: 'x', weights: 'static-single', source: { dataUri: 'data:font/ttf;base64,' + Buffer.from('not a font at all').toString('base64') } },
   borders: { scale: 2.2 }, fontScale: 1.25, spacing: { scale: 2 },
 }
+let sixDown = true
+const MEMES = 'chain://eip155:1/erc721:0xfd8427165df67df6d7fd689ae67c8ebf56d9ca61'
 const nodePort = await listen(node)
 const media = await mkdtemp(join(tmpdir(), 'qc-media-'))
 await writeFile(join(media, '0123456789abcdef01234567.png'), Buffer.from('0123456789'))
@@ -131,7 +153,7 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam` }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam` }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -278,6 +300,65 @@ test('collect.quilcast.com finds a pasted cast link: a full hash anywhere in it,
   assert.equal(await find(`https://farcaster.xyz/eight/0x${'e8'.repeat(4)}`), 'e8'.repeat(20))
   assert.equal(await find(`https://warpcast.com/eight/0x${'e8'.repeat(4)}?x=1`), 'e8'.repeat(20))
   for (const link of [`https://farcaster.xyz/eight/0x${'ab'.repeat(4)}`, 'https://example.com/eight/0xe8e8e8e8', 'hello']) assert.equal(await find(link), undefined, link)
+})
+
+test('RSS feeds: an account\'s casts (replies on request) and a channel\'s under its old-style URL, escaped, advertised by their pages', async () => {
+  const rssType = 'application/rss+xml; charset=utf-8'
+  const page = await (await fetch(base + '/u/X')).text()
+  assert.match(page, /<link rel="alternate" type="application\/rss\+xml" title="X \(@x\) on Quilcast" href="https:\/\/quilcast\.test\/u\/x\/rss" \/>/)
+  const r = await fetch(base + '/u/X/rss')
+  assert.equal(r.status, 200)
+  assert.equal(r.headers.get('content-type'), rssType)
+  assert.match(r.headers.get('cache-control'), /max-age=600/)
+  const feed = await r.text()
+  assert.match(feed, /^<\?xml version="1\.0" encoding="UTF-8"\?>\n<rss version="2\.0"/)
+  assert.match(feed, /<atom:link href="https:\/\/quilcast\.test\/u\/x\/rss" rel="self"/)
+  // the bio and cast text are user content: nothing of theirs comes out as markup
+  assert.ok(!feed.includes('<script'), feed)
+  assert.match(feed, /<description>\$&amp; \$&apos; \$` &quot;&gt;&lt;script&gt;/)
+  assert.equal(feed.match(/<item>/g).length, 1)
+  assert.match(feed, new RegExp(`<link>https://quilcast\\.test/c/${'ef'.repeat(20)}</link><guid isPermaLink="true">https://quilcast\\.test/c/${'ef'.repeat(20)}</guid>`))
+  // compressed (kept with the feed, not in dist/'s cache), the same feed again
+  assert.ok(Buffer.byteLength(feed) > 1024)
+  for (const enc of ['br', 'gzip', 'br']) {
+    const z = await fetch(base + '/u/X/rss', { headers: { 'accept-encoding': enc } })
+    assert.equal(z.headers.get('content-encoding'), enc)
+    assert.equal(await z.text(), feed)
+  }
+  const all = await (await fetch(base + '/u/x/rss?replies=1')).text()
+  assert.equal(all.match(/<item>/g).length, 2)
+  assert.match(all, /<title>a reply<\/title>/)
+  // characters XML can't hold never reach a reader
+  const bell = await (await fetch(base + '/u/77/rss')).text()
+  assert.match(bell, /<title>Bell \(@bell\) on Farcaster<\/title>/)
+  assert.ok(!/[\u0000-\u0008\u000b\u000c\u000e-\u001f￾￿]/.test(bell))
+  // a nameless account: no feed, and its page doesn't offer one; nor does anyone who doesn't exist
+  assert.equal((await fetch(base + '/u/5/rss')).status, 404)
+  assert.ok(!(await (await fetch(base + '/u/5')).text()).includes('application/rss+xml'))
+  assert.equal((await fetch(base + '/u/nobody/rss')).status, 404)
+  // a node failure is a 502 a reader retries, and isn't kept
+  const down = await fetch(base + '/u/six/rss')
+  assert.equal(down.status, 502)
+  assert.equal(down.headers.get('retry-after'), '60')
+  sixDown = false
+  // someone who mostly replies: the second page fills their feed, newest first
+  const six = await (await fetch(base + '/u/six/rss')).text()
+  assert.deepEqual([...six.matchAll(/<title>(top \d+)<\/title>/g)].map((m) => m[1]), ['top 41', 'top 51'])
+
+  // /memes casts under chain://…, which only the directory knows
+  const chPage = await (await fetch(base + '/channel/memes')).text()
+  assert.match(chPage, /<link rel="alternate" type="application\/rss\+xml" title="Memes &#38; &#60;stuff&#62; \(\/memes\) on Quilcast" href="https:\/\/quilcast\.test\/channel\/memes\/rss" \/>/)
+  const ch = await fetch(base + '/channel/memes/rss')
+  assert.equal(ch.headers.get('content-type'), rssType)
+  const chFeed = await ch.text()
+  assert.match(chFeed, /<title>Memes &amp; &lt;stuff&gt; \(\/memes\) on Farcaster<\/title>/)
+  assert.match(chFeed, /<image><url>https:\/\/img\.test\/memes\.png<\/url>/)
+  assert.equal(chFeed.match(/<item>/g).length, 1)
+  assert.match(chFeed, /<dc:creator>Bob \(@bob\)<\/dc:creator>/)
+  assert.match(chFeed, /<title>a meme &lt;b&gt;&amp;amp;&lt;\/b&gt;<\/title>/)
+  assert.match(chFeed, /&lt;img src=&quot;https:\/\/img\.test\/meme\.png&quot;/)
+  assert.equal((await (await fetch(base + '/channel/dev/rss')).text()).match(/<item>/g), null)
+  assert.equal((await fetch(base + '/channel/nowhere/rss')).status, 404)
 })
 
 test('a profile card: square art, metadata, the profile kept once collected, its page and a profile link found', async () => {

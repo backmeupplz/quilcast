@@ -6,6 +6,8 @@ import { fetchJson } from './net.mjs'
 
 const https_ = (u) => (typeof u === 'string' && /^https:\/\//.test(u) && u.length < 1024 ? u : undefined)
 const text = (v, n) => (typeof v === 'string' && v ? v.slice(0, n) : undefined)
+// where the directory comes from (tests point it at a fake)
+const API = process.env.FARCASTER_API_URL || 'https://api.farcaster.xyz'
 const STANDARD = /^https:\/\/(?:warpcast\.com|farcaster\.xyz)\/~\/channel\/([^/?#]+)$/
 
 export function trim(raw) {
@@ -36,7 +38,7 @@ let loading = null
 export const channelOf = (u) => (u && Object.hasOwn(dir.legacy, u) && dir.legacy[u]) || u?.match(/(?:warpcast\.com|farcaster\.xyz)\/~\/channel\/([^/?#]+)/)?.[1]
 export async function channels() {
   if (dir.list.length && dir.at > Date.now() - 3600e3) return dir
-  loading ??= fetchJson('https://api.farcaster.xyz/v2/all-channels', 30000).catch(() => null).then((r) => {
+  loading ??= fetchJson(`${API}/v2/all-channels`, 30000).catch(() => null).then((r) => {
     const list = trim(r?.result?.channels)
     if (list.length) dir = { at: Date.now(), list, byId: new Map(list.map((c) => [c.id, c])), legacy: legacy(list) }
     loading = null

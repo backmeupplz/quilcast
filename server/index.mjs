@@ -27,7 +27,8 @@ import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
-import { body as profileBody, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
+import { body as profileBody, clip, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
+import { rss, shown } from './feed.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
 import { channels, search } from './channels.mjs'
 import { cardArt, cardMeta, tierOf } from './cards.mjs'
@@ -841,6 +842,50 @@ function getProfile(name) {
   p.catch(() => profiles.delete(k))
   return p
 }
+// RSS feeds (server/feed.mjs) as finished XML, kept ten minutes like profiles (a "no such feed" too), so readers polling
+// every few minutes don't each reach the node; a failure isn't kept
+// (a feed can run to a few hundred KB, so fewer are kept than profiles)
+const feeds = new Map()
+const fresh = (k) => feeds.get(k)?.at > Date.now() - 600e3
+function getFeed(k, make) {
+  if (fresh(k)) return feeds.get(k).p
+  // `packed` holds its br/gzip bodies (send), which go when it does
+  const p = make().then((x) => x && { at: Date.now(), xml: Buffer.from(x), packed: {} })
+  keep(feeds, 300, k, { at: Date.now(), p })
+  p.catch(() => feeds.delete(k))
+  return p
+}
+// a feed's cache key: a name in any case, or a FID however it's written (the node reads "003" as 3)
+const feedKey = (user, name, replies) => (user ? `u:${/^\d{1,10}$/.test(name) ? +name : name.toLowerCase()}:${+replies}` : `ch:${name}`)
+// an account's latest casts; replies only with ?replies=1. Taken-down and nameless accounts have no feed, as their
+// profile page shows no casts. Someone who mostly replies gets a second page, so their feed isn't left short.
+const userFeed = (name, replies) => getFeed(feedKey(true, name, replies), async () => {
+  const u = await findUser(name)
+  if (!u || hidden(u)) return null
+  const page = (cursor) => nodeJson(`/v2/farcaster/feed/user/casts?fid=${u.fid}&limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`)
+  const first = await page()
+  let casts = first?.casts || []
+  if (!replies && shown(casts).length < 25 && first?.next?.cursor) casts = [...casts, ...((await page(first.next.cursor).catch(() => null))?.casts || [])]
+  const at = `@${fname(u)}`
+  return rss({
+    title: `${nameOf(u)} (${at}) on Farcaster`, link: SITE + pathOf(u), self: `${SITE}${pathOf(u)}/rss${replies ? '?replies=1' : ''}`, site: SITE,
+    desc: clip(u.profile?.bio?.text, 500) || `The latest casts from ${at} on Farcaster, on Quilcast.`, image: u.pfp_url && sized(u.pfp_url, 'w=176'),
+    casts: shown(casts, { replies }),
+  })
+})
+// a channel's casts, under its real parent URL (the oldest channels' isn't …/~/channel/<id>). Without the directory
+// that URL isn't known, so it's a failure (not kept) rather than a feed that may be empty or another channel's.
+const channelFeed = (id) => getFeed(feedKey(false, id), async () => {
+  const dir = await channels()
+  if (!dir.list.length) throw new Error('no channel directory')
+  const c = dir.byId.get(id)
+  if (!c) return null
+  const casts = (await nodeJson(`/v2/farcaster/feed/parent_urls?parent_urls=${encodeURIComponent(c.url)}&limit=50`))?.casts || []
+  return rss({
+    title: `${c.name} (/${c.id}) on Farcaster`, link: `${SITE}/channel/${id}`, self: `${SITE}/channel/${id}/rss`, site: SITE,
+    desc: c.desc || `Casts in /${id} on Farcaster, on Quilcast.`, image: c.image, casts: shown(casts, { max: 50 }),
+  })
+})
 
 const index = await readFile(join(DIST, 'index.html'), 'utf8')
 
@@ -905,7 +950,7 @@ function launchAt(h, path, embed = `${SITE}/embed.png`) {
   }
   return h
 }
-function page({ title, desc, path, image, alt, embed, type = 'article', robots, json, body }) {
+function page({ title, desc, path, image, alt, embed, type = 'article', robots, json, body, feed }) {
   let h = launchAt(index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`), path, embed)
   const set = (attr, keys, v) => keys.forEach((k) => (h = meta(h, attr, k, v)))
   set('name', ['description', 'twitter:description'], desc)
@@ -917,6 +962,8 @@ function page({ title, desc, path, image, alt, embed, type = 'article', robots, 
   h = h.replace(/(<link rel="canonical" href=")[^"]*/, (_, p) => p + esc(SITE + path)).replace('<meta property="og:type" content="website" />', () => `<meta property="og:type" content="${type}" />`)
   // JSON-LD isn't run, so the CSP leaves it be; "<" is escaped so user text can't close the script
   if (json) h = h.replace('</head>', () => `<script type="application/ld+json">${JSON.stringify(json).replace(/</g, '\\u003c')}</script>\n</head>`)
+  // the page's RSS feed, which readers find from the page's own address
+  if (feed) h = h.replace('</head>', () => `<link rel="alternate" type="application/rss+xml" title="${esc(feed.title)}" href="${esc(SITE + feed.path)}" />\n</head>`)
   if (body) h = h.replace('<div id="app"></div>', () => `<div id="app">${body}</div>`)
   return robots ? noindex(h) : h
 }
@@ -934,14 +981,17 @@ const PAGES = { '/about': 'about.html', '/terms': 'terms.html', '/privacy': 'pri
 const files = new Map()
 const packed = new Map()
 const zip = { br: promisify(brotliCompress), gzip: promisify(gzip) }
-/** Send `body`, compressed when it's text over 1 KB and the client takes br or gzip. A `memo` key marks a body that never changes. */
+/** Send `body`, compressed when it's text over 1 KB and the client takes br or gzip. A `memo` key marks a body that never
+ *  changes (its compressed copies kept in `packed`); an object `memo` keeps them itself, for a body that goes stale (a feed),
+ *  so it can't push dist/'s files out of `packed`. */
 async function send(req, res, code, headers, body, memo) {
-  if (body.length > 1024 && /^(text\/|application\/(json|manifest)|image\/svg)/.test(headers['content-type'])) {
+  if (body.length > 1024 && /^(text\/|application\/(json|manifest|rss\+xml)|image\/svg)/.test(headers['content-type'])) {
     const accept = String(req.headers['accept-encoding'] || '')
     const enc = /\bbr\b/.test(accept) ? 'br' : /\bgzip\b/.test(accept) ? 'gzip' : ''
     headers = { ...headers, vary: 'accept-encoding' }
     if (enc) {
-      body = await (memo ? packed.get(memo + enc) || keep(packed, 100, memo + enc, zip[enc](body)) : zip[enc](body))
+      body = await (typeof memo === 'object' ? (memo[enc] ||= zip[enc](body).catch((e) => { delete memo[enc]; throw e }))
+        : memo ? packed.get(memo + enc) || keep(packed, 100, memo + enc, zip[enc](body)) : zip[enc](body))
       headers['content-encoding'] = enc
     }
   }
@@ -1349,7 +1399,22 @@ createServer(async (req, res) => {
       return html(page({
         title: `${name}${at ? ` (@${at})` : ''} on Farcaster · Quilcast`, desc: describe(u), path: pathOf(u), type: 'profile', robots: off,
         image: `${SITE}/og/u/${u.fid}.png`, alt: `${name} on Farcaster`, json: ld(u, SITE + pathOf(u)), body: profileBody(u, off ? [] : casts),
+        ...(!off && { feed: { title: `${name} (@${at}) on Quilcast`, path: `${pathOf(u)}/rss` } }),
       }))
+    }
+    // RSS: an account's casts and a channel's, each XML kept ten minutes (getFeed); a reader that misses the cache shares
+    // the profile pages' limit
+    const feedOf = path.match(/^\/u\/([^/]{1,64})\/rss$/) || path.match(/^\/channel\/([a-z0-9-]{1,64})\/rss$/)
+    if (feedOf) {
+      const replies = url.searchParams.get('replies') === '1'
+      const ofUser = path.startsWith('/u/')
+      const k = feedKey(ofUser, feedOf[1], replies)
+      const plain = (code, more = {}) => res.writeHead(code, { 'content-type': 'text/plain; charset=utf-8', ...more }).end(code === 404 ? 'No such feed.' : code === 429 ? 'Slow down a little.' : 'Try again in a minute.')
+      if (!fresh(k) && limited(`look:${ip}`, 120)) return plain(429, { 'retry-after': '60' })
+      const f = await (ofUser ? userFeed(feedOf[1], replies) : channelFeed(feedOf[1])).catch(() => undefined)
+      if (f === undefined) return plain(502, { 'retry-after': '60' })
+      if (!f) return plain(404, { 'cache-control': 'public, max-age=600' })
+      return send(req, res, 200, { 'content-type': 'application/rss+xml; charset=utf-8', 'cache-control': 'public, max-age=600' }, f.xml, f.packed)
     }
     const ogUser = path.match(/^\/og\/u\/([1-9]\d{0,9})\.png$/)
     if (ogUser) {
@@ -1366,7 +1431,7 @@ createServer(async (req, res) => {
       const c = (await channels()).byId.get(channelPage[1])
       if (!c) return app()
       const desc = cut(c.desc || `Casts in /${c.id} on Farcaster.`, 280)
-      return html(page({ title: `${c.name} (/${c.id}) on Farcaster · Quilcast`, desc, path, image: c.image, alt: c.name }))
+      return html(page({ title: `${c.name} (/${c.id}) on Farcaster · Quilcast`, desc, path, image: c.image, alt: c.name, feed: { title: `${c.name} (/${c.id}) on Quilcast`, path: `/channel/${c.id}/rss` } }))
     }
 
     const designPage = path.match(/^\/design\/([\w-]{10})$/)

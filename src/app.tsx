@@ -7,6 +7,7 @@ import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, pushOn } from './ui.tsx'
+import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
@@ -800,6 +801,10 @@ function Profile({ id }: { id: string }) {
     w().then((m) => m.follow(u!.fid, on)).catch((e) => (setFollowing(!on), toast(e.message)))
   }
   // the header is a box stickers can sit on, like the look's sections
+  // the account's casts as RSS (server/feed.mjs), which nameless and taken-down accounts don't have
+  const rssItem = u?.username && !u.username.startsWith('fid:') && !(removedList.fids as number[]).includes(u.fid) && (
+    <button role="menuitem" onClick={() => (setMenu(false), navigator.clipboard.writeText(`${location.origin}/u/${u.username}/rss`).then(() => toast('Link copied'), () => toast("Couldn't copy the link.")))}>{t('Copy RSS link')}</button>
+  )
   const wrapHead = (el: ComponentChildren) => (shown ? <L.At l={shown} at="head" edit={draft ? editLook : undefined}>{el}</L.At> : el)
   return (
     <>
@@ -824,6 +829,12 @@ function Profile({ id }: { id: string }) {
                     {cardButton(u.fid)}
                     <button class="btn ghost small" onClick={() => edit()} disabled={!!draft}>{t('Customize')}</button>
                     <a class="btn ghost small" href="/settings">{t('Edit profile')}</a>
+                    {rssItem && (
+                      <span class="wrap-menu">
+                        <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
+                        {menu && <Menu class="right" close={() => setMenu(false)}>{rssItem}</Menu>}
+                      </span>
+                    )}
                   </span>
                 ) : (
                   <span class="btns">
@@ -833,7 +844,12 @@ function Profile({ id }: { id: string }) {
                     <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? t('Following') : t('Follow')}</button>
                     <span class="wrap-menu">
                       <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
-                      {menu && <Menu class="right" close={() => setMenu(false)}><SilenceItems u={u} done={() => setMenu(false)} /></Menu>}
+                      {menu && (
+                        <Menu class="right" close={() => setMenu(false)}>
+                          {rssItem}
+                          <SilenceItems u={u} done={() => setMenu(false)} />
+                        </Menu>
+                      )}
                     </span>
                   </span>
                 )}
