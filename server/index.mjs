@@ -1276,7 +1276,7 @@ createServer(async (req, res) => {
       const target = url.searchParams.get('url') || ''
       if (!/^https?:\/\//i.test(target) || target.length > 2048) return json(200, null)
       if (!cached(target) && limited(`unfurl:${ip}`, 90)) return json(429, null)
-      return json(200, await previews(() => unfurl(target)), 'public, max-age=86400')
+      return json(200, await previews(() => unfurl(target)), 'public, max-age=3600')
     }
 
     // up to 8 images' (or videos') sizes: the feed draws a lone image or a video at its final size before it loads, so

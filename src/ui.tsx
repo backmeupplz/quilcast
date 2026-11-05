@@ -616,8 +616,9 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
   )
 }
 const unfurls = new Map<string, Promise<Unfurl>>()
+// v=2: browsers kept previews for a day under the old address, so a mini app that moved kept opening the old one
 export const unfurl = (u: string) => {
-  if (!unfurls.has(u)) unfurls.set(u, fetch(`/api/unfurl?url=${encodeURIComponent(u)}`).then((r) => r.json(), () => null).then((d) => (got.set(`u:${u}`, d), d)))
+  if (!unfurls.has(u)) unfurls.set(u, fetch(`/api/unfurl?v=2&url=${encodeURIComponent(u)}`).then((r) => r.json(), () => null).then((d) => (got.set(`u:${u}`, d), d)))
   return unfurls.get(u)!
 }
 

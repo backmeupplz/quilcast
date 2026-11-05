@@ -99,4 +99,5 @@ async function tweet(url) {
 }
 
 export const cached = (url) => cache.has(url)
-export const unfurl = (url) => cache.get(url) || keep(cache, 2000, url, tweet(url).then((t) => (t === undefined ? read(url) : t)).catch(() => null))
+// an hour at most, so a mini app that moves (its fc:miniapp url) opens at its new address the same hour
+export const unfurl = (url) => cache.get(url) || (setTimeout(() => cache.delete(url), 3600e3).unref(), keep(cache, 2000, url, tweet(url).then((t) => (t === undefined ? read(url) : t)).catch(() => null)))
