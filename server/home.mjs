@@ -135,7 +135,7 @@ export function body(d, version, now = Date.now()) {
     const image = safeUrl(p?.image)
     if (image && p.image === p.url) return media([image], true)
     const ico = safeUrl(p?.icon)
-    return `<a class="linkcard${image ? ' big' : ''}" href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${image ? img(sized(image, 'w=1200'), 'lc-img', '', true) : ''}` +
+    return `<a class="linkcard${image ? ' big' : ''}${image && p?.button ? ' lc-app' : ''}" href="${esc(u)}" target="_blank" rel="noopener noreferrer nofollow">${image ? img(sized(image, 'w=1200'), 'lc-img', '', true) : ''}` +
       `<span class="lc-text"><span class="lc-site">${ico ? img(ico, '', '', true) : ''}${esc(new URL(u).hostname.replace(/^www\./, ''))}</span>` +
       `${p?.title ? `<b class="lc-title">${esc(p.title)}</b>` : !p?.description && pathOf(u) ? `<span class="lc-desc">${esc(pathOf(u))}</span>` : ''}${p?.description ? `<span class="lc-desc">${esc(p.description)}</span>` : ''}</span>${p?.button ? `<span class="lc-btn">${esc(p.button)}</span>` : ''}</a>`
   }

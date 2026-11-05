@@ -288,6 +288,8 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .play { position: absolute; inset: 0; margin: auto; width: 64px; height: 64px; border-radius: calc(99px * var(--rs, 1)); border: 0; display: grid; place-items: center; background: rgb(0 0 0 / 0.55); color: #fff; padding-left: 4px; }
 .linkcard { display: flex; flex-direction: column; margin-top: 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); overflow: hidden; color: var(--ink); min-width: 0; }
 .lc-img { width: 100%; aspect-ratio: 1.91 / 1; max-height: 320px; object-fit: cover; display: block; background: var(--soft); border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+/* mini app and frame embed images are 3:2 by spec: shown whole */
+.lc-app .lc-img { aspect-ratio: 3 / 2; max-height: none; }
 .lc-text { display: flex; flex-direction: column; gap: 1px; padding: 9px 12px; min-width: 0; font-size: 14px; }
 .lc-site { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lc-site img { width: 14px; height: 14px; border-radius: calc(3px * var(--rs, 1)); flex: none; }

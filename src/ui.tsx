@@ -851,7 +851,8 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   // a middle click on a look-alike asks too
   const aux = (e: MouseEvent) => e.button === 1 && lookalike(u) && (e.stopPropagation(), shell.link(u)) && e.preventDefault()
   return (
-    <a class={`linkcard${image ? ' big' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click} onAuxClick={aux}>
+    // a mini app's or frame's embed image (the one with a button) is 3:2, so its card is too
+    <a class={`linkcard${image ? ' big' : ''}${image && d?.button ? ' lc-app' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click} onAuxClick={aux}>
       {image && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(d?.image)} />}
       <span class="lc-text">
         <span class="lc-site">{icon && <Img src={icon} low />}{new URL(u).hostname.replace(/^www\./, '')}</span>
