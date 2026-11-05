@@ -231,7 +231,6 @@
   "Equalizer": "이퀄라이저",
   "Equalizer on": "이퀄라이저 사용",
   "Erase keys?": "키를 지울까요?",
-  "Expand": "크게 보기",
   "Explore": "탐색",
   "Explorers": "익스플로러",
   "Export": "내보내기",
@@ -363,7 +362,6 @@
   "Make a theme": "테마 만들기",
   "Make co-host": "공동 호스트로 지정",
   "Make it rain": "돈 뿌리기",
-  "Make smaller": "작게 보기",
   "Make speaker": "스피커로 지정",
   "Manage apps": "앱 관리",
   "Matrix code": "매트릭스 코드",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "지갑이 이 계정과 다른 주소를 연결했어요. 지갑에서 계정의 주소로 전환한 뒤 다시 시도하세요.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "지갑이 응답하지 않았어요. 다시 시도하기 전에 거래가 처리됐는지 확인하세요.",
   "Your wallet didn't answer. Try again to reconnect it.": "지갑이 응답하지 않았어요. 다시 시도하면 다시 연결할 수 있어요.",
+  "Full screen": "전체 화면",
+  "Exit full screen": "전체 화면 종료",
+  "Fill the monitor": "모니터 가득 채우기",
   "{app} (asleep)": "{app} (절전 중)"
 }

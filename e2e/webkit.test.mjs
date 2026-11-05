@@ -272,4 +272,118 @@ describe('the app in WebKit', { concurrency: true }, () => {
     assert.deepEqual(errors, [])
     await close()
   })
+
+  // #467: a mini app at game.test, its link metadata not looked up, opened from the Mini apps page. The page gets there
+  // by itself rather than by a new load: a load sets localStorage again, and the old page, hearing another tab change the
+  // accounts, would go home
+  const game = async (ctx) => {
+    await ctx.route('**/api/unfurl**', (r) => r.fulfill({ body: 'null', contentType: 'application/json' }))
+    await ctx.route('https://game.test/**', (r) => r.fulfill({ body: '<!doctype html><title>game</title><p>a game</p>', contentType: 'text/html' }))
+  }
+  const toApps = async (page) => {
+    await drawn(page)
+    // (until the router hears it: it starts listening a moment after the page is drawn)
+    await page.evaluate(() => history.pushState(null, '', '/apps'))
+    await page.waitForFunction(() => document.querySelector('[aria-label="Mini app link"]') || void dispatchEvent(new Event('popstate')), null, { polling: 100, timeout: 30e3 })
+  }
+  const launchGame = async (page) => {
+    await page.getByLabel('Mini app link').fill('https://game.test/')
+    await page.getByLabel('Mini app link').press('Enter')
+    await page.locator('section.mini').waitFor()
+  }
+
+  // #467: on a desktop, in either layout, a mini app's window goes full screen over the sidebar and the feed, with its
+  // header and the dock still in reach; the app keeps it (minimized, and closed and opened again), and Escape leaves it
+  for (const [who, quorum] of [['', false], [', in Quorum mode', true]]) test(`on a desktop, a mini app goes full screen and back${who}`, async () => {
+    const { page, ctx, close } = await open({ 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify({ ...nodeAt, quorum }) })
+    await game(ctx)
+    const win = page.locator('section.mini')
+    // what's on top at a point: the window, the dock or something else
+    const top = (where) => page.evaluate(([x, y]) => {
+      const el = document.elementFromPoint(x, y)
+      return el?.closest('.dock') ? 'dock' : el?.closest('section.mini') ? 'mini' : el?.tagName
+    }, where)
+    const mid = async (loc) => (({ x, y, width, height }) => [x + width / 2, y + height / 2])(await loc.boundingBox())
+    const { width, height } = page.viewportSize()
+    const toggle = (name) => win.getByRole('button', { name, exact: true })
+
+    await toApps(page)
+    await launchGame(page)
+    // Quorum mode's Expand is this toggle now
+    assert.equal(await win.getByRole('button', { name: 'Expand' }).count(), 0)
+    assert.ok((await win.boundingBox()).width < width / 2, 'a window to start with')
+    await toggle('Full screen').click()
+    await toggle('Exit full screen').waitFor()
+    const r = await win.boundingBox()
+    assert.deepEqual([r.x, r.y, r.width, r.height], [0, 0, width, height])
+    // the sidebar is behind it, the header's buttons and the dock in front, and the app's frame clear of the dock
+    assert.equal(await top([40, height / 2]), 'mini')
+    for (const name of ['Minimize', 'More', 'Close', 'Exit full screen']) assert.equal(await top(await mid(win.getByRole('button', { name, exact: true }))), 'mini', name)
+    const dock = page.locator('nav.dock button.open')
+    assert.equal(await top(await mid(dock)), 'dock')
+    const f = await win.locator('iframe').boundingBox()
+    assert.ok(f.y + f.height <= (await dock.boundingBox()).y, 'the dock covers the app')
+    // nothing behind it takes focus, so Tab stays with the window and the dock
+    assert.equal(await page.evaluate(() => (document.querySelector('.side a').focus(), document.activeElement.closest('.side'))), null)
+    // Escape for something over the window is for that, not for full screen: the More menu, and Quorum's composer
+    const more = win.getByRole('button', { name: 'More' })
+    await more.click()
+    await page.locator('.menu').waitFor()
+    await page.keyboard.press('Escape')
+    await win.locator('.mini-name').click()
+    await page.locator('.menu').waitFor({ state: 'detached' })
+    assert.equal(await toggle('Exit full screen').count(), 1)
+    if (quorum) {
+      await win.getByRole('button', { name: 'Share in a cast' }).click()
+      await page.locator('.modal textarea').first().focus()
+      await page.keyboard.press('Escape')
+      await page.locator('.modal').waitFor({ state: 'detached' })
+      assert.equal(await toggle('Exit full screen').count(), 1)
+    }
+
+    // minimized and shown again from the dock, it's still full screen
+    await win.getByRole('button', { name: 'Minimize' }).click()
+    await win.waitFor({ state: 'hidden' })
+    await dock.click()
+    await toggle('Exit full screen').waitFor()
+    // and it opens that way next time, until Escape takes it back to a window
+    const reopen = async () => (await win.getByRole('button', { name: 'Close' }).click(), await win.waitFor({ state: 'detached' }), await launchGame(page))
+    await reopen()
+    await toggle('Exit full screen').waitFor()
+    await page.keyboard.press('Escape')
+    await toggle('Full screen').waitFor()
+    assert.ok((await win.boundingBox()).width < width / 2)
+    await reopen()
+    await toggle('Full screen').waitFor()
+
+    // Fill the monitor: the browser full screen too; the toggle leaves both, back to the window it was, remembering nothing
+    const monitor = async () => (await more.click(), await page.getByRole('menuitem', { name: 'Fill the monitor' }).click(), await page.waitForFunction(() => document.fullscreenElement === document.documentElement))
+    await monitor()
+    await toggle('Exit full screen').click()
+    await page.waitForFunction(() => !document.fullscreenElement)
+    await toggle('Full screen').waitFor()
+    assert.equal(await page.evaluate(() => localStorage.getItem('quilcast:full')), '{}')
+    // a window kept full screen stays so after it, here left by minimizing the app
+    await toggle('Full screen').click()
+    await monitor()
+    await win.getByRole('button', { name: 'Minimize' }).click()
+    await page.waitForFunction(() => !document.fullscreenElement)
+    await dock.click()
+    await toggle('Exit full screen').waitFor()
+    await close()
+  })
+
+  // a phone's window already fills the screen: no toggle, even for an app kept full screen on a desktop
+  test('on a phone, a mini app has no full screen toggle', async () => {
+    const { page, ctx, close } = await open({ 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify(nodeAt), 'quilcast:full': JSON.stringify({ 'https://game.test': '1' }) }, { phone: true })
+    await game(ctx)
+    await toApps(page)
+    await launchGame(page)
+    const win = page.locator('section.mini')
+    assert.equal(await win.locator('.mini-full').count(), 1)
+    assert.equal(await win.locator('.mini-full').isVisible(), false)
+    const r = await win.boundingBox()
+    assert.deepEqual([r.x, r.y, r.width, r.height], [0, 0, 390, 844])
+    await close()
+  })
 })

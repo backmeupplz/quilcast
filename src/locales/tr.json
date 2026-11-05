@@ -231,7 +231,6 @@
   "Equalizer": "Ekolayzır",
   "Equalizer on": "Ekolayzır açık",
   "Erase keys?": "Anahtarlar silinsin mi?",
-  "Expand": "Büyüt",
   "Explore": "Keşfet",
   "Explorers": "Gezginler",
   "Export": "Dışa aktar",
@@ -363,7 +362,6 @@
   "Make a theme": "Tema oluştur",
   "Make co-host": "Ortak sunucu yap",
   "Make it rain": "Para yağmuru",
-  "Make smaller": "Küçült",
   "Make speaker": "Konuşmacı yap",
   "Manage apps": "Uygulamaları yönet",
   "Matrix code": "Matrix kodu",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Cüzdanın bu hesabınkinden farklı bir adres bağladı. Cüzdanında hesabın adresine geç ve yeniden dene.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Cüzdanın yanıt vermedi. Yeniden denemeden önce işlemin gerçekleşip gerçekleşmediğini kontrol et.",
   "Your wallet didn't answer. Try again to reconnect it.": "Cüzdanın yanıt vermedi. Yeniden bağlamak için tekrar dene.",
+  "Full screen": "Tam ekran",
+  "Exit full screen": "Tam ekrandan çık",
+  "Fill the monitor": "Tüm monitörü kapla",
   "{app} (asleep)": "{app} (uykuda)"
 }

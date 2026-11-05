@@ -231,7 +231,6 @@
   "Equalizer": "Bộ chỉnh âm",
   "Equalizer on": "Bật bộ chỉnh âm",
   "Erase keys?": "Xóa khóa?",
-  "Expand": "Mở rộng",
   "Explore": "Khám phá",
   "Explorers": "Trình khám phá",
   "Export": "Xuất",
@@ -363,7 +362,6 @@
   "Make a theme": "Tạo chủ đề",
   "Make co-host": "Đặt làm đồng chủ phòng",
   "Make it rain": "Mưa tiền",
-  "Make smaller": "Thu nhỏ",
   "Make speaker": "Đặt làm người nói",
   "Manage apps": "Quản lý ứng dụng",
   "Matrix code": "Mã Matrix",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Ví của bạn đã kết nối một địa chỉ khác với địa chỉ của tài khoản này. Hãy chuyển sang địa chỉ của tài khoản trong ví rồi thử lại.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Ví của bạn không phản hồi. Hãy kiểm tra xem giao dịch đã được thực hiện chưa trước khi thử lại.",
   "Your wallet didn't answer. Try again to reconnect it.": "Ví của bạn không phản hồi. Hãy thử lại để kết nối lại ví.",
+  "Full screen": "Toàn màn hình",
+  "Exit full screen": "Thoát toàn màn hình",
+  "Fill the monitor": "Lấp đầy màn hình",
   "{app} (asleep)": "{app} (đang ngủ)"
 }

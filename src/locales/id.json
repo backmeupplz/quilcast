@@ -231,7 +231,6 @@
   "Equalizer": "Equalizer",
   "Equalizer on": "Equalizer aktif",
   "Erase keys?": "Hapus kunci?",
-  "Expand": "Perbesar",
   "Explore": "Jelajahi",
   "Explorers": "Explorer",
   "Export": "Ekspor",
@@ -363,7 +362,6 @@
   "Make a theme": "Buat tema",
   "Make co-host": "Jadikan co-host",
   "Make it rain": "Hujan uang",
-  "Make smaller": "Perkecil",
   "Make speaker": "Jadikan pembicara",
   "Manage apps": "Kelola aplikasi",
   "Matrix code": "Kode Matrix",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Dompetmu menghubungkan alamat yang berbeda dari alamat akun ini. Beralihlah ke alamat akun di dompetmu lalu coba lagi.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Dompetmu tidak menjawab. Periksa apakah transaksinya sudah berhasil sebelum mencoba lagi.",
   "Your wallet didn't answer. Try again to reconnect it.": "Dompetmu tidak menjawab. Coba lagi untuk menghubungkannya kembali.",
+  "Full screen": "Layar penuh",
+  "Exit full screen": "Keluar dari layar penuh",
+  "Fill the monitor": "Penuhi monitor",
   "{app} (asleep)": "{app} (tidur)"
 }

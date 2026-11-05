@@ -980,8 +980,6 @@
   "Shortcut: {key}": "Комбінація клавіш: {key}",
   "Manage apps": "Керувати застосунками",
   "Mini apps you add or pin show up here.": "Тут з’являться мінізастосунки, які ви додасте або закріпите.",
-  "Expand": "Розгорнути",
-  "Make smaller": "Зменшити",
   "Share in a cast": "Поділитися в касті",
   "Wallet settings": "Налаштування гаманця",
   "Primary Wallet": "Основний гаманець",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Ваш гаманець підключив іншу адресу, а не адресу цього акаунта. Перемкніться в гаманці на адресу акаунта й спробуйте ще раз.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Гаманець не відповів. Перш ніж пробувати ще раз, перевірте, чи пройшла транзакція.",
   "Your wallet didn't answer. Try again to reconnect it.": "Гаманець не відповів. Спробуйте ще раз, щоб перепідключити його.",
+  "Full screen": "На весь екран",
+  "Exit full screen": "Вийти з повноекранного режиму",
+  "Fill the monitor": "На весь монітор",
   "{app} (asleep)": "{app} (спить)"
 }

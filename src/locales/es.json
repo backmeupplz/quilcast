@@ -980,8 +980,6 @@
   "Shortcut: {key}": "Atajo: {key}",
   "Manage apps": "Gestionar apps",
   "Mini apps you add or pin show up here.": "Aquí aparecen las mini apps que añadas o fijes.",
-  "Expand": "Ampliar",
-  "Make smaller": "Reducir",
   "Share in a cast": "Compartir en un cast",
   "Wallet settings": "Ajustes de la billetera",
   "Primary Wallet": "Billetera principal",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Tu billetera conectó una dirección distinta a la de esta cuenta. Cambia a la dirección de la cuenta en tu billetera y vuelve a intentarlo.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Tu billetera no respondió. Comprueba si la transacción se realizó antes de volver a intentarlo.",
   "Your wallet didn't answer. Try again to reconnect it.": "Tu billetera no respondió. Vuelve a intentarlo para reconectarla.",
+  "Full screen": "Pantalla completa",
+  "Exit full screen": "Salir de pantalla completa",
+  "Fill the monitor": "Llenar el monitor",
   "{app} (asleep)": "{app} (en reposo)"
 }

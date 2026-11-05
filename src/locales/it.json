@@ -231,7 +231,6 @@
   "Equalizer": "Equalizzatore",
   "Equalizer on": "Equalizzatore attivo",
   "Erase keys?": "Cancellare le chiavi?",
-  "Expand": "Espandi",
   "Explore": "Esplora",
   "Explorers": "Explorer",
   "Export": "Esporta",
@@ -363,7 +362,6 @@
   "Make a theme": "Crea un tema",
   "Make co-host": "Rendi co-host",
   "Make it rain": "Pioggia di soldi",
-  "Make smaller": "Riduci",
   "Make speaker": "Rendi speaker",
   "Manage apps": "Gestisci app",
   "Matrix code": "Codice Matrix",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Il tuo wallet ha collegato un indirizzo diverso da quello di questo account. Passa all'indirizzo dell'account nel tuo wallet e riprova.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Il tuo wallet non ha risposto. Controlla se la transazione è andata a buon fine prima di riprovare.",
   "Your wallet didn't answer. Try again to reconnect it.": "Il tuo wallet non ha risposto. Riprova per ricollegarlo.",
+  "Full screen": "Schermo intero",
+  "Exit full screen": "Esci dallo schermo intero",
+  "Fill the monitor": "Riempi il monitor",
   "{app} (asleep)": "{app} (in sospensione)"
 }

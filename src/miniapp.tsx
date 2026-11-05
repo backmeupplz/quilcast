@@ -84,9 +84,11 @@ const serial = <T,>(f: () => Promise<T>) => {
   return p
 }
 
-// what each app origin was allowed: its Ethereum wallet, its Solana wallet, the camera and microphone
-const allowed = (k: 'connected' | 'solana' | 'media') => read<Record<string, string>>(`quilcast:${k}`, {})
-const allow = (k: 'connected' | 'solana' | 'media', origin: string, v: string | null) => {
+// what each app origin was allowed: its Ethereum wallet, its Solana wallet, the camera and microphone (and whether
+// the person keeps it full screen)
+type Kept = 'connected' | 'solana' | 'media' | 'full'
+const allowed = (k: Kept) => read<Record<string, string>>(`quilcast:${k}`, {})
+const allow = (k: Kept, origin: string, v: string | null) => {
   const all = allowed(k)
   v === null ? delete all[origin] : (all[origin] = v)
   save(`quilcast:${k}`, all)
@@ -107,6 +109,9 @@ type App = {
   wallet?: Wallet; connected: boolean; chain: number; sol?: { wallet: SolWallet; account: { address: string } }; media: boolean
   button?: { text: string; loading: boolean; disabled: boolean; hidden: boolean }; back: boolean
   ask?: Ask; waiting?: string; stop?: () => void; uuid: string; pair?: { uri: string; img: string; cancel: () => void }
+  // full: the window covers the page; monitor: set while the browser itself is full screen for it ("Fill the monitor"),
+  // to whether it was full before
+  full: boolean; monitor?: boolean
   // asleep: its frame is unloaded (sleep.ts); hidAt: when it last went into the dock
   asleep?: boolean; hidAt?: number; calls: number
 }
@@ -115,6 +120,32 @@ let shown: number | null = null
 let ids = 0
 let root: HTMLElement | undefined
 
+// --- full screen ---
+// Full screen is the window over the whole page, kept per app (wide screens; on a phone every window already is).
+// "Fill the monitor" also makes the browser full screen, the page and not the app's frame, so the header and the dock
+// stay; leaving it (Esc, the toggle, or showing another app) puts the window back as it was (fullscreenchange below).
+const setFull = (app: App, on: boolean) => {
+  if (!on && app.monitor !== undefined) return void document.exitFullscreen?.().catch(() => {})
+  app.full = on
+  allow('full', app.origin, on ? '1' : null)
+  update()
+}
+const fillMonitor = (app: App) => {
+  app.monitor = app.full
+  app.full = true
+  update()
+  document.documentElement.requestFullscreen().catch(() => ((app.full = app.monitor!), (app.monitor = undefined), update()))
+}
+// showing another app, or none, takes the browser out of full screen
+const leaveMonitor = (next: App | null) => {
+  const app = apps.find((a) => a.id === shown)
+  if (app && app !== next && app.monitor !== undefined && document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+}
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) return
+  for (const app of apps) if (app.monitor !== undefined) ((app.full &&= app.monitor), (app.monitor = undefined))
+  update()
+})
 const narrow = () => matchMedia('(max-width: 559px), (max-width: 699px) and (max-height: 599px)').matches
 
 /** An app in the middle of something (a call to us still running, a prompt, a wallet request, a pairing) or that may
@@ -131,6 +162,7 @@ function nap(all = false) {
 addEventListener('visibilitychange', () => document.hidden && (narrow() || inApp) && nap(true))
 
 const show = (app: App | null) => {
+  leaveMonitor(app)
   const was = apps.find((a) => a.id === shown)
   if (was && was !== app) was.hidAt = Date.now()
   // a sleeping app loads again, from its splash
@@ -152,6 +184,7 @@ export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; from?: st
   const app: App = {
     id: ++ids, url, origin, host, name: (m.name || host).slice(0, 60), icon: safeUrl(m.splash) || safeUrl(m.icon), bg, ...ctx,
     ready: false, connected: false, chain: base.id, media: Object.hasOwn(allowed('media'), origin), back: false, uuid: crypto.randomUUID(), calls: 0,
+    full: Object.hasOwn(allowed('full'), origin),
   }
   app.wallet = remembered(app) || wallets.find((w) => w.key === read('quilcast:wallet', '')) || wallets[0]
   apps.push(app)
@@ -166,6 +199,7 @@ export async function launchUrl(url: string, from?: string, notification?: Notic
 
 function close(app: App) {
   app.ask?.done(false)
+  if (shown === app.id) leaveMonitor(null)
   apps.splice(apps.indexOf(app), 1)
   if (shown === app.id) shown = null
   update()
@@ -718,8 +752,8 @@ const context = async (app: App) => ({
   features: { haptics, cameraAndMicrophoneAccess: true },
 })
 
-// on a phone the app covers the screen, so it steps aside for the cast or profile it opened
-const leave = (app: App, path: string) => (narrow() && show(null), go(path))
+// on a phone, or full screen, the app covers the page, so it steps aside for the cast or profile it opened
+const leave = (app: App, path: string) => ((narrow() || app.full) && show(null), go(path))
 
 async function compose(app: App, o: any = {}) {
   foreground(app)
@@ -936,6 +970,7 @@ function AppMenu({ app }: { app: App }) {
         <Menu class="right" close={() => setOpen(false)}>
           {item(isPinned(app.url) ? t('Unpin from the dock') : t('Pin to the dock'), () => togglePin(app))}
           {item(t('Reload'), () => reload(app))}
+          {document.fullscreenEnabled && !document.fullscreenElement && !narrow() && item(t('Fill the monitor'), () => fillMonitor(app))}
           {item(t('Copy link'), () => navigator.clipboard.writeText(app.url).then(() => toast('Link copied')))}
           {app.media && item(t('Take back camera and mic'), () => (allow('media', app.origin, null), (app.media = false), update(), reload(app)))}
           {app.sol && item(t('Disconnect Solana wallet'), () => (allow('solana', app.origin, null), (app.sol = undefined), update()))}
@@ -968,19 +1003,19 @@ function AskCard({ app }: { app: App }) {
 function Window({ app }: { app: App }) {
   const on = shown === app.id
   const b = app.button
-  // Quorum mode's window can grow to the page, and has Quorum's share button
-  const [big, setBig] = useState(false)
   return (
-    <section class={`mini${on ? '' : ' away'}${big && settings.quorum ? ' big' : ''}`} aria-label={app.name} aria-hidden={!on}>
+    <section class={`mini${on ? '' : ' away'}${app.full ? ' full' : ''}`} aria-label={app.name} aria-hidden={!on}>
       <header class="mini-top">
         {app.back ? <button class="icon-btn" aria-label={t('Back')} onClick={() => emit(app, { event: 'back_navigation_triggered' })}><Icon d={P.back} /></button> : <AppIcon app={app} />}
         <span class="mini-name"><b>{app.name}</b><small>{app.host}</small></span>
         <WalletMenu app={app} />
         <AppMenu app={app} />
         <button class="icon-btn" aria-label={t('Minimize')} onClick={() => show(null)}><Icon d={P.min} /></button>
+        {/* (a phone's window is always the whole screen) */}
+        <button class="icon-btn mini-full" aria-label={app.full ? t('Exit full screen') : t('Full screen')} title={app.full ? t('Exit full screen') : t('Full screen')} onClick={() => setFull(app, !app.full)}><Icon d={app.full ? P.shrink : P.expand} /></button>
+        {/* Quorum mode has Quorum's share button */}
         {settings.quorum && (
           <>
-            <button class="icon-btn only-wide" aria-label={big ? t('Make smaller') : t('Expand')} aria-pressed={big} onClick={() => setBig(!big)}><Icon d={P.expand} /></button>
             <button class="icon-btn" aria-label={t('Share in a cast')} onClick={() => shell.compose({ embeds: [app.url] })}><Icon d={P.share} /></button>
             {/* Quorum's search: tucks this app into the dock and looks through the directory for another */}
             <button class="icon-btn" aria-label={t('Search mini apps')} onClick={() => ((shell.findApp = true), show(null), location.pathname === '/apps' ? dispatchEvent(new Event('findapp')) : go('/apps'))}><Icon d={P.search} /></button>
@@ -1027,6 +1062,16 @@ function Host() {
     const f = () => update()
     addEventListener('quorum', f)
     return () => removeEventListener('quorum', f)
+  }, [])
+  // Escape (outside the app's frame, which keeps its own keys) leaves full screen, unless it's for something over the
+  // window: capturing, so that's still there to see before its own Escape closes it
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const app = apps.find((a) => a.id === shown)
+      if (e.key === 'Escape' && app?.full && !app.ask && !app.pair && !document.fullscreenElement && !document.querySelector('.menu, .wa-menu, .modal, .lightbox')) setFull(app, false)
+    }
+    addEventListener('keydown', key, true)
+    return () => removeEventListener('keydown', key, true)
   }, [])
   // the windows keep their order, so iframes never move in the DOM (moving one reloads it); a sleeping one has none
   return <>{apps.map((app) => <Window key={app.id} app={app} />)}</>

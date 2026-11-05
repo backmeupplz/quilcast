@@ -980,8 +980,6 @@
   "Shortcut: {key}": "ショートカット：{key}",
   "Manage apps": "アプリを管理",
   "Mini apps you add or pin show up here.": "追加またはピン留めしたミニアプリがここに表示されます。",
-  "Expand": "拡大",
-  "Make smaller": "縮小",
   "Share in a cast": "キャストで共有",
   "Wallet settings": "ウォレットの設定",
   "Primary Wallet": "メインウォレット",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "ウォレットがこのアカウントとは別のアドレスを接続しました。ウォレットでアカウントのアドレスに切り替えて、もう一度お試しください。",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "ウォレットから応答がありませんでした。もう一度試す前に、取引が完了したかどうかを確認してください。",
   "Your wallet didn't answer. Try again to reconnect it.": "ウォレットから応答がありませんでした。もう一度試すと再接続できます。",
+  "Full screen": "全画面表示",
+  "Exit full screen": "全画面表示を終了",
+  "Fill the monitor": "モニター全体に表示",
   "{app} (asleep)": "{app}（スリープ中）"
 }

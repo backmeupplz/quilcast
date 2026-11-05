@@ -980,8 +980,6 @@
   "Shortcut: {key}": "Сочетание клавиш: {key}",
   "Manage apps": "Управлять приложениями",
   "Mini apps you add or pin show up here.": "Здесь появятся мини-приложения, которые вы добавите или закрепите.",
-  "Expand": "Развернуть",
-  "Make smaller": "Уменьшить",
   "Share in a cast": "Поделиться в касте",
   "Wallet settings": "Настройки кошелька",
   "Primary Wallet": "Основной кошелёк",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Ваш кошелёк подключил другой адрес, а не адрес этого аккаунта. Переключитесь в кошельке на адрес аккаунта и попробуйте ещё раз.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Кошелёк не ответил. Прежде чем пробовать ещё раз, проверьте, прошла ли транзакция.",
   "Your wallet didn't answer. Try again to reconnect it.": "Кошелёк не ответил. Попробуйте ещё раз, чтобы переподключить его.",
+  "Full screen": "Во весь экран",
+  "Exit full screen": "Выйти из полноэкранного режима",
+  "Fill the monitor": "На весь монитор",
   "{app} (asleep)": "{app} (спит)"
 }

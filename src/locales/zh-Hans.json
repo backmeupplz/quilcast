@@ -980,8 +980,6 @@
   "Shortcut: {key}": "快捷键：{key}",
   "Manage apps": "管理应用",
   "Mini apps you add or pin show up here.": "你添加或置顶的小程序会显示在这里。",
-  "Expand": "放大",
-  "Make smaller": "缩小",
   "Share in a cast": "在帖子中分享",
   "Wallet settings": "钱包设置",
   "Primary Wallet": "主钱包",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "你的钱包连接了与此账号不同的地址。请在钱包中切换到此账号的地址后重试。",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "你的钱包没有回应。重试之前，请先确认交易是否已完成。",
   "Your wallet didn't answer. Try again to reconnect it.": "你的钱包没有响应。请重试以重新连接。",
+  "Full screen": "全屏",
+  "Exit full screen": "退出全屏",
+  "Fill the monitor": "铺满显示器",
   "{app} (asleep)": "{app}（休眠中）"
 }

@@ -668,6 +668,15 @@ small.warn { color: var(--warn); }
 .dock button.asleep::after { background: none; box-shadow: inset 0 0 0 1px var(--muted); }
 .dock { padding-bottom: 8px; }
 .dock .app-icon { width: 34px; height: 34px; font-size: 14px; border-radius: calc(9px * var(--rs, 1)); }
+/* full screen (the header's toggle): the window over the whole page, sidebar and all, leaving a strip along the bottom
+   for the dock, which stays on top so another app is a click away (wherever a page had lifted it, Quorum's open
+   conversation too). The page behind is hidden, so Tab and screen readers stay with the window and the dock */
+@media (min-width: 700px), (min-width: 560px) and (min-height: 600px) {
+  .mini.full { inset: 0; z-index: 20; width: auto; height: auto; border: 0; border-radius: 0; box-shadow: none; padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .mini.full::after { content: ''; position: absolute; inset-inline: 0; bottom: calc(76px + env(safe-area-inset-bottom)); border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
+  :root body:has(.mini.full:not(.away)) nav.dock { z-index: 21; bottom: calc(16px + env(safe-area-inset-bottom)); }
+  body:has(.mini.full:not(.away)) :is(.app > :is(.side, .col, .extra, .tabbar, .fab), .space-bar, .wa-bar) { visibility: hidden; }
+}
 .app-open { display: flex; gap: 8px; }
 .app-row .icon-btn.on { color: var(--accent); }
 .apps-h { margin-top: 6px; }
@@ -689,6 +698,7 @@ small.warn { color: var(--warn); }
 @media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   .mini { inset: 0; width: auto; height: auto; border: 0; border-radius: 0; padding-bottom: env(safe-area-inset-bottom); }
   .mini-top { padding-top: calc(6px + env(safe-area-inset-top)); }
+  .mini-top .mini-full { display: none; }
   /* above the tab bar, clear of the cast button */
   .dock { inset-inline-end: auto; inset-inline-start: 16px; max-width: calc(100vw - 102px); bottom: calc(72px + env(safe-area-inset-bottom)); }
   .dock.behind { display: none; }
@@ -1597,7 +1607,9 @@ body:has(.wa-bar) .space-bar { bottom: calc(64px + env(safe-area-inset-bottom));
   :root[data-quorum] :is(.mini, .dock) { inset-inline-end: var(--q-right); }
   /* a Space's bar is centred between the sidebar and the right column or docked wallet, never under them */
   :root[data-quorum] .space-bar { left: calc((188px * var(--zoom, 1) + 100vw - var(--q-right)) / 2); width: min(420px, calc(100vw - var(--q-right) - 188px * var(--zoom, 1) - 32px)); }
-  :root[data-quorum] .mini.big { inset-inline-start: calc(188px * var(--zoom, 1) + 24px); top: 16px; width: auto; height: auto; }
+  /* full screen reaches the docked wallet, which stays beside it */
+  :root[data-quorum] .mini.full { inset-inline-end: 0; }
+  :root[data-quorum] body:has(.q-wallet) .mini.full { inset-inline-end: calc(380px * var(--zoom, 1)); }
 }
 :root[data-th-zoom] .q-wallet { zoom: var(--zoom); }
 /* (100vh inside a zoomed box is 100vh × zoom; phones size it by its edges instead) */

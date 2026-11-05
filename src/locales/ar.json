@@ -231,7 +231,6 @@
   "Equalizer": "المعادل الصوتي",
   "Equalizer on": "المعادل الصوتي مفعّل",
   "Erase keys?": "هل تريد مسح المفاتيح؟",
-  "Expand": "تكبير",
   "Explore": "استكشاف",
   "Explorers": "المستكشفات",
   "Export": "تصدير",
@@ -363,7 +362,6 @@
   "Make a theme": "إنشاء سمة",
   "Make co-host": "تعيين مضيفًا مشاركًا",
   "Make it rain": "مطر النقود",
-  "Make smaller": "تصغير",
   "Make speaker": "تعيين متحدثًا",
   "Manage apps": "إدارة التطبيقات",
   "Matrix code": "شيفرة ماتريكس",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "ربطت محفظتك عنوانًا مختلفًا عن عنوان هذا الحساب. انتقل إلى عنوان الحساب في محفظتك ثم حاول مرة أخرى.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "لم تستجب محفظتك. تحقق مما إذا كانت المعاملة قد تمت قبل أن تحاول مرة أخرى.",
   "Your wallet didn't answer. Try again to reconnect it.": "لم تردّ محفظتك. حاول مجددًا لإعادة توصيلها.",
+  "Full screen": "ملء الشاشة",
+  "Exit full screen": "الخروج من ملء الشاشة",
+  "Fill the monitor": "ملء الشاشة كلها",
   "{app} (asleep)": "{app} (نائم)"
 }

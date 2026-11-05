@@ -231,7 +231,6 @@
   "Equalizer": "อีควอไลเซอร์",
   "Equalizer on": "เปิดอีควอไลเซอร์",
   "Erase keys?": "ลบคีย์ไหม",
-  "Expand": "ขยาย",
   "Explore": "สำรวจ",
   "Explorers": "Explorer",
   "Export": "ส่งออก",
@@ -363,7 +362,6 @@
   "Make a theme": "สร้างธีม",
   "Make co-host": "ตั้งเป็นโฮสต์ร่วม",
   "Make it rain": "โปรยเงิน",
-  "Make smaller": "ย่อ",
   "Make speaker": "ตั้งเป็นผู้พูด",
   "Manage apps": "จัดการแอป",
   "Matrix code": "โค้ดเมทริกซ์",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "วอลเล็ตของคุณเชื่อมต่อที่อยู่อื่นที่ไม่ใช่ของบัญชีนี้ สลับไปที่ที่อยู่ของบัญชีในวอลเล็ตแล้วลองอีกครั้ง",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "วอลเล็ตของคุณไม่ตอบกลับ ตรวจสอบว่าธุรกรรมสำเร็จหรือไม่ก่อนลองอีกครั้ง",
   "Your wallet didn't answer. Try again to reconnect it.": "วอลเล็ตของคุณไม่ตอบกลับ ลองอีกครั้งเพื่อเชื่อมต่อใหม่",
+  "Full screen": "เต็มหน้าจอ",
+  "Exit full screen": "ออกจากโหมดเต็มหน้าจอ",
+  "Fill the monitor": "เต็มจอมอนิเตอร์",
   "{app} (asleep)": "{app} (พักอยู่)"
 }

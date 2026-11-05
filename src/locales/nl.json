@@ -231,7 +231,6 @@
   "Equalizer": "Equalizer",
   "Equalizer on": "Equalizer aan",
   "Erase keys?": "Sleutels wissen?",
-  "Expand": "Vergroten",
   "Explore": "Verkennen",
   "Explorers": "Explorers",
   "Export": "Exporteren",
@@ -363,7 +362,6 @@
   "Make a theme": "Thema maken",
   "Make co-host": "Co-host maken",
   "Make it rain": "Geldregen",
-  "Make smaller": "Verkleinen",
   "Make speaker": "Spreker maken",
   "Manage apps": "Apps beheren",
   "Matrix code": "Matrixcode",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Je wallet heeft een ander adres verbonden dan dat van dit account. Schakel in je wallet over naar het adres van het account en probeer het opnieuw.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Je wallet reageerde niet. Controleer of de transactie is gelukt voordat je het opnieuw probeert.",
   "Your wallet didn't answer. Try again to reconnect it.": "Je wallet reageerde niet. Probeer het opnieuw om hem opnieuw te verbinden.",
+  "Full screen": "Volledig scherm",
+  "Exit full screen": "Volledig scherm sluiten",
+  "Fill the monitor": "Hele monitor vullen",
   "{app} (asleep)": "{app} (slaapt)"
 }

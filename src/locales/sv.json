@@ -231,7 +231,6 @@
   "Equalizer": "Equalizer",
   "Equalizer on": "Equalizer på",
   "Erase keys?": "Radera nycklarna?",
-  "Expand": "Förstora",
   "Explore": "Utforska",
   "Explorers": "Utforskare",
   "Export": "Exportera",
@@ -363,7 +362,6 @@
   "Make a theme": "Skapa ett tema",
   "Make co-host": "Gör till medvärd",
   "Make it rain": "Pengaregn",
-  "Make smaller": "Förminska",
   "Make speaker": "Gör till talare",
   "Manage apps": "Hantera appar",
   "Matrix code": "Matrix-kod",
@@ -1131,5 +1129,8 @@
   "Your wallet connected a different address than this account's. Switch to the account's address in your wallet and try again.": "Din plånbok anslöt en annan adress än kontots. Byt till kontots adress i plånboken och försök igen.",
   "Your wallet didn't answer. Check whether the transaction went through before you try again.": "Din plånbok svarade inte. Kontrollera om transaktionen gick igenom innan du försöker igen.",
   "Your wallet didn't answer. Try again to reconnect it.": "Din plånbok svarade inte. Försök igen för att ansluta den på nytt.",
+  "Full screen": "Helskärm",
+  "Exit full screen": "Avsluta helskärm",
+  "Fill the monitor": "Fyll hela skärmen",
   "{app} (asleep)": "{app} (vilar)"
 }
