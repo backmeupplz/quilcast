@@ -31,6 +31,46 @@ test('mentions strip names and record utf-8 byte offsets', async () => {
   assert.deepEqual(m.positions, [7, 12])
 })
 
+test('mentions take names ending in "-" and one-letter names, trying the whole name before trimming punctuation off it', async () => {
+  const fids: Record<string, number> = { adam: 1, 'adam-': 2, x: 3, 'a-b-c': 4, carol: 5, 'bob.eth': 6, dwr: 7, 'z--': 8 }
+  const asked: string[] = []
+  const lookup = async (n: string) => (asked.push(n), fids[n])
+  const m = await mentions('@adam- @ADAM @dwr_. @x @a-b-c, @carol-! @carol_ @bob.eth. @z----- @nobody-', lookup)
+  assert.equal(m.text, '  _.  , -! _ . --- @nobody-')
+  assert.deepEqual(m.mentions, [2, 1, 7, 3, 4, 5, 5, 6, 8])
+  // no name ends in "." or has a "_", so those are never asked for
+  assert.ok(!asked.some((n) => n.endsWith('.') || n.includes('_')), asked.join())
+  assert.deepEqual(asked.filter((n) => /^(carol|nobody|z)/.test(n)), ['carol-', 'carol', 'z-----', 'z--', 'nobody-', 'nobody'])
+  // the whole name is always tried first, and a run of marks after a name costs at most four lookups (each name once per cast)
+  asked.length = 0
+  const long = await mentions('@x--- hi', async (n) => (asked.push(n), ({ 'x---': 1, 'x--': 2, x: 3 })[n]))
+  assert.deepEqual([long.mentions, long.text, asked], [[1], ' hi', ['x---']])
+  asked.length = 0
+  const dot = await mentions('thanks @x---. bye @x---..', async (n) => (asked.push(n), ({ 'x---': 1, 'x--': 2, x: 3 })[n]))
+  assert.deepEqual([dot.mentions, dot.text, asked], [[1, 1], 'thanks . bye ..', ['x---']])
+  asked.length = 0
+  assert.equal((await mentions(`@a${'-'.repeat(2000)} @b${'.-'.repeat(1000)}`, lookup)).mentions.length, 0)
+  assert.deepEqual(asked, ['a' + '-'.repeat(2000), 'a--', 'a-', 'a', 'b' + '.-'.repeat(1000), 'b.-', 'b'])
+  // "@adam-" sent when only adam exists: adam, with the "-" kept as text
+  const only = await mentions('hi @adam- there', async (n) => (n === 'adam' ? 1 : undefined))
+  assert.equal(only.text, 'hi - there')
+  assert.deepEqual([only.mentions, only.positions], [[1], [3]])
+})
+
+test('mentions never fall back to a shorter name when a lookup fails, and ask each name once per cast', async () => {
+  const asked: string[] = []
+  const lookup = async (n: string) => {
+    asked.push(n)
+    if (n === 'adam-') throw Object.assign(new Error('HTTP 429'), { status: 429 })
+    return ({ adam: 1, bob: 2 } as Record<string, number>)[n]
+  }
+  const m = await mentions('hi @adam- there @bob @adam-, @bob- @ADAM', lookup)
+  // both "@adam-" stay as text (not adam); "@bob-" (no bob-) and "@ADAM" still resolve
+  assert.equal(m.text, 'hi @adam- there  @adam-, - ')
+  assert.deepEqual([m.mentions, m.positions], [[2, 2, 1], [16, 25, 27]])
+  assert.deepEqual(asked, ['adam-', 'bob', 'bob-', 'adam'])
+})
+
 test('castText puts mentions back at their byte offsets, and ignores ones past the end', async () => {
   const { castText, sized } = await import('./shared.ts')
   const c = { text: 'hé  and ', mentioned_profiles: [{ fid: 1, username: 'a' }, { fid: 2, username: 'b.eth' }], mentioned_profiles_ranges: [{ start: 4, end: 4 }, { start: 9, end: 9 }] } as any

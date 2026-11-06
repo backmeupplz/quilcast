@@ -207,7 +207,7 @@ async function card(c) {
   const likes = Number(c.reactions?.likes_count) || 0
   // only the first ~8 lines fit, so long casts are cut before wrapping
   // its Markdown drawn (richSvg)
-  const md = styled(castText(c))
+  const md = styled(castText(c, true))
   const text = cut(md.text, 600)
   const v = await visualOf(c)
   // the CDN's resized copies are a fraction of the originals and decode faster
@@ -536,7 +536,7 @@ async function collectible(c) {
   const a = c.author || {}
   const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
   // its Markdown drawn, as on the share card (card); links already show short
-  const md = styled(castText(c))
+  const md = styled(castText(c, true))
   const short = cut(md.text, 1000)
   const v = await visualOf(c)
   const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=240')) : null, pictureOf(v, 'w=1100')])

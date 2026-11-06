@@ -7,6 +7,7 @@ import { blake3 } from '@noble/hashes/blake3.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { HDKey } from '@scure/bip32'
 import type { Ed } from './keys.ts'
+import { MENTION_NAME, mentionTries } from './shared.ts'
 
 export const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
 export const unhex = (s: string) => {
@@ -220,18 +221,32 @@ export async function fnameProof(name: string, timestamp: number, custody: Custo
   return { owner: custody.address, signature: '0x' + hex(sig) }
 }
 
-/** Turn "@alice hi" into mention-free text plus byte positions, resolving names via `lookup`. */
+/** Turn "@alice hi" into mention-free text plus byte positions, resolving names via `lookup`: undefined means no such
+ *  user, and a rejection (the node failed) leaves the whole "@name" as text rather than mentioning a shorter name. */
 export async function mentions(text: string, lookup: (name: string) => Promise<number | undefined>) {
   const out = { text: '', mentions: [] as number[], positions: [] as number[] }
+  // each name is asked once per cast, however many mentions try it
+  const asked = new Map<string, Promise<number | undefined>>()
+  const ask = (n: string) => {
+    n = n.toLowerCase()
+    if (!asked.has(n)) asked.set(n, lookup(n))
+    return asked.get(n)!
+  }
   let last = 0
-  for (const m of text.matchAll(/(^|\s)@([a-z0-9][a-z0-9.-]*[a-z0-9])/gi)) {
-    const fid = await lookup(m[2].toLowerCase())
+  for (const m of text.matchAll(new RegExp(`(^|\\s)@(${MENTION_NAME})`, 'g'))) {
+    // "@adam-" is adam- when that name exists, else adam followed by a "-"; never adam when asking about adam- failed
+    let fid: number | undefined, name = ''
+    try {
+      for (name of mentionTries(m[2])) if ((fid = await ask(name))) break
+    } catch {
+      continue
+    }
     if (!fid) continue
     const at = m.index! + m[1].length
     out.text += text.slice(last, at)
     out.mentions.push(fid)
     out.positions.push(utf8(out.text).length)
-    last = at + m[2].length + 1
+    last = at + name.length + 1
   }
   out.text += text.slice(last)
   return out

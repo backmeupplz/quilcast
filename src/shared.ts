@@ -61,8 +61,13 @@ export const vidBoxOf = (s: Shape) =>
 export const n = (x = 0) => (x >= 1e6 ? (x / 1e6).toFixed(1) + 'M' : x >= 1e4 ? Math.round(x / 1e3) + 'K' : x >= 1e3 ? (x / 1e3).toFixed(1) + 'K' : String(x))
 
 type Mentioned = { text?: string; mentioned_profiles?: { username?: string }[]; mentioned_profiles_ranges?: { start: number; end: number }[] }
-/** Hypersnap leaves mentions out of `text` and gives their UTF-8 byte offsets; put "@name" back in. */
-export function castText(c: Mentioned) {
+/** Ends a mention castText put back, where the text right after it could pass for more of the name: display (TOKENS)
+ *  stops there, and html() drops it. */
+export const MENTION_END = '⁠'
+/** Hypersnap leaves mentions out of `text` and gives their UTF-8 byte offsets; put "@name" back in. For display, `ended`
+ *  closes each one with MENTION_END when a letter, digit, "." or "-" follows, so a mention of adam followed by "-" links
+ *  adam, not "adam-". */
+export function castText(c: Mentioned, ended = false) {
   const bytes = new TextEncoder().encode(c.text || '')
   const at = (c.mentioned_profiles_ranges || [])
     .map((r, i) => ({ at: r.start, name: r.start === r.end && c.mentioned_profiles?.[i]?.username }))
@@ -70,10 +75,12 @@ export function castText(c: Mentioned) {
     .sort((a, b) => a.at - b.at)
   if (!at.length) return c.text || ''
   const dec = new TextDecoder()
-  let out = ''
-  let last = 0
-  for (const r of at) (out += dec.decode(bytes.subarray(last, r.at)) + '@' + r.name), (last = r.at)
-  return out + dec.decode(bytes.subarray(last))
+  let out = dec.decode(bytes.subarray(0, at[0].at))
+  at.forEach((r, i) => {
+    const rest = dec.decode(bytes.subarray(r.at, at[i + 1]?.at ?? bytes.length))
+    out += '@' + r.name + (ended && /^[a-zA-Z0-9.-]/.test(rest) ? MENTION_END : '') + rest
+  })
+  return out
 }
 
 type Unit = { hash: string; up?: { hash: string }[]; gap?: boolean }
@@ -658,8 +665,31 @@ export const P = {
   pin: 'M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2v.8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z',
 }
 
-// links, @mentions and /channels inside cast text
-export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]|(?<![\\w/:])\\/[a-zA-Z0-9-]{2,}(?![\\w/]))`, 'gu')
+/** A username after "@": a letter or digit, then letters, digits, "." and "-", which may end it (fnames like "adam-", ENS
+ *  names like "bob.eth"). No Farcaster name has a "_" (join.tsx NAME_RE), so "@dwr_" is dwr. Compose's suggestions
+ *  (compose.tsx), sending (fc.ts mentions) and display (TOKENS) all read names with it. */
+export const MENTION_NAME = '[a-zA-Z0-9][a-zA-Z0-9.-]*'
+/** The "@name" being typed up to the caret, which the composer's suggestions complete. */
+export const TYPING_MENTION = new RegExp(`(?:^|\\s)@(${MENTION_NAME})$`)
+/** The names "@name" in a cast can mean, longest first: punctuation right after a name ("@adam-." or "@adam--") comes off
+ *  a character at a time. No name ends in ".", so "@alice." is "alice" and costs one lookup. After the whole name, only the
+ *  first two marks of a longer run come off ("@adam-----" tries adam-----, adam--, adam- and adam), so a cast never waits
+ *  on more than four lookups per mention. */
+export function mentionTries(name: string) {
+  // the whole name is what display links: without a sentence's "."
+  let whole = name.length
+  while (name[whole - 1] === '.') whole--
+  let end = whole
+  while ('.-'.includes(name[end - 1])) end--
+  const out = whole > end + 2 ? [name.slice(0, whole)] : []
+  for (name = name.slice(0, Math.min(whole, end + 2)); ; name = name.slice(0, -1)) {
+    if (!name.endsWith('.')) out.push(name)
+    if (name.length === end) return out
+  }
+}
+
+// links, @mentions and /channels inside cast text; a mention shows as the longest name it can be, without a sentence's "."
+export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@${MENTION_NAME}(?<!\\.)|(?<![\\w/:])\\/[a-zA-Z0-9-]{2,}(?![\\w/]))`, 'gu')
 /** A link's page as people read it (its decoded path), for the link card of a site that won't tell us its title. */
 export const pathOf = (u: string) => {
   try {
@@ -671,7 +701,8 @@ export const pathOf = (u: string) => {
 export const shortUrl = (s: string) => ((s = s.replace(/^https?:\/\/(www\.)?/, '')), s.length > 40 ? s.slice(0, 40) + '…' : s)
 
 // --- cast text as HTML (ui.tsx RichText, server/home.mjs) ---
-const html = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+const bare = (s: string) => s.replaceAll(MENTION_END, '')
+const html = (s: string) => bare(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const ext = (u: string, label: string, cls = '') => `<a${cls && ` class="${cls}"`} href="${html(u)}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
 /** Plain text with its links, @mentions and /channels made live, as HTML. */
 export const linkify = (text: string) =>
@@ -679,7 +710,8 @@ export const linkify = (text: string) =>
     if (i % 2 === 0) return html(p)
     if (p[0] === '@') return `<a href="/u/${html(p.slice(1))}">${html(p)}</a>`
     if (p[0] === '/') return `<a class="chan-ref" href="/channel/${html(p.slice(1).toLowerCase())}">${html(p)}</a>`
-    const u = safeUrl(toUrl(p))
+    // a mention castText put back inside a link (another client's ranges) leaves the link as it was
+    const u = safeUrl(toUrl(bare(p)))
     return u ? ext(u, html(shortUrl(p))) : html(p)
   }).join('')
 
@@ -711,10 +743,10 @@ function inline(s: string): string {
     at = m.index + m[0].length
     if (g.code !== undefined) out += `<code>${html(g.code.replace(/^ (.*[^ ].*) $/s, '$1'))}</code>`
     else if (g.src !== undefined) {
-      const u = safeUrl(g.src)
+      const u = safeUrl(bare(g.src))
       out += u ? `<img class="md-img" src="${html(pictureSrc(u))}" alt="${html(g.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : html(g.alt)
     } else if (g.label !== undefined) {
-      const u = safeUrl(g.href)
+      const u = safeUrl(bare(g.href))
       // its text can say anything, so the app shows where it really goes before opening it (ui.tsx LinkSheet)
       out += u ? ext(u, inline(g.label), 'md-link') : inline(g.label)
     } else if (g.token !== undefined) out += linkify(g.token)

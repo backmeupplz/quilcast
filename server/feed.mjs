@@ -17,7 +17,7 @@ const handle = (u) => (fname(u) ? `@${fname(u)}` : `!${u.fid}`)
 /** A cast as HTML for a reader: its text with line breaks kept (the app shows it pre-wrap), then its pictures, links and
  *  quoted casts. Links the app keeps relative (/u/…, /channel/…, /api/img?…) point at `site`. */
 export function castHtml(c, site) {
-  const text = markdown(castText(c)).split(/(<pre[\s\S]*?<\/pre>)/).map((p, i) => (i % 2 ? p : p.replace(/\n/g, '<br>'))).join('')
+  const text = markdown(castText(c, true)).split(/(<pre[\s\S]*?<\/pre>)/).map((p, i) => (i % 2 ? p : p.replace(/\n/g, '<br>'))).join('')
   const media = urlsOf(c).map((u) => (isImg(u) ? `<p><img src="${html(u)}" alt="" referrerpolicy="no-referrer"></p>` : `<p><a href="${html(u)}">${html(u)}</a></p>`))
   const quotes = (c.embeds || []).flatMap((e) => (HASH.test(e?.cast_id?.hash) ? [`<p><a href="${site}/c/${e.cast_id.hash}">Quoted cast</a></p>`] : []))
   return (text ? `<div>${text}</div>` : '').replace(/ (href|src)="\//g, (_, a) => ` ${a}="${site}/`) + media.join('') + quotes.join('')

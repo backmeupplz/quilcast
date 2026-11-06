@@ -1,12 +1,59 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { LINK_RE, linkify, markdown as md } from './shared.ts'
+import { castText, LINK_RE, linkify, markdown as md, MENTION_END, styled } from './shared.ts'
 
 test('plain casts render as before: text, line breaks, links, mentions, channels', () => {
   assert.equal(md('gm\n\nhi @dwr see quilcast.com on /base'), 'gm\n\nhi <a href="/u/dwr">@dwr</a> see <a href="https://quilcast.com/" target="_blank" rel="noopener noreferrer nofollow">quilcast.com</a> on <a class="chan-ref" href="/channel/base">/base</a>')
   assert.equal(md('<b>x</b> & "y"'), '&#60;b&#62;x&#60;/b&#62; &#38; &#34;y&#34;')
   assert.equal(md('5 * 3 = 15, snake_case_name, @some_x_handle'), '5 * 3 = 15, snake_case_name, <a href="/u/some">@some</a>_x_handle')
   assert.equal(md('born in\n1990. Then more'), 'born in\n1990. Then more')
+})
+
+test('a mention takes names ending in "-" and one-letter names, and leaves a sentence\'s "." out', () => {
+  const at = (n: string) => `<a href="/u/${n}">@${n}</a>`
+  for (const n of ['adam-', 'a-b-c', 'x', '7', 'bob.eth', 'a--'])
+    for (const out of [linkify(`hi @${n} there`), md(`hi @${n} there`)]) assert.equal(out, `hi ${at(n)} there`)
+  // no Farcaster name has a "_", so one ends the name
+  for (const [s, n, rest] of [['@adam-.', 'adam-', '.'], ['@alice.', 'alice', '.'], ['@bob.eth...', 'bob.eth', '...'], ['@adam-!', 'adam-', '!'], ['@dwr_,', 'dwr', '_,'], ['@x_y', 'x', '_y']])
+    for (const out of [linkify(s), md(s)]) assert.equal(out, at(n) + rest)
+  assert.equal(linkify('@bob_https://x.com'), `${at('bob')}_<a href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow">x.com</a>`)
+  // _ around a mention still emphasizes it
+  assert.equal(md('_@adam_ and __@bob-__'), `<em>${at('adam')}</em> and <strong>${at('bob-')}</strong>`)
+  assert.equal(md('_ask @adam_'), `<em>ask ${at('adam')}</em>`)
+  assert.equal(md('x@adam- a/@adam-'), 'x@adam- a/@adam-')
+})
+
+test('a mention put back from its range links exactly its name, whatever follows it', () => {
+  const at = (n: string) => `<a href="/u/${n}">@${n}</a>`
+  // "hi @adam- there" sent with only adam existing: a mention of adam at byte 3, then a plain "-"
+  const cast = (text: string, ...m: [string, number][]) => ({ text, mentioned_profiles: m.map(([username]) => ({ username })), mentioned_profiles_ranges: m.map(([, start]) => ({ start, end: start })) })
+  const show = (c: ReturnType<typeof cast>) => [linkify(castText(c, true)), md(castText(c, true))]
+  for (const out of show(cast('hi - there', ['adam', 3]))) assert.equal(out, `hi ${at('adam')}- there`)
+  for (const out of show(cast('hi  there', ['adam-', 3]))) assert.equal(out, `hi ${at('adam-')} there`)
+  for (const out of show(cast('hi -- there', ['adam-', 3]))) assert.equal(out, `hi ${at('adam-')}-- there`)
+  for (const out of show(cast('hi .eth and x', ['bob', 3]))) assert.equal(out, `hi ${at('bob')}.eth and x`)
+  for (const out of show(cast(', and 7', ['x', 0], ['y', 6]))) assert.equal(out, `${at('x')}, and ${at('y')}7`)
+  for (const out of show(cast(' ', ['a', 0], ['b', 0]))) assert.equal(out, `${at('a')}@b `)
+  // the end mark never reaches the page, in code, emphasis or a heading either
+  for (const s of [cast('`-x`', ['adam', 1]), cast('_-x_', ['adam', 1]), cast('# -x', ['adam', 2]), cast('> -x', ['adam', 2])])
+    assert.ok(!md(castText(s, true)).includes(MENTION_END), md(castText(s, true)))
+  // inside a link (another client's ranges), the link goes where its text says
+  for (const out of show(cast('see https://x.com/. ok', ['adam', 18]))) assert.ok(out.includes('href="https://x.com/@adam"'), out)
+  assert.ok(md(castText(cast('[a](https://x.com/)', ['adam', 18]), true)).includes('href="https://x.com/@adam"'))
+  assert.ok(md(castText(cast('![a](https://x.com/.png)', ['adam', 19]), true)).includes(`src="/api/img?u=${encodeURIComponent('https://x.com/@adam.png')}"`))
+  // share cards draw only the name in a mention's colour
+  const card = styled(castText(cast('hi - there', ['adam', 3]), true))
+  assert.equal(card.text, 'hi @adam- there')
+  assert.deepEqual(card.marks.slice(3, 9).map(Boolean), [true, true, true, true, true, false])
+  // only display marks the end: text read for its words stays as it was
+  assert.equal(castText(cast('hi - there', ['adam', 3])), 'hi @adam- there')
+  assert.equal(castText(cast('hi  there', ['adam-', 3]), true), 'hi @adam- there')
+})
+
+test('the composer suggests names for the "@name" being typed, a "-" at its end included', async () => {
+  const { TYPING_MENTION } = await import('./shared.ts')
+  for (const [s, q] of [['hi @adam-', 'adam-'], ['@a-b', 'a-b'], ['x\n@bob.', 'bob.'], ['@a', 'a']] as const) assert.equal(s.match(TYPING_MENTION)?.[1], q, s)
+  for (const s of ['hi @', 'mail@adam', '@-x', '@a_b', 'hi @adam ']) assert.equal(s.match(TYPING_MENTION), null, s)
 })
 
 test('a bare domain glued to a letter of another script links nothing, not just its ASCII part', () => {
@@ -103,7 +150,9 @@ test('long runs of invisible characters or labels around a domain take linear ti
 })
 
 test('mentions, channels and emphasis treat ſ and the Kelvin sign as letters, not s and k', () => {
-  for (const s of ['@Kelvin', '@aſb', '/ſtar', '/Kb']) assert.equal(md(s), s)
+  for (const s of ['@Kelvin', '@ſb', '/ſtar', '/Kb']) assert.equal(md(s), s)
+  // a one-letter name is a name; the ſ after it isn't part of it
+  assert.equal(md('@aſb'), '<a href="/u/a">@a</a>ſb')
   assert.equal(md('@DWR on /Base'), '<a href="/u/DWR">@DWR</a> on <a class="chan-ref" href="/channel/base">/Base</a>')
   assert.equal(md('ſ/base K@dwr ſ_x_'), 'ſ<a class="chan-ref" href="/channel/base">/base</a> K<a href="/u/dwr">@dwr</a> ſ<em>x</em>')
 })

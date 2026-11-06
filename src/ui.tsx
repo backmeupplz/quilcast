@@ -285,7 +285,7 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
   }
   // the model can find it's in the reader's language after all
   const same = tr && base(tr.from) === base(lang)
-  const words = tr && !orig && !same ? tr.text : text
+  const words = tr && !orig && !same ? tr.text : castText(c, true)
   const fromName = langName(tr && tr.from !== 'und' ? tr.from : from || 'und')
   return (
     <>
@@ -929,7 +929,7 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   if (!c) return <div class="quote skeleton" />
   if (hides(c)) return <div class="quote muted">{t('Hidden by your mutes.')}</div>
   const img = thumbOf(c)
-  const text = castText(c).trim()
+  const text = castText(c, true).trim()
   return (
     <a class="quote" href={`/c/${c.hash}`} onClick={stop}>
       <div class="meta"><Avatar u={c.author} size={18} link={false} /><b>{nameOf(c.author)}</b><span>@{handle(c.author)} · {ago(c.timestamp)}</span></div>

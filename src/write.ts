@@ -178,7 +178,15 @@ const send = async (type: number, body: Uint8Array, as = account!) => {
   })
 }
 
-const fidByName = (name: string) => byName(name).then((u) => u.fid, () => undefined)
+// only a 404 means "no such user"; any other failure rejects, so mentions() doesn't fall back to a shorter name
+const fidByName = (name: string) =>
+  byName(name).then(
+    (u) => u.fid,
+    (e) => {
+      if (e?.status === 404) return undefined
+      throw e
+    },
+  )
 
 /** A cast can carry MAX_EMBEDS embeds: uploads and a quoted cast first, then links from the text (castEmbeds). */
 export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: string[]; as?: Account } = {}) {

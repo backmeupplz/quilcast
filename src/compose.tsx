@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, users, type Account, type Cast, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, withGif, type Format } from './shared.ts'
+import { castText, embedRoom, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
 import { ago, Avatar, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
 import type { Draft } from './write.ts'
 import { findChannels, getChannel, isMember, urlOf, type Channel } from './channels.ts'
@@ -116,7 +116,7 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
     return () => clearTimeout(t)
   }, [part.text])
   const findToken = (el: HTMLTextAreaElement) => {
-    const m = el.value.slice(0, el.selectionStart).match(/(?:^|\s)@([a-z0-9][a-z0-9.-]*)$/i)
+    const m = el.value.slice(0, el.selectionStart).match(TYPING_MENTION)
     setTok(m ? { start: el.selectionStart - m[1].length - 1, q: m[1].toLowerCase() } : null)
   }
   useEffect(() => {

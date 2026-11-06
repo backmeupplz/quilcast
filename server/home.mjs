@@ -109,7 +109,7 @@ export function body(d, version, now = Date.now()) {
     if (gone(c)) return '<div class="quote muted">Hidden by your mutes.</div>'
     const urls = urlsOf(c)
     const thumb = urls.find(isImg) || poster(urls.find(isVid))
-    const text = castText(c).trim()
+    const text = castText(c, true).trim()
     return `<a class="quote" href="/c/${esc(c.hash)}"><div class="meta">${avatar(c.author, 18, false)}<b>${esc(nameOf(c.author))}</b><span>@${esc(handle(c.author))} · ${ago(c.timestamp)}</span></div>` +
       `<div class="qbody${text ? '' : ' bare'}">${text ? rich(text, 'text clamp') : ''}${thumb ? img(sized(thumb, 'w=1200'), 'qimg') : ''}</div></a>`
   }
@@ -154,7 +154,7 @@ export function body(d, version, now = Date.now()) {
     return `<article class="cast" data-href="/c/${esc(c.hash)}"><div class="rail">${avatar(c.author)}</div><div class="body"><header>` +
       `<a class="name" href="${esc(userPath(c.author))}">${esc(nameOf(c.author))}</a><span class="handle">@${esc(handle(c.author))}</span><span class="dot">·</span>` +
       `<time datetime="${esc(c.timestamp)}">${ago(c.timestamp)}</time>${ch ? `<span class="chan">/${esc(ch)}</span>` : ''}</header>` +
-      `<div>${rich(castText(c), 'text fold')}<script>${FOLD}</script></div>${embeds(c)}` +
+      `<div>${rich(castText(c, true), 'text fold')}<script>${FOLD}</script></div>${embeds(c)}` +
       `<footer><button class="act" aria-label="Reply">${icon(P.reply)}${count(c.replies?.count)}</button>` +
       `<span class="wrap-menu"><button class="act rc" aria-label="Recast or quote" aria-haspopup="menu">${icon(P.recast)}${count(c.reactions?.recasts_count)}</button></span>` +
       `<button class="act lk" aria-label="Like">${icon(P.like)}${count(c.reactions?.likes_count)}</button><button class="act" aria-label="Share">${icon(P.share)}</button>` +
