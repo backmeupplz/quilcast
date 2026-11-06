@@ -1,0 +1,4 @@
+# Check every file out exactly as committed: no line-ending conversion, even with
+# core.autocrlf=true (Git for Windows' default). public/ is copied into dist/ as it is,
+# so converted line endings would change the build and fail "Verify this build".
+* -text

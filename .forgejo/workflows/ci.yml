@@ -9,6 +9,10 @@ on:
     branches: [main]
     paths-ignore: ['android/**', 'ios/**', 'contracts/**', '.forgejo/workflows/contracts.yml', 'fastlane/**', 'appstore/**', '.github/scripts/**', '.forgejo/workflows/android.yml', '.forgejo/workflows/ios.yml', '.forgejo/workflows/release.yml', '.forgejo/workflows/store.yml', 'scripts/store-copy.mjs', '*.md']
 
+# read here; only the publish job, which runs on pushes to main alone, asks for write
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -49,20 +53,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-      # A Mac runner keeps one install per lockfile (less its version, like the Dockerfile) and Node ABI in its tool
-      # cache, linked in rather than copied (it's 33k files); Linux installs
+      # A Mac runner links in its cached install, Linux installs (scripts/ci-install.sh)
       - name: npm ci
-        run: |
-          if [ "$RUNNER_OS" != macOS ]; then exec npm ci --prefer-offline --no-audit --no-fund; fi
-          key=$(node -p 'const j = require("./package-lock.json"); delete j.version; delete j.packages[""].version; require("crypto").createHash("sha256").update(JSON.stringify(j)).digest("hex").slice(0, 16) + "-" + process.versions.modules')
-          c="$RUNNER_TOOL_CACHE/quilcast-modules"
-          if [ ! -d "$c/$key" ]; then
-            npm ci --prefer-offline --no-audit --no-fund
-            rm -rf "$c/$key.tmp" && mkdir -p "$c/$key.tmp" && mv node_modules "$c/$key.tmp/" && mv "$c/$key.tmp" "$c/$key"
-          fi
-          touch "$c/$key" && ln -s "$c/$key/node_modules" node_modules
-          # installs no run has used for a week go
-          find "$c" -mindepth 1 -maxdepth 1 -mtime +7 -exec rm -rf {} +
+        run: sh scripts/ci-install.sh
       # WebKit, Safari's engine, for e2e/; the install is a no-op once the runner has this Playwright's WebKit
       - run: npx playwright install ${{ runner.os == 'Linux' && '--with-deps ' || '' }}webkit
       # Same order as the Dockerfile: the server tests serve dist/
@@ -75,3 +68,38 @@ jobs:
           npm test -- e2e/*.test.mjs
           wait $tsc
           wait $i18n
+
+  # The build's hashes (dist/build.json) go to the `builds` branch, which the mirror copies to GitHub, for
+  # scripts/verify.mjs (README "Verify this build"). A job of its own, so that only a push to main, whose code is already
+  # in main, runs with write access; PR runs never do. After the checks but whether they pass or not, as Tugport's
+  # deploy doesn't wait for CI. It builds again, which gives the same bytes (the build is reproducible)
+  publish:
+    needs: check
+    if: ${{ !cancelled() && github.event_name == 'push' }}
+    runs-on: macos-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        env:
+          SHA: ${{ github.sha }}
+          URL: ${{ github.server_url }}/${{ github.repository }}
+          TOKEN: ${{ github.token }}
+        run: |
+          m="$RUNNER_TOOL_CACHE/quilcast.git"
+          [ -d "$m" ] || git init -q --bare "$m"
+          git -C "$m" -c http.extraHeader="Authorization: basic $(printf 'x-access-token:%s' "$TOKEN" | base64)" fetch -q --no-tags "$URL" "+${SHA}:refs/ci/head"
+          find . -mindepth 1 -delete
+          git init -q . && echo "$m/objects" > .git/objects/info/alternates
+          git sparse-checkout set --no-cone '/*' '!/appstore/' '!/fastlane/'
+          git -c advice.detachedHead=false checkout -q --detach "$SHA"
+      - name: npm ci
+        run: sh scripts/ci-install.sh
+      - run: npm run build
+      - name: Publish the build's hashes
+        env:
+          SHA: ${{ github.sha }}
+          URL: ${{ github.server_url }}/${{ github.repository }}
+          TOKEN: ${{ github.token }}
+        run: sh scripts/publish-build.sh

@@ -1005,7 +1005,9 @@ async function send(req, res, code, headers, body, memo) {
 createServer(async (req, res) => {
   for (const [k, v] of Object.entries(SECURITY)) res.setHeader(k, v)
   // no-transform: Cloudflare leaves the page as we sent it (no analytics beacon or other rewriting)
-  const html = (body, memo) => send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform' }, Buffer.from(body), memo)
+  // with no control characters, which no page needs (they're HTML parse errors): an ESC from a cast's text would fail
+  // scripts/verify.mjs, which takes one as a sign of another encoding
+  const html = (body, memo) => send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform' }, Buffer.from(String(body).replace(/[\0-\x08\x0b\x0e-\x1f\x7f]/g, '')), memo)
   const json = (code, body, cache = 'no-store') => send(req, res, code, { 'content-type': 'application/json', 'cache-control': cache }, Buffer.from(JSON.stringify(body)))
   // every other page is the app as is, its embed opening that page
   const app = () => (path === '/' || !path ? html(index, 'index.html') : html(launchAt(index, path)))
@@ -1512,7 +1514,8 @@ createServer(async (req, res) => {
       const body = await (files.get(file) || keep(files, 300, file, read)).catch(() => null)
       if (!body) return res.writeHead(404).end()
       // no-transform on pages: Cloudflare leaves them as we sent them (no analytics beacon, which the CSP would block anyway)
-      const cache = path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : page ? 'public, max-age=3600, no-transform' : 'public, max-age=3600'
+      // /build.json names the build the pages load, so it has to change with them, never an hour late (verify.mjs)
+      const cache = path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : page ? 'public, max-age=3600, no-transform' : path === '/build.json' ? 'no-cache' : 'public, max-age=3600'
       return send(req, res, 200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': cache }, body, file)
     }
     return app()

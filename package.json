@@ -2,8 +2,8 @@
   "name": "quilcast",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "test": "node --test src/*.test.ts server/*.test.mjs",
+    "build": "vite build && node scripts/manifest.mjs",
+    "test": "node --test src/*.test.ts server/*.test.mjs scripts/*.test.mjs",
     "i18n": "node scripts/i18n-keys.mjs --check",
     "start": "node server/index.mjs",
     "test:e2e": "node --test e2e/*.test.mjs"
@@ -32,5 +32,5 @@
     "viem": "2.57.3",
     "vite": "8.3.4"
   },
-  "version": "0.72.0"
+  "version": "0.73.0"
 }

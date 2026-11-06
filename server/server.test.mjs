@@ -9,12 +9,14 @@ import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
 import { createServer, request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { inflateSync } from 'node:zlib'
 import { after, before, test } from 'node:test'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { address, ecSign } from '../src/fc.ts'
+import { verify } from '../scripts/verify.mjs'
 
 const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(srv.address().port)))
 let internalHits = 0
@@ -102,7 +104,7 @@ const node = createServer(async (q, r) => {
     return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: evil, timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: `http://127.0.0.1:${internalPort}/a.png` }], author: { fid: 1, username: 'x', display_name: evil, pfp_url: `http://127.0.0.1:${internalPort}/pfp.png` }, reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } }))
   // the signed-out home page's feed: a cast, a reply (left out) and a farcaster.xyz Space (left out)
   if (u.pathname === '/v2/farcaster/feed/trending') return r.end(JSON.stringify({ casts: [
-    { hash: '0x' + 'a1'.repeat(20), text: evil + ' see quilcast.com', timestamp: '2026-01-02T00:00:00Z', embeds: [], author: { fid: 2, username: 'ann', display_name: evil, custody_address: '0x' + '22'.repeat(20) }, reactions: { likes_count: 1200, recasts_count: 0 }, replies: { count: 3 } },
+    { hash: '0x' + 'a1'.repeat(20), text: evil + ' see quilcast.com <meta http-equiv="refresh" content="0"> \x1b$B', timestamp: '2026-01-02T00:00:00Z', embeds: [], author: { fid: 2, username: 'ann', display_name: evil, custody_address: '0x' + '22'.repeat(20) }, reactions: { likes_count: 1200, recasts_count: 0 }, replies: { count: 3 } },
     { hash: '0x' + 'a2'.repeat(20), parent_hash: '0x' + 'a1'.repeat(20), text: 'a trending reply', timestamp: '2026-01-02T00:00:00Z', embeds: [], author: { fid: 3, username: 'bob' }, reactions: {}, replies: {} },
     { hash: '0x' + 'a3'.repeat(20), text: 'join my space', timestamp: '2026-01-02T00:00:00Z', embeds: [{ url: 'https://farcaster.xyz/~/spaces/abc' }], author: { fid: 4, username: 'cat' }, reactions: {}, replies: {} },
   ] }))
@@ -253,6 +255,17 @@ test('the home page arrives with the signed-out feed drawn in, its style and scr
   assert.ok(!/<link rel="stylesheet"/.test(html) && csp.includes(hash(css)))
   // every inline script (the head's account check, the folds' "Show more") is allowed by its hash
   for (const [, js] of html.matchAll(/<script>([^<]*)<\/script>/g)) assert.ok(csp.includes(hash(js)), js.slice(0, 40))
+})
+
+test('scripts/verify.mjs finds the server serving exactly its build: every file, and only its scripts on the home page (folds and all), an app page and About', async () => {
+  const home = await (await fetch(base + '/')).text()
+  assert.match(home, /<script>\(function\(s\)/)
+  // a cast's text may say "http-equiv" and hold an ESC: the page drops the ESC, and the text is no <meta> (#476 review)
+  assert.ok(home.includes('&#60;meta http-equiv=') && !home.includes('\x1b'))
+  // never an hour-old /build.json, as it names the build the pages load
+  assert.equal((await fetch(base + '/build.json')).headers.get('cache-control'), 'no-cache')
+  const v = await verify({ site: base, dist: fileURLToPath(new URL('../dist/', import.meta.url)) })
+  assert.deepEqual(v.problems, [])
 })
 
 test('casts are mini app embeds with a 3:2 card', async () => {
