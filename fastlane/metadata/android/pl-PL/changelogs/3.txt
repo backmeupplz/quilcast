@@ -1,0 +1,1 @@
+Dołączanie zdjęć i filmów do castu działa teraz niezawodniej: wszystko, co wybierzesz, się pojawia, niezależnie od tego, czy wybierasz jeden plik, czy kilka naraz.

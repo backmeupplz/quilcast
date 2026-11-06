@@ -1,0 +1,1 @@
+Att bifoga foton och videor till en cast fungerar nu mer pålitligt: allt du väljer visas, oavsett om du väljer en eller flera på en gång.

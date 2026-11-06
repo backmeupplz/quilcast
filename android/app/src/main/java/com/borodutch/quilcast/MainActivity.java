@@ -46,6 +46,7 @@ public class MainActivity extends Activity {
     WebView web;
     FrameLayout root;
     ValueCallback<Uri[]> pickFiles;
+    boolean pickMultiple;
     PermissionRequest askMedia;
     View fullscreen;
 
@@ -105,8 +106,9 @@ public class MainActivity extends Activity {
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (pickFiles != null) pickFiles.onReceiveValue(null);
                 pickFiles = callback;
+                pickMultiple = params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
                 try {
-                    startActivityForResult(params.createIntent(), FILES);
+                    startActivityForResult(Files.intent(params.getAcceptTypes(), pickMultiple), FILES);
                 } catch (ActivityNotFoundException e) {
                     pickFiles = null;
                     return false;
@@ -196,7 +198,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int request, int result, Intent data) {
         if (request != FILES || pickFiles == null) return;
-        pickFiles.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result, data));
+        pickFiles.onReceiveValue(Files.picked(result, data, pickMultiple));
         pickFiles = null;
     }
 
