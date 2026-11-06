@@ -194,8 +194,11 @@ export async function post(text: string, o: { parent?: CastRef; channel?: string
   const embeds = castEmbeds(m.text, o.media || [], o.quote)
   const as = o.as || account!
   const hash = await send(MT.CAST_ADD, castBody({ ...m, parent: o.parent || o.channel, embeds }), as)
+  // shown as the node will serve it: the text without its mentions, which go back in at their places (castText), so its
+  // tags are the ones Hypersnap indexes (ui.tsx RichText)
   const c: Cast = {
-    hash, text, timestamp: new Date().toISOString(), author: idOf(as) === idOf(account!) ? myUser()! : users.get(as.fid!) || { fid: as.fid!, username: as.username },
+    hash, text: m.text, mentioned_profiles: m.mentions.map((fid, i) => users.get(fid) || { fid, username: m.names[i] }),
+    mentioned_profiles_ranges: m.positions.map((at) => ({ start: at, end: at })), timestamp: new Date().toISOString(), author: idOf(as) === idOf(account!) ? myUser()! : users.get(as.fid!) || { fid: as.fid!, username: as.username },
     parent_hash: o.parent?.hash ?? null, parent_url: o.channel ?? null, parent_author: { fid: o.parent?.fid ?? null },
     embeds: embeds.map((e) => (typeof e === 'string' ? { url: e } : { cast_id: e })),
     reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 },

@@ -370,6 +370,10 @@ test('#hashtags link to the tag\'s casts, matching what Hypersnap indexes as a t
   assert.equal(md(text), want)
   // counted over the whole cast, across paragraphs, quotes and lists
   assert.equal(md(`${many.slice(0, 31).join(' ')}\n\n> #t31\n\n- #t32`), `${many.slice(0, 31).map(tag).join(' ')}<blockquote>${tag('#t31')}</blockquote><ul><li>#t32</li></ul>`)
+  // text shown in place of the cast's own (a translation) links only the tags the cast's text has
+  const { taggable } = await import('./shared.ts')
+  assert.equal(md('おはよう #gmみんな #GM', taggable('gm #gm frens')), `おはよう #gmみんな ${tag('#GM')}`)
+  assert.equal(linkify('#gmみんな #gm', taggable('#gm')), `#gmみんな ${tag('#gm')}`)
   // a link's label holds no other link
   assert.equal(md('[#gm @dwr /base](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow">#gm @dwr /base</a>')
   assert.equal(md('[**#gm**](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow"><strong>#gm</strong></a>')
