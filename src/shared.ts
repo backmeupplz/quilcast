@@ -743,7 +743,12 @@ const INLINE = new RegExp([
  *  through our /api/img (server/index.mjs), so the picture's host never sees who is reading. */
 export const pictureSrc = (u: string) => (/^https:\/\/(imagedelivery\.net|quilcast\.com\/m)\//.test(u) ? u : `/api/img?u=${encodeURIComponent(u)}`)
 
-function inline(s: string): string {
+// a "#" right after one of these is no hashtag to Hypersnap (HASHTAG's lookbehind), also across emphasis: "_#gm_" isn't one
+const NOT_BEFORE_TAG = /[\p{Alphabetic}\p{N}_/&#]$/u
+
+/** Inline Markdown as HTML. `before` is the source character just before `s` (a delimiter of the emphasis around it), and
+ *  `links` false keeps mentions, channels, tags and bare links as text, inside a [label](url) that is a link already. */
+function inline(s: string, before = '', links = true): string {
   let out = ''
   let at = 0
   // matchAll works on a copy of INLINE, so the calls inside don't move this one along
@@ -758,11 +763,14 @@ function inline(s: string): string {
     } else if (g.label !== undefined) {
       const u = safeUrl(bare(g.href))
       // its text can say anything, so the app shows where it really goes before opening it (ui.tsx LinkSheet)
-      out += u ? ext(u, inline(g.label), 'md-link') : inline(g.label)
-    } else if (g.token !== undefined) out += linkify(g.token)
-    else if ((g.bold ?? g.bold2) !== undefined) out += `<strong>${inline(g.bold ?? g.bold2)}</strong>`
-    else if (g.strike !== undefined) out += `<s>${inline(g.strike)}</s>`
-    else out += `<em>${inline(g.em ?? g.em2)}</em>`
+      // a link can't hold another, so a label's tags and mentions stay text
+      out += u ? ext(u, inline(g.label, '[', false), 'md-link') : inline(g.label, '[', links)
+    } else if (g.token !== undefined) out += links && !(g.token[0] === '#' && NOT_BEFORE_TAG.test(m.index ? s.slice(Math.max(0, m.index - 2), m.index) : before)) ? linkify(g.token) : html(g.token)
+    else if (g.bold !== undefined) out += `<strong>${inline(g.bold, '*', links)}</strong>`
+    else if (g.bold2 !== undefined) out += `<strong>${inline(g.bold2, '_', links)}</strong>`
+    else if (g.strike !== undefined) out += `<s>${inline(g.strike, '~', links)}</s>`
+    else if (g.em !== undefined) out += `<em>${inline(g.em, '*', links)}</em>`
+    else out += `<em>${inline(g.em2, '_', links)}</em>`
   }
   return out + html(s.slice(at))
 }

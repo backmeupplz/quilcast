@@ -334,5 +334,11 @@ test('#hashtags link to the tag\'s casts, matching what Hypersnap indexes as a t
   assert.equal(linkify('/base #gm'), `<a class="chan-ref" href="/channel/base">/base</a> ${tag('#gm')}`)
   // emphasis around a tag keeps it a tag
   assert.equal(md('**#gm**'), `<strong>${tag('#gm')}</strong>`)
+  // but not after "_", which Hypersnap doesn't index as one
+  assert.equal(md('a _#gm_ b __#gm__'), 'a <em>#gm</em> b <strong>#gm</strong>')
+  assert.equal(md('_x #gm_'), `<em>x ${tag('#gm')}</em>`)
+  // a link's label holds no other link
+  assert.equal(md('[#gm @dwr /base](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow">#gm @dwr /base</a>')
+  assert.equal(md('[**#gm**](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow"><strong>#gm</strong></a>')
   assert.ok(hasTag('#gm') && hasTag('gm #farcaster') && !hasTag('gm') && !hasTag('#1') && !hasTag('a#b'))
 })
