@@ -688,8 +688,17 @@ export function mentionTries(name: string) {
   }
 }
 
-// links, @mentions and /channels inside cast text; a mention shows as the longest name it can be, without a sentence's "."
-export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@${MENTION_NAME}(?<!\\.)|(?<![\\w/:])\\/[a-zA-Z0-9-]{2,}(?![\\w/]))`, 'gu')
+/** A "#hashtag" as Hypersnap indexes it (PR #59, search.rs hashtag_spans), so every tag a cast shows finds that cast: a
+ *  letter, then letters, digits and "_", not right after a letter, digit, "_", "/", "&" or "#" (so no "a#b", URL fragment,
+ *  "&#39;" or "##"). */
+export const HASHTAG = '(?<![\\p{Alphabetic}\\p{N}_/&#])#\\p{Alphabetic}[\\p{Alphabetic}\\p{N}_]*'
+/** Search's casts tab for a hashtag: the tag's casts, newest first (app.tsx Search). */
+export const tagPath = (tag: string) => `/search?${new URLSearchParams({ q: tag.toLowerCase(), t: 'casts' })}`
+/** Whether a search has a hashtag in it, so it lists the newest casts first instead of the best matches. */
+export const hasTag = (q: string) => new RegExp(HASHTAG, 'u').test(q)
+
+// links, @mentions, /channels and #hashtags inside cast text; a mention shows as the longest name it can be, without a sentence's "."
+export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@${MENTION_NAME}(?<!\\.)|(?<![\\w/:])\\/[a-zA-Z0-9-]{2,}(?![\\w/])|${HASHTAG})`, 'gu')
 /** A link's page as people read it (its decoded path), for the link card of a site that won't tell us its title. */
 export const pathOf = (u: string) => {
   try {
@@ -704,12 +713,13 @@ export const shortUrl = (s: string) => ((s = s.replace(/^https?:\/\/(www\.)?/, '
 const bare = (s: string) => s.replaceAll(MENTION_END, '')
 const html = (s: string) => bare(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const ext = (u: string, label: string, cls = '') => `<a${cls && ` class="${cls}"`} href="${html(u)}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
-/** Plain text with its links, @mentions and /channels made live, as HTML. */
+/** Plain text with its links, @mentions, /channels and #hashtags made live, as HTML. */
 export const linkify = (text: string) =>
   text.split(TOKENS).map((p, i) => {
     if (i % 2 === 0) return html(p)
     if (p[0] === '@') return `<a href="/u/${html(p.slice(1))}">${html(p)}</a>`
     if (p[0] === '/') return `<a class="chan-ref" href="/channel/${html(p.slice(1).toLowerCase())}">${html(p)}</a>`
+    if (p[0] === '#') return `<a class="tag-ref" href="${html(tagPath(p))}">${html(p)}</a>`
     // a mention castText put back inside a link (another client's ranges) leaves the link as it was
     const u = safeUrl(toUrl(bare(p)))
     return u ? ext(u, html(shortUrl(p))) : html(p)

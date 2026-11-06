@@ -182,7 +182,8 @@ test('a Markdown picture is not an embed too', async () => {
 
 test('blocks', () => {
   assert.equal(md('# Title\ntext\n## Sub #'), '<h1>Title</h1>text<h2>Sub</h2>')
-  assert.equal(md('#hashtag'), '#hashtag')
+  // a hashtag is not a heading
+  assert.equal(md('#hashtag'), '<a class="tag-ref" href="/search?q=%23hashtag&#38;t=casts">#hashtag</a>')
   assert.equal(md('a\n\n```js\nif (a < b) **x**\n```\nb'), 'a<pre><code>if (a &#60; b) **x**</code></pre>b')
   assert.equal(md('> quoted **x**\n> more\nafter'), '<blockquote>quoted <strong>x</strong>\nmore</blockquote>after')
   assert.equal(md('a\n---\nb'), 'a<hr>b')
@@ -317,4 +318,21 @@ test('the table button puts a table on lines of its own, its first heading selec
   const [t2, c, d] = format('Name rest', 0, 4, { table: 'Column' })
   assert.equal(t2, '| Name | Column |\n| --- | --- |\n|  |  |\n rest')
   assert.equal(t2.slice(c, d), 'Name')
+})
+
+test('#hashtags link to the tag\'s casts, matching what Hypersnap indexes as a tag', async () => {
+  const { hasTag } = await import('./shared.ts')
+  const tag = (s: string) => `<a class="tag-ref" href="/search?q=%23${encodeURIComponent(s.slice(1).toLowerCase())}&#38;t=casts">${s}</a>`
+  for (const out of [linkify('#Farcaster is #fun_2 (#gm) #gm'), md('#Farcaster is #fun_2 (#gm) #gm')])
+    assert.equal(out, `${tag('#Farcaster')} is ${tag('#fun_2')} (${tag('#gm')}) ${tag('#gm')}`)
+  assert.equal(linkify('#日本 #café.'), `${tag('#日本')} ${tag('#café')}.`)
+  // not tags: numbers, mid-word, entities, ##, a lone # and a heading
+  for (const s of ['#1', 'a#b', 'é#b', '_#b', '&#39;', '## x', '##b', '#', '# Title']) assert.ok(!linkify(s).includes('tag-ref'), s)
+  assert.match(md('# Title'), /^<h1>/)
+  // a URL's fragment stays in its link, and a tag right after a mention or channel is its own
+  assert.ok(!linkify('see x.com/#top').includes('tag-ref'))
+  assert.equal(linkify('/base #gm'), `<a class="chan-ref" href="/channel/base">/base</a> ${tag('#gm')}`)
+  // emphasis around a tag keeps it a tag
+  assert.equal(md('**#gm**'), `<strong>${tag('#gm')}</strong>`)
+  assert.ok(hasTag('#gm') && hasTag('gm #farcaster') && !hasTag('gm') && !hasTag('#1') && !hasTag('a#b'))
 })

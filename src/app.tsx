@@ -5,7 +5,7 @@ import { account, accounts, amFollowing, isMe, askUser, findUsers, follow, follo
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
+import { castText, hasTag, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, pushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
@@ -932,6 +932,19 @@ function Search() {
   const [term, setTerm] = useState(q.trim())
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => input.current?.focus(), [])
+  // a #hashtag tapped in a cast here, or Back to an earlier search, is still this page: it takes the search from the URL
+  useEffect(() => {
+    const f = () => {
+      if (location.pathname !== '/search') return
+      const p = new URLSearchParams(location.search)
+      const q = p.get('q') || '', tb = p.get('t')
+      setQ(q)
+      setTerm(q.trim())
+      setTab(tb === 'casts' ? 'casts' : tb === 'channels' ? 'channels' : 'people')
+    }
+    addEventListener('popstate', f)
+    return () => removeEventListener('popstate', f)
+  }, [])
   useEffect(() => {
     const t = setTimeout(() => setTerm(q.trim()), 300)
     return () => clearTimeout(t)
@@ -954,7 +967,7 @@ function Search() {
       {tab === 'channels' && <ChannelList q={term} />}
       {!term && tab === 'people' && <Customized />}
       {term && tab === 'people' && (people === null ? <div class="spinner" /> : people.length ? people.map((u) => <UserRow u={u} />) : <div class="note">{t('No one matches “{term}”.', { term })}</div>)}
-      {term && tab === 'casts' && <Feed k={`s${term}`} empty={t('No casts match “{term}”.', { term })} load={(cursor) => get('/v2/farcaster/cast/search', { q: term, limit: 25, cursor }).then((r) => r.result || r)} />}
+      {term && tab === 'casts' && <Feed k={`s${term}`} empty={t('No casts match “{term}”.', { term })} load={(cursor) => get('/v2/farcaster/cast/search', { q: term, limit: 25, cursor, ...(hasTag(term) && { sort_type: 'desc_chronological' }) }).then((r) => r.result || r)} />}
     </>
   )
 }
