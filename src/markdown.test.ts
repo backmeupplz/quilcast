@@ -336,7 +336,22 @@ test('#hashtags link to the tag\'s casts, matching what Hypersnap indexes as a t
   assert.equal(md('**#gm**'), `<strong>${tag('#gm')}</strong>`)
   // but not after "_", which Hypersnap doesn't index as one
   assert.equal(md('a _#gm_ b __#gm__'), 'a <em>#gm</em> b <strong>#gm</strong>')
-  assert.equal(md('_x #gm_'), `<em>x ${tag('#gm')}</em>`)
+  // nor right before a closing "_", where Hypersnap's tag runs on into it ("gm_")
+  assert.equal(md('_hello #gm_'), '<em>hello #gm</em>')
+  assert.equal(md('__bold #gm__'), '<strong>bold #gm</strong>')
+  assert.equal(md('_#gm_ _x #gm_'), '<em>#gm</em> <em>x #gm</em>')
+  assert.equal(md('_#gm x_'), '<em>#gm x</em>')
+  assert.equal(md('_x #gm y_'), `<em>x ${tag('#gm')} y</em>`)
+  assert.equal(md('**x #gm**'), `<strong>x ${tag('#gm')}</strong>`)
+  assert.equal(md('**_x #gm_**'), '<strong><em>x #gm</em></strong>')
+  assert.equal(md('_x **#gm**_'), `<em>x <strong>${tag('#gm')}</strong></em>`)
+  // Hypersnap indexes tags of up to 64 characters only
+  const t64 = '#' + 'a'.repeat(64), t65 = '#' + 'a'.repeat(65)
+  for (const f of [linkify, md]) {
+    assert.equal(f(t64), tag(t64))
+    assert.equal(f(t65), t65)
+    assert.equal(f(`x ${t65} #gm`), `x ${t65} ${tag('#gm')}`)
+  }
   // a link's label holds no other link
   assert.equal(md('[#gm @dwr /base](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow">#gm @dwr /base</a>')
   assert.equal(md('[**#gm**](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow"><strong>#gm</strong></a>')

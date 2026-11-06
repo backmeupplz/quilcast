@@ -692,6 +692,8 @@ export function mentionTries(name: string) {
  *  letter, then letters, digits and "_", not right after a letter, digit, "_", "/", "&" or "#" (so no "a#b", URL fragment,
  *  "&#39;" or "##"). */
 export const HASHTAG = '(?<![\\p{Alphabetic}\\p{N}_/&#])#\\p{Alphabetic}[\\p{Alphabetic}\\p{N}_]*'
+/** Whether Hypersnap indexes this "#tag" (search.rs hashtags): only tags of up to 64 characters, lowercased, so a longer one finds nothing. */
+const indexed = (tag: string) => [...tag.slice(1).toLowerCase()].length <= 64
 /** Search's casts tab for a hashtag: the tag's casts, newest first (app.tsx Search). */
 export const tagPath = (tag: string) => `/search?${new URLSearchParams({ q: tag.toLowerCase(), t: 'casts' })}`
 /** Whether a search has a hashtag in it, so it lists the newest casts first instead of the best matches. */
@@ -719,7 +721,7 @@ export const linkify = (text: string) =>
     if (i % 2 === 0) return html(p)
     if (p[0] === '@') return `<a href="/u/${html(p.slice(1))}">${html(p)}</a>`
     if (p[0] === '/') return `<a class="chan-ref" href="/channel/${html(p.slice(1).toLowerCase())}">${html(p)}</a>`
-    if (p[0] === '#') return `<a class="tag-ref" href="${html(tagPath(p))}">${html(p)}</a>`
+    if (p[0] === '#') return indexed(p) ? `<a class="tag-ref" href="${html(tagPath(p))}">${html(p)}</a>` : html(p)
     // a mention castText put back inside a link (another client's ranges) leaves the link as it was
     const u = safeUrl(toUrl(bare(p)))
     return u ? ext(u, html(shortUrl(p))) : html(p)
@@ -745,10 +747,13 @@ export const pictureSrc = (u: string) => (/^https:\/\/(imagedelivery\.net|quilca
 
 // a "#" right after one of these is no hashtag to Hypersnap (HASHTAG's lookbehind), also across emphasis: "_#gm_" isn't one
 const NOT_BEFORE_TAG = /[\p{Alphabetic}\p{N}_/&#]$/u
+// and a tag runs on through these, also across emphasis: in "_x #gm_" Hypersnap's tag is "gm_", which "#gm" wouldn't find
+const TAG_GOES_ON = /^[\p{Alphabetic}\p{N}_]/u
 
-/** Inline Markdown as HTML. `before` is the source character just before `s` (a delimiter of the emphasis around it), and
- *  `links` false keeps mentions, channels, tags and bare links as text, inside a [label](url) that is a link already. */
-function inline(s: string, before = '', links = true): string {
+/** Inline Markdown as HTML. `before` and `after` are the source characters just before and after `s` (the delimiters of the
+ *  emphasis around it), and `links` false keeps mentions, channels, tags and bare links as text, inside a [label](url) that is
+ *  a link already. */
+function inline(s: string, before = '', links = true, after = ''): string {
   let out = ''
   let at = 0
   // matchAll works on a copy of INLINE, so the calls inside don't move this one along
@@ -764,13 +769,15 @@ function inline(s: string, before = '', links = true): string {
       const u = safeUrl(bare(g.href))
       // its text can say anything, so the app shows where it really goes before opening it (ui.tsx LinkSheet)
       // a link can't hold another, so a label's tags and mentions stay text
-      out += u ? ext(u, inline(g.label, '[', false), 'md-link') : inline(g.label, '[', links)
-    } else if (g.token !== undefined) out += links && !(g.token[0] === '#' && NOT_BEFORE_TAG.test(m.index ? s.slice(Math.max(0, m.index - 2), m.index) : before)) ? linkify(g.token) : html(g.token)
-    else if (g.bold !== undefined) out += `<strong>${inline(g.bold, '*', links)}</strong>`
-    else if (g.bold2 !== undefined) out += `<strong>${inline(g.bold2, '_', links)}</strong>`
-    else if (g.strike !== undefined) out += `<s>${inline(g.strike, '~', links)}</s>`
-    else if (g.em !== undefined) out += `<em>${inline(g.em, '*', links)}</em>`
-    else out += `<em>${inline(g.em2, '_', links)}</em>`
+      out += u ? ext(u, inline(g.label, '[', false, ']'), 'md-link') : inline(g.label, '[', links, ']')
+    } else if (g.token !== undefined) {
+      const notTag = g.token[0] === '#' && (NOT_BEFORE_TAG.test(m.index ? s.slice(Math.max(0, m.index - 2), m.index) : before) || TAG_GOES_ON.test(at < s.length ? s.slice(at, at + 2) : after))
+      out += links && !notTag ? linkify(g.token) : html(g.token)
+    } else if (g.bold !== undefined) out += `<strong>${inline(g.bold, '*', links, '*')}</strong>`
+    else if (g.bold2 !== undefined) out += `<strong>${inline(g.bold2, '_', links, '_')}</strong>`
+    else if (g.strike !== undefined) out += `<s>${inline(g.strike, '~', links, '~')}</s>`
+    else if (g.em !== undefined) out += `<em>${inline(g.em, '*', links, '*')}</em>`
+    else out += `<em>${inline(g.em2, '_', links, '_')}</em>`
   }
   return out + html(s.slice(at))
 }
