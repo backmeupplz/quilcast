@@ -1,6 +1,8 @@
 # Quilcast
 
-A small Farcaster client that runs in the browser and talks straight to the [Hypersnap](https://hypersnap.org) network that Quilibrium runs. Reads hit the public node's HTTP API, writes are protobuf messages signed in the browser and posted to `/v1/submitMessage`, and keys live in the browser's IndexedDB, never in `localStorage`. The only server is a tiny static host that also gives shared links proper previews.
+Quilcast is an open-source Farcaster client that runs in the browser, with apps for iPhone and Android. It talks straight to [Hypersnap](https://hypersnap.org), the Farcaster network that Quilibrium runs, rather than through a hosted API, and your signing keys stay in your own browser.
+
+Reads hit the public node's HTTP API, writes are protobuf messages signed in the browser and posted to `/v1/submitMessage`, and keys live in the browser's IndexedDB, never in `localStorage`. The only server is a tiny static host that also gives shared links proper previews.
 
 Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App Store) and Android (Google Play, F-Droid, or the APK from the [latest release](https://github.com/backmeupplz/quilcast/releases/latest/download/quilcast.apk)).
 
@@ -37,6 +39,26 @@ Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App 
 
 - Channels: a Channels page (and a Channels tab in Search) lists farcaster.xyz's channels by followers, with search; a channel's page shows its picture, description, followers and members and its casts, newest first. Casts go under each channel's real parent URL (the oldest channels, like /memes and /base, aren't `…/~/channel/<id>`), and the composer warns before casting into a members-only channel you're not in. The directory comes from farcaster.xyz through the server (`server/channels.mjs`, kept an hour)
 - RSS feeds: every account with a name has one at `/u/<name>/rss` (its casts, newest first; `?replies=1` adds its replies), and every channel at `/channel/<id>/rss`, under the channel's real parent URL. Profile and channel pages advertise them with `<link rel="alternate">`, so pasting a profile link into a reader finds the feed, and a profile's ⋮ menu has Copy RSS link. Each item links to the cast's page here and carries its text as the app draws it, with its pictures and links (`server/feed.mjs`). Feeds are built on the server and kept ten minutes, and readers that miss that cache share the profile pages' per-address limit; taken-down and nameless accounts have none
+
+## How it compares
+
+Compared as of November 2026, from each project's own site or repository:
+
+- **The Farcaster app** (farcaster.xyz, formerly Warpcast) is the official client, on the web, iPhone and Android, and it is closed source. Direct casts and Spaces aren't part of the Farcaster protocol, so Quilcast reaches them through farcaster.xyz's own servers, and Spaces only let in accounts that farcaster.xyz has a key for.
+- **[Herocast](https://github.com/hellno/herocast)** is also open source (AGPL-3.0) and runs in the browser. It is built as a power-user tool for people who run several accounts. Quilcast is MIT-licensed, aims at everyday reading and posting, and adds mini apps, a wallet and MySpace-style profile looks.
+- **[Recaster](https://recaster.org)** offers scheduled casts, lists and bookmark folders. Quilcast has none of those yet.
+
+Quilcast is a small project by one developer, and it depends on the Hypersnap node it reads from (`haatz.quilibrium.com` by default, changeable in Settings). Because Hypersnap doesn't report recasts in notifications, Quilcast only finds recasts of your 25 newest casts.
+
+## FAQ
+
+**Is there an open-source Farcaster client that runs in the browser?** Yes: Quilcast runs at [quilcast.com](https://quilcast.com) with nothing to install, and this repository is its full source under the MIT license. Herocast is another one.
+
+**Do I need the official app to use it?** No. You can create a new Farcaster account inside Quilcast (it costs about $0.20 of ETH on Optimism), sign in with the recovery phrase of an existing account, or connect an Ethereum wallet that holds one.
+
+**How do I know quilcast.com runs this code?** Every build's file hashes are published, and `scripts/verify.mjs` compares the live site with them. See [Verify this build](#verify-this-build).
+
+**Can I run my own copy?** Yes. `npm run build && npm start` serves the whole app from your own machine, and it still talks to Hypersnap directly.
 
 ## How it fits together
 
