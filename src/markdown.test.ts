@@ -352,6 +352,24 @@ test('#hashtags link to the tag\'s casts, matching what Hypersnap indexes as a t
     assert.equal(f(t65), t65)
     assert.equal(f(`x ${t65} #gm`), `x ${t65} ${tag('#gm')}`)
   }
+  // a link that starts right after the "#", or inside the tag, stays the link it was before tags were links
+  const link = (u: string, label: string) => `<a href="${u}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
+  for (const f of [linkify, md]) {
+    assert.equal(f('#base.org'), `#${link('https://base.org/', 'base.org')}`)
+    assert.equal(f('#https://x.com/a'), `#${link('https://x.com/a', 'x.com/a')}`)
+    assert.equal(f('#gm__https://a.com/p'), `#gm__${link('https://a.com/p', 'a.com/p')}`)
+    // and a sentence's punctuation after a tag doesn't stop it being one
+    assert.equal(f('see #gm.'), `see ${tag('#gm')}.`)
+    assert.equal(f('#gm, ok #gm!'), `${tag('#gm')}, ok ${tag('#gm')}!`)
+  }
+  // Hypersnap indexes a cast's first 32 distinct tags (of up to 64 characters), so later ones stay text
+  const many = Array.from({ length: 33 }, (_, i) => `#t${i}`)
+  const text = `${t65} ${many.join(' ')} #T0 #t31`
+  const want = `${t65} ${many.slice(0, 32).map(tag).join(' ')} #t32 ${tag('#T0')} ${tag('#t31')}`
+  assert.equal(linkify(text), want)
+  assert.equal(md(text), want)
+  // counted over the whole cast, across paragraphs, quotes and lists
+  assert.equal(md(`${many.slice(0, 31).join(' ')}\n\n> #t31\n\n- #t32`), `${many.slice(0, 31).map(tag).join(' ')}<blockquote>${tag('#t31')}</blockquote><ul><li>#t32</li></ul>`)
   // a link's label holds no other link
   assert.equal(md('[#gm @dwr /base](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow">#gm @dwr /base</a>')
   assert.equal(md('[**#gm**](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow"><strong>#gm</strong></a>')

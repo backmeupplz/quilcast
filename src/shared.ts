@@ -688,19 +688,31 @@ export function mentionTries(name: string) {
   }
 }
 
-/** A "#hashtag" as Hypersnap indexes it (PR #59, search.rs hashtag_spans), so every tag a cast shows finds that cast: a
- *  letter, then letters, digits and "_", not right after a letter, digit, "_", "/", "&" or "#" (so no "a#b", URL fragment,
- *  "&#39;" or "##"). */
+/** A "#hashtag" as Hypersnap reads it (PR #59, search.rs hashtag_spans): a letter, then letters, digits and "_", not right
+ *  after a letter, digit, "_", "/", "&" or "#" (so no "a#b", URL fragment, "&#39;" or "##"). */
 export const HASHTAG = '(?<![\\p{Alphabetic}\\p{N}_/&#])#\\p{Alphabetic}[\\p{Alphabetic}\\p{N}_]*'
-/** Whether Hypersnap indexes this "#tag" (search.rs hashtags): only tags of up to 64 characters, lowercased, so a longer one finds nothing. */
-const indexed = (tag: string) => [...tag.slice(1).toLowerCase()].length <= 64
+const TAG_CHAR = '[\\p{Alphabetic}\\p{N}_]'
+/** The tags of a cast's text that Hypersnap indexes (search.rs hashtags), lowercased: the first 32 distinct ones of up to
+ *  64 characters (counted lowercased), in text order. Only these are linked, so every tag a cast shows finds that cast. */
+export function taggable(text: string) {
+  const tags = new Set<string>()
+  for (const [t] of text.matchAll(new RegExp(HASHTAG, 'gu'))) {
+    const tag = t.toLowerCase()
+    if ([...tag].length <= 65) tags.add(tag)
+    if (tags.size === 32) break
+  }
+  return tags
+}
 /** Search's casts tab for a hashtag: the tag's casts, newest first (app.tsx Search). */
 export const tagPath = (tag: string) => `/search?${new URLSearchParams({ q: tag.toLowerCase(), t: 'casts' })}`
 /** Whether a search has a hashtag in it, so it lists the newest casts first instead of the best matches. */
 export const hasTag = (q: string) => new RegExp(HASHTAG, 'u').test(q)
 
-// links, @mentions, /channels and #hashtags inside cast text; a mention shows as the longest name it can be, without a sentence's "."
-export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@${MENTION_NAME}(?<!\\.)|(?<![\\w/:])\\/[a-zA-Z0-9-]{2,}(?![\\w/])|${HASHTAG})`, 'gu')
+// links, @mentions, /channels and #hashtags inside cast text; a mention shows as the longest name it can be, without a sentence's ".".
+// A tag is shown only whole and when it could be indexed (up to 64 characters), and gives way to a link that starts inside it,
+// so "#base.org" and "#gm__https://x.com" keep their links as before tags were links.
+const TAG_TOKEN = `(?<![\\p{Alphabetic}\\p{N}_/&#])#(?!${TAG_CHAR}{0,63}?(?=${TAG_CHAR})(?:${LINK_RE.source}))\\p{Alphabetic}${TAG_CHAR}{0,63}(?!${TAG_CHAR})`
+export const TOKENS = new RegExp(`(${LINK_RE.source}|(?<![\\w/])@${MENTION_NAME}(?<!\\.)|(?<![\\w/:])\\/[a-zA-Z0-9-]{2,}(?![\\w/])|${TAG_TOKEN})`, 'gu')
 /** A link's page as people read it (its decoded path), for the link card of a site that won't tell us its title. */
 export const pathOf = (u: string) => {
   try {
@@ -715,13 +727,14 @@ export const shortUrl = (s: string) => ((s = s.replace(/^https?:\/\/(www\.)?/, '
 const bare = (s: string) => s.replaceAll(MENTION_END, '')
 const html = (s: string) => bare(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const ext = (u: string, label: string, cls = '') => `<a${cls && ` class="${cls}"`} href="${html(u)}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
-/** Plain text with its links, @mentions, /channels and #hashtags made live, as HTML. */
-export const linkify = (text: string) =>
+/** Plain text with its links, @mentions, /channels and #hashtags made live, as HTML. `tags` are the cast's tags that may
+ *  be linked (taggable), when this is only a piece of it. */
+export const linkify = (text: string, tags = taggable(text)) =>
   text.split(TOKENS).map((p, i) => {
     if (i % 2 === 0) return html(p)
     if (p[0] === '@') return `<a href="/u/${html(p.slice(1))}">${html(p)}</a>`
     if (p[0] === '/') return `<a class="chan-ref" href="/channel/${html(p.slice(1).toLowerCase())}">${html(p)}</a>`
-    if (p[0] === '#') return indexed(p) ? `<a class="tag-ref" href="${html(tagPath(p))}">${html(p)}</a>` : html(p)
+    if (p[0] === '#') return tags.has(p.toLowerCase()) ? `<a class="tag-ref" href="${html(tagPath(p))}">${html(p)}</a>` : html(p)
     // a mention castText put back inside a link (another client's ranges) leaves the link as it was
     const u = safeUrl(toUrl(bare(p)))
     return u ? ext(u, html(shortUrl(p))) : html(p)
@@ -750,10 +763,10 @@ const NOT_BEFORE_TAG = /[\p{Alphabetic}\p{N}_/&#]$/u
 // and a tag runs on through these, also across emphasis: in "_x #gm_" Hypersnap's tag is "gm_", which "#gm" wouldn't find
 const TAG_GOES_ON = /^[\p{Alphabetic}\p{N}_]/u
 
-/** Inline Markdown as HTML. `before` and `after` are the source characters just before and after `s` (the delimiters of the
- *  emphasis around it), and `links` false keeps mentions, channels, tags and bare links as text, inside a [label](url) that is
- *  a link already. */
-function inline(s: string, before = '', links = true, after = ''): string {
+/** Inline Markdown as HTML. `tags` are the cast's tags that may be linked (taggable), or null to keep mentions, channels,
+ *  tags and bare links as text, inside a [label](url) that is a link already. `before` and `after` are the source characters
+ *  just before and after `s` (the delimiters of the emphasis around it). */
+function inline(s: string, tags: Set<string> | null, before = '', after = ''): string {
   let out = ''
   let at = 0
   // matchAll works on a copy of INLINE, so the calls inside don't move this one along
@@ -769,15 +782,15 @@ function inline(s: string, before = '', links = true, after = ''): string {
       const u = safeUrl(bare(g.href))
       // its text can say anything, so the app shows where it really goes before opening it (ui.tsx LinkSheet)
       // a link can't hold another, so a label's tags and mentions stay text
-      out += u ? ext(u, inline(g.label, '[', false, ']'), 'md-link') : inline(g.label, '[', links, ']')
+      out += u ? ext(u, inline(g.label, null, '[', ']'), 'md-link') : inline(g.label, tags, '[', ']')
     } else if (g.token !== undefined) {
       const notTag = g.token[0] === '#' && (NOT_BEFORE_TAG.test(m.index ? s.slice(Math.max(0, m.index - 2), m.index) : before) || TAG_GOES_ON.test(at < s.length ? s.slice(at, at + 2) : after))
-      out += links && !notTag ? linkify(g.token) : html(g.token)
-    } else if (g.bold !== undefined) out += `<strong>${inline(g.bold, '*', links, '*')}</strong>`
-    else if (g.bold2 !== undefined) out += `<strong>${inline(g.bold2, '_', links, '_')}</strong>`
-    else if (g.strike !== undefined) out += `<s>${inline(g.strike, '~', links, '~')}</s>`
-    else if (g.em !== undefined) out += `<em>${inline(g.em, '*', links, '*')}</em>`
-    else out += `<em>${inline(g.em2, '_', links, '_')}</em>`
+      out += tags && !notTag ? linkify(g.token, tags) : html(g.token)
+    } else if (g.bold !== undefined) out += `<strong>${inline(g.bold, tags, '*', '*')}</strong>`
+    else if (g.bold2 !== undefined) out += `<strong>${inline(g.bold2, tags, '_', '_')}</strong>`
+    else if (g.strike !== undefined) out += `<s>${inline(g.strike, tags, '~', '~')}</s>`
+    else if (g.em !== undefined) out += `<em>${inline(g.em, tags, '*', '*')}</em>`
+    else out += `<em>${inline(g.em2, tags, '_', '_')}</em>`
   }
   return out + html(s.slice(at))
 }
@@ -952,7 +965,7 @@ export const unmarkdown = (text: string) => styled(text).text.replaceAll(CELL, '
 /** Cast text as HTML, with Markdown: headings, **bold**, *italic*, ~~strike~~, `code` and fenced blocks, [links](…), ![pictures](…),
  *  lists, > quotes, rules and tables. Text between those keeps its line breaks as typed (.text is pre-wrap), so a cast
  *  without Markdown looks exactly as before. People's own HTML is shown as text, and links go through safeUrl. */
-export function markdown(text: string): string {
+export function markdown(text: string, tags = taggable(text)): string {
   const lines = text.split('\n')
   let out = ''
   let para: string[] = []
@@ -961,7 +974,7 @@ export function markdown(text: string): string {
     para = []
     // a paragraph between blocks drops the blank lines around it: the blocks have margins. So does a picture, which is
     // a block too: the line break on each side of it would draw an empty line under pre-wrap
-    out += inline(p).replace(/\n?(<img class="md-img"[^>]*>)\n?/g, '$1')
+    out += inline(p, tags).replace(/\n?(<img class="md-img"[^>]*>)\n?/g, '$1')
   }
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i]
@@ -978,13 +991,13 @@ export function markdown(text: string): string {
       const stop = end < 0 ? lines.length : end
       out += `<pre><code>${html(lines.slice(i + 1, stop).join('\n'))}</code></pre>`
       i = stop
-    } else if ((m = l.match(HEADING))) out += `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`
+    } else if ((m = l.match(HEADING))) out += `<h${m[1].length}>${inline(m[2], tags)}</h${m[1].length}>`
     else if (RULE.test(l)) out += '<hr>'
     else if (QUOTE.test(l)) {
       const q = []
       while (i < lines.length && QUOTE.test(lines[i])) q.push(lines[i++].replace(QUOTE, ''))
       i--
-      out += `<blockquote>${markdown(q.join('\n'))}</blockquote>`
+      out += `<blockquote>${markdown(q.join('\n'), tags)}</blockquote>`
     } else if ((m = l.match(ITEM))) {
       const ordered = m[3] !== undefined
       const items: string[][] = []
@@ -1000,11 +1013,11 @@ export function markdown(text: string): string {
       i--
       const tag = ordered ? 'ol' : 'ul'
       const start = ordered && +m[3] !== 1 ? ` start="${+m[3]}"` : ''
-      out += `<${tag}${start}>${items.map((it) => `<li>${markdown(it.join('\n'))}</li>`).join('')}</${tag}>`
+      out += `<${tag}${start}>${items.map((it) => `<li>${markdown(it.join('\n'), tags)}</li>`).join('')}</${tag}>`
     } else {
       const head = cells(l)
       const align = cells(lines[i + 1]).map((c) => (c.endsWith(':') ? (c.startsWith(':') ? 'center' : 'right') : ''))
-      const row = (cs: string[], tag: string) => `<tr>${head.map((_, k) => `<${tag}${align[k] ? ` class="md-${align[k]}"` : ''}>${inline(cs[k] || '')}</${tag}>`).join('')}</tr>`
+      const row = (cs: string[], tag: string) => `<tr>${head.map((_, k) => `<${tag}${align[k] ? ` class="md-${align[k]}"` : ''}>${inline(cs[k] || '', tags)}</${tag}>`).join('')}</tr>`
       out += `<table><thead>${row(head, 'th')}</thead><tbody>`
       for (i += 2; i < lines.length && lines[i].includes('|') && lines[i].trim(); i++) out += row(cells(lines[i]), 'td')
       i--
