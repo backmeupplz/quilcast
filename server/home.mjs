@@ -2,7 +2,7 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { boxOf, castOf, pathOf, castText, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
+import { boxOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { channelOf } from './channels.mjs'
 
@@ -85,7 +85,8 @@ export function body(d, version, now = Date.now()) {
     return `<img${k ? ` class="${k}"` : ''} alt="" loading="lazy"${top ? ' fetchpriority="high"' : low ? ' fetchpriority="low"' : ''} referrerpolicy="no-referrer" ${at}src="${esc(src.replace(/^http:\/\//i, 'https://'))}"` +
       `${set ? ` ${at}srcset="${esc(set)}" sizes="${IMG_SIZES}"` : ''}>`
   }
-  const rich = (text, k = 'text', plain) => `<div class="${k}" dir="auto">${plain ? linkify(text) : markdown(text)}</div>`
+  // a cast's text passes the tags Hypersnap indexed from it (ui.tsx RichText)
+  const rich = (text, k = 'text', plain, tags) => `<div class="${k}" dir="auto">${plain ? linkify(text, tags) : markdown(text, tags)}</div>`
   const avatar = (u, size = 40, link = true) => {
     const pfp = safeUrl(u.pfp_url)
     // `low`: after the casts' pictures (avatars come from the CDN's own connection, and are the smallest thing here)
@@ -111,7 +112,7 @@ export function body(d, version, now = Date.now()) {
     const thumb = urls.find(isImg) || poster(urls.find(isVid))
     const text = castText(c, true).trim()
     return `<a class="quote" href="/c/${esc(c.hash)}"><div class="meta">${avatar(c.author, 18, false)}<b>${esc(nameOf(c.author))}</b><span>@${esc(handle(c.author))} · ${ago(c.timestamp)}</span></div>` +
-      `<div class="qbody${text ? '' : ' bare'}">${text ? rich(text, 'text clamp') : ''}${thumb ? img(sized(thumb, 'w=1200'), 'qimg') : ''}</div></a>`
+      `<div class="qbody${text ? '' : ' bare'}">${text ? rich(text, 'text clamp', false, taggable(c.text || '')) : ''}${thumb ? img(sized(thumb, 'w=1200'), 'qimg') : ''}</div></a>`
   }
   const tweet = (t) => {
     const video = safeUrl(t.video)
@@ -154,7 +155,7 @@ export function body(d, version, now = Date.now()) {
     return `<article class="cast" data-href="/c/${esc(c.hash)}"><div class="rail">${avatar(c.author)}</div><div class="body"><header>` +
       `<a class="name" href="${esc(userPath(c.author))}">${esc(nameOf(c.author))}</a><span class="handle">@${esc(handle(c.author))}</span><span class="dot">·</span>` +
       `<time datetime="${esc(c.timestamp)}">${ago(c.timestamp)}</time>${ch ? `<span class="chan">/${esc(ch)}</span>` : ''}</header>` +
-      `<div>${rich(castText(c, true), 'text fold')}<script>${FOLD}</script></div>${embeds(c)}` +
+      `<div>${rich(castText(c, true), 'text fold', false, taggable(c.text || ''))}<script>${FOLD}</script></div>${embeds(c)}` +
       `<footer><button class="act" aria-label="Reply">${icon(P.reply)}${count(c.replies?.count)}</button>` +
       `<span class="wrap-menu"><button class="act rc" aria-label="Recast or quote" aria-haspopup="menu">${icon(P.recast)}${count(c.reactions?.recasts_count)}</button></span>` +
       `<button class="act lk" aria-label="Like">${icon(P.like)}${count(c.reactions?.likes_count)}</button><button class="act" aria-label="Share">${icon(P.share)}</button>` +

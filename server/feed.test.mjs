@@ -34,6 +34,15 @@ test("a cast's HTML: Markdown as the app shows it, links absolute, line breaks k
   assert.ok(!/(href|src)="\//.test(out), out)
 })
 
+test("a cast's tags link as Hypersnap indexed its text, before its mentions are put back in", () => {
+  const m = (text, ...at) => cast({ text, mentioned_profiles: at.map(() => ({ username: 'dwr' })), mentioned_profiles_ranges: at.map((start) => ({ start, end: start })) })
+  // a mention inside a tag: Hypersnap indexed "gm", so the "#g" shown finds nothing
+  assert.ok(!castHtml(m('#gm', 2), SITE).includes('tag-ref'))
+  // a mention glued before the first tag doesn't stop Hypersnap counting it, so #t32 is its 33rd and stays text
+  const out = castHtml(m(Array.from({ length: 33 }, (_, i) => `#t${i}`).join(' '), 0), SITE)
+  assert.ok(out.includes('/search?q=%23t31&#38;t=casts') && !out.includes('%23t32'), out)
+})
+
 test('an item: link and guid are the cast page, the title a cut of the text, author and date set, all escaped', () => {
   const evil = '$& "><script>alert(1)</script> ' + 'word '.repeat(40)
   const x = item(cast({ text: evil }), SITE)
