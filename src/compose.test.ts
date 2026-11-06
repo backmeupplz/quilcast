@@ -54,6 +54,25 @@ test('posting a GIF signs a cast whose embed is the Tenor URL', async () => {
   assert.deepEqual(api.posting.get(hash)?.embeds, [{ url: GIF }])
 })
 
+test("a cast just posted shows as the node will serve it: its text without mentions, so its tags are the indexed ones", async () => {
+  const { castText, taggable } = await import('./shared.ts')
+  const api = await import('./api.ts')
+  const { post } = await import('./write.ts')
+  ;(globalThis as any).fetch = async (url: string) => {
+    const u = new URL(url, 'https://quilcast.test')
+    if (u.pathname === '/v1/submitMessage' || u.pathname === '/v1/signer') return new Response('{}')
+    if (u.pathname.endsWith('/user/by-username') && u.searchParams.get('username') === 'dwr') return Response.json({ user: { fid: 3, username: 'dwr' } })
+    throw new Error(`unexpected ${url}`)
+  }
+  const typed = `@dwr${Array.from({ length: 33 }, (_, i) => `#t${i}`).join(' ')}`
+  const c = api.posting.get(await post(typed))!
+  assert.ok(c.text.startsWith('#t0 '), c.text)
+  assert.equal(castText(c), typed)
+  // Hypersnap indexes #t0 to #t31 of the text sent, so #t32 isn't one to link
+  const tags = taggable(c.text)
+  assert.ok(tags.has('#t0') && tags.has('#t31') && !tags.has('#t32'))
+})
+
 test('a picture the text shows with Markdown is not embedded too, so it takes no slot (#396)', () => {
   const pic = 'https://imagedelivery.net/a/inline/original'
   const text = `Intro\n![a cat](${pic})\nmore at https://a.com and https://b.com`

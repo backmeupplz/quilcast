@@ -221,10 +221,10 @@ export async function fnameProof(name: string, timestamp: number, custody: Custo
   return { owner: custody.address, signature: '0x' + hex(sig) }
 }
 
-/** Turn "@alice hi" into mention-free text plus byte positions, resolving names via `lookup`: undefined means no such
+/** Turn "@alice hi" into mention-free text plus byte positions (and the names as typed), resolving names via `lookup`: undefined means no such
  *  user, and a rejection (the node failed) leaves the whole "@name" as text rather than mentioning a shorter name. */
 export async function mentions(text: string, lookup: (name: string) => Promise<number | undefined>) {
-  const out = { text: '', mentions: [] as number[], positions: [] as number[] }
+  const out = { text: '', mentions: [] as number[], positions: [] as number[], names: [] as string[] }
   // each name is asked once per cast, however many mentions try it
   const asked = new Map<string, Promise<number | undefined>>()
   const ask = (n: string) => {
@@ -245,6 +245,7 @@ export async function mentions(text: string, lookup: (name: string) => Promise<n
     const at = m.index! + m[1].length
     out.text += text.slice(last, at)
     out.mentions.push(fid)
+    out.names.push(name)
     out.positions.push(utf8(out.text).length)
     last = at + name.length + 1
   }
