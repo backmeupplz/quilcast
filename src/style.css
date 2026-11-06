@@ -181,7 +181,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .cast.focus .who .spam-tag { align-self: flex-start; }
 .replying { font-size: 14px; color: var(--muted); margin-top: 1px; }
 .text { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.chan-ref { color: var(--accent); }
+.chan-ref, .tag-ref { color: var(--accent); }
 /* Markdown in cast text (shared.ts markdown): the text around these keeps pre-wrap, they carry the spacing */
 .text :is(h1, h2, h3, h4, h5, h6) { margin: 6px 0 2px; font-size: 1.05em; line-height: 1.3; }
 .text h1 { font-size: 1.3em; }

@@ -182,7 +182,8 @@ test('a Markdown picture is not an embed too', async () => {
 
 test('blocks', () => {
   assert.equal(md('# Title\ntext\n## Sub #'), '<h1>Title</h1>text<h2>Sub</h2>')
-  assert.equal(md('#hashtag'), '#hashtag')
+  // a hashtag is not a heading
+  assert.equal(md('#hashtag'), '<a class="tag-ref" href="/search?q=%23hashtag&#38;t=casts">#hashtag</a>')
   assert.equal(md('a\n\n```js\nif (a < b) **x**\n```\nb'), 'a<pre><code>if (a &#60; b) **x**</code></pre>b')
   assert.equal(md('> quoted **x**\n> more\nafter'), '<blockquote>quoted <strong>x</strong>\nmore</blockquote>after')
   assert.equal(md('a\n---\nb'), 'a<hr>b')
@@ -317,4 +318,60 @@ test('the table button puts a table on lines of its own, its first heading selec
   const [t2, c, d] = format('Name rest', 0, 4, { table: 'Column' })
   assert.equal(t2, '| Name | Column |\n| --- | --- |\n|  |  |\n rest')
   assert.equal(t2.slice(c, d), 'Name')
+})
+
+test('#hashtags link to the tag\'s casts, matching what Hypersnap indexes as a tag', async () => {
+  const { hasTag } = await import('./shared.ts')
+  const tag = (s: string) => `<a class="tag-ref" href="/search?q=%23${encodeURIComponent(s.slice(1).toLowerCase())}&#38;t=casts">${s}</a>`
+  for (const out of [linkify('#Farcaster is #fun_2 (#gm) #gm'), md('#Farcaster is #fun_2 (#gm) #gm')])
+    assert.equal(out, `${tag('#Farcaster')} is ${tag('#fun_2')} (${tag('#gm')}) ${tag('#gm')}`)
+  assert.equal(linkify('#日本 #café.'), `${tag('#日本')} ${tag('#café')}.`)
+  // not tags: numbers, mid-word, entities, ##, a lone # and a heading
+  for (const s of ['#1', 'a#b', 'é#b', '_#b', '&#39;', '## x', '##b', '#', '# Title']) assert.ok(!linkify(s).includes('tag-ref'), s)
+  assert.match(md('# Title'), /^<h1>/)
+  // a URL's fragment stays in its link, and a tag right after a mention or channel is its own
+  assert.ok(!linkify('see x.com/#top').includes('tag-ref'))
+  assert.equal(linkify('/base #gm'), `<a class="chan-ref" href="/channel/base">/base</a> ${tag('#gm')}`)
+  // emphasis around a tag keeps it a tag
+  assert.equal(md('**#gm**'), `<strong>${tag('#gm')}</strong>`)
+  // but not after "_", which Hypersnap doesn't index as one
+  assert.equal(md('a _#gm_ b __#gm__'), 'a <em>#gm</em> b <strong>#gm</strong>')
+  // nor right before a closing "_", where Hypersnap's tag runs on into it ("gm_")
+  assert.equal(md('_hello #gm_'), '<em>hello #gm</em>')
+  assert.equal(md('__bold #gm__'), '<strong>bold #gm</strong>')
+  assert.equal(md('_#gm_ _x #gm_'), '<em>#gm</em> <em>x #gm</em>')
+  assert.equal(md('_#gm x_'), '<em>#gm x</em>')
+  assert.equal(md('_x #gm y_'), `<em>x ${tag('#gm')} y</em>`)
+  assert.equal(md('**x #gm**'), `<strong>x ${tag('#gm')}</strong>`)
+  assert.equal(md('**_x #gm_**'), '<strong><em>x #gm</em></strong>')
+  assert.equal(md('_x **#gm**_'), `<em>x <strong>${tag('#gm')}</strong></em>`)
+  // Hypersnap indexes tags of up to 64 characters only
+  const t64 = '#' + 'a'.repeat(64), t65 = '#' + 'a'.repeat(65)
+  for (const f of [linkify, md]) {
+    assert.equal(f(t64), tag(t64))
+    assert.equal(f(t65), t65)
+    assert.equal(f(`x ${t65} #gm`), `x ${t65} ${tag('#gm')}`)
+  }
+  // a link that starts right after the "#", or inside the tag, stays the link it was before tags were links
+  const link = (u: string, label: string) => `<a href="${u}" target="_blank" rel="noopener noreferrer nofollow">${label}</a>`
+  for (const f of [linkify, md]) {
+    assert.equal(f('#base.org'), `#${link('https://base.org/', 'base.org')}`)
+    assert.equal(f('#https://x.com/a'), `#${link('https://x.com/a', 'x.com/a')}`)
+    assert.equal(f('#gm__https://a.com/p'), `#gm__${link('https://a.com/p', 'a.com/p')}`)
+    // and a sentence's punctuation after a tag doesn't stop it being one
+    assert.equal(f('see #gm.'), `see ${tag('#gm')}.`)
+    assert.equal(f('#gm, ok #gm!'), `${tag('#gm')}, ok ${tag('#gm')}!`)
+  }
+  // Hypersnap indexes a cast's first 32 distinct tags (of up to 64 characters), so later ones stay text
+  const many = Array.from({ length: 33 }, (_, i) => `#t${i}`)
+  const text = `${t65} ${many.join(' ')} #T0 #t31`
+  const want = `${t65} ${many.slice(0, 32).map(tag).join(' ')} #t32 ${tag('#T0')} ${tag('#t31')}`
+  assert.equal(linkify(text), want)
+  assert.equal(md(text), want)
+  // counted over the whole cast, across paragraphs, quotes and lists
+  assert.equal(md(`${many.slice(0, 31).join(' ')}\n\n> #t31\n\n- #t32`), `${many.slice(0, 31).map(tag).join(' ')}<blockquote>${tag('#t31')}</blockquote><ul><li>#t32</li></ul>`)
+  // a link's label holds no other link
+  assert.equal(md('[#gm @dwr /base](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow">#gm @dwr /base</a>')
+  assert.equal(md('[**#gm**](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow"><strong>#gm</strong></a>')
+  assert.ok(hasTag('#gm') && hasTag('gm #farcaster') && !hasTag('gm') && !hasTag('#1') && !hasTag('a#b'))
 })
