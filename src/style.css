@@ -1350,6 +1350,12 @@ body:has(.space-bar) .dock { bottom: calc(84px + env(safe-area-inset-bottom)); }
 .btn.small.icon { padding: 6px 8px; display: inline-flex; }
 .menu .hint { width: 230px; white-space: normal; font-size: 12px; }
 .mute-add { display: flex; gap: 8px; margin: 8px 0; }
+/* anonymous mode (#491): the device's follow list in Settings, and the note over Home's Following */
+.local-export { width: 100%; box-sizing: border-box; font: 13px ui-monospace, monospace; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); padding: 8px 10px; background: var(--card); color: var(--ink); resize: vertical; margin: 6px 0; }
+.note.local-note { padding: 10px 16px; font-size: 13px; text-align: start; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+.row.has-action > .btn { flex: none; }
+.row-link { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; color: inherit; }
+.note.local-note p { margin: 4px 0 0; }
 .mute-add input { flex: 1; min-width: 0; }
 .mute-words { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .mute-words .chip { color: var(--ink); }

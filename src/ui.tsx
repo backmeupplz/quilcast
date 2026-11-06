@@ -1074,7 +1074,8 @@ export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => vo
       (e) => toast(e.message),
     )
   }
-  const ask = (k: 'users' | 'blocks', on: unknown) => requireAccount() && (on ? set(k, false) : setKind(k))
+  // without an account they're kept in this browser (mutes.ts)
+  const ask = (k: 'users' | 'blocks', on: unknown) => (on ? set(k, false) : setKind(k))
   if (kind)
     return (
       <>
@@ -1263,13 +1264,20 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop }:
   )
 }
 
-export const UserRow = ({ u }: { u: User }) => (
-  <a class="row" href={userPath(u)}>
+const rowInner = (u: User) => (
+  <>
     <Avatar u={u} link={false} />
     <span class="row-main">
       <span class="row-top"><b>{nameOf(u)}</b><span class="handle">@{handle(u)}</span></span>
       {u.profile?.bio?.text && <span class="row-sub">{u.profile.bio.text}</span>}
     </span>
     <span class="row-meta">{n(u.follower_count)}<small>{tn(u.follower_count || 0, 'follower', 'followers')}</small></span>
-  </a>
+  </>
 )
+/** `action`: a button at the row's end (Follow on this device, in anonymous mode), beside the link rather than in it */
+export const UserRow = ({ u, action }: { u: User; action?: ComponentChildren }) =>
+  action ? (
+    <div class="row has-action"><a class="row-link" href={userPath(u)}>{rowInner(u)}</a>{action}</div>
+  ) : (
+    <a class="row" href={userPath(u)}>{rowInner(u)}</a>
+  )

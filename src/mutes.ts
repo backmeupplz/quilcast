@@ -1,22 +1,38 @@
 // Mutes and blocks: people and words this account doesn't want to see. Farcaster has neither, so they're kept with
 // the account on our server (server/mutes.mjs, signed with its key, so other devices get them) and in localStorage
-// for the first paint. A change fires 'mutes', which re-renders the app.
+// for the first paint. Without a finished account (anonymous mode, #491) they're kept in this browser only. A change
+// fires 'mutes', which re-renders the app.
 import { account, read, save, type Cast } from './api.ts'
 import { castText, cleanMutes, wordsRe, type Mutes, type Timed } from './shared.ts'
 import removedList from './removed.json' with { type: 'json' }
 import { hidesSpam } from './spam.ts'
 
-const key = `quilcast:mutes:${account?.fid}`
+// the account's own list, or this device's anonymous one; signing in or out (which doesn't reload the page) switches
+// between them, so the anonymous list never reaches an account's server list, nor the other way round
+const keyOf = () => `quilcast:mutes:${account?.done ? account.fid : 'local'}`
+let key = keyOf()
 export let mutes: Mutes = cleanMutes(read(key, null))
 // a change made here before the server answered wins over what it sends
 let touched = false
 const changed = () => (save(key, mutes), (re = undefined), dispatchEvent(new Event('mutes')))
+try {
+  addEventListener('account', () => {
+    if (keyOf() === key) return
+    key = keyOf()
+    mutes = cleanMutes(read(key, null))
+    touched = false
+    re = undefined
+    dispatchEvent(new Event('mutes'))
+    syncMutes()
+  })
+} catch {}
 
 /** Take the account's list from our server: another device may have changed it. */
 export async function syncMutes() {
   if (!account?.done) return
+  const k = key
   const got = await import('./write.ts').then((m) => m.fetchMutes()).catch(() => null)
-  if (got && !touched) (mutes = cleanMutes(got)), changed()
+  if (got && !touched && k === key) (mutes = cleanMutes(got)), changed()
 }
 
 /** Mute or block (`kind`) a person's FID or a word until `until` (ms; undefined is until lifted), or lift it (false).
@@ -27,7 +43,7 @@ export function setMute(kind: keyof Mutes, v: string | number, until?: number | 
   const rest = (mutes[kind] as Timed<unknown>[]).filter((x) => x.v !== v)
   mutes = cleanMutes({ ...mutes, [kind]: until === false ? rest : [...rest, { v, until }] })
   changed()
-  return import('./write.ts').then((m) => m.saveMutes(mutes))
+  return account?.done ? import('./write.ts').then((m) => m.saveMutes(mutes)) : Promise.resolve()
 }
 
 const on = (xs: Timed<unknown>[], v: unknown) => xs.find((x) => x.v === v && (!x.until || x.until > Date.now()))

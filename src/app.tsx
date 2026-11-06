@@ -1,7 +1,7 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { crashed, started } from './crash.ts'
-import { account, accounts, amFollowing, isMe, askUser, findUsers, follow, followsMe, forget, get, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follow, followsMe, forget, forgetFollows, get, urlOf, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
@@ -17,6 +17,7 @@ import { findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
 import { keepCampaign } from './campaign.ts'
+import { addLocal, answered, exportLocal, IMPORT_MAX, localFollows, localSources, merger, ofAccount, parseImport, pool, removeLocal, room, setLocal, stillFollowed, toOffer, within, type Local } from './local.ts'
 import { asOf, browsePath, recentsOf, remember, repliesFit } from './browse.ts'
 
 // views most visits never open load when first needed
@@ -296,15 +297,21 @@ const ask = (() => {
     }
   }
 })()
-// `viewer` is whose Following feed it is: the signed-in user, or the account browsed as (browse.ts)
-async function threads(casts: Cast[], shown: Set<string>, viewer = account?.fid) {
+// `viewer` is whose Following feed it is: the signed-in user, or the account browsed as (browse.ts); `local`: the
+// device's own list without a finished account (anonymous mode, local.ts)
+async function threads(casts: Cast[], shown: Set<string>, viewer = account?.fid, local = false) {
   const units = await Promise.all(casts.map(async (c): Promise<Cast | null> => {
     // a recast shows on its own, whoever the cast replies to
     if (!c.parent_hash || c.recaster) return c
     const parent = await ask(() => fetchCast(c.parent_hash!))
     if (!parent) return null
+    const to = parent.author.fid
+    // the device's list decides, not a half-made account's viewer_context (nor its on-chain follows when browsed as)
+    if (local) {
+      if (to !== account?.fid && !(await amFollowing(to))) return null
+    }
     // nodes with Hypersnap PR #43 say whether the signed-in user follows the author; others are asked
-    if (!(await repliesFit(parent.author.fid, viewer, account?.fid, parent.author.viewer_context?.following, (to, v) => ask(() => amFollowing(to, v))))) return null
+    else if (!(await repliesFit(to, viewer, account?.fid, parent.author.viewer_context?.following, (to, v) => ask(() => amFollowing(to, v))))) return null
     if (!parent.parent_hash) return { ...c, up: [parent], gap: false }
     // the root: straight from thread_hash (PR #43), else up to five more steps up, like the thread page
     let root: Cast | null = null
@@ -340,8 +347,9 @@ let boot: Cast[] | null = null
 // `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately; `owner` is the profile
 // it's on. A conversation with a muted post in it is left out whole.
 // `skip`: a cast shown above the feed already (a profile's pinned cast), left out of it
-// `viewer`: a threaded feed's owner when it isn't the signed-in user's (threads())
-function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number; skip?: string | null; viewer?: number }) {
+// `viewer`: a threaded feed's owner when it isn't the signed-in user's (threads()); `local`: Home's Following from the
+// device's list (anonymous mode, local.ts)
+function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer, local }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number; skip?: string | null; viewer?: number; local?: boolean }) {
   // the posts this feed shows so far, for threads(), and the key they're for; a first page starts over (shownFor)
   const shown = useRef({ k, set: new Set<string>() })
   return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => !silenced(c.recaster?.fid) && (!skip || pinKey(c.hash) !== skip) && ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
@@ -356,7 +364,7 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer }: {
       const filtered = keep && !thread
       for (let i = 0; filtered && i < 10 && r.casts.length && !r.casts.some(keep) && r.next?.cursor; i++) r = await load(r.next.cursor)
       const nothing = filtered && !r.casts.some(keep)
-      let casts = thread ? await threads(r.casts, seen, viewer ?? account?.fid) : keep ? r.casts.filter(keep) : r.casts
+      let casts = thread ? await threads(r.casts, seen, viewer ?? account?.fid, local) : keep ? r.casts.filter(keep) : r.casts
       // the server's page (at most a minute old) keeps its order on top, with fresh counts, and the rest goes under
       // it, so nothing on screen moves
       const kept = !cursor && cacheKey === '0:trending' && boot
@@ -366,7 +374,8 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer }: {
       if (!cursor) await warm(casts.slice(0, 6))
       if (!cursor && cacheKey) {
         try {
-          save(`quilcast:feed:${cacheKey}`, casts.slice(0, 20))
+          // the device's list may have lost someone while this page loaded (stillFollowed)
+          save(`quilcast:feed:${cacheKey}`, (local ? stillFollowed(casts) : casts).slice(0, 20))
         } catch {}
       }
       return { items: casts, cursor: r.casts.length && !nothing ? r.next?.cursor || null : null }
@@ -390,6 +399,59 @@ function useReload(): [number, () => void] {
 // the post itself is often empty
 const isSpace = (c: Cast) => (c.embeds || []).some((e: any) => /^https:\/\/(farcaster\.xyz|warpcast\.com)\/~\/spaces\//.test(e?.url || ''))
 const trendy = (c: Cast) => !c.parent_hash && !isSpace(c)
+
+// Anonymous mode (#491): the Following feed of the accounts followed on this device, merged here (local.ts says why)
+const localGet = (() => {
+  const run = pool(6)
+  // a request that hung is dropped from the memo, so asking again (or opening that profile) starts a new one
+  return (path: string, q: Record<string, string | number | undefined>) =>
+    run(() => within(get(path, q), 15000).catch((e) => {
+      if (e?.timeout) forget(urlOf(path, q))
+      throw e
+    }))
+})()
+// the browser refused to store a change to the list (local.ts)
+addEventListener('follows-unsaved', () => toast(t("Couldn't save that on this device. Its storage may be full or blocked.")))
+addEventListener('follows-full', () => toast(t('You follow {max} accounts on this device, as many as it holds. Unfollow someone to follow someone new.', { max: IMPORT_MAX })))
+function useLocalFollows() {
+  const [list, setList] = useState(localFollows)
+  useEffect(() => {
+    const f = () => setList(localFollows())
+    addEventListener('follows', f)
+    return () => removeEventListener('follows', f)
+  }, [])
+  return list
+}
+// `status` hears how many accounts have answered while the first page waits for them all (null once it's in), and
+// which ones the node couldn't serve (local.ts merger)
+type LocalStatus = { loading: [number, number] | null; skipped: number[] }
+const localFeed = (list: Local[], status: (s: LocalStatus) => void) => {
+  let next: ReturnType<typeof merger<Cast>> | null = null
+  let page = 0
+  // each start over has its number: what an earlier one says late is ignored
+  let run = 0
+  return async (cursor?: string): Promise<Page> => {
+    const fresh = !cursor || !next
+    const me = fresh ? ++run : run
+    const say = (s: LocalStatus) => me === run && status(s)
+    // a first page starts the merge over, with the accounts' names for "Recast by" (100 a request; without them a
+    // recast shows the username it was followed by)
+    if (fresh) {
+      page = 0
+      say({ loading: null, skipped: [] })
+      for (let i = 0; i < list.length; i += 100) await within(loadUsers(list.slice(i, i + 100).map((l) => l.fid)), 15000).catch(() => {})
+      next = merger(localSources<Cast>(list, localGet, (l) => users.get(l.fid) || { fid: l.fid, username: l.username }), (d, all) => !page && say({ loading: [Math.floor(d / 2), all / 2], skipped: [] }), undefined, ofAccount)
+    }
+    try {
+      const r = await next!(25)
+      say({ loading: null, skipped: [...new Set(r.skipped.map((i) => list[ofAccount(i)]?.fid))] })
+      return { casts: r.items, next: { cursor: r.more ? String(++page) : null } }
+    } catch (e) {
+      say({ loading: null, skipped: [] })
+      throw e
+    }
+  }
+}
 
 // the accounts this browser browsed as lately (browse.ts), newest first
 const RECENT_KEY = 'quilcast:browsed'
@@ -416,11 +478,14 @@ function Home() {
   const [who, setWho] = useState<{ as: string; u: User } | null>(() => (as && known(as) ? { as, u: known(as)! } : null))
   const [err, setErr] = useState<(Error & { status?: number }) | null>(null)
   const [tries, setTries] = useState(0)
-  const [tab, setTab] = useState<'following' | 'trending'>(account?.done || as ? 'following' : 'trending')
+  // without an account, the accounts followed on this device (anonymous mode, local.ts)
+  const anon = !account?.done
+  const local = useLocalFollows()
+  const [tab, setTab] = useState<'following' | 'trending'>(account?.done || as || local.length ? 'following' : 'trending')
   const [round, reload] = useReload()
   useEffect(() => {
     setErr(null)
-    setTab(account?.done || as ? 'following' : 'trending')
+    setTab(account?.done || as || local.length ? 'following' : 'trending')
     if (!as) return setWho(null)
     const k = known(as)
     setWho(k && { as, u: k })
@@ -437,23 +502,34 @@ function Home() {
   // only once it's the one `as` names, so a feed never loads for the account browsed before
   const target = as && who?.as === as ? who.u : null
   const name = target ? handle(target) : as
-  // signed out with no one to browse as, there's no Following (the tab catches up a render later)
-  const following = tab === 'following' && !!(as || account?.done)
+  const following = tab === 'following'
+  // signed out (or half-made), not browsing as anyone: Following is the device's list, merged here (local.ts)
+  const localMode = following && !as && anon
   const pick = (t: typeof tab) => (t === tab ? reload() : setTab(t))
+  // the device's list, as it is now: a follow or unfollow elsewhere starts the feed over
+  const fids = local.map((l) => l.fid).join()
+  const [status, setStatus] = useState<LocalStatus>({ loading: null, skipped: [] })
+  // only the feed on screen speaks: one replaced by a reload or a follow may still be finishing its requests
+  const current = useRef<unknown>(null)
+  const loadLocal = useMemo(() => {
+    const f = localFeed(local, (s) => current.current === f && setStatus(s))
+    current.current = f
+    return f
+  }, [fids, round])
   return (
     <>
       {settings.quorum ? (
         // Quorum's feed: Discover first, a refresh button, the composer, and a line saying what the feed holds
         <>
           <Header title={t('Home')} back={false} action={<button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={reload}><Icon d={P.refresh} /></button>}>
-            {(account?.done || as) && <Tabs tabs={[['trending', `${t('Discover')} 🌐`], ['following', t('Following')]]} value={tab} set={pick} />}
+            <Tabs tabs={[['trending', `${t('Discover')} 🌐`], ['following', t('Following')]]} value={tab} set={pick} />
           </Header>
           {!as && <QuorumCompose />}
           <div class="q-sub">{!following ? <><span>🌐 {t('Public posts')}</span><span class="muted">{t('Trending on the network')}</span></> : <><span>{t('Following')}</span><span class="muted">{as ? t('From people @{name} follows', { name: name! }) : t('From people you follow')}</span></>}</div>
         </>
       ) : (
         <Header title={t('Home')} back={false}>
-          {(account?.done || as) && <Tabs tabs={[['following', t('Following')], ['trending', t('Trending')]]} value={tab} set={pick} />}
+          <Tabs tabs={[['following', t('Following')], ['trending', t('Trending')]]} value={tab} set={pick} />
         </Header>
       )}
       {as ? (
@@ -474,9 +550,19 @@ function Home() {
         </div>
       )}
       {account?.done && !as && <PlayBanner />}
+      {localMode && (
+        <div class="note local-note">
+          {t('You follow these people on this device only. Nothing is published, and clearing this site\'s data erases the list.')} <a href="/settings#follows">{t('Export or import')}</a>
+          {/* a long list takes a while: say how far it got */}
+          {status.loading && status.loading[1] > 10 && <p>{t('Loading casts from {n} of {all} accounts…', { n: status.loading[0], all: status.loading[1] })}</p>}
+          {status.skipped.length > 0 && <p>{t("Couldn't load {names} right now.", { names: status.skipped.map((f) => `@${handle(users.get(f) || { fid: f })}`).join(', ') })}</p>}
+        </div>
+      )}
       {/* replies show in Following with their conversation (threads()); Trending keeps top-level casts */}
       {as && !target && following ? (
         err ? <div class="note">{err.status === 404 ? t('No one goes by that name.') : <>{t('Couldn\'t load: {error}', { error: err.message })} <button class="link-btn" onClick={() => setTries((x) => x + 1)}>{t('Retry')}</button></>}</div> : <div class="spinner" />
+      ) : localMode ? (
+        <Feed k={`local:${round}:${fids}`} cacheKey="local:following" local empty={t('Follow people from their profiles and their casts will show up here.')} thread load={loadLocal} />
       ) : (
         // someone else's Following isn't kept in this browser: only your own feeds paint from the cache
         <Feed k={`${target ? `as${target.fid}:` : ''}${following ? 'following' : 'trending'}:${round}`} cacheKey={target && following ? undefined : `${account?.fid || 0}:${following ? 'following' : 'trending'}`} keep={trendy} thread={following} viewer={target?.fid}
@@ -654,13 +740,27 @@ function Who({ hash, kind }: { hash: string; kind: keyof typeof WHO }) {
 
 const FOLLOWS = { followers: () => t('Followers'), following: () => t('Following') }
 
+/** Follow or unfollow `u` on this device (anonymous mode, local.ts), saying what that means; returns `on`. */
+function followLocally(u: User, on: boolean) {
+  // not saved: local.ts said so, and nothing changed
+  if (!setLocal({ fid: u.fid, username: u.username }, on)) return !on
+  toast(on ? t('Following @{name} on this device only. Nothing is published.', { name: handle(u) }) : t('Unfollowed @{name}', { name: handle(u) }))
+  return on
+}
+/** A list row's Follow button in anonymous mode. */
+function LocalFollow({ u }: { u: User }) {
+  const local = useLocalFollows()
+  const on = local.some((l) => l.fid === u.fid)
+  return <button class={`btn small${on ? ' ghost' : ''}`} aria-pressed={on} title={t('On this device only')} onClick={() => followLocally(u, !on)}>{on ? t('Following') : t('Follow')}</button>
+}
+
 /** Who follows someone, or whom they follow. */
 function Follows({ id, kind }: { id: string; kind: keyof typeof FOLLOWS }) {
   const fid = useMemo(() => getUser(id).then((u) => u.fid), [id])
   return (
     <>
       <Header title={FOLLOWS[kind]()} />
-      <Pager<User> k={`${id}:${kind}`} empty={t('Nobody yet.')} id={(u) => String(u.fid)} row={(us) => us.map((u) => <UserRow key={u.fid} u={u} />)}
+      <Pager<User> k={`${id}:${kind}`} empty={t('Nobody yet.')} id={(u) => String(u.fid)} row={(us) => us.map((u) => <UserRow key={u.fid} u={u} action={!account?.done && <LocalFollow u={u} />} />)}
         load={async (cursor) => {
           const r = await get(`/v2/farcaster/${kind}`, { fid: await fid, limit: 100, cursor })
           return { items: r.users, cursor: r.next?.cursor || null }
@@ -817,7 +917,7 @@ function Profile({ id }: { id: string }) {
     getUser(k?.fid ?? id).then((u) => {
       setU(u)
       checkAccounts([u.fid]).then(() => live && setSpamChecked((x) => x + 1))
-      Promise.resolve(u.viewer_context?.following ?? isFollowing(u.fid)).then((f) => ((was.current = f), setFollowing(f)))
+      Promise.resolve((account?.done ? u.viewer_context?.following : undefined) ?? isFollowing(u.fid)).then((f) => ((was.current = f), setFollowing(f)))
       followsMe(u).then((f) => live && setFollowsYou(f))
     }, (e) => {
       if (!live) return
@@ -864,9 +964,10 @@ function Profile({ id }: { id: string }) {
     return () => void delete document.documentElement.dataset.look
   }, [!!shown])
   const editLook = (f: (d: Look) => Look) => setDraft((d) => f(d || {}))
-  const followers = (u?.follower_count || 0) + +!!following - +was.current
+  // a follow on this device (anonymous mode) isn't on the network, so the count stays
+  const followers = (u?.follower_count || 0) + (account?.done ? +!!following - +was.current : 0)
   const toggle = () => {
-    if (!account?.done) return go('/join')
+    if (!account?.done) return setFollowing(followLocally(u!, !following))
     const on = !following
     setFollowing(on)
     w().then((m) => m.follow(u!.fid, on)).catch((e) => (setFollowing(!on), toast(e.message)))
@@ -912,7 +1013,7 @@ function Profile({ id }: { id: string }) {
                     {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
                     {cardButton(u.fid)}
                     {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
-                    <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done}>{following ? t('Following') : t('Follow')}</button>
+                    <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done} aria-pressed={!!following} title={account?.done ? undefined : t('On this device only')}>{following ? t('Following') : t('Follow')}</button>
                     <span class="wrap-menu">
                       <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
                       {menu && (
@@ -1323,7 +1424,7 @@ function MuteSettings() {
   )
   return (
     <>
-      <p class="hint">{t('Casts with these words, or from these people, stay out of your feeds, threads and notifications. The list is kept with your account, so your other devices hide them too.')}</p>
+      <p class="hint">{account?.done ? t('Casts with these words, or from these people, stay out of your feeds, threads and notifications. The list is kept with your account, so your other devices hide them too.') : t('Casts with these words, or from these people, stay out of your feeds and threads. Without an account, the list is kept on this device only.')}</p>
       <form class="mute-add" onSubmit={add}>
         <input value={word} onInput={(e) => setWord(e.currentTarget.value)} placeholder={t('A word, $ticker or #tag')} maxLength={60} aria-label={t('Word to mute')} />
         <select class="pick" value={span} onChange={(e) => setSpan(e.currentTarget.value)} aria-label={t('How long')}>
@@ -1339,6 +1440,202 @@ function MuteSettings() {
       {people('users', t('Muted accounts'))}
       {people('blocks', t('Blocked accounts'))}
     </>
+  )
+}
+
+/** Follow, with the signed-in account, everyone this device's list holds (asked first: LocalFollowSettings and
+ *  CarryFollows), then take them off the list. One already followed is skipped; a failure keeps the rest on the list. */
+async function carryFollows(progress: (done: number, total: number) => void) {
+  const m = await w()
+  const list = localFollows()
+  const done: number[] = []
+  let sent = 0
+  try {
+    for (const l of list) {
+      if (!(await isFollowing(l.fid))) await m.follow(l.fid, true), sent++
+      done.push(l.fid)
+      progress(done.length, list.length)
+    }
+  } finally {
+    removeLocal(done)
+    // Home's feed and the follow answers were read before these follows: read them again
+    forget()
+    forgetFollows()
+    dispatchEvent(new Event('refresh'))
+  }
+  return sent
+}
+const carriedNote = (n: number) => void (n > 0 && toast(tn(n, 'Followed {n} account on Farcaster', 'Followed {n} accounts on Farcaster')))
+
+/** The people followed on this device (anonymous mode, local.ts): the list, export and import, and once signed in,
+ *  following them with the account. */
+function LocalFollowSettings() {
+  const list = useLocalFollows()
+  const [, force] = useState(0)
+  const [text, setText] = useState('')
+  const [from, setFrom] = useState('')
+  const [busy, setBusy] = useState('')
+  const [out, setOut] = useState(false)
+  const [clearing, setClearing] = useState(0)
+  const fids = list.map((l) => l.fid)
+  // armed for 5 seconds, then back to its first label
+  useEffect(() => {
+    if (!clearing) return
+    const t = setTimeout(() => setClearing(0), 5000)
+    return () => clearTimeout(t)
+  }, [clearing])
+  const clear = () => {
+    if (!clearing) return setClearing(Date.now())
+    if (Date.now() - clearing < 500) return
+    removeLocal(fids)
+    setClearing(0)
+  }
+  useEffect(() => {
+    // 100 at a time, which is what the node's bulk lookup takes
+    let live = true
+    ;(async () => {
+      for (let i = 0; i < fids.length && live; i += 100) await loadUsers(fids.slice(i, i + 100)).catch(() => {}), live && force((x) => x + 1)
+    })()
+    return () => void (live = false)
+  }, [fids.join()])
+  const run = (what: string, f: () => Promise<void>) => (setBusy(what), f().catch((e) => toast(e.message)).finally(() => setBusy('')))
+  const added = (n: number, missed: string[] = []) =>
+    toast(missed.length ? t('Added {n}. Not found: {names}', { n, names: missed.map((x) => `@${x}`).join(', ') }) : tn(n, 'Added {n} account', 'Added {n} accounts'))
+  const notFound = (missed: string[]) => (missed.length ? ' ' + t('Not found: {names}', { names: missed.map((x) => `@${x}`).join(', ') }) : '')
+  const full = (n: number, missed: string[] = []) => toast(t('Added {n}. The list on this device holds at most {max} accounts, so the feed stays quick.', { n, max: IMPORT_MAX }) + notFound(missed))
+  // signed in, Settings has its own "Follow them" button: what an import adds doesn't pop up the offer too (CarryFollows)
+  const seen = () => account?.done && account.fid && answered(account.fid)
+  // only a 404 is "not found": a node that's down or slow fails the import, which keeps the text for another try
+  const unfinished = (e: any) => {
+    throw new Error(t("The import couldn't finish: {error}. Try again.", { error: e?.message || 'Network error' }))
+  }
+  const importText = () => run('import', async () => {
+    const { follows, names } = parseImport(text)
+    const now = localFollows()
+    const have = new Set(now.map((l) => l.fid))
+    // a name already on the list adds no one, so it isn't looked up
+    const known = new Set(now.flatMap((l) => [l.username, users.get(l.fid)?.username]).filter((x): x is string => !!x).map((x) => x.toLowerCase()))
+    const rest = names.filter((x) => !known.has(x))
+    const found: Local[] = []
+    const missed: string[] = []
+    const fresh = () => new Set([...follows, ...found].map((l) => l.fid).filter((f) => !have.has(f))).size
+    // only a 404 is "not found"; after any other failure the lookups still queued are skipped, and the import fails
+    let failed: unknown
+    const ask = pool(6)
+    const lookup = (x: string) => ask(async () => {
+      if (failed) return
+      try {
+        const u = await within(byName(x), 15000)
+        found.push({ fid: u.fid, username: u.username })
+      } catch (e: any) {
+        if (e?.status === 404) return void missed.push(x)
+        // a request that never came back would stay cached and fail the retry too (byName may have hung on either of
+        // its two requests)
+        if (e?.timeout) forget()
+        failed ??= e
+      }
+    })
+    // the list stops at IMPORT_MAX (addLocal): names are looked up only while there's room, a round at a time, so one
+    // that turns out to be on the list already or not found leaves its place to the next
+    for (let need: number; rest.length && (need = room() - fresh()) > 0; ) {
+      await Promise.all(rest.splice(0, need).map(lookup))
+      if (failed) unfinished(failed)
+    }
+    const r = addLocal([...follows, ...found])
+    if (!r) return
+    seen()
+    if (r.cut || rest.length) full(r.n, missed)
+    // nothing was added (nobody it names, or all already on the list): the text stays, to be fixed
+    else if (!r.n) return void toast(t('Found no one new to add.') + notFound(missed))
+    else added(r.n, missed)
+    setText('')
+  })
+  // the accounts they follow, as many as the list still holds (and at most IMPORT_MAX): the feed asks the node about
+  // each one (local.ts)
+  const importFrom = () => run('from', async () => {
+    // "@123" is a username of digits; "123" a FID
+    const who = from.trim()
+    const name = who.replace(/^@/, '')
+    if (!name) throw new Error(t('No one goes by that name.'))
+    const u = await within(who.startsWith('@') ? byName(name) : getUser(name), 15000).catch((e) => {
+      if (e?.status === 404) throw new Error(t('No one goes by that name.'))
+      if (e?.timeout) forget()
+      return unfinished(e)
+    })
+    const have = new Set(localFollows().map((l) => l.fid))
+    const got: Local[] = []
+    let cursor: string | undefined
+    do {
+      const r = await localGet('/v2/farcaster/following', { fid: u.fid, limit: 100, cursor }).catch(unfinished)
+      got.push(...((r.users || []) as User[]).map((x) => ({ fid: x.fid, username: x.username })))
+      cursor = r.next?.cursor || undefined
+    } while (cursor && got.filter((l) => !have.has(l.fid)).length < room())
+    const r = addLocal(got)
+    if (!r) return
+    seen()
+    if (r.cut || (cursor && !room())) full(r.n)
+    // all of them already on the list (or they follow no one): the name stays
+    else if (!r.n) return void toast(t('Found no one new to add.'))
+    else added(r.n)
+    setFrom('')
+  })
+  const copy = () => navigator.clipboard.writeText(exportLocal()).then(() => toast(t('Copied')), () => toast(t("Couldn't copy.")))
+  const carry = () => run('carry', () => carryFollows((n, all) => setBusy(t('Following {n} of {all}…', { n, all }))).then(carriedNote))
+  return (
+    <>
+      <p class="hint">{t('Without an account, Follow keeps people in a list on this device, and Home shows their casts. Nothing is published, and clearing this site\'s data erases the list, so export it to keep a copy or move it to another device.')}</p>
+      {list.map((l) => {
+        const u = users.get(l.fid) || { fid: l.fid, username: l.username }
+        return (
+          <div class="setting" key={l.fid}>
+            <a class="mute-who" href={userPath(u)}><Avatar u={u} size={28} link={false} /><span>{nameOf(u)}</span></a>
+            <button class="btn ghost small" onClick={() => setLocal(l, false)}>{t('Unfollow')}</button>
+          </div>
+        )
+      })}
+      {list.length > 0 && (
+        <div class="sheet-btns">
+          {/* the list is nowhere else, so clearing it takes a second tap */}
+          <button class={`btn ghost small${clearing ? ' danger' : ''}`} disabled={!!busy} onClick={clear}>{clearing ? t('Tap again to clear the list') : t('Clear the list')}</button>
+          {account?.done && <button class="btn small" disabled={!!busy} onClick={carry}>{busy && !['import', 'from', 'carry'].includes(busy) ? busy : t('Follow them with @{name}', { name: account.username || String(account.fid) })}</button>}
+        </div>
+      )}
+      {list.length > 0 && <div class="sheet-btns"><button class="btn ghost small" onClick={() => setOut(!out)}>{t('Export')}</button><button class="btn ghost small" onClick={copy}>{t('Copy')}</button></div>}
+      {out && <textarea class="local-export" readOnly rows={6} value={exportLocal(list)} aria-label={t('Export')} onFocus={(e) => e.currentTarget.select()} />}
+      <textarea class="local-export" rows={3} value={text} onInput={(e) => setText(e.currentTarget.value)} placeholder={t('Paste an export, or FIDs and @usernames')} aria-label={t('Import')} autocapitalize="none" spellcheck={false} />
+      <div class="sheet-btns"><button class="btn small" disabled={!text.trim() || !!busy} onClick={importText}>{t('Import')}</button></div>
+      <form class="mute-add" onSubmit={(e) => (e.preventDefault(), from.trim() && importFrom())}>
+        <input value={from} onInput={(e) => setFrom(e.currentTarget.value)} placeholder="@username" aria-label={t('Import the people @user follows')} autocapitalize="none" spellcheck={false} />
+        <button class="btn small" disabled={!from.trim() || !!busy}>{t('Import their follows')}</button>
+      </form>
+    </>
+  )
+}
+
+/** Once signed in, someone who followed people on this device is asked whether to follow them with the account, and
+ *  asked again on a later sign-in once the list holds someone new (toOffer). Nothing is followed unless they say so;
+ *  the list stays in Settings either way. */
+function CarryFollows({ hidden }: { hidden: boolean }) {
+  const list = useLocalFollows()
+  const [busy, setBusy] = useState('')
+  // answered for this account in this tab, even if the browser couldn't store the answer
+  const [shut, setShut] = useState(0)
+  const fid = account?.done ? account.fid : undefined
+  if (hidden || !fid || !list.length || shut === fid || !toOffer(fid)) return null
+  const close = () => (answered(fid), setShut(fid))
+  const yes = () => {
+    setBusy('…')
+    carryFollows((d, all) => setBusy(t('Following {n} of {all}…', { n: d, all }))).then((sent) => (carriedNote(sent), close()), (e) => (toast(e.message), setBusy('')))
+  }
+  return (
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && !busy && close()}>
+      <div class="sheet wallet-form" role="dialog" aria-label={t('Follow them on Farcaster?')}>
+        <div class="move-top"><h2>{t('Follow them on Farcaster?')}</h2></div>
+        <p class="hint">{tn(list.length, 'Before signing in, you followed {n} account on this device. Follow it with @{name} too? That publishes the follow on Farcaster.', 'Before signing in, you followed {n} accounts on this device. Follow them with @{name} too? That publishes the follows on Farcaster.', { name: account?.username || String(fid) })}</p>
+        <p class="hint">{t('You can do this later in Settings.')}</p>
+        <div class="sheet-btns"><button class="btn ghost" disabled={!!busy} onClick={close}>{t('Not now')}</button><button class="btn" disabled={!!busy} onClick={yes}>{busy || t('Follow them')}</button></div>
+      </div>
+    </div>
   )
 }
 
@@ -1471,6 +1768,7 @@ function DeleteAccount() {
 
 function Settings() {
   const [, force] = useState(0)
+  const local = useLocalFollows()
   const [prof, setProf] = useState<Record<number, string>>({})
   const [orig, setOrig] = useState<Record<number, string>>({})
   const [phrase, setPhrase] = useState(false)
@@ -1479,6 +1777,8 @@ function Settings() {
   const { gone, busy: deleting } = useDeletion()
   const summary = useRef<HTMLElement>(null)
   useEffect(() => void (gone && summary.current?.scrollIntoView({ block: 'start' })), [gone])
+  // a link to one section (/settings#follows from Home) opens there
+  useEffect(() => void (location.hash && document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'start' })), [])
   const asked = useRef(0)
   const [forgetting, setForgetting] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -1616,12 +1916,16 @@ function Settings() {
             {changed.length > 0 && <div class="actions"><button class="btn small" onClick={saveProfile} disabled={saving}>{saving ? t('Saving…') : t('Save changes')}</button></div>}
           </section>
         )}
-        {account?.done && (
-          <section>
-            <h2>{t('Muted and blocked')}</h2>
-            <MuteSettings />
+        {(!account?.done || local.length > 0) && (
+          <section id="follows">
+            <h2>{t('Following on this device')}</h2>
+            <LocalFollowSettings />
           </section>
         )}
+        <section>
+          <h2>{t('Muted and blocked')}</h2>
+          <MuteSettings />
+        </section>
         <section>
           <h2>{t('Theme')}</h2>
           <ThemeSettings />
@@ -1978,6 +2282,7 @@ function App() {
       <Viewer />
       <PhraseAsk />
       <PairAsk />
+      <CarryFollows hidden={r0 === 'join'} />
       <ReportSheet />
       <LinkSheet />
       <Toast />

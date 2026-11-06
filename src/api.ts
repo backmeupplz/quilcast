@@ -1,6 +1,7 @@
 // Hypersnap reads plus the locally stored accounts. Writes live in write.ts,
 // loaded on demand so readers never download the crypto.
 import { drop, dropEd, hex, keep, newEd, SECRETS, secretsOf, type Secrets } from './keys.ts'
+import { isLocal } from './local.ts'
 import { LINK_RE, safeUrl, toUrl } from './shared.ts'
 import { checkSpam } from './spam.ts'
 
@@ -181,7 +182,7 @@ export function follow(e: MouseEvent) {
   const a = (e.target as Element).closest?.('a')
   if (!a || a.target || a.origin !== location.origin || e.metaKey || e.ctrlKey || e.shiftKey || e.button || e.defaultPrevented) return
   e.preventDefault()
-  a.pathname + a.search !== location.pathname + location.search ? go(a.pathname + a.search) : dispatchEvent(new Event('refresh'))
+  a.pathname + a.search !== location.pathname + location.search ? go(a.pathname + a.search + a.hash) : dispatchEvent(new Event('refresh'))
 }
 
 export { LINK_RE, safeUrl, toUrl }
@@ -207,11 +208,15 @@ export function once<T>(key: string, f: () => Promise<T>, fresh = false): Promis
   return p
 }
 
-export function get<T = any>(path: string, q: Record<string, string | number | undefined> = {}, fresh = false): Promise<T> {
+/** The address get() asks, which is also its key in the memo (forget(urlOf(…)) drops one answer). */
+export function urlOf(path: string, q: Record<string, string | number | undefined> = {}) {
   // nodes with Hypersnap PR #43 then say whether the viewer liked/recast each cast and follows each author
   if (account?.fid && path.startsWith('/v2/farcaster/')) q = { viewer_fid: account.fid, ...q }
   const qs = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined) as [string, string][])
-  const url = `${settings.node}${path}?${qs}`
+  return `${settings.node}${path}?${qs}`
+}
+export function get<T = any>(path: string, q: Record<string, string | number | undefined> = {}, fresh = false): Promise<T> {
+  const url = urlOf(path, q)
   return once(url, async () => {
     const r = await fetch(url)
     // the status rides along, so a caller can tell "not there" (404) from "the node is down" (5xx)
@@ -245,9 +250,13 @@ export function tapped(type: 1 | 2, hash: string, was: boolean, count: number): 
   return [tap.on, Math.max(+tap.on, tap.count === count ? count + +tap.on - +was : count)]
 }
 
-/** Whether `fid` (the signed-in user unless said) follows `target`. */
-export const isFollowing = async (target: number, fid = account?.fid) =>
-  !!fid && (await get('/v1/linkById', { fid, target_fid: target, link_type: 'follow' }).then(() => true, () => false))
+/** Whether `fid` follows `target`. Unsaid, it's the viewer: the signed-in user, or without a finished account,
+ *  whether `target` is in this device's list (local.ts). */
+export const isFollowing = async (target: number, fid?: number) => {
+  if (fid === undefined && !account?.done) return isLocal(target)
+  const f = fid ?? account?.fid
+  return !!f && (await get('/v1/linkById', { fid: f, target_fid: target, link_type: 'follow' }).then(() => true, () => false))
+}
 /** Whether `u` follows the signed-in user ("Follows you"): the node's viewer_context when it says, else the follow link. */
 export const followsMe = async (u: User) => {
   const me = account?.fid
@@ -257,9 +266,13 @@ export const followsMe = async (u: User) => {
 // asked once per pair per visit (Home asks about the author of every reply's parent); `viewer` is someone else's FID
 // while browsing as them (browse.ts)
 const follows = new Map<string, Promise<boolean>>()
-export const amFollowing = (fid: number, viewer = account?.fid) => {
-  const k = `${viewer}:${fid}`
-  return follows.get(k) || (follows.set(k, isFollowing(fid, viewer)), follows.get(k)!)
+/** Forget those answers (the account just followed people). */
+export const forgetFollows = () => follows.clear()
+export const amFollowing = (fid: number, viewer?: number) => {
+  // without a finished account, the device's list, read fresh: it changes with every Follow tap
+  if (viewer === undefined && !account?.done) return Promise.resolve(isLocal(fid))
+  const k = `${viewer ?? account?.fid}:${fid}`
+  return follows.get(k) || (follows.set(k, isFollowing(fid, viewer ?? account?.fid)), follows.get(k)!)
 }
 
 /** People matching `q`, best first: that exact handle, then handles starting with it, then the most followed. */
