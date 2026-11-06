@@ -13,6 +13,7 @@ import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/p
 import { join } from 'node:path'
 import { cleanDesign, cleanLook, lookImages } from '../src/shared.ts'
 import { fail, fetchJson, gate, imageInfo, keep, parseJson, readText, safeGet } from './net.mjs'
+import { seen } from './stats.mjs'
 import { ownThemes } from './upload.mjs'
 
 let dir = ''
@@ -104,6 +105,8 @@ export async function keySigned(req, what, fid, body, node, stale = () => fail(4
   if (!/^0x[0-9a-f]{64}$/.test(key) || !/^[0-9a-f]{128}$/.test(sig) || !(Math.abs(Date.now() - ts) < 300e3)) throw stale()
   if (!ed25519.verify(Buffer.from(sig, 'hex'), Buffer.from(`${what}:${fid}:${ts}:${body}`), Buffer.from(key.slice(2), 'hex'))) throw fail(401, 'Bad signature.')
   if (!(await keysOf(node, fid)).includes(key) && !(await keysOf(node, fid, 3e3)).includes(key)) throw fail(403, "That key doesn't belong to this account.")
+  // one more account today (server/stats.mjs keeps only the count)
+  seen(fid)
   return { key, ts }
 }
 

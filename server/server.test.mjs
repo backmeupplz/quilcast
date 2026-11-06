@@ -27,6 +27,8 @@ const signer = ed25519.utils.randomSecretKey()
 const signerHex = '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex')
 // fid 9's, for a second account
 const signer9 = ed25519.utils.randomSecretKey()
+// fid 11's, an account only the stats test signs with
+const signer11 = ed25519.utils.randomSecretKey()
 const fid7 = { casts: [], profile: [] }
 const orAsked = []
 const hookHits = []
@@ -79,7 +81,7 @@ const node = createServer(async (q, r) => {
     if (u.searchParams.get('fid') === '7' && ['7a', '7b', '7c', '7d'].some((x) => hash === '0x' + x.repeat(20))) return r.end(JSON.stringify({ hash, data: { fid: 7, castAddBody: { text: 'mine', parentCastId } } }))
     return (r.statusCode = 400), r.end(JSON.stringify({ errCode: 'not_found', details: 'cast not found' }))
   }
-  if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : u.searchParams.get('fid') === '9' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer9)).toString('hex') }] : [] }))
+  if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : u.searchParams.get('fid') === '9' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer9)).toString('hex') }] : u.searchParams.get('fid') === '11' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer11)).toString('hex') }] : [] }))
   // @eight's casts, two pages, for finding a cast from a farcaster.xyz link's first digits (the Collect mini app)
   if (u.pathname === '/v2/farcaster/user/by-username' && u.searchParams.get('username') === 'eight') return r.end(JSON.stringify({ user: { fid: 8, username: 'eight' } }))
   if (u.pathname === '/v1/castsByFid' && u.searchParams.get('fid') === '8')
@@ -661,6 +663,43 @@ test('mutes: private to the account, read and written only with its key', async 
   assert.deepEqual(got, await r.json())
   assert.deepEqual([got.words.map((x) => x.v), got.users, got.blocks], [['$based'], [{ v: 3 }], [{ v: 4 }]])
   assert.equal((await call('GET', 7, '', { key: ed25519.utils.randomSecretKey() })).status, 403)
+})
+
+test('stats: accounts a day and campaign sign-ups, counts only', async () => {
+  const signed = (what, fid, body = '', key = signer11) => {
+    const ts = Date.now()
+    return { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex') }
+  }
+  const get = async () => {
+    const r = await fetch(`${base}/api/stats`)
+    assert.equal(r.status, 200)
+    assert.match(r.headers.get('cache-control'), /public/)
+    return r.json()
+  }
+  const signup = (body, key) => fetch(`${base}/api/signup`, { method: 'POST', body, headers: { 'x-fid': '11', ...signed('quilcast-signup', 11, body, key) } })
+  const s0 = await get()
+  assert.deepEqual(Object.keys(s0), ['signedIn', 'campaigns'])
+  const today = s0.signedIn.at(-1)
+  assert.match(today.day, /^\d{4}-\d{2}-\d{2}$/)
+  assert.ok(s0.signedIn.length <= 90 && s0.signedIn.every((d) => Object.keys(d).join() === 'day,count' && Number.isInteger(d.count)))
+  // a signed request moves today's count by one, however often it comes; a refused one doesn't
+  assert.equal((await fetch(`${base}/api/mutes/11`, { headers: signed('quilcast-mutes-read', 11, '', signer) })).status, 403)
+  assert.equal((await get()).signedIn.at(-1).count, today.count)
+  for (let i = 0; i < 2; i++) assert.equal((await fetch(`${base}/api/mutes/11`, { headers: signed('quilcast-mutes-read', 11) })).status, 200)
+  assert.deepEqual((await get()).signedIn.at(-1), { day: today.day, count: today.count + 1 })
+  // a campaign sign-up: only with the account's key, a valid name, once a day per account
+  assert.equal((await fetch(`${base}/api/signup`, { method: 'POST', body: '{"campaign":"p7-a"}', headers: { 'x-fid': '11' } })).status, 401)
+  // the account goes in x-fid only: without it the sign-up is refused
+  assert.equal((await fetch(`${base}/api/signup`, { method: 'POST', body: '{"campaign":"p7-a"}', headers: signed('quilcast-signup', 11, '{"campaign":"p7-a"}') })).status, 400)
+  assert.equal((await signup('{"campaign":"p7-a"}', signer)).status, 403)
+  assert.deepEqual(await (await signup('{"campaign":"p7 a"}')).json(), { counted: false })
+  assert.deepEqual(await (await signup('{"campaign":"p7-a"}')).json(), { counted: true })
+  assert.deepEqual(await (await signup('{"campaign":"p7-b"}')).json(), { counted: false })
+  assert.equal((await fetch(`${base}/api/signup`, { method: 'GET' })).status, 405)
+  assert.equal((await fetch(`${base}/api/stats`, { method: 'POST' })).status, 405)
+  const s1 = await get()
+  assert.deepEqual(s1.campaigns.filter((c) => c.day === today.day), [{ day: today.day, campaign: 'p7-a', count: 1 }])
+  assert.equal(s1.signedIn.at(-1).count, today.count + 1)
 })
 
 test('prefs: theme sync kept per account, read and written only with its key', async () => {

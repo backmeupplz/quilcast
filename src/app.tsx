@@ -16,6 +16,7 @@ import { listSkip, pinKey, usePinnedCast } from './castpin.ts'
 import { findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
+import { keepCampaign } from './campaign.ts'
 
 // views most visits never open load when first needed
 const lazy = <P extends object>(load: () => Promise<(p: P) => any>) => (p: P) => {
@@ -1946,6 +1947,10 @@ loadLang().then(async () => {
   try {
     const d = JSON.parse(document.getElementById('boot')?.textContent || 'null')
     if (d) seed(d), (boot = d.casts)
+  } catch {}
+  // a campaign link's campaign, kept here for this browser's first sign-in (src/campaign.ts)
+  try {
+    keepCampaign(location.search, accounts.some((a) => a.done))
   } catch {}
   // a profile's or the home page's plain HTML from the server (server/profile.mjs, home.mjs) makes way for the app, in the same frame
   root.replaceChildren()

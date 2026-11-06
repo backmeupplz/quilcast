@@ -7,7 +7,8 @@ import { address, custodyKey, fnameProof } from './fc.ts'
 import { t } from './i18n.ts'
 import { Choose } from './ui.tsx'
 import type { Choice } from './wallet.ts'
-import { custodyOf, ensureSigner, setUserData } from './write.ts'
+import { custodyOf, ensureSigner, sendSignup, setUserData } from './write.ts'
+import { firstSignIn } from './campaign.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const eth = (wei: bigint) => (Number(wei) / 1e18).toFixed(6).replace(/\.?0+$/, '')
@@ -18,7 +19,11 @@ const finish = async (a: Account) => {
   const u = await getUser(a.fid!).catch(() => null)
   // the account as ensureSigner saved it, with its new key
   const saved = accounts.find((x) => idOf(x) === idOf(a)) || a
+  const before = accounts.some((x) => x.done && idOf(x) !== idOf(a))
   setAccount({ ...saved, username: a.username || u?.username, done: true })
+  // this browser's first sign-in, from a campaign's link: the campaign's count goes up by one
+  const campaign = firstSignIn(before)
+  if (campaign) sendSignup(campaign, saved).catch(() => {})
   go('/')
 }
 

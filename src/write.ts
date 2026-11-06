@@ -435,10 +435,10 @@ export const setUserData = (type: number, value: string) => send(MT.USER_DATA_AD
 
 /** A request to our server signed with the account's Farcaster key. A key ensureSigner just added takes the node a
  *  few seconds to list; one the node doesn't list at all is replaced (`tries` > 1). */
-async function keyFetch(url: string, what: string, method: string, body = '', tries = 3, as = account!): Promise<any> {
-  const r = await fetch(url, { method, headers: { ...(method !== 'GET' && { 'content-type': 'application/json' }), ...(await keySigned(what, body, as)) }, body: method === 'GET' ? undefined : body })
+async function keyFetch(url: string, what: string, method: string, body = '', tries = 3, as = account!, extra: Record<string, string> = {}): Promise<any> {
+  const r = await fetch(url, { method, headers: { ...(method !== 'GET' && { 'content-type': 'application/json' }), ...extra, ...(await keySigned(what, body, as)) }, body: method === 'GET' ? undefined : body })
   const j = await r.json().catch(() => null)
-  if (r.status === 403 && tries > 1) return ((await signerListed(fresh(as))) ? sleep(3000) : replaceSigner(fresh(as))).then(() => keyFetch(url, what, method, body, tries - 1, as))
+  if (r.status === 403 && tries > 1) return ((await signerListed(fresh(as))) ? sleep(3000) : replaceSigner(fresh(as))).then(() => keyFetch(url, what, method, body, tries - 1, as, extra))
   if (!r.ok) throw new Error(j?.error || t('Saving failed ({status})', { status: r.status }))
   return j
 }
@@ -566,6 +566,22 @@ export const saveLook = (look: object | null) => keyFetch(`/api/look/${account!.
  *  whichever account is selected meanwhile. Answers the pinned hash, or null. */
 export const savePin = (hash: string | null, a = account!) =>
   keyFetch(`/api/pin/${a.fid}`, 'quilcast-pin', 'PUT', JSON.stringify(hash && { hash }), 3, a).then((j) => (j?.hash as string | undefined) || null)
+
+/** Tells our server this browser's first sign-in came through `campaign`'s link (src/campaign.ts); it counts sign-ups
+ *  per campaign and keeps nothing about the account. A new key can take a moment to reach the node, so it asks again a
+ *  few times, never adding a key for it. */
+export async function sendSignup(campaign: string, a = account!) {
+  const body = JSON.stringify({ campaign })
+  for (let i = 1; ; i++) {
+    try {
+      // the account goes in a header, not the URL, so no request log ties it to the campaign
+      return await keyFetch('/api/signup', 'quilcast-signup', 'POST', body, 1, a, { 'x-fid': String(a.fid) })
+    } catch (e) {
+      if (i === 4) throw e
+      await sleep(5000 * i)
+    }
+  }
+}
 
 /** The account's mutes and blocks from our server, or null when this browser has no working key yet (reading them
  *  never adds one, so it can't ask for the recovery phrase). */

@@ -11,7 +11,7 @@ import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
 import { castText, imagesIn, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
-import { clientIp, fetchJson, gate, imageInfo, keep, readJson, safeGet } from './net.mjs'
+import { clientIp, fetchJson, gate, imageInfo, keep, parseJson, readJson, readText, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
@@ -21,7 +21,8 @@ import { deleteAccount } from './account.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
-import { getDesign, getLook, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
+import { getDesign, getLook, keySigned, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
+import { joined, loadStats, ready as statsReady, stats } from './stats.mjs'
 import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
@@ -55,6 +56,7 @@ loadDrafts(DATA)
 loadPrefs(DATA)
 loadPins(DATA)
 loadThemes(DATA)
+loadStats(DATA)
 loadOwners()
 channels()
 
@@ -1156,6 +1158,25 @@ createServer(async (req, res) => {
       const err = r instanceof Error
       if (err && !r.status) console.error('drafts', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // counts only (server/stats.mjs): accounts a day, and the sign-ups each campaign link brought
+    if (path === '/api/stats') {
+      if (req.method !== 'GET') return json(405, { error: 'use GET' })
+      return limited(`stats:${ip}`, 60) ? json(429, null) : json(200, stats(), 'public, max-age=60')
+    }
+    // a browser's first sign-in, from a campaign's link: signed "quilcast-signup:<fid>:<ts>:<body>", body {"campaign"}.
+    // The account is in x-fid, never the path, so no request log ties it to a campaign.
+    if (path === '/api/signup') {
+      if (req.method !== 'POST') return json(405, { error: 'use POST' })
+      if (limited(`signup:${ip}`, 10, 600e3)) return json(429, { error: 'Slow down a little.' })
+      const fid = /^[1-9]\d{0,9}$/.test(String(req.headers['x-fid'] || '')) ? Number(req.headers['x-fid']) : 0
+      if (!fid) return json(400, { error: 'x-fid missing' })
+      const r = await readText(req, 1e3)
+        .then(async (body) => (await keySigned(req, 'quilcast-signup', fid, body, NODE), await statsReady, { counted: joined(fid, parseJson(body)?.campaign) }))
+        .catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('signup', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Failed.' } : r)
     }
     // deleting an account: everything kept here for it (server/account.mjs)
     const del = path.match(/^\/api\/account\/([1-9]\d{0,9})$/)
