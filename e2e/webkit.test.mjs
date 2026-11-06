@@ -18,11 +18,22 @@ const cast = (n, extra = {}) => ({ hash: '0x' + String(n).repeat(40), text: `cas
 // page; the app asks it too when its settings point at it (the phone tests), for Following and Trending: one cast in a
 // channel with a long name, a long link and big counts, the widest a card gets
 const busy = cast(4, { text: 'see https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=more on /base', parent_url: 'https://farcaster.xyz/~/channel/a-channel-with-a-rather-long-name', reactions: { likes_count: 12345, recasts_count: 6789 }, replies: { count: 4321 } })
+const seven = { fid: 7, username: 'user7', display_name: 'Seven', follower_count: 1, following_count: 2 }
+// the [fid, viewer_fid] of every Following feed asked for
+const followingAsked = []
 const node = createServer((q, r) => {
   r.setHeader('content-type', 'application/json')
   r.setHeader('access-control-allow-origin', '*')
   if (q.url.startsWith('/v2/farcaster/feed/trending')) return r.end(JSON.stringify({ casts: [cast(1, { embeds: [{ url: 'https://imagedelivery.net/abc/one/original' }, { url: 'https://imagedelivery.net/abc/two/original' }] }), cast(2), cast(3), busy] }))
-  if (q.url.startsWith('/v2/farcaster/feed/following')) return r.end(JSON.stringify({ casts: [busy, cast(2)] }))
+  // @user7, browsed as (#490), follows the authors of casts 5 and 6
+  if (q.url.startsWith('/v2/farcaster/feed/following')) {
+    const u = new URL(q.url, 'http://x').searchParams
+    followingAsked.push([u.get('fid'), u.get('viewer_fid')])
+    return r.end(JSON.stringify({ casts: u.get('fid') === '7' ? [cast(5), cast(6)] : [busy, cast(2)] }))
+  }
+  const at = new URL(q.url, 'http://x')
+  // "seven" is an fname whose account goes by another username, like vbuterin's vitalik.eth
+  if ((at.pathname === '/v2/farcaster/user/by-username' && ['user7', 'seven'].includes(at.searchParams.get('username'))) || (at.pathname === '/v2/farcaster/user' && at.searchParams.get('fid') === '7')) return r.end(JSON.stringify({ user: seven }))
   r.end('{}')
 })
 const nodePort = await listen(node)
@@ -73,10 +84,10 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 /**
  * Open the home page through the slow line, with `storage` in localStorage; its errors are collected. `edit` changes
  * the page, `held` holds its body back until `release()` (and its pictures come then), `clock` fakes the page's timers (ctx.clock), `fail` is a glob
- * for requests that fail, and `phone` makes it a 390 px phone.
+ * for requests that fail, `phone` makes it a 390 px phone, and `path` opens another page than the home page.
  */
 let gated = 0
-async function open(storage = {}, { edit, held, clock, fail, phone } = {}) {
+async function open(storage = {}, { edit, held, clock, fail, phone, path = '/' } = {}) {
   const ctx = await browser.newContext(phone ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : {})
   if (clock) await ctx.clock.install()
   // nothing leaves this machine: the app's node, avatars and pictures elsewhere don't answer
@@ -91,7 +102,7 @@ async function open(storage = {}, { edit, held, clock, fail, phone } = {}) {
     gates.set(id, gate)
     await ctx.route('**/i/**', async (r) => (await gate.promise, r.fulfill({ body: PNG, contentType: 'image/png' })))
   }
-  const url = `http://127.0.0.1:${proxyPort}/${held ? `?held=${id}` : ''}`
+  const url = `http://127.0.0.1:${proxyPort}${held ? `/?held=${id}` : path}`
   if (edit) await page.route(url, async (r) => {
     const res = await r.fetch()
     await r.fulfill({ response: res, body: edit(await res.text()) })
@@ -164,6 +175,50 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await page.locator('#app article.cast footer').first().waitFor({ timeout: 30e3 })
     const { wide, page: w } = await page.evaluate(() => ({ wide: document.documentElement.scrollWidth, page: innerWidth }))
     assert.ok(wide <= w, `the page is ${wide} px wide on a ${w} px screen`)
+    await close()
+  })
+
+  // #490: browsing as someone shows their Following feed, read-only, with a way out
+  const feedText = (page) => page.locator('#app article.cast').allInnerTexts().then((ts) => ts.join('\n'))
+  test('signed out, a profile\'s Browse as shows their Following feed, and Exit goes back to Trending', async () => {
+    const { page, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/u/user7' })
+    await page.locator('#app .profile h2', { hasText: 'Seven' }).waitFor({ timeout: 30e3 })
+    await page.locator('#app .profile button[aria-label="More"]').click()
+    await page.getByRole('menuitem', { name: 'Browse as @user7' }).click()
+    const banner = page.locator('#app .banner.browsing')
+    await banner.getByText('Browsing as @user7').waitFor({ timeout: 30e3 })
+    await page.locator('#app article.cast', { hasText: 'cast number 5' }).waitFor({ timeout: 30e3 })
+    assert.equal(await page.evaluate(() => location.pathname + location.search), '/?as=user7')
+    const text = await feedText(page)
+    assert.ok(text.includes('cast number 6') && !text.includes('cast number 2'), text)
+    assert.ok(followingAsked.some(([fid, viewer]) => fid === '7' && viewer === null))
+    // a signed-out visitor can join from here, and the last account browsed as is remembered
+    assert.equal(await banner.getByRole('link', { name: 'Join' }).count(), 1)
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('quilcast:browsed')).map((r) => r.fid)), [7])
+    await banner.getByRole('link', { name: 'Exit' }).click()
+    await page.locator('#app article.cast', { hasText: 'cast number 3' }).waitFor({ timeout: 30e3 })
+    assert.equal(await page.locator('#app .banner.browsing').count(), 0)
+    assert.equal(await page.evaluate(() => location.search), '')
+    // the signed-out banner offers the account again
+    assert.equal(await page.locator('#app .banner .recents a', { hasText: '@user7' }).getAttribute('href'), '/?as=user7')
+    await close()
+  })
+
+  test('signed in, a ?as= link shows their feed without the composer, and Exit goes back to your own', async () => {
+    const { page, close } = await open({ 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify({ ...nodeAt, quorum: true }) }, { path: '/?as=seven' })
+    await page.locator('#app .banner.browsing').getByText('Browsing as @user7').waitFor({ timeout: 30e3 })
+    await page.locator('#app article.cast', { hasText: 'cast number 5' }).waitFor({ timeout: 30e3 })
+    assert.ok(followingAsked.some(([fid, viewer]) => fid === '7' && viewer === '9'))
+    assert.equal(await page.locator('#app .q-sub').innerText().then((t) => t.includes('From people @user7 follows')), true)
+    assert.equal(await page.locator('#app .banner.browsing').getByRole('link', { name: 'Join' }).count(), 0)
+    assert.equal(await page.locator('#app .q-compose').count(), 0)
+    await page.locator('#app .banner.browsing').getByRole('link', { name: 'Exit' }).click()
+    // your own Following (casts 4 and 2), not Trending (which also has 1 and 3) and not @user7's (5 and 6)
+    await page.locator('#app article.cast', { hasText: 'cast number 2' }).waitFor({ timeout: 30e3 })
+    const own = await feedText(page)
+    assert.ok(!/cast number [1356]/.test(own), own)
+    assert.ok((await page.locator('#app .q-sub').innerText()).includes('From people you follow'))
+    assert.equal(await page.locator('#app .q-compose').count(), 1)
     await close()
   })
 

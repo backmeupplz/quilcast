@@ -255,6 +255,9 @@ test('the home page arrives with the signed-out feed drawn in, its style and scr
   assert.ok(!/<link rel="stylesheet"/.test(html) && csp.includes(hash(css)))
   // every inline script (the head's account check, the folds' "Show more") is allowed by its hash
   for (const [, js] of html.matchAll(/<script>([^<]*)<\/script>/g)) assert.ok(csp.includes(hash(js)), js.slice(0, 40))
+  // browsing as someone (#490) is the bare app, which draws their feed instead of the signed-out one
+  const as = await (await fetch(base + '/?as=dwr')).text()
+  assert.ok(as.includes('<div id="app">') && !as.includes('ssr-home') && !as.includes('id="boot"'))
 })
 
 test('scripts/verify.mjs finds the server serving exactly its build: every file, and only its scripts on the home page (folds and all), an app page and About', async () => {

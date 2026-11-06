@@ -83,6 +83,14 @@ export function castText(c: Mentioned, ended = false) {
   return out
 }
 
+/** The `shown` set (oncePerFeed) a feed's load for key `k` uses, taken when the load starts. A first page starts a
+ *  new one for `k`; a later page keeps it, or gets a throwaway one when the feed has moved to another key since, so
+ *  a slow load for the key before never resets or fills the current key's set. */
+export function shownFor(held: { k: string; set: Set<string> }, k: string, first: boolean) {
+  if (first) return Object.assign(held, { k, set: new Set<string>() }).set
+  return held.k === k ? held.set : new Set<string>()
+}
+
 type Unit = { hash: string; up?: { hash: string }[]; gap?: boolean }
 /** Home's threads (app.tsx threads()) with every post shown once per feed: `shown` holds what earlier pages showed. A
  *  cast already up, or another reply to a parent already up, is left out; one whose root is already up shows

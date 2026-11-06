@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "캐스트를 고정하려면 다시 로그인하세요.",
   "You can only pin your own casts.": "내 캐스트만 고정할 수 있어요.",
   "Too many pins, try again in a few minutes.": "고정을 너무 많이 했어요. 몇 분 후에 다시 시도하세요.",
-  "Replies can't be pinned.": "답글은 고정할 수 없어요."
+  "Replies can't be pinned.": "답글은 고정할 수 없어요.",
+  "Browse as": "다음으로 둘러보기",
+  "Browse as @{name}": "@{name}(으)로 둘러보기",
+  "Browsing as @{name}": "@{name}(으)로 둘러보는 중",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "@{name}님이 팔로우하는 사람들의 캐스트예요. 여기서 하는 어떤 행동도 그 사람으로 처리되지 않아요.",
+  "Exit": "나가기",
+  "From people @{name} follows": "@{name}님이 팔로우하는 사람들",
+  "Nothing yet from the people @{name} follows.": "@{name}님이 팔로우하는 사람들의 캐스트가 아직 없어요."
 }

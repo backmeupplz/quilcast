@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Logga in igen för att fästa en cast.",
   "You can only pin your own casts.": "Du kan bara fästa dina egna casts.",
   "Too many pins, try again in a few minutes.": "Du har fäst för många gånger, försök igen om några minuter.",
-  "Replies can't be pinned.": "Svar kan inte fästas."
+  "Replies can't be pinned.": "Svar kan inte fästas.",
+  "Browse as": "Bläddra som",
+  "Browse as @{name}": "Bläddra som @{name}",
+  "Browsing as @{name}": "Du bläddrar som @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Casts från personerna som @{name} följer. Inget du gör här sker i deras namn.",
+  "Exit": "Avsluta",
+  "From people @{name} follows": "Från personer som @{name} följer",
+  "Nothing yet from the people @{name} follows.": "Inget än från personerna som @{name} följer."
 }

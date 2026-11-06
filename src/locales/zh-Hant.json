@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "請重新登入以置頂 cast。",
   "You can only pin your own casts.": "你只能置頂自己的 cast。",
   "Too many pins, try again in a few minutes.": "置頂操作過多，請幾分鐘後再試。",
-  "Replies can't be pinned.": "回覆無法置頂。"
+  "Replies can't be pinned.": "回覆無法置頂。",
+  "Browse as": "以他人身分瀏覽",
+  "Browse as @{name}": "以 @{name} 的身分瀏覽",
+  "Browsing as @{name}": "正在以 @{name} 的身分瀏覽",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "這是 @{name} 追蹤的人發布的 cast。你在這裡的任何操作都不會以對方的身分進行。",
+  "Exit": "結束",
+  "From people @{name} follows": "來自 @{name} 追蹤的人",
+  "Nothing yet from the people @{name} follows.": "@{name} 追蹤的人還沒有發布內容。"
 }

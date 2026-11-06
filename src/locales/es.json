@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Vuelve a iniciar sesión para fijar un cast.",
   "You can only pin your own casts.": "Solo puedes fijar tus propios casts.",
   "Too many pins, try again in a few minutes.": "Demasiados cambios de fijado, inténtalo de nuevo en unos minutos.",
-  "Replies can't be pinned.": "Las respuestas no se pueden fijar."
+  "Replies can't be pinned.": "Las respuestas no se pueden fijar.",
+  "Browse as": "Ver como",
+  "Browse as @{name}": "Ver como @{name}",
+  "Browsing as @{name}": "Viendo como @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Casts de las personas a las que sigue @{name}. Nada de lo que hagas aquí actúa en su nombre.",
+  "Exit": "Salir",
+  "From people @{name} follows": "De personas a las que sigue @{name}",
+  "Nothing yet from the people @{name} follows.": "Aún no hay nada de las personas a las que sigue @{name}."
 }

@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "请重新登录以置顶 cast。",
   "You can only pin your own casts.": "你只能置顶自己的 cast。",
   "Too many pins, try again in a few minutes.": "置顶操作过多，请几分钟后再试。",
-  "Replies can't be pinned.": "回复无法置顶。"
+  "Replies can't be pinned.": "回复无法置顶。",
+  "Browse as": "以他人身份浏览",
+  "Browse as @{name}": "以 @{name} 的身份浏览",
+  "Browsing as @{name}": "正在以 @{name} 的身份浏览",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "这是 @{name} 关注的人发布的 cast。你在这里的任何操作都不会以对方的身份进行。",
+  "Exit": "退出",
+  "From people @{name} follows": "来自 @{name} 关注的人",
+  "Nothing yet from the people @{name} follows.": "@{name} 关注的人还没有发布内容。"
 }

@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Masuk lagi untuk menyematkan cast.",
   "You can only pin your own casts.": "Kamu hanya bisa menyematkan cast milikmu sendiri.",
   "Too many pins, try again in a few minutes.": "Terlalu sering menyematkan, coba lagi dalam beberapa menit.",
-  "Replies can't be pinned.": "Balasan tidak bisa disematkan."
+  "Replies can't be pinned.": "Balasan tidak bisa disematkan.",
+  "Browse as": "Jelajahi sebagai",
+  "Browse as @{name}": "Jelajahi sebagai @{name}",
+  "Browsing as @{name}": "Menjelajah sebagai @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Cast dari orang-orang yang diikuti @{name}. Tidak ada yang kamu lakukan di sini yang bertindak atas nama mereka.",
+  "Exit": "Keluar",
+  "From people @{name} follows": "Dari orang-orang yang diikuti @{name}",
+  "Nothing yet from the people @{name} follows.": "Belum ada apa pun dari orang-orang yang diikuti @{name}."
 }

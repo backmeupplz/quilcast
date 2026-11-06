@@ -9,6 +9,7 @@ Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App 
 ## What it does
 
 - Following and trending feeds (top-level casts), threads with their parent casts, profiles with separate casts and replies tabs
+- Browse as someone else, signed in or not: a profile's ⋮ menu has "Browse as @name", which opens Home on that account's Following feed, built from who they follow (public data, no sign-in needed). It's read-only: nothing is signed as them, so likes, recasts and replies stay yours (or lead to Join when signed out), and your own mutes, blocks and spam filter still apply. A banner says whose feed it is, with Exit back to your own. The link (`/?as=<username or fid>`) can be shared, and the last five accounts you browsed as are offered again while browsing and on the signed-out home page
 - On a cast's page, the like, recast and quote counts open lists of who liked, recast or quoted it
 - Notifications: grouped likes, recasts and follows plus replies and mentions, with an unread dot. Hypersnap leaves recasts out, so those are looked up for your 25 newest casts while the page is open
 - Several accounts per browser, switched from the account menu (bottom left) or Settings

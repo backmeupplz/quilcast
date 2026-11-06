@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "ลงชื่อเข้าใช้อีกครั้งเพื่อปักหมุดแคสต์",
   "You can only pin your own casts.": "คุณปักหมุดได้เฉพาะแคสต์ของตัวเองเท่านั้น",
   "Too many pins, try again in a few minutes.": "ปักหมุดบ่อยเกินไป ลองอีกครั้งในอีกไม่กี่นาที",
-  "Replies can't be pinned.": "ไม่สามารถปักหมุดการตอบกลับได้"
+  "Replies can't be pinned.": "ไม่สามารถปักหมุดการตอบกลับได้",
+  "Browse as": "ดูในฐานะ",
+  "Browse as @{name}": "ดูในฐานะ @{name}",
+  "Browsing as @{name}": "กำลังดูในฐานะ @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "แคสต์จากคนที่ @{name} ติดตาม สิ่งที่คุณทำที่นี่จะไม่เกิดขึ้นในนามของเขา",
+  "Exit": "ออก",
+  "From people @{name} follows": "จากคนที่ @{name} ติดตาม",
+  "Nothing yet from the people @{name} follows.": "ยังไม่มีอะไรจากคนที่ @{name} ติดตาม"
 }

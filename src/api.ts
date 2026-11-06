@@ -245,17 +245,22 @@ export function tapped(type: 1 | 2, hash: string, was: boolean, count: number): 
   return [tap.on, Math.max(+tap.on, tap.count === count ? count + +tap.on - +was : count)]
 }
 
-export const isFollowing = async (target: number) =>
-  !!account?.fid && (await get('/v1/linkById', { fid: account.fid, target_fid: target, link_type: 'follow' }).then(() => true, () => false))
+/** Whether `fid` (the signed-in user unless said) follows `target`. */
+export const isFollowing = async (target: number, fid = account?.fid) =>
+  !!fid && (await get('/v1/linkById', { fid, target_fid: target, link_type: 'follow' }).then(() => true, () => false))
 /** Whether `u` follows the signed-in user ("Follows you"): the node's viewer_context when it says, else the follow link. */
 export const followsMe = async (u: User) => {
   const me = account?.fid
   if (!me || me === u.fid) return false
   return u.viewer_context?.followed_by ?? (await get('/v1/linkById', { fid: u.fid, target_fid: me, link_type: 'follow' }).then(() => true, () => false))
 }
-// asked once per person per visit (Home asks about the author of every reply's parent)
-const follows = new Map<number, Promise<boolean>>()
-export const amFollowing = (fid: number) => follows.get(fid) || (follows.set(fid, isFollowing(fid)), follows.get(fid)!)
+// asked once per pair per visit (Home asks about the author of every reply's parent); `viewer` is someone else's FID
+// while browsing as them (browse.ts)
+const follows = new Map<string, Promise<boolean>>()
+export const amFollowing = (fid: number, viewer = account?.fid) => {
+  const k = `${viewer}:${fid}`
+  return follows.get(k) || (follows.set(k, isFollowing(fid, viewer)), follows.get(k)!)
+}
 
 /** People matching `q`, best first: that exact handle, then handles starting with it, then the most followed. */
 export async function findUsers(q: string) {

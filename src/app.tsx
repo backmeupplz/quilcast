@@ -5,7 +5,7 @@ import { account, accounts, amFollowing, isMe, askUser, findUsers, follow, follo
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, hasTag, n, oncePerFeed, sized, type Look, type Theme } from './shared.ts'
+import { castText, hasTag, n, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, pushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
@@ -17,6 +17,7 @@ import { findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
 import { keepCampaign } from './campaign.ts'
+import { asOf, browsePath, recentsOf, remember, repliesFit } from './browse.ts'
 
 // views most visits never open load when first needed
 const lazy = <P extends object>(load: () => Promise<(p: P) => any>) => (p: P) => {
@@ -295,15 +296,15 @@ const ask = (() => {
     }
   }
 })()
-async function threads(casts: Cast[], shown: Set<string>) {
+// `viewer` is whose Following feed it is: the signed-in user, or the account browsed as (browse.ts)
+async function threads(casts: Cast[], shown: Set<string>, viewer = account?.fid) {
   const units = await Promise.all(casts.map(async (c): Promise<Cast | null> => {
     // a recast shows on its own, whoever the cast replies to
     if (!c.parent_hash || c.recaster) return c
     const parent = await ask(() => fetchCast(c.parent_hash!))
     if (!parent) return null
-    const to = parent.author.fid
-    // nodes with Hypersnap PR #43 say whether the viewer follows the author; others are asked
-    if (to !== account?.fid && !(parent.author.viewer_context?.following ?? (await ask(() => amFollowing(to))))) return null
+    // nodes with Hypersnap PR #43 say whether the signed-in user follows the author; others are asked
+    if (!(await repliesFit(parent.author.fid, viewer, account?.fid, parent.author.viewer_context?.following, (to, v) => ask(() => amFollowing(to, v))))) return null
     if (!parent.parent_hash) return { ...c, up: [parent], gap: false }
     // the root: straight from thread_hash (PR #43), else up to five more steps up, like the thread page
     let root: Cast | null = null
@@ -339,12 +340,15 @@ let boot: Cast[] | null = null
 // `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately; `owner` is the profile
 // it's on. A conversation with a muted post in it is left out whole.
 // `skip`: a cast shown above the feed already (a profile's pinned cast), left out of it
-function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number; skip?: string | null }) {
-  // the posts this feed shows so far, for threads(); a first page starts over
-  const shown = useRef(new Set<string>())
+// `viewer`: a threaded feed's owner when it isn't the signed-in user's (threads())
+function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number; skip?: string | null; viewer?: number }) {
+  // the posts this feed shows so far, for threads(), and the key they're for; a first page starts over (shownFor)
+  const shown = useRef({ k, set: new Set<string>() })
   return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => !silenced(c.recaster?.fid) && (!skip || pinKey(c.hash) !== skip) && ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
     initial={() => (cacheKey === '0:trending' && boot) || (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
     load={async (cursor) => {
+      // taken now, not after the request: one Feed is reused when `k` changes, and an older key's load can end later
+      const seen = shownFor(shown.current, k, !cursor)
       let r = await load(cursor)
       // a tab that keeps only some casts (a profile's Casts or Replies) can get whole pages with none to keep, like a bot
       // that only ever replies: read on within this one load, so the skeleton stays put instead of flashing page after
@@ -352,8 +356,7 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip }: { load: (
       const filtered = keep && !thread
       for (let i = 0; filtered && i < 10 && r.casts.length && !r.casts.some(keep) && r.next?.cursor; i++) r = await load(r.next.cursor)
       const nothing = filtered && !r.casts.some(keep)
-      if (!cursor) shown.current = new Set()
-      let casts = thread ? await threads(r.casts, shown.current) : keep ? r.casts.filter(keep) : r.casts
+      let casts = thread ? await threads(r.casts, seen, viewer ?? account?.fid) : keep ? r.casts.filter(keep) : r.casts
       // the server's page (at most a minute old) keeps its order on top, with fresh counts, and the rest goes under
       // it, so nothing on screen moves
       const kept = !cursor && cacheKey === '0:trending' && boot
@@ -388,9 +391,54 @@ function useReload(): [number, () => void] {
 const isSpace = (c: Cast) => (c.embeds || []).some((e: any) => /^https:\/\/(farcaster\.xyz|warpcast\.com)\/~\/spaces\//.test(e?.url || ''))
 const trendy = (c: Cast) => !c.parent_hash && !isSpace(c)
 
+// the accounts this browser browsed as lately (browse.ts), newest first
+const RECENT_KEY = 'quilcast:browsed'
+/** Home's `?as=`, kept current as the page changes. */
+function useAs() {
+  const [as, setAs] = useState(() => asOf(location.search))
+  useEffect(() => {
+    const f = () => setAs(asOf(location.search))
+    addEventListener('popstate', f)
+    return () => removeEventListener('popstate', f)
+  }, [])
+  return as
+}
+const Recents = ({ skip }: { skip?: number }) => {
+  const list = recentsOf(read(RECENT_KEY, [])).filter((r) => r.fid !== skip)
+  return list.length ? <p class="recents">{t('Browse as')} {list.map((r) => <a key={r.fid} href={browsePath(r)}>@{handle(r)}</a>)}</p> : null
+}
+
 function Home() {
-  const [tab, setTab] = useState<'following' | 'trending'>(account?.done ? 'following' : 'trending')
+  // browsing as someone (browse.ts): their Following feed, read-only, whoever is signed in
+  const as = useAs()
+  // who `as` turned out to be, with the `as` asked: a name can resolve to someone whose username is spelled otherwise
+  // (an fname whose account goes by an ENS name, a FID with leading zeros)
+  const [who, setWho] = useState<{ as: string; u: User } | null>(() => (as && known(as) ? { as, u: known(as)! } : null))
+  const [err, setErr] = useState<(Error & { status?: number }) | null>(null)
+  const [tries, setTries] = useState(0)
+  const [tab, setTab] = useState<'following' | 'trending'>(account?.done || as ? 'following' : 'trending')
   const [round, reload] = useReload()
+  useEffect(() => {
+    setErr(null)
+    setTab(account?.done || as ? 'following' : 'trending')
+    if (!as) return setWho(null)
+    const k = known(as)
+    setWho(k && { as, u: k })
+    let live = true
+    getUser(as).then((u) => {
+      if (!live) return
+      setWho({ as, u })
+      try {
+        save(RECENT_KEY, remember(read(RECENT_KEY, []), u))
+      } catch {}
+    }, (e) => live && setErr(e))
+    return () => void (live = false)
+  }, [as, tries])
+  // only once it's the one `as` names, so a feed never loads for the account browsed before
+  const target = as && who?.as === as ? who.u : null
+  const name = target ? handle(target) : as
+  // signed out with no one to browse as, there's no Following (the tab catches up a render later)
+  const following = tab === 'following' && !!(as || account?.done)
   const pick = (t: typeof tab) => (t === tab ? reload() : setTab(t))
   return (
     <>
@@ -398,27 +446,43 @@ function Home() {
         // Quorum's feed: Discover first, a refresh button, the composer, and a line saying what the feed holds
         <>
           <Header title={t('Home')} back={false} action={<button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={reload}><Icon d={P.refresh} /></button>}>
-            {account?.done && <Tabs tabs={[['trending', `${t('Discover')} 🌐`], ['following', t('Following')]]} value={tab} set={pick} />}
+            {(account?.done || as) && <Tabs tabs={[['trending', `${t('Discover')} 🌐`], ['following', t('Following')]]} value={tab} set={pick} />}
           </Header>
-          <QuorumCompose />
-          <div class="q-sub">{tab === 'trending' ? <><span>🌐 {t('Public posts')}</span><span class="muted">{t('Trending on the network')}</span></> : <><span>{t('Following')}</span><span class="muted">{t('From people you follow')}</span></>}</div>
+          {!as && <QuorumCompose />}
+          <div class="q-sub">{!following ? <><span>🌐 {t('Public posts')}</span><span class="muted">{t('Trending on the network')}</span></> : <><span>{t('Following')}</span><span class="muted">{as ? t('From people @{name} follows', { name: name! }) : t('From people you follow')}</span></>}</div>
         </>
       ) : (
         <Header title={t('Home')} back={false}>
-          {account?.done && <Tabs tabs={[['following', t('Following')], ['trending', t('Trending')]]} value={tab} set={pick} />}
+          {(account?.done || as) && <Tabs tabs={[['following', t('Following')], ['trending', t('Trending')]]} value={tab} set={pick} />}
         </Header>
       )}
-      {!account?.done && (
+      {as ? (
+        <div class="banner browsing" role="status">
+          {target && <Avatar u={target} size={40} link={false} />}
+          <div><b>{t('Browsing as @{name}', { name: name! })}</b><p>{t('Casts from the people @{name} follows. Nothing you do here acts as them.', { name: name! })}</p><Recents skip={target?.fid} /></div>
+          <span class="btns">
+            {!account?.done && <a class="btn ghost small" href="/join">{t('Join')}</a>}
+            <a class="btn small" href="/">{t('Exit')}</a>
+          </span>
+        </div>
+      ) : !account?.done && (
         <div class="banner">
           <div><b>{t('Farcaster without the middlemen')}</b><p>{app ? t('Quilcast talks straight to the Hypersnap network, and your keys never leave this device.') : t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p>
+            <Recents />
             {android && <PlayBadge />}</div>
           <a class="btn small" href="/join">{t('Join')}</a>
         </div>
       )}
-      {account?.done && <PlayBanner />}
+      {account?.done && !as && <PlayBanner />}
       {/* replies show in Following with their conversation (threads()); Trending keeps top-level casts */}
-      <Feed k={`${tab}:${round}`} cacheKey={`${account?.fid || 0}:${tab}`} empty={t('Follow a few people and their casts will show up here.')} keep={trendy} thread={tab === 'following'}
-        load={(cursor) => (tab === 'following' ? get('/v2/farcaster/feed/following', { fid: account!.fid, limit: 50, cursor, with_recasts: 'true' }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
+      {as && !target && following ? (
+        err ? <div class="note">{err.status === 404 ? t('No one goes by that name.') : <>{t('Couldn\'t load: {error}', { error: err.message })} <button class="link-btn" onClick={() => setTries((x) => x + 1)}>{t('Retry')}</button></>}</div> : <div class="spinner" />
+      ) : (
+        // someone else's Following isn't kept in this browser: only your own feeds paint from the cache
+        <Feed k={`${target ? `as${target.fid}:` : ''}${following ? 'following' : 'trending'}:${round}`} cacheKey={target && following ? undefined : `${account?.fid || 0}:${following ? 'following' : 'trending'}`} keep={trendy} thread={following} viewer={target?.fid}
+          empty={target && following ? t('Nothing yet from the people @{name} follows.', { name: name! }) : t('Follow a few people and their casts will show up here.')}
+          load={(cursor) => (following ? get('/v2/farcaster/feed/following', { fid: target?.fid ?? account!.fid, limit: 50, cursor, with_recasts: 'true' }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
+      )}
     </>
   )
 }
@@ -853,6 +917,7 @@ function Profile({ id }: { id: string }) {
                       <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
                       {menu && (
                         <Menu class="right" close={() => setMenu(false)}>
+                          <button role="menuitem" onClick={() => (setMenu(false), go(browsePath(u)))}>{t('Browse as @{name}', { name: handle(u) })}</button>
                           {rssItem}
                           <SilenceItems u={u} done={() => setMenu(false)} />
                         </Menu>

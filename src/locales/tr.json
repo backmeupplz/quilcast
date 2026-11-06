@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Bir cast sabitlemek için yeniden giriş yap.",
   "You can only pin your own casts.": "Yalnızca kendi castlerini sabitleyebilirsin.",
   "Too many pins, try again in a few minutes.": "Çok fazla sabitleme, birkaç dakika sonra tekrar dene.",
-  "Replies can't be pinned.": "Yanıtlar sabitlenemez."
+  "Replies can't be pinned.": "Yanıtlar sabitlenemez.",
+  "Browse as": "Şu kişi olarak gez",
+  "Browse as @{name}": "@{name} olarak gez",
+  "Browsing as @{name}": "@{name} olarak geziyorsun",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "@{name} adlı kişinin takip ettiklerinin castleri. Burada yaptığın hiçbir şey onun adına yapılmaz.",
+  "Exit": "Çık",
+  "From people @{name} follows": "@{name} adlı kişinin takip ettiklerinden",
+  "Nothing yet from the people @{name} follows.": "@{name} adlı kişinin takip ettiklerinden henüz bir şey yok."
 }

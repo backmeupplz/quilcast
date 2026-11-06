@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Log opnieuw in om een cast vast te zetten.",
   "You can only pin your own casts.": "Je kunt alleen je eigen casts vastzetten.",
   "Too many pins, try again in a few minutes.": "Te vaak vastgezet, probeer het over een paar minuten opnieuw.",
-  "Replies can't be pinned.": "Reacties kunnen niet worden vastgezet."
+  "Replies can't be pinned.": "Reacties kunnen niet worden vastgezet.",
+  "Browse as": "Bekijk als",
+  "Browse as @{name}": "Bekijk als @{name}",
+  "Browsing as @{name}": "Je bekijkt Quilcast als @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Casts van de mensen die @{name} volgt. Niets wat je hier doet, gebeurt namens hen.",
+  "Exit": "Stoppen",
+  "From people @{name} follows": "Van mensen die @{name} volgt",
+  "Nothing yet from the people @{name} follows.": "Nog niets van de mensen die @{name} volgt."
 }

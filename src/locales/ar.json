@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "سجّل الدخول مرة أخرى لتثبيت كاست.",
   "You can only pin your own casts.": "يمكنك تثبيت الكاستات الخاصة بك فقط.",
   "Too many pins, try again in a few minutes.": "عمليات تثبيت كثيرة جدًا، حاول مرة أخرى بعد بضع دقائق.",
-  "Replies can't be pinned.": "لا يمكن تثبيت الردود."
+  "Replies can't be pinned.": "لا يمكن تثبيت الردود.",
+  "Browse as": "تصفّح باسم",
+  "Browse as @{name}": "تصفّح باسم @{name}",
+  "Browsing as @{name}": "أنت تتصفّح باسم @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "منشورات الأشخاص الذين يتابعهم @{name}. لا شيء تفعله هنا يُنفَّذ باسمه.",
+  "Exit": "خروج",
+  "From people @{name} follows": "من أشخاص يتابعهم @{name}",
+  "Nothing yet from the people @{name} follows.": "لا شيء بعد من الأشخاص الذين يتابعهم @{name}."
 }

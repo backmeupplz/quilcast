@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Đăng nhập lại để ghim một cast.",
   "You can only pin your own casts.": "Bạn chỉ có thể ghim cast của chính mình.",
   "Too many pins, try again in a few minutes.": "Ghim quá nhiều lần, hãy thử lại sau vài phút.",
-  "Replies can't be pinned.": "Không thể ghim câu trả lời."
+  "Replies can't be pinned.": "Không thể ghim câu trả lời.",
+  "Browse as": "Xem với tư cách",
+  "Browse as @{name}": "Xem với tư cách @{name}",
+  "Browsing as @{name}": "Đang xem với tư cách @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Cast từ những người @{name} theo dõi. Không việc gì bạn làm ở đây được thực hiện thay họ.",
+  "Exit": "Thoát",
+  "From people @{name} follows": "Từ những người @{name} theo dõi",
+  "Nothing yet from the people @{name} follows.": "Chưa có gì từ những người @{name} theo dõi."
 }

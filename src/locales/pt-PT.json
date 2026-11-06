@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Inicia sessão de novo para afixar um cast.",
   "You can only pin your own casts.": "Só podes afixar os teus próprios casts.",
   "Too many pins, try again in a few minutes.": "Demasiadas afixações, tenta de novo dentro de alguns minutos.",
-  "Replies can't be pinned.": "As respostas não podem ser afixadas."
+  "Replies can't be pinned.": "As respostas não podem ser afixadas.",
+  "Browse as": "Navegar como",
+  "Browse as @{name}": "Navegar como @{name}",
+  "Browsing as @{name}": "A navegar como @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Casts das pessoas que @{name} segue. Nada do que fizeres aqui age em nome dessa conta.",
+  "Exit": "Sair",
+  "From people @{name} follows": "De pessoas que @{name} segue",
+  "Nothing yet from the people @{name} follows.": "Ainda nada das pessoas que @{name} segue."
 }

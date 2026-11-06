@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Zaloguj się ponownie, aby przypiąć cast.",
   "You can only pin your own casts.": "Możesz przypinać tylko własne casty.",
   "Too many pins, try again in a few minutes.": "Za dużo przypięć, spróbuj ponownie za kilka minut.",
-  "Replies can't be pinned.": "Odpowiedzi nie można przypiąć."
+  "Replies can't be pinned.": "Odpowiedzi nie można przypiąć.",
+  "Browse as": "Przeglądaj jako",
+  "Browse as @{name}": "Przeglądaj jako @{name}",
+  "Browsing as @{name}": "Przeglądasz jako @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Casty osób obserwowanych przez @{name}. Nic, co tu zrobisz, nie dzieje się w jego imieniu.",
+  "Exit": "Wyjdź",
+  "From people @{name} follows": "Od osób obserwowanych przez @{name}",
+  "Nothing yet from the people @{name} follows.": "Na razie nic od osób obserwowanych przez @{name}."
 }

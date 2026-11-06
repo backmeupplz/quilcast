@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "キャストを固定するにはもう一度サインインしてください。",
   "You can only pin your own casts.": "固定できるのは自分のキャストだけです。",
   "Too many pins, try again in a few minutes.": "固定の操作が多すぎます。数分後にもう一度お試しください。",
-  "Replies can't be pinned.": "返信は固定できません。"
+  "Replies can't be pinned.": "返信は固定できません。",
+  "Browse as": "表示するアカウント",
+  "Browse as @{name}": "@{name} として閲覧",
+  "Browsing as @{name}": "@{name} として閲覧中",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "@{name} がフォローしている人のキャストです。ここでの操作が本人として行われることはありません。",
+  "Exit": "終了",
+  "From people @{name} follows": "@{name} がフォローしている人から",
+  "Nothing yet from the people @{name} follows.": "@{name} がフォローしている人の投稿はまだありません。"
 }

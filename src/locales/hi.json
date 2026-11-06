@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "कास्ट पिन करने के लिए फिर से साइन इन करें।",
   "You can only pin your own casts.": "आप सिर्फ़ अपनी ही कास्ट पिन कर सकते हैं।",
   "Too many pins, try again in a few minutes.": "बहुत ज़्यादा पिन, कुछ मिनट बाद फिर से कोशिश करें।",
-  "Replies can't be pinned.": "जवाबों को पिन नहीं किया जा सकता।"
+  "Replies can't be pinned.": "जवाबों को पिन नहीं किया जा सकता।",
+  "Browse as": "इस रूप में देखें",
+  "Browse as @{name}": "@{name} के रूप में देखें",
+  "Browsing as @{name}": "आप @{name} के रूप में देख रहे हैं",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "उन लोगों के कास्ट जिन्हें @{name} फ़ॉलो करते हैं। यहाँ आप जो भी करें, वह उनकी ओर से नहीं होता।",
+  "Exit": "बाहर निकलें",
+  "From people @{name} follows": "उन लोगों से जिन्हें @{name} फ़ॉलो करते हैं",
+  "Nothing yet from the people @{name} follows.": "जिन लोगों को @{name} फ़ॉलो करते हैं, उनसे अभी कुछ नहीं।"
 }

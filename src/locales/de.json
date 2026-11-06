@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Melde dich erneut an, um einen Cast anzuheften.",
   "You can only pin your own casts.": "Du kannst nur deine eigenen Casts anheften.",
   "Too many pins, try again in a few minutes.": "Zu oft angeheftet, versuch es in ein paar Minuten noch einmal.",
-  "Replies can't be pinned.": "Antworten können nicht angeheftet werden."
+  "Replies can't be pinned.": "Antworten können nicht angeheftet werden.",
+  "Browse as": "Ansehen als",
+  "Browse as @{name}": "Ansehen als @{name}",
+  "Browsing as @{name}": "Du siehst Quilcast als @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Casts der Leute, denen @{name} folgt. Nichts, was du hier tust, geschieht in ihrem Namen.",
+  "Exit": "Beenden",
+  "From people @{name} follows": "Von Leuten, denen @{name} folgt",
+  "Nothing yet from the people @{name} follows.": "Noch nichts von den Leuten, denen @{name} folgt."
 }

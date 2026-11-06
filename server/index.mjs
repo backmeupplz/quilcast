@@ -1506,7 +1506,8 @@ createServer(async (req, res) => {
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
     }
 
-    if (path === '/') return homePage()
+    // browsing as someone (src/browse.ts) shows their feed, not the signed-out one the home page draws
+    if (path === '/') return url.searchParams.has('as') ? app() : homePage()
     const file = normalize(join(DIST, PAGES[path] || (TRANSLATED.test(path) ? path.slice(1) + '.html' : path)))
     if (file.startsWith(DIST) && extname(file)) {
       const page = extname(file) === '.html'

@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Reconnecte-toi pour épingler un cast.",
   "You can only pin your own casts.": "Tu ne peux épingler que tes propres casts.",
   "Too many pins, try again in a few minutes.": "Trop d’épinglages, réessaie dans quelques minutes.",
-  "Replies can't be pinned.": "Les réponses ne peuvent pas être épinglées."
+  "Replies can't be pinned.": "Les réponses ne peuvent pas être épinglées.",
+  "Browse as": "Voir en tant que",
+  "Browse as @{name}": "Voir en tant que @{name}",
+  "Browsing as @{name}": "Vous voyez Quilcast en tant que @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Les casts des personnes que @{name} suit. Rien de ce que vous faites ici n’agit en son nom.",
+  "Exit": "Quitter",
+  "From people @{name} follows": "Des personnes que @{name} suit",
+  "Nothing yet from the people @{name} follows.": "Rien pour l’instant des personnes que @{name} suit."
 }

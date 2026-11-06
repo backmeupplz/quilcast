@@ -1142,5 +1142,12 @@
   "Sign in again to pin a cast.": "Войдите снова, чтобы закрепить каст.",
   "You can only pin your own casts.": "Закреплять можно только свои касты.",
   "Too many pins, try again in a few minutes.": "Слишком много закреплений, попробуйте через несколько минут.",
-  "Replies can't be pinned.": "Ответы нельзя закрепить."
+  "Replies can't be pinned.": "Ответы нельзя закрепить.",
+  "Browse as": "Смотреть как",
+  "Browse as @{name}": "Смотреть как @{name}",
+  "Browsing as @{name}": "Вы смотрите как @{name}",
+  "Casts from the people @{name} follows. Nothing you do here acts as them.": "Касты людей, на которых подписан @{name}. Ничто из того, что вы делаете здесь, не делается от его имени.",
+  "Exit": "Выйти",
+  "From people @{name} follows": "От людей, на которых подписан @{name}",
+  "Nothing yet from the people @{name} follows.": "Пока ничего от людей, на которых подписан @{name}."
 }
