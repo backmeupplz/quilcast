@@ -738,9 +738,12 @@ const CARDS_COLLECTION = {
  *  the embed that opens it. */
 async function collectPage(hash, fid) {
   let title = 'Quilcast Collect', desc = 'Collect any Farcaster cast or profile card as a free 1/1 NFT on Base, or see who already owns it.'
-  let og = `${COLLECT}/og.png`, embed = `${COLLECT}/embed.png`, button = 'Open Quilcast Collect', path = '/'
-  const c = hash && (await keptCast(hash))
-  const k = fid && (await keptCard(fid))
+  let og = `${COLLECT}/og.png`, embed = `${COLLECT}/embed.png`, button = 'Open Quilcast Collect'
+  // a cast's or a card's link opens at it even when the lookup fails (the app says what went wrong there): a preview
+  // read meanwhile would otherwise launch the home page, and Farcaster clients keep previews for hours
+  let path = hash ? `/c/${hash}` : fid ? `/p/${fid}` : '/'
+  const c = hash && (await keptCast(hash).catch(() => null))
+  const k = fid && (await keptCard(fid).catch(() => null))
   if (k) {
     const o = await ownerOf(fid.toString(16), CARDS)
     const who = `@${k.u.username || fid}`
@@ -750,7 +753,6 @@ async function collectPage(hash, fid) {
     og = `${SITE}/nft/card/${fid}.og.png?v=${v}`
     embed = `${SITE}/nft/card/${fid}.3x2.png?v=${v}`
     button = o ? 'See the card' : 'Collect this card'
-    path = `/p/${fid}`
   } else if (c) {
     const o = await ownerOf(hash)
     const who = `@${c.author?.username || c.author?.fid}`
@@ -761,7 +763,6 @@ async function collectPage(hash, fid) {
     og = `${SITE}/nft/0x${hash}.og.png?v=${v}`
     embed = `${SITE}/nft/0x${hash}.3x2.png?v=${v}`
     button = o ? 'See the collected cast' : 'Collect this cast'
-    path = `/c/${hash}`
   }
   let h = collectIndex.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`)
   for (const [a, k, v] of [['name', 'description', desc], ['property', 'og:title', title], ['property', 'og:description', desc], ['property', 'og:url', COLLECT + path], ['property', 'og:image', og], ['name', 'twitter:title', title], ['name', 'twitter:description', desc], ['name', 'twitter:image', og]]) h = meta(h, a, k, v)

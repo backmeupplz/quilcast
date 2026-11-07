@@ -618,11 +618,18 @@ function TweetCard({ u, t }: { u: string; t: Tweet }) {
     </div>
   )
 }
-const unfurls = new Map<string, Promise<Unfurl>>()
+// a preview is asked for again after an hour, as long as the server keeps one (server/unfurl.mjs): a page left open
+// for days doesn't keep a stale one, such as a mini app's launch url that was wrong for a while
+const unfurls = new Map<string, { at: number; p: Promise<Unfurl> }>()
+const fresh = (u: string) => Date.now() - (unfurls.get(u)?.at ?? -Infinity) < 3600e3
 // v=2: browsers kept previews for a day under the old address, so a mini app that moved kept opening the old one
 export const unfurl = (u: string) => {
-  if (!unfurls.has(u)) unfurls.set(u, fetch(`/api/unfurl?v=2&url=${encodeURIComponent(u)}`).then((r) => r.json(), () => null).then((d) => (got.set(`u:${u}`, d), d)))
-  return unfurls.get(u)!
+  const old = unfurls.get(u)
+  if (old && fresh(u)) return old.p
+  // not answered (offline, or a proxy's error page): the one it had stays, and a tap still launches it
+  const p: Promise<Unfurl> = fetch(`/api/unfurl?v=2&url=${encodeURIComponent(u)}`).then((r) => r.json()).catch(() => null).then((d) => d || old?.p || null).then((d) => (got.set(`u:${u}`, d), d))
+  unfurls.set(u, { at: Date.now(), p })
+  return p
 }
 
 // What arrived already (link previews `u:`, casts `c:`) and image sizes the server read: a card drawn after warm()
@@ -639,7 +646,7 @@ export function seed(d: { got: Record<string, unknown>; shapes: Record<string, [
   lead = d.lead || ''
   for (const [k, v] of Object.entries(d.got)) {
     got.set(k, v)
-    if (k.startsWith('u:')) unfurls.set(k.slice(2), Promise.resolve(v as Unfurl))
+    if (k.startsWith('u:')) unfurls.set(k.slice(2), { at: Date.now(), p: Promise.resolve(v as Unfurl) })
     else castCache.set(k.slice(2), Promise.resolve(v as Cast))
   }
   for (const [u, s] of Object.entries(d.shapes)) shapes.set(u, s)
@@ -834,7 +841,8 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const d = u ? (got.get(`u:${u}`) as Unfurl | undefined) : undefined
   const [, loaded] = useState(0)
   const [bad, setBad] = useState<string>()
-  useEffect(() => void (u && !d && !design && !themeLink && !cast && unfurl(u).then(() => loaded((x) => x + 1))), [u])
+  // one drawn over an hour ago is asked for again, and redrawn when the answer comes
+  useEffect(() => void (u && (!d || !fresh(u)) && !design && !themeLink && !cast && unfurl(u).then(() => loaded((x) => x + 1))), [u])
   if (!u) return null
   if (design) return <DesignCard id={design} by={c?.author} />
   if (themeLink) return <ThemeCard id={themeLink} by={c?.author} />
@@ -848,7 +856,8 @@ export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
   const app = c && d?.app
   const click = (e: MouseEvent) => {
     e.stopPropagation()
-    const launch = app && !e.metaKey && !e.ctrlKey && !e.shiftKey ? () => launchApp({ ...app, icon }, { cast: c, embed: u }) : undefined
+    // the preview as it is now: one drawn hours ago may launch an address the app has since corrected
+    const launch = app && !e.metaKey && !e.ctrlKey && !e.shiftKey ? () => void unfurl(u).then((f) => void launchApp({ ...(f?.app || app), icon: safeUrl(f?.icon) || icon }, { cast: c, embed: u })) : undefined
     // a look-alike host first shows where it really goes, a mini app's too
     if (lookalike(u) && shell.link(u, { open: launch })) e.preventDefault()
     else if (launch) e.preventDefault(), launch()

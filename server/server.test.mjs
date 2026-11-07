@@ -95,6 +95,8 @@ const node = createServer(async (q, r) => {
     return r.end(JSON.stringify({ messages: fid7.casts.slice(page * 2, page * 2 + 2), nextPageToken: page === 0 && fid7.casts.length > 2 ? 'p2' : '' }))
   }
   if (u.pathname === '/v1/userDataByFid' && u.searchParams.get('fid') === '7') return r.end(JSON.stringify({ messages: fid7.profile }))
+  // the node failing on a cast the Collect mini app is asked for
+  if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === 'c5'.repeat(20)) return (r.statusCode = 500), r.end('{}')
   // a cast and a profile with characters XML can't hold (a bell, NUL, U+FFFF) in the name, bio and text
   if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === '07'.repeat(20))
     return r.end(JSON.stringify({ cast: { hash: '07'.repeat(20), text: 'ring\u0007 the bell\u0000\uffff', timestamp: '2026-01-01T00:00:00Z', embeds: [], author: { fid: 77, username: 'bell', display_name: '\u0007Bell' }, reactions: {}, replies: {} } }))
@@ -308,6 +310,16 @@ test('collect.quilcast.com: the mini app, a page per cast whose link shows its N
   assert.match(page.body, new RegExp(`<meta property="og:image" content="https://quilcast\\.test/nft/0x${hash}\\.og\\.png`))
   // what ?cast= opened before is the same page
   assert.equal((await get(`/?cast=${hash}`)).body, page.body)
+  // the node failing: the link still opens at the cast (the app says what went wrong), not the home page, whose
+  // preview Farcaster clients would keep launching for hours
+  const lost = 'c5'.repeat(20)
+  for (const path of [`/c/${lost}`, `/?castHash=0x${lost}`]) {
+    const down = await get(path)
+    assert.equal(down.status, 200, path)
+    const ed = JSON.parse(down.body.match(/<meta name="fc:miniapp" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+    assert.equal(ed.button.action.url, `https://collect.quilcast.com/c/${lost}`, path)
+    assert.match(down.body, new RegExp(`<link rel="canonical" href="https://collect\\.quilcast\\.com/c/${lost}"`), path)
+  }
   assert.equal((await get('/app.js')).headers['content-type'], 'text/javascript')
   assert.equal((await get('/.well-known/farcaster.json')).headers['access-control-allow-origin'], '*')
   for (const path of ['/index.html', '/../server/index.mjs', '/nope']) assert.equal((await get(path)).status, 404, path)
