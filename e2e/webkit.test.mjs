@@ -19,6 +19,7 @@ const cast = (n, extra = {}) => ({ hash: '0x' + String(n).repeat(40), text: `cas
 // channel with a long name, a long link and big counts, the widest a card gets
 const busy = cast(4, { text: 'see https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=more on /base', parent_url: 'https://farcaster.xyz/~/channel/a-channel-with-a-rather-long-name', reactions: { likes_count: 12345, recasts_count: 6789 }, replies: { count: 4321 } })
 const seven = { fid: 7, username: 'user7', display_name: 'Seven', follower_count: 1, following_count: 2 }
+const sevens = [cast(8, { text: 'a RAD feature', author: seven }), cast(9, { text: 'nothing to see', author: seven, parent_hash: 'a'.repeat(40) })]
 // the [fid, viewer_fid] of every Following feed asked for
 const followingAsked = []
 const node = createServer((q, r) => {
@@ -34,6 +35,12 @@ const node = createServer((q, r) => {
   const at = new URL(q.url, 'http://x')
   // "seven" is an fname whose account goes by another username, like vbuterin's vitalik.eth
   if ((at.pathname === '/v2/farcaster/user/by-username' && ['user7', 'seven'].includes(at.searchParams.get('username'))) || (at.pathname === '/v2/farcaster/user' && at.searchParams.get('fid') === '7')) return r.end(JSON.stringify({ user: seven }))
+  // @user7's casts as the hub lists them (0x hashes), for searching a profile (#495), and in full (bare hashes)
+  if (at.pathname === '/v1/castsByFid' && at.searchParams.get('fid') === '7') return r.end(JSON.stringify({ messages: sevens.map((c) => ({ data: { type: 'MESSAGE_TYPE_CAST_ADD', fid: 7, castAddBody: { text: c.text } }, hash: c.hash })), nextPageToken: '' }))
+  if (at.pathname === '/v2/farcaster/casts') {
+    const hs = at.searchParams.get('casts').split(',')
+    return r.end(JSON.stringify({ casts: sevens.filter((c) => hs.includes(c.hash.slice(2))).map((c) => ({ ...c, hash: c.hash.slice(2) })) }))
+  }
   r.end('{}')
 })
 const nodePort = await listen(node)
@@ -201,6 +208,42 @@ describe('the app in WebKit', { concurrency: true }, () => {
     assert.equal(await page.evaluate(() => location.search), '')
     // the signed-out banner offers the account again
     assert.equal(await page.locator('#app .banner .recents a', { hasText: '@user7' }).getAttribute('href'), '/?as=user7')
+    await close()
+  })
+
+  // #495: a profile's search finds only that account's casts, and is a link
+  test('signed out, a profile\'s search shows only their matching casts, keeps ?q= in the address, and Escape ends it', async () => {
+    const { page, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/u/user7' })
+    await page.locator('#app .profile h2', { hasText: 'Seven' }).waitFor({ timeout: 30e3 })
+    await page.locator('#app .profile button[aria-label="Search @user7\'s casts"]').click()
+    const box = page.locator('#app .profile-search input')
+    // opened with the button, the box takes focus
+    await page.waitForFunction(() => document.activeElement === document.querySelector('#app .profile-search input'))
+    await box.fill('rad')
+    await page.locator('#app article.cast', { hasText: 'a RAD feature' }).waitFor({ timeout: 30e3 })
+    assert.ok(!(await feedText(page)).includes('nothing to see'))
+    assert.equal(await page.locator('#app .lk-feed [role="tablist"], #app .lk-feed .tabs').count(), 0, 'no Casts/Replies tabs while searching')
+    await page.waitForFunction(() => location.search === '?q=rad')
+    await box.fill('zebra')
+    await page.locator('#app .note', { hasText: 'No casts by @user7 match “zebra”.' }).waitFor({ timeout: 30e3 })
+    await box.press('Escape')
+    await page.waitForFunction(() => location.search === '' && !document.querySelector('#app .profile-search'))
+    await close()
+  })
+
+  test('a profile link with ?q= opens with its search', async () => {
+    const { page, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/u/user7?q=see' })
+    await page.locator('#app article.cast', { hasText: 'nothing to see' }).waitFor({ timeout: 30e3 })
+    assert.equal(await page.locator('#app .profile-search input').inputValue(), 'see')
+    // a link doesn't focus the box, so a phone's keyboard stays down
+    assert.equal(await page.evaluate(() => document.activeElement === document.querySelector('#app .profile-search input')), false)
+    assert.ok(!(await feedText(page)).includes('a RAD feature'))
+    // the profile's own link (no ?q=) ends the search; Back brings it back
+    await page.evaluate(() => (history.pushState(null, '', '/u/user7'), dispatchEvent(new PopStateEvent('popstate'))))
+    await page.waitForFunction(() => !document.querySelector('#app .profile-search') && document.querySelector('#app .lk-feed [role="tablist"]'))
+    await page.evaluate(() => history.back())
+    await page.waitForFunction(() => location.search === '?q=see' && document.querySelector('#app .profile-search input')?.value === 'see')
+    await page.locator('#app article.cast', { hasText: 'nothing to see' }).waitFor({ timeout: 30e3 })
     await close()
   })
 

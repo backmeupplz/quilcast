@@ -13,6 +13,7 @@ import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
 import { checkAccounts, spamAccountOf, spamAt } from './spam.ts'
 import { listSkip, pinKey, usePinnedCast } from './castpin.ts'
+import { MOST, searchCasts } from './castsearch.ts'
 import { findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
@@ -233,29 +234,34 @@ function Pager<T>({ load, k, empty, id, row, initial }: { load: (cursor?: string
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const sentinel = useRef<HTMLDivElement>(null)
-  const state = useRef({ busy: false, key: k })
+  // `run` is new each time `k` changes, so a load from an earlier run is dropped and leaves the spinner alone, even when
+  // `k` has come back to the same key meanwhile (a search typed, changed and typed again)
+  const state = useRef({ busy: false, run: {} })
   const more = async (reset = false) => {
     if ((state.current.busy && !reset) || (!reset && cursor === null)) return
+    const run = state.current.run
     state.current.busy = true
     setBusy(true)
     setErr('')
     try {
       const r = await load(reset ? undefined : cursor || undefined)
-      if (state.current.key !== k) return
+      if (state.current.run !== run) return
       setItems((prev) => {
         const seen = new Set(reset ? [] : prev.map(id))
         return [...(reset ? [] : prev), ...r.items.filter((t) => !seen.has(id(t)))]
       })
       setCursor(r.cursor)
     } catch (e: any) {
-      setErr(e.message)
+      if (state.current.run === run) setErr(e.message)
     } finally {
-      state.current.busy = false
-      setBusy(false)
+      if (state.current.run === run) {
+        state.current.busy = false
+        setBusy(false)
+      }
     }
   }
   useEffect(() => {
-    state.current.key = k
+    state.current.run = {}
     // a cached first page shows instantly and is replaced when the fresh one arrives
     setItems(initial?.() || [])
     setCursor(undefined)
@@ -905,11 +911,36 @@ function Profile({ id }: { id: string }) {
   const was = useRef(false)
   // the saved look once it has loaded, so the editor never opens on a blank one
   const loaded = useRef<Promise<Look | null>>(Promise.resolve(null))
+  // a search of only this account's casts (castsearch.ts); ?q= on the profile's link opens with it
+  const askedQ = () => new URLSearchParams(location.search).get('q') || ''
+  const [q, setQ] = useState(askedQ)
+  const [term, setTerm] = useState(() => q.trim())
+  const [searching, setSearching] = useState(() => !!q)
+  const box = useRef<HTMLInputElement>(null)
+  const searchBtn = useRef<HTMLButtonElement>(null)
+  // the box takes focus only when the button opened it: a ?q= link or Back shows it without popping a phone's keyboard
+  const focusBox = useRef(false)
+  // the search the feed shows now, a new object each time it changes: a load for an older one (another word, another
+  // profile, a page left) reads no more, even when the same words come back while it's still reading
+  const current = useRef({ key: '' })
+  // the search whose first load gave up at castsearch's cap with nothing found
+  const [capped, setCapped] = useState('')
+  // ended from the box (Escape), focus goes back to the button rather than to the page
+  const stopSearch = () => (setSearching(false), setQ(''), setTerm(''), searchBtn.current?.focus())
+  const fromQ = () => {
+    const sq = askedQ()
+    setQ(sq)
+    setTerm(sq.trim())
+    setSearching(!!sq)
+  }
+  // still on a profile's own page (not its followers, a cast, another page this one is being left for)
+  const onProfile = () => /^\/u\/[^/]+\/?$/.test(location.pathname)
   useEffect(() => {
     const k = known(id)
     setU(k)
     setErr(null)
     setTab('casts')
+    fromQ()
     setLook(null)
     setDraft(null)
     setFollowsYou(false)
@@ -927,6 +958,32 @@ function Profile({ id }: { id: string }) {
     })
     return () => void (live = false)
   }, [id, tries])
+  useEffect(() => {
+    const t = setTimeout(() => setTerm(q.trim()), 300)
+    return () => clearTimeout(t)
+  }, [q])
+  // Back and Forward between this profile's addresses, or its own link tapped mid-search, take the search they have
+  useEffect(() => {
+    const f = () => onProfile() && fromQ()
+    addEventListener('popstate', f)
+    return () => removeEventListener('popstate', f)
+  }, [])
+  // the search goes in the address (other parameters stay), so it's a link and Back from a found cast comes back to it
+  useEffect(() => {
+    if (!onProfile()) return
+    const p = new URLSearchParams(location.search)
+    if ((p.get('q') || '') === term) return
+    term ? p.set('q', term) : p.delete('q')
+    const s = p.toString()
+    history.replaceState(null, '', location.pathname + (s ? `?${s}` : '') + location.hash)
+  }, [term])
+  useEffect(() => {
+    if (searching && focusBox.current) box.current?.focus()
+    focusBox.current = false
+  }, [searching])
+  useEffect(() => () => void (current.current = { key: '' }), [])
+  const searchKey = u && term ? `${u.fid}?${term}` : ''
+  if (current.current.key !== searchKey) current.current = { key: searchKey }
   const self = account?.fid === u?.fid
   // the cast they pinned (castpin.ts), shown first on Casts and left out of the list under it
   const pin = usePinnedCast(u?.fid ?? 0)
@@ -950,7 +1007,12 @@ function Profile({ id }: { id: string }) {
     // Settings links here with ?customize, and "Use this design" on a shared design with ?design=<id>
     const fromUrl = () => {
       const q = new URLSearchParams(location.search)
-      if (q.has('customize') || q.has('design')) edit(q.get('design') || undefined), history.replaceState(null, '', location.pathname)
+      if (!q.has('customize') && !q.has('design')) return
+      edit(q.get('design') || undefined)
+      // a search (?q=) stays
+      q.delete('customize'), q.delete('design')
+      const rest = q.toString()
+      history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : ''))
     }
     fromUrl()
     addEventListener('popstate', fromUrl)
@@ -977,6 +1039,9 @@ function Profile({ id }: { id: string }) {
   const rssItem = u?.username && !u.username.startsWith('fid:') && !(removedList.fids as number[]).includes(u.fid) && (
     <button role="menuitem" onClick={() => (setMenu(false), navigator.clipboard.writeText(`${location.origin}/u/${u.username}/rss`).then(() => toast('Link copied'), () => toast("Couldn't copy the link.")))}>{t('Copy RSS link')}</button>
   )
+  const searchButton = u && (
+    <button ref={searchBtn} class="btn ghost small icon" aria-label={t('Search @{name}\'s casts', { name: handle(u) })} title={t('Search @{name}\'s casts', { name: handle(u) })} aria-pressed={searching} onClick={() => (searching ? stopSearch() : ((focusBox.current = true), setSearching(true)))}><Icon d={P.search} /></button>
+  )
   const wrapHead = (el: ComponentChildren) => (shown ? <L.At l={shown} at="head" edit={draft ? editLook : undefined}>{el}</L.At> : el)
   return (
     <>
@@ -999,6 +1064,7 @@ function Profile({ id }: { id: string }) {
                 {self ? (
                   <span class="btns">
                     {cardButton(u.fid)}
+                    {searchButton}
                     <button class="btn ghost small" onClick={() => edit()} disabled={!!draft}>{t('Customize')}</button>
                     <a class="btn ghost small" href="/settings">{t('Edit profile')}</a>
                     {rssItem && (
@@ -1012,6 +1078,7 @@ function Profile({ id }: { id: string }) {
                   <span class="btns">
                     {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
                     {cardButton(u.fid)}
+                    {searchButton}
                     {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
                     <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done} aria-pressed={!!following} title={account?.done ? undefined : t('On this device only')}>{following ? t('Following') : t('Follow')}</button>
                     <span class="wrap-menu">
@@ -1035,9 +1102,25 @@ function Profile({ id }: { id: string }) {
             </section>)}
             {shown && <L.Sections l={shown} u={u} edit={draft ? editLook : undefined} />}
             <div class="lk-box lk-feed">
-              <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')]]} value={tab} set={setTab} />
+              {searching && (
+                <div class="searchbox profile-search">
+                  <Icon d={P.search} size={16} />
+                  <input ref={box} type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Escape' && stopSearch()}
+                    placeholder={t('Search @{name}\'s casts', { name: handle(u) })} aria-label={t('Search @{name}\'s casts', { name: handle(u) })} />
+                </div>
+              )}
+              {!term && <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')]]} value={tab} set={setTab} />}
               {!self && blockOf(u.fid) ? (
                 <div class="note">{t('You blocked @{name}, so their casts are hidden.', { name: handle(u) })} <button class="link-btn" onClick={() => setMute('blocks', u.fid, false).catch((e) => toast(e.message))}>{t('Unblock')}</button></div>
+              ) : term ? (
+                // casts and replies alike, newest first
+                <Feed k={searchKey} owner={u.fid} empty={capped === searchKey
+                  ? t('None of the newest {n} casts by @{name} match “{term}”.', { n: MOST.toLocaleString(lang), name: handle(u), term })
+                  : t('No casts by @{name} match “{term}”.', { name: handle(u), term })}
+                  load={(cursor) => {
+                    const s = current.current
+                    return searchCasts(get, u.fid, term, cursor, () => current.current === s).then((r) => (!cursor && current.current === s && setCapped(r.capped ? s.key : ''), r))
+                  }} />
               ) : (
                 <>
                   {tab === 'casts' && pin && <PinnedCast key={pin} hash={pin} owner={u.fid} settle={setSettled} />}

@@ -432,6 +432,7 @@ a.chan:hover { text-decoration: underline; }
 .searchbox input:focus { box-shadow: none; }
 .searchbox input { flex: 1; border: 0; background: none; color: var(--ink); font: inherit; outline: none; min-width: 0; }
 a.searchbox { margin: 0; }
+.searchbox.profile-search { margin-top: 12px; }
 
 /* ---------- messages ---------- */
 .row.unread b, .row.unread .row-sub { color: var(--ink); font-weight: 700; }
