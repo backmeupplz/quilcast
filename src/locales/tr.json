@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "@{name} adlı kişinin takip ettiklerinin castleri. Burada yaptığın hiçbir şey onun adına yapılmaz.",
   "Exit": "Çık",
   "From people @{name} follows": "@{name} adlı kişinin takip ettiklerinden",
-  "Nothing yet from the people @{name} follows.": "@{name} adlı kişinin takip ettiklerinden henüz bir şey yok."
+  "Nothing yet from the people @{name} follows.": "@{name} adlı kişinin takip ettiklerinden henüz bir şey yok.",
+  "Marquee": "Kayan yazı",
+  "Scrolling text": "Kayan metin",
+  "Welcome to my profile!": "Profilime hoş geldin!",
+  "Speed": "Hız",
+  "Slow": "Yavaş",
+  "Fast": "Hızlı",
+  "Direction": "Yön",
+  "Right to left": "Sağdan sola",
+  "Left to right": "Soldan sağa",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Profilinde kayan ve işaretçi üzerinde durduğu sürece duran tek bir satır. Cihazından daha az hareket isteyen ziyaretçiler onu sabit görür. Renk seçmezsen kutularının üzerinde bağlantılarının rengini alır."
 }

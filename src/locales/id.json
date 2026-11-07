@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "Cast dari orang-orang yang diikuti @{name}. Tidak ada yang kamu lakukan di sini yang bertindak atas nama mereka.",
   "Exit": "Keluar",
   "From people @{name} follows": "Dari orang-orang yang diikuti @{name}",
-  "Nothing yet from the people @{name} follows.": "Belum ada apa pun dari orang-orang yang diikuti @{name}."
+  "Nothing yet from the people @{name} follows.": "Belum ada apa pun dari orang-orang yang diikuti @{name}.",
+  "Marquee": "Teks berjalan",
+  "Scrolling text": "Teks berjalan",
+  "Welcome to my profile!": "Selamat datang di profilku!",
+  "Speed": "Kecepatan",
+  "Slow": "Lambat",
+  "Fast": "Cepat",
+  "Direction": "Arah",
+  "Right to left": "Kanan ke kiri",
+  "Left to right": "Kiri ke kanan",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Satu baris yang berjalan melintasi profilmu dan berhenti selama penunjuk berada di atasnya. Pengunjung yang meminta perangkatnya mengurangi gerakan melihatnya diam. Tanpa warna, teks ini memakai warna tautanmu di atas kotakmu."
 }

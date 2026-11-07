@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "這是 @{name} 追蹤的人發布的 cast。你在這裡的任何操作都不會以對方的身分進行。",
   "Exit": "結束",
   "From people @{name} follows": "來自 @{name} 追蹤的人",
-  "Nothing yet from the people @{name} follows.": "@{name} 追蹤的人還沒有發布內容。"
+  "Nothing yet from the people @{name} follows.": "@{name} 追蹤的人還沒有發布內容。",
+  "Marquee": "跑馬燈",
+  "Scrolling text": "捲動文字",
+  "Welcome to my profile!": "歡迎來到我的個人檔案！",
+  "Speed": "速度",
+  "Slow": "慢",
+  "Fast": "快",
+  "Direction": "方向",
+  "Right to left": "從右到左",
+  "Left to right": "從左到右",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "一行文字從你的個人檔案上捲動而過，滑鼠指標停在上面時會暫停。在裝置上選擇減少動態效果的訪客會看到它靜止不動。不設顏色時，它會以你的連結顏色顯示在你的方框上。"
 }

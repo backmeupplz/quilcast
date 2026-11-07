@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "这是 @{name} 关注的人发布的 cast。你在这里的任何操作都不会以对方的身份进行。",
   "Exit": "退出",
   "From people @{name} follows": "来自 @{name} 关注的人",
-  "Nothing yet from the people @{name} follows.": "@{name} 关注的人还没有发布内容。"
+  "Nothing yet from the people @{name} follows.": "@{name} 关注的人还没有发布内容。",
+  "Marquee": "跑马灯",
+  "Scrolling text": "滚动文字",
+  "Welcome to my profile!": "欢迎来到我的主页！",
+  "Speed": "速度",
+  "Slow": "慢",
+  "Fast": "快",
+  "Direction": "方向",
+  "Right to left": "从右到左",
+  "Left to right": "从左到右",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "一行文字从你的主页上滚动而过，鼠标指针停在上面时会暂停。在设备上选择减少动态效果的访客会看到它静止不动。不设颜色时，它会以你的链接颜色显示在你的方框上。"
 }

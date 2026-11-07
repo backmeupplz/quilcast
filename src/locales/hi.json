@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "उन लोगों के कास्ट जिन्हें @{name} फ़ॉलो करते हैं। यहाँ आप जो भी करें, वह उनकी ओर से नहीं होता।",
   "Exit": "बाहर निकलें",
   "From people @{name} follows": "उन लोगों से जिन्हें @{name} फ़ॉलो करते हैं",
-  "Nothing yet from the people @{name} follows.": "जिन लोगों को @{name} फ़ॉलो करते हैं, उनसे अभी कुछ नहीं।"
+  "Nothing yet from the people @{name} follows.": "जिन लोगों को @{name} फ़ॉलो करते हैं, उनसे अभी कुछ नहीं।",
+  "Marquee": "मार्की",
+  "Scrolling text": "चलता हुआ टेक्स्ट",
+  "Welcome to my profile!": "मेरी प्रोफ़ाइल पर स्वागत है!",
+  "Speed": "गति",
+  "Slow": "धीमी",
+  "Fast": "तेज़",
+  "Direction": "दिशा",
+  "Right to left": "दाएँ से बाएँ",
+  "Left to right": "बाएँ से दाएँ",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "एक पंक्ति जो आपकी प्रोफ़ाइल पर चलती है और पॉइंटर रुकने पर थम जाती है। जिन विज़िटर ने अपने डिवाइस पर कम गति चुनी है, उन्हें यह स्थिर दिखती है। रंगों के बिना यह आपके बॉक्स पर आपके लिंक का रंग लेती है।"
 }

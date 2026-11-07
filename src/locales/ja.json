@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "@{name} がフォローしている人のキャストです。ここでの操作が本人として行われることはありません。",
   "Exit": "終了",
   "From people @{name} follows": "@{name} がフォローしている人から",
-  "Nothing yet from the people @{name} follows.": "@{name} がフォローしている人の投稿はまだありません。"
+  "Nothing yet from the people @{name} follows.": "@{name} がフォローしている人の投稿はまだありません。",
+  "Marquee": "マーキー",
+  "Scrolling text": "スクロールするテキスト",
+  "Welcome to my profile!": "プロフィールへようこそ！",
+  "Speed": "速さ",
+  "Slow": "ゆっくり",
+  "Fast": "速い",
+  "Direction": "方向",
+  "Right to left": "右から左",
+  "Left to right": "左から右",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "プロフィールを横切って流れる1行のテキストで、ポインターを重ねると止まります。端末で視差効果を減らしている訪問者には止まって表示されます。色を指定しない場合は、ボックスの上にリンクの色で表示されます。"
 }

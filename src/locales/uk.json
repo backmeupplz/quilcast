@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "Касти людей, на яких підписаний @{name}. Ніщо з того, що ви робите тут, не робиться від його імені.",
   "Exit": "Вийти",
   "From people @{name} follows": "Від людей, на яких підписаний @{name}",
-  "Nothing yet from the people @{name} follows.": "Поки нічого від людей, на яких підписаний @{name}."
+  "Nothing yet from the people @{name} follows.": "Поки нічого від людей, на яких підписаний @{name}.",
+  "Marquee": "Біжучий рядок",
+  "Scrolling text": "Біжучий текст",
+  "Welcome to my profile!": "Ласкаво просимо до мого профілю!",
+  "Speed": "Швидкість",
+  "Slow": "Повільно",
+  "Fast": "Швидко",
+  "Direction": "Напрямок",
+  "Right to left": "Справа наліво",
+  "Left to right": "Зліва направо",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Рядок, що біжить вашим профілем і зупиняється, поки на ньому вказівник. Відвідувачі, які попросили пристрій зменшити рух, бачать його нерухомим. Без власних кольорів він має колір ваших посилань на ваших блоках."
 }

@@ -790,6 +790,23 @@ test('profile looks: saved only with a key the node lists for that FID, cleaned,
   assert.deepEqual(await (await fetch(`${base}/api/looks`)).json(), [])
 })
 
+test('profile looks: a marquee is saved as plain text with its settings, and empty text saves none', async () => {
+  const put = (look) => {
+    const body = JSON.stringify(look), ts = Date.now()
+    const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-look:7:${ts}:${body}`), signer)).toString('hex')
+    return fetch(`${base}/api/look/7`, { method: 'PUT', body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
+  }
+  const r = await put({ about: 'hi', marquee: { text: ' <script>alert(1)</script>\nwelcome\u202e ', speed: 'fast', dir: 'right', color: '#FFFF00', bg: 'url(//evil)', onclick: 'x' } })
+  assert.equal(r.status, 200)
+  const saved = { about: 'hi', marquee: { text: '<script>alert(1)</script> welcome', speed: 'fast', dir: 'right', color: '#ffff00' } }
+  assert.deepEqual(await r.json(), saved)
+  assert.deepEqual(await (await fetch(`${base}/api/look/7`)).json(), saved)
+  // blank text means no marquee
+  assert.equal((await put({ about: 'hi', marquee: { text: '   ', speed: 'slow' } })).status, 200)
+  assert.deepEqual(await (await fetch(`${base}/api/look/7`)).json(), { about: 'hi' })
+  assert.equal((await put(null)).status, 200)
+})
+
 test('pinned casts: only your own cast, signed with a key the node lists for that FID, public, and removable', async () => {
   const put = (fid, pin, { key = signer, ts = Date.now(), as = fid } = {}) => {
     const body = JSON.stringify(pin)

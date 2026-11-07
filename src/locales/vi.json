@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "Cast từ những người @{name} theo dõi. Không việc gì bạn làm ở đây được thực hiện thay họ.",
   "Exit": "Thoát",
   "From people @{name} follows": "Từ những người @{name} theo dõi",
-  "Nothing yet from the people @{name} follows.": "Chưa có gì từ những người @{name} theo dõi."
+  "Nothing yet from the people @{name} follows.": "Chưa có gì từ những người @{name} theo dõi.",
+  "Marquee": "Chữ chạy",
+  "Scrolling text": "Dòng chữ chạy",
+  "Welcome to my profile!": "Chào mừng đến hồ sơ của mình!",
+  "Speed": "Tốc độ",
+  "Slow": "Chậm",
+  "Fast": "Nhanh",
+  "Direction": "Hướng",
+  "Right to left": "Phải sang trái",
+  "Left to right": "Trái sang phải",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Một dòng chữ chạy ngang hồ sơ của bạn và dừng lại khi con trỏ nằm trên nó. Khách truy cập đã yêu cầu thiết bị giảm chuyển động sẽ thấy nó đứng yên. Nếu không chọn màu, nó lấy màu liên kết của bạn trên các ô của bạn."
 }

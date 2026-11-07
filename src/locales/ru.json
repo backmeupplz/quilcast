@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "Касты людей, на которых подписан @{name}. Ничто из того, что вы делаете здесь, не делается от его имени.",
   "Exit": "Выйти",
   "From people @{name} follows": "От людей, на которых подписан @{name}",
-  "Nothing yet from the people @{name} follows.": "Пока ничего от людей, на которых подписан @{name}."
+  "Nothing yet from the people @{name} follows.": "Пока ничего от людей, на которых подписан @{name}.",
+  "Marquee": "Бегущая строка",
+  "Scrolling text": "Бегущий текст",
+  "Welcome to my profile!": "Добро пожаловать в мой профиль!",
+  "Speed": "Скорость",
+  "Slow": "Медленно",
+  "Fast": "Быстро",
+  "Direction": "Направление",
+  "Right to left": "Справа налево",
+  "Left to right": "Слева направо",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Строка, которая бежит по вашему профилю и останавливается, пока на ней указатель. Посетители, попросившие устройство уменьшить движение, видят её неподвижной. Без своих цветов она окрашена в цвет ваших ссылок на ваших блоках."
 }

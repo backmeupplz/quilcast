@@ -1,7 +1,7 @@
 // cleanLook is the only thing between a stored look and the page's CSS, so hostile input has to come out inert.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ampItem, cleanDesign, cleanLook, cleanPrefs, isLookImg, lookBase, lookImages, lookPage, lookVars } from './shared.ts'
+import { ampItem, cleanDesign, cleanLook, cleanPrefs, isLookImg, LIMITS, lookBase, lookImages, lookPage, lookVars, marqueeStyle } from './shared.ts'
 
 test('cleanLook keeps valid settings and drops everything else', () => {
   const l = cleanLook({
@@ -100,6 +100,49 @@ test('a look keeps the page its colors were picked on, whichever the viewer wear
   assert.equal(lookBase(plain), undefined)
   assert.equal(lookPage(plain), undefined)
   assert.equal(lookVars(plain)['--bg'], undefined)
+})
+
+test('a marquee is one line of plain text with a known speed, direction and colors; no text, no marquee', () => {
+  assert.deepEqual(cleanLook({ marquee: { text: '  hi\r\n\nthere\u0000\u202e\u2066 ', speed: 'warp', dir: 'up', color: 'red', bg: '#00FF00', html: '<b>' } }),
+    { marquee: { text: 'hi there', bg: '#00ff00' } })
+  // markup stays text: it's shown as a text node, never parsed
+  assert.equal(cleanLook({ marquee: { text: '<img src=x onerror=alert(1)>' } }).marquee!.text, '<img src=x onerror=alert(1)>')
+  // defaults aren't stored
+  assert.deepEqual(cleanLook({ marquee: { text: 'x', speed: 'normal', dir: 'left' } }), { marquee: { text: 'x' } })
+  assert.deepEqual(cleanLook({ marquee: { text: 'x', speed: 'slow', dir: 'right' } }), { marquee: { text: 'x', speed: 'slow', dir: 'right' } })
+  for (const bad of [{ text: '' }, { text: ' \n\t ' }, { text: 5 }, { speed: 'fast' }, 'hello', ['x'], null]) assert.deepEqual(cleanLook({ marquee: bad }), {}, JSON.stringify(bad))
+  // nothing to see is no marquee: zero-width and blank-looking characters alone
+  for (const blank of ['\u200b\u200d\ufeff', '\u3164\u2800', '\u00ad \u2060', '\u3000\u00a0', '\ufe0f\u034f\u{e0100}']) assert.equal(cleanLook({ marquee: { text: blank } }).marquee, undefined, JSON.stringify(blank))
+  assert.equal(cleanLook({ marquee: { text: '\u200bhi' } }).marquee!.text, '\u200bhi')
+  // a cut through a long run of spaces never leaves half an emoji
+  assert.equal(cleanLook({ marquee: { text: ' '.repeat(3999) + '😀😀' } }).marquee, undefined)
+  // the limit counts characters, so an emoji is never cut in half
+  assert.equal(cleanLook({ marquee: { text: '😀'.repeat(150) } }).marquee!.text, '😀'.repeat(LIMITS.marquee))
+  assert.equal(cleanLook({ marquee: { text: 'a'.repeat(5e4) } }).marquee!.text.length, LIMITS.marquee)
+  // it's the owner's words, so a shared design leaves it out
+  assert.deepEqual(cleanDesign({ bg: '#000000', marquee: { text: 'x' } }), { bg: '#000000' })
+})
+
+test('a marquee stays readable on light and dark, and long text moves about as fast as short', () => {
+  // no colors: the look's links on its boxes
+  assert.deepEqual(marqueeStyle({}, { text: 'x' }), { ink: undefined, bg: undefined, secs: 6 })
+  // a background brings readable text
+  assert.equal(marqueeStyle({}, { text: 'x', bg: '#111111' }).ink, '#ffffff')
+  assert.equal(marqueeStyle({}, { text: 'x', bg: '#ffff00' }).ink, '#0b0b0f')
+  // colored text on a look without a base (which follows the viewer) brings the background it reads on
+  assert.equal(marqueeStyle({}, { text: 'x', color: '#ffffff' }).bg, '#131319')
+  assert.equal(marqueeStyle({ font: 'courier' }, { text: 'x', color: '#111111' }).bg, '#ffffff')
+  // so does a look's link color when it's the look's only color: yellow links never land on a light viewer's white
+  assert.deepEqual(marqueeStyle({ link: '#ffe600' }, { text: 'x' }), { ink: undefined, bg: '#131319', secs: 6 })
+  assert.equal(marqueeStyle({ link: '#003399' }, { text: 'x' }).bg, '#ffffff')
+  // on a look with a base its boxes are the same for every viewer, so the text sits on them
+  assert.equal(marqueeStyle({ text: '#000000', box: '#ffffff' }, { text: 'x', color: '#ff0000' }).bg, undefined)
+  // both colors are the owner's
+  assert.deepEqual(marqueeStyle({}, { text: 'x', color: '#ff0000', bg: '#00ff00' }), { ink: '#ff0000', bg: '#00ff00', secs: 6 })
+  const secs = (text: string, speed?: 'slow' | 'fast') => marqueeStyle({}, { text, speed }).secs
+  assert.ok(secs('x', 'slow') > secs('x') && secs('x') > secs('x', 'fast'))
+  assert.ok(secs('x'.repeat(100)) > secs('x'))
+  assert.ok(secs('x', 'fast') >= 4)
 })
 
 test('cleanPrefs keeps a synced theme, light or dark, holidays and the stamp', () => {

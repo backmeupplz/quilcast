@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "Casts van de mensen die @{name} volgt. Niets wat je hier doet, gebeurt namens hen.",
   "Exit": "Stoppen",
   "From people @{name} follows": "Van mensen die @{name} volgt",
-  "Nothing yet from the people @{name} follows.": "Nog niets van de mensen die @{name} volgt."
+  "Nothing yet from the people @{name} follows.": "Nog niets van de mensen die @{name} volgt.",
+  "Marquee": "Lichtkrant",
+  "Scrolling text": "Lopende tekst",
+  "Welcome to my profile!": "Welkom op mijn profiel!",
+  "Speed": "Snelheid",
+  "Slow": "Langzaam",
+  "Fast": "Snel",
+  "Direction": "Richting",
+  "Right to left": "Van rechts naar links",
+  "Left to right": "Van links naar rechts",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Eén regel die over je profiel loopt en stilstaat zolang de aanwijzer erop rust. Bezoekers die hun apparaat om minder beweging vragen, zien hem stilstaan. Zonder kleuren krijgt hij de kleur van je links, op je vakken."
 }

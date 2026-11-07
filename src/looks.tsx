@@ -8,7 +8,7 @@ import { t } from './i18n.ts'
 import { PRESETS as EFFECTS, start } from './fx.ts'
 import { ProfileAmp } from './amp.tsx'
 import { BASE, museum, skinShot, type MuseumSkin } from './skin.ts'
-import { ampItem, cleanDesign, cleanLook, DESIGN_KEYS, lookPage, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look, type Sticker } from './shared.ts'
+import { ampItem, cleanDesign, cleanLook, cleanMarquee, DESIGN_KEYS, lookPage, marqueeStyle, type Marquee as MarqueeT, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look, type Sticker } from './shared.ts'
 import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 import { GifPicker } from './gifs.tsx'
 
@@ -41,6 +41,19 @@ export const nameClass = (l?: Look | null) => (l?.nameFx && l.nameFx !== 'none' 
 export const Banner = ({ l }: { l: Look }) => (l.banner ? <Img class="lk-banner" src={l.banner} /> : null)
 export const Mood = ({ l }: { l: Look }) => (l.mood || l.moodEmoji ? <div class="lk-mood"><b>{t('Mood:')}</b> {l.moodEmoji} {l.mood}</div> : null)
 
+/** The marquee: one line that scrolls across, moved by CSS alone (style.css .lk-mq), standing still for visitors who
+ *  ask for less motion. It's checked again here, since the owner's draft shows as it's typed. */
+export function Marquee({ l }: { l: Look }) {
+  const m = cleanMarquee(l.marquee)
+  if (!m) return null
+  const s = marqueeStyle(l, m)
+  return (
+    <div class={`lk-box lk-mq${m.dir === 'right' ? ' right' : ''}`} style={{ '--mq-ink': s.ink, '--mq-dur': `${s.secs}s`, background: s.bg }}>
+      <span class="lk-mq-run"><span dir="auto">{m.text}</span></span>
+    </div>
+  )
+}
+
 const Box = ({ title, children, class: cls = '' }: { title: string; children: ComponentChildren; class?: string }) => (
   <section class={`lk-box lk-sec ${cls}`}><h3>{title}</h3>{children}</section>
 )
@@ -52,6 +65,7 @@ export function Sections({ l, u, edit }: { l: Look; u: User; edit?: Set }) {
   const at = (k: Sticker['at'], el: ComponentChildren) => <At l={l} at={k} edit={edit}>{el}</At>
   return (
     <>
+      <Marquee l={l} />
       {l.song && at('song', <Song s={l.song} />)}
       {l.amp?.on && at('amp', <section class="lk-box lk-sec lk-amp"><ProfileAmp owner={{ fid: u.fid, who: userPath(u), name: who, amp: l.amp }} /></section>)}
       {l.about && at('about', <Box title={t('About me')}><RichText text={l.about} /></Box>)}
@@ -296,6 +310,14 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
     const p = { value: d[k] || '', maxLength: max, placeholder: ph, onInput: (e: { currentTarget: { value: string } }) => up({ [k]: e.currentTarget.value || undefined }) }
     return <label class="field"><span>{label}</span>{area ? <textarea rows={4} {...p} /> : <input {...p} />}</label>
   }
+  // the marquee's fields; it's kept while its text is empty, and saving drops it then
+  const cutMarquee = (v: string) => [...v].slice(0, LIMITS.marquee).join('')
+  const mq = (p: Partial<MarqueeT>) => set((x) => ({ ...x, marquee: { text: '', ...x.marquee, ...p } }))
+  const mqColor = (k: 'color' | 'bg', label: string, fallback: string) =>
+    row(label, <>
+      <input type="color" value={d.marquee?.[k] || fallback} onInput={(e) => mq({ [k]: e.currentTarget.value })} />
+      {d.marquee?.[k] && <button type="button" class="lk-x" aria-label={t('Reset {name}', { name: label })} onClick={(e) => (e.preventDefault(), mq({ [k]: undefined }))}>×</button>}
+    </>)
   const image = (k: 'bgImg' | 'banner', label: string) => (
     <div class="lk-row"><span>{label}</span><span class="lk-ctl">
       {d[k] && <Img class="lk-thumb" src={d[k]} />}
@@ -386,6 +408,24 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
           {image('banner', t('Banner'))}
           {text('moodEmoji', t('Mood emoji'), 8, '😎')}
           {text('mood', t('Mood'), LIMITS.mood, t('chillin'))}
+        </>)}
+        {group(t('Marquee'), <>
+          <label class="field"><span>{t('Scrolling text')}</span>
+            {/* the limit is in characters (an emoji is one), which maxLength doesn't count; text being composed (an
+                IME) isn't cut until it's done, since cutting it would break the composition (saving cuts it anyway) */}
+            <input value={d.marquee?.text || ''} placeholder={t('Welcome to my profile!')}
+              onInput={(e) => mq({ text: (e as unknown as InputEvent).isComposing ? e.currentTarget.value : cutMarquee(e.currentTarget.value) })}
+              onCompositionEnd={(e) => mq({ text: cutMarquee(e.currentTarget.value) })} />
+          </label>
+          {row(t('Speed'), <select value={d.marquee?.speed || ''} onChange={(e) => mq({ speed: (e.currentTarget.value || undefined) as MarqueeT['speed'] })}>
+            <option value="slow">{t('Slow')}</option><option value="">{t('Normal')}</option><option value="fast">{t('Fast')}</option>
+          </select>)}
+          {row(t('Direction'), <select value={d.marquee?.dir || ''} onChange={(e) => mq({ dir: (e.currentTarget.value || undefined) as MarqueeT['dir'] })}>
+            <option value="">{t('Right to left')}</option><option value="right">{t('Left to right')}</option>
+          </select>)}
+          {mqColor('color', t('Text'), d.link || '#6447f5')}
+          {mqColor('bg', t('Background'), d.box || d.bg || '#ffffff')}
+          <p class="hint">{t('One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.')}</p>
         </>)}
         {group(t('Profile song'), <>
           <label class="field"><span>{t('YouTube link')}</span>

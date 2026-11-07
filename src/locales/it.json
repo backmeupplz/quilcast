@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "I cast delle persone che @{name} segue. Niente di ciò che fai qui agisce a suo nome.",
   "Exit": "Esci",
   "From people @{name} follows": "Da persone che @{name} segue",
-  "Nothing yet from the people @{name} follows.": "Ancora niente dalle persone che @{name} segue."
+  "Nothing yet from the people @{name} follows.": "Ancora niente dalle persone che @{name} segue.",
+  "Marquee": "Testo scorrevole",
+  "Scrolling text": "Testo che scorre",
+  "Welcome to my profile!": "Benvenuto nel mio profilo!",
+  "Speed": "Velocità",
+  "Slow": "Lenta",
+  "Fast": "Veloce",
+  "Direction": "Direzione",
+  "Right to left": "Da destra a sinistra",
+  "Left to right": "Da sinistra a destra",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Una riga che scorre sul tuo profilo e si ferma mentre il puntatore ci resta sopra. Chi chiede al proprio dispositivo meno movimento la vede ferma. Senza colori prende il colore dei tuoi link, sui tuoi riquadri."
 }

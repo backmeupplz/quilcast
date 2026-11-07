@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "منشورات الأشخاص الذين يتابعهم @{name}. لا شيء تفعله هنا يُنفَّذ باسمه.",
   "Exit": "خروج",
   "From people @{name} follows": "من أشخاص يتابعهم @{name}",
-  "Nothing yet from the people @{name} follows.": "لا شيء بعد من الأشخاص الذين يتابعهم @{name}."
+  "Nothing yet from the people @{name} follows.": "لا شيء بعد من الأشخاص الذين يتابعهم @{name}.",
+  "Marquee": "شريط متحرك",
+  "Scrolling text": "نص متحرك",
+  "Welcome to my profile!": "أهلًا بك في ملفي الشخصي!",
+  "Speed": "السرعة",
+  "Slow": "بطيء",
+  "Fast": "سريع",
+  "Direction": "الاتجاه",
+  "Right to left": "من اليمين إلى اليسار",
+  "Left to right": "من اليسار إلى اليمين",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "سطر واحد يمر عبر ملفك الشخصي ويتوقف حين يستقر المؤشر عليه. الزوار الذين يطلبون من أجهزتهم حركة أقل يرونه ثابتًا. ومن دون ألوان يأخذ لون روابطك فوق مربعاتك."
 }

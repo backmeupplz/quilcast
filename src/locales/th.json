@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "แคสต์จากคนที่ @{name} ติดตาม สิ่งที่คุณทำที่นี่จะไม่เกิดขึ้นในนามของเขา",
   "Exit": "ออก",
   "From people @{name} follows": "จากคนที่ @{name} ติดตาม",
-  "Nothing yet from the people @{name} follows.": "ยังไม่มีอะไรจากคนที่ @{name} ติดตาม"
+  "Nothing yet from the people @{name} follows.": "ยังไม่มีอะไรจากคนที่ @{name} ติดตาม",
+  "Marquee": "ตัวอักษรวิ่ง",
+  "Scrolling text": "ข้อความวิ่ง",
+  "Welcome to my profile!": "ยินดีต้อนรับสู่โปรไฟล์ของฉัน!",
+  "Speed": "ความเร็ว",
+  "Slow": "ช้า",
+  "Fast": "เร็ว",
+  "Direction": "ทิศทาง",
+  "Right to left": "ขวาไปซ้าย",
+  "Left to right": "ซ้ายไปขวา",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "ข้อความหนึ่งบรรทัดที่วิ่งผ่านโปรไฟล์ของคุณ และหยุดเมื่อวางตัวชี้ไว้บนมัน ผู้เข้าชมที่ตั้งอุปกรณ์ให้ลดการเคลื่อนไหวจะเห็นมันอยู่นิ่ง หากไม่เลือกสี จะใช้สีลิงก์ของคุณบนกล่องของคุณ"
 }

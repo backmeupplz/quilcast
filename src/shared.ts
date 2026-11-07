@@ -154,8 +154,15 @@ export type Look = {
   amp?: Amp
   fx?: Fx; fxAlpha?: number
   stickers?: Sticker[]
+  marquee?: Marquee
 }
-export const LIMITS = { about: 1500, meet: 600, interest: 300, mood: 60, title: 40, top: 8, wall: 12, songTitle: 100, stickers: 16, amp: 50 }
+export const LIMITS = { about: 1500, meet: 600, interest: 300, mood: 60, title: 40, top: 8, wall: 12, songTitle: 100, stickers: 16, amp: 50, marquee: 100 }
+
+// the marquee (looks.tsx Marquee): one line of plain text that scrolls across the profile, old-web style. `dir` is
+// where it scrolls to; its colors are optional
+export const MARQUEE_SPEEDS = ['slow', 'normal', 'fast'] as const
+export const MARQUEE_DIRS = ['left', 'right'] as const
+export type Marquee = { text: string; speed?: (typeof MARQUEE_SPEEDS)[number]; dir?: (typeof MARQUEE_DIRS)[number]; color?: string; bg?: string }
 
 // Winamp on the profile (src/amp.tsx): YouTube videos and playlists played as audio in a skin from the Winamp Skin
 // Museum (skins.webamp.org, by the skin file's md5). `on` shows it; the list stays while it's off.
@@ -200,6 +207,35 @@ const text = (v: unknown, max: number) => {
   return s || undefined
 }
 
+/** The valid part of a marquee: one line of plain text up to the limit in characters, a known speed and direction, and
+ *  colors. Text with nothing to see (blank, or only invisible characters) is no marquee. */
+export function cleanMarquee(o: any): Marquee | undefined {
+  if (!o || typeof o !== 'object' || typeof o.text !== 'string') return
+  // (cut short first, without leaving half an emoji at the cut)
+  const raw = o.text.slice(0, 4e3).replace(/[\ud800-\udbff]$/, '').replace(/[\n\r\u2028\u2029]+/g, ' ')
+  const s = [...(text(raw, 4e3) || '')].slice(0, LIMITS.marquee).join('').trim()
+  if (!/[^\s\p{Cf}\p{Z}\u00ad\u034f\u115f\u1160\u2800\u3164\ufe00-\ufe0f\uffa0\u{e0100}-\u{e01ef}]/u.test(s)) return
+  const m: Marquee = { text: s, speed: pick(o.speed, MARQUEE_SPEEDS), dir: pick(o.dir, MARQUEE_DIRS), color: color(o.color), bg: color(o.bg) }
+  if (m.speed === 'normal') delete m.speed
+  if (m.dir === 'left') delete m.dir
+  for (const k of Object.keys(m) as (keyof Marquee)[]) if (m[k] === undefined) delete m[k]
+  return m
+}
+/** How marquee `m` is drawn on look `l`: its text and background colors, and the seconds one pass takes (about the
+ *  same speed for short and long text). Its colors follow the look's base like the rest of it: a background gets
+ *  readable text, and text colored on a look without a base (one that follows the viewer's light or dark) brings the
+ *  background it reads on, so it never vanishes into the viewer's page. Without colors it's the look's link color on
+ *  its boxes (and that link color, when it's the look's only color, brings its background the same way). */
+export function marqueeStyle(l: Look, m: Marquee) {
+  let { color: ink, bg } = m
+  if (bg && !ink) ink = readableOn(bg)
+  const shown = ink || l.link
+  if (shown && !bg && !lookBase(l)) bg = DEFAULTS[readableOn(shown) === '#ffffff' ? 'light' : 'dark'].card
+  // one pass crosses the box and the text; a box is about 30em wide and a character about 0.6em
+  const secs = Math.max(4, Math.round((30 + [...m.text].length * 0.6) / { slow: 3, normal: 5, fast: 9 }[m.speed || 'normal']))
+  return { ink, bg, secs }
+}
+
 /** The valid part of a look; anything unknown or out of range is dropped. */
 export function cleanLook(x: unknown): Look {
   if (!x || typeof x !== 'object' || Array.isArray(x)) return {}
@@ -230,6 +266,7 @@ export function cleanLook(x: unknown): Look {
       if (!isLookImg(x?.src) || !STICKER_AT.includes(x.at) || px === undefined || py === undefined || w === undefined) return []
       return [{ src: x.src, at: x.at, x: px, y: py, w, ...(r ? { r } : {}) }]
     }).slice(0, LIMITS.stickers) : undefined,
+    marquee: cleanMarquee(o.marquee),
   }
   if (!l.top?.length) delete l.top
   if (!l.stickers?.length) delete l.stickers

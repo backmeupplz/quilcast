@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "@{name}님이 팔로우하는 사람들의 캐스트예요. 여기서 하는 어떤 행동도 그 사람으로 처리되지 않아요.",
   "Exit": "나가기",
   "From people @{name} follows": "@{name}님이 팔로우하는 사람들",
-  "Nothing yet from the people @{name} follows.": "@{name}님이 팔로우하는 사람들의 캐스트가 아직 없어요."
+  "Nothing yet from the people @{name} follows.": "@{name}님이 팔로우하는 사람들의 캐스트가 아직 없어요.",
+  "Marquee": "마키",
+  "Scrolling text": "흐르는 텍스트",
+  "Welcome to my profile!": "내 프로필에 오신 걸 환영해요!",
+  "Speed": "속도",
+  "Slow": "느리게",
+  "Fast": "빠르게",
+  "Direction": "방향",
+  "Right to left": "오른쪽에서 왼쪽",
+  "Left to right": "왼쪽에서 오른쪽",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "프로필을 가로질러 흐르는 한 줄로, 포인터를 올려 두면 멈춰요. 기기에서 동작 줄이기를 켠 방문자에게는 멈춘 채로 보여요. 색을 정하지 않으면 박스 위에 링크 색으로 표시돼요."
 }

@@ -1182,5 +1182,15 @@
   "Casts from the people @{name} follows. Nothing you do here acts as them.": "Casts från personerna som @{name} följer. Inget du gör här sker i deras namn.",
   "Exit": "Avsluta",
   "From people @{name} follows": "Från personer som @{name} följer",
-  "Nothing yet from the people @{name} follows.": "Inget än från personerna som @{name} följer."
+  "Nothing yet from the people @{name} follows.": "Inget än från personerna som @{name} följer.",
+  "Marquee": "Rullande text",
+  "Scrolling text": "Rullande text",
+  "Welcome to my profile!": "Välkommen till min profil!",
+  "Speed": "Hastighet",
+  "Slow": "Långsam",
+  "Fast": "Snabb",
+  "Direction": "Riktning",
+  "Right to left": "Höger till vänster",
+  "Left to right": "Vänster till höger",
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "En rad som rullar över din profil och stannar medan pekaren vilar på den. Besökare som bett sin enhet om mindre rörelse ser den stå still. Utan egna färger får den färgen på dina länkar, på dina rutor."
 }
