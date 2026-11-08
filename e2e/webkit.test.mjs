@@ -20,6 +20,17 @@ const cast = (n, extra = {}) => ({ hash: '0x' + String(n).repeat(40), text: `cas
 const busy = cast(4, { text: 'see https://example.com/a/very/long/path/that/keeps/going/and/going?with=query&and=more on /base', parent_url: 'https://farcaster.xyz/~/channel/a-channel-with-a-rather-long-name', reactions: { likes_count: 12345, recasts_count: 6789 }, replies: { count: 4321 } })
 const seven = { fid: 7, username: 'user7', display_name: 'Seven', follower_count: 1, following_count: 2 }
 const sevens = [cast(8, { text: 'a RAD feature', author: seven }), cast(9, { text: 'nothing to see', author: seven, parent_hash: 'a'.repeat(40) })]
+// 3 pages of 25 casts by the page's ?cursor, each cast's hash all f's but its number (#502)
+const longFeed = (q, text) => {
+  const page = Number(q.get('cursor') || 0)
+  const casts = Array.from({ length: 25 }, (_, i) => page * 25 + i + 1).map((n) => cast(n, { hash: '0x' + n.toString(16).padStart(40, 'f'), text: `${text} ${n}` }))
+  return JSON.stringify({ casts, next: { cursor: page < 2 ? String(page + 1) : null } })
+}
+const reader = { fid: 13, username: 'reader', display_name: 'Reader', follower_count: 1, following_count: 75 }
+const slowpoke = { fid: 14, username: 'slowpoke', display_name: 'Slowpoke', follower_count: 1, following_count: 75 }
+// @looky has a profile look, with a mood and an About me box above their casts; the look comes from the app's server
+const looky = { fid: 12, username: 'looky', display_name: 'Looky', follower_count: 1, following_count: 1 }
+const LOOK = { mood: 'in a mood', about: Array.from({ length: 8 }, (_, i) => `About line ${i + 1}`).join('\n\n') }
 // the [fid, viewer_fid] of every Following feed asked for
 const followingAsked = []
 const node = createServer((q, r) => {
@@ -30,9 +41,24 @@ const node = createServer((q, r) => {
   if (q.url.startsWith('/v2/farcaster/feed/following')) {
     const u = new URL(q.url, 'http://x').searchParams
     followingAsked.push([u.get('fid'), u.get('viewer_fid')])
+    // @reader follows enough people for 3 pages (#502)
+    if (u.get('fid') === '13') return r.end(longFeed(u, 'following cast'))
+    // and @slowpoke's second page takes 2 s
+    if (u.get('fid') === '14') return void setTimeout(() => r.end(longFeed(u, 'following cast')), u.get('cursor') === '1' ? 2000 : 0)
     return r.end(JSON.stringify({ casts: u.get('fid') === '7' ? [cast(5), cast(6)] : [busy, cast(2)] }))
   }
   const at = new URL(q.url, 'http://x')
+  // a long channel feed, and @looky's casts (#502)
+  if (at.pathname === '/v2/farcaster/feed/parent_urls') return r.end(longFeed(at.searchParams, 'long feed cast'))
+  if (at.pathname === '/v2/farcaster/feed/user/casts' && at.searchParams.get('fid') === '12') return r.end(longFeed(at.searchParams, 'looky cast'))
+  if (at.pathname === '/v2/farcaster/feed/user/replies_and_recasts' && at.searchParams.get('fid') === '12') return r.end(JSON.stringify({ casts: [] }))
+  for (const u of [reader, slowpoke, looky]) if ((at.pathname === '/v2/farcaster/user/by-username' && at.searchParams.get('username') === u.username) || (at.pathname === '/v2/farcaster/user' && at.searchParams.get('fid') === String(u.fid))) return r.end(JSON.stringify({ user: u }))
+  if (at.pathname === '/v2/farcaster/cast/quotes') return r.end(JSON.stringify({ casts: [] }))
+  // and one of them opened
+  if (at.pathname === '/v2/farcaster/cast/conversation' && at.searchParams.get('identifier').startsWith('fff')) {
+    const n = parseInt(at.searchParams.get('identifier').replace(/^f+/, ''), 16)
+    return r.end(JSON.stringify({ conversation: { cast: cast(n, { hash: at.searchParams.get('identifier'), text: `long feed cast ${n}`, direct_replies: [] } ) } }))
+  }
   // "seven" is an fname whose account goes by another username, like vbuterin's vitalik.eth
   if ((at.pathname === '/v2/farcaster/user/by-username' && ['user7', 'seven'].includes(at.searchParams.get('username'))) || (at.pathname === '/v2/farcaster/user' && at.searchParams.get('fid') === '7')) return r.end(JSON.stringify({ user: seven }))
   // @user7's casts as the hub lists them (0x hashes), for searching a profile (#495), and in full (bare hashes)
@@ -55,6 +81,8 @@ const gates = new Map()
 const proxy = createServer((q, r) => {
   const url = new URL(q.url, 'http://x')
   if (url.pathname.startsWith('/i/')) return
+  // (a second and a half late, so the casts draw before it)
+  if (url.pathname === `/api/look/${looky.fid}`) return void setTimeout(() => r.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(LOOK)), 1500)
   const up = request({ host: '127.0.0.1', port, path: q.url, method: q.method, headers: { ...q.headers, host: `127.0.0.1:${port}`, 'accept-encoding': 'identity' } }, async (u) => {
     const h = { ...u.headers }
     delete h['content-length']
@@ -122,6 +150,11 @@ async function open(storage = {}, { edit, held, clock, fail, phone, path = '/' }
 
 // the app's own page, in place of the server's (which has a tab bar of its own)
 const drawn = (page) => page.waitForFunction(() => document.querySelector('#app nav.tabbar') && !document.querySelector('.ssr-home'), null, { timeout: 30e3 })
+
+// #502: scrolled down past the first page of a feed; a link, as the app follows one (go() in api.ts); Back's spot
+const deep = (page) => page.waitForFunction(() => (scrollTo(0, document.documentElement.scrollHeight), document.querySelectorAll('#app article.cast').length > 25), null, { polling: 100, timeout: 30e3 })
+const link = (page, path) => page.evaluate((p) => (history.pushState(null, '', p), dispatchEvent(new PopStateEvent('popstate'))), path)
+const spot = (page, at, y) => page.waitForFunction(([at, y]) => location.pathname + location.search === at && Math.abs(scrollY - y) < 2, [at, y], { timeout: 10e3 })
 
 // each test has a page of its own, so they all run at once
 describe('the app in WebKit', { concurrency: true }, () => {
@@ -244,6 +277,186 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await page.evaluate(() => history.back())
     await page.waitForFunction(() => location.search === '?q=see' && document.querySelector('#app .profile-search input')?.value === 'see')
     await page.locator('#app article.cast', { hasText: 'nothing to see' }).waitFor({ timeout: 30e3 })
+    await close()
+  })
+
+  // #502: Back from a cast goes back to the spot in the feed, with the pages loaded by scrolling still there
+  test('on a desktop, Back from a cast keeps the feed\'s place and its later pages; a link starts at the top', async () => {
+    const { page, errors, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/channel/longfeed' })
+    const cards = page.locator('#app article.cast')
+    await cards.first().waitFor({ timeout: 30e3 })
+    // scrolled down into the second page
+    await page.waitForFunction(() => (scrollTo(0, document.documentElement.scrollHeight), document.querySelectorAll('#app article.cast').length > 25), null, { polling: 100, timeout: 30e3 })
+    const target = page.locator('#app article.cast', { hasText: 'long feed cast 40' }).first()
+    await target.scrollIntoViewIfNeeded()
+    await page.evaluate(() => scrollBy(0, -100))
+    const before = await page.evaluate(() => ({ y: scrollY, n: document.querySelectorAll('#app article.cast').length }))
+    assert.ok(before.y > 1000, `scrolled to ${before.y}`)
+    await target.click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    // a cast opened by a link starts at the top
+    assert.equal(await page.evaluate(() => scrollY), 0)
+    await page.goBack({ waitUntil: 'commit' })
+    await page.waitForFunction((y) => location.pathname === '/channel/longfeed' && Math.abs(scrollY - y) < 2, before.y, { timeout: 10e3 })
+    assert.ok(await cards.count() >= before.n, 'the later pages are gone')
+    await target.waitFor()
+    // the app's own Back does the same
+    await target.click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.evaluate(() => history.back())
+    await page.waitForFunction((y) => location.pathname === '/channel/longfeed' && Math.abs(scrollY - y) < 2, before.y, { timeout: 10e3 })
+    // after a refresh, Back finds the refreshed list, not the one before it
+    await page.locator('#app button[aria-label="Refresh"]').click()
+    await page.waitForFunction(() => scrollY === 0 && document.querySelectorAll('#app article.cast').length <= 25, null, { polling: 100, timeout: 10e3 })
+    await page.waitForFunction(() => (scrollTo(0, document.documentElement.scrollHeight), document.querySelectorAll('#app article.cast').length > 25), null, { polling: 100, timeout: 30e3 })
+    await target.scrollIntoViewIfNeeded()
+    const again = await page.evaluate(() => scrollY)
+    assert.ok(again > 1000, `scrolled to ${again}`)
+    await target.click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.goBack({ waitUntil: 'commit' })
+    await page.waitForFunction((y) => location.pathname === '/channel/longfeed' && Math.abs(scrollY - y) < 2, again, { timeout: 10e3 })
+    // a link to the feed starts it over at the top
+    await target.click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.evaluate(() => (history.pushState(null, '', '/channel/longfeed'), dispatchEvent(new PopStateEvent('popstate'))))
+    await page.waitForFunction(() => location.pathname === '/channel/longfeed' && document.querySelector('#app article.cast') && document.querySelectorAll('#app article.cast').length <= 25, null, { polling: 100, timeout: 10e3 })
+    assert.equal(await page.evaluate(() => scrollY), 0)
+    assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test('Back to a page visited twice finds each visit\'s own place and pages', async () => {
+    const { page, errors, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/channel/longfeed' })
+    const cards = page.locator('#app article.cast')
+    await cards.first().waitFor({ timeout: 30e3 })
+    await deep(page)
+    const target = page.locator('#app article.cast', { hasText: 'long feed cast 40' }).first()
+    await target.scrollIntoViewIfNeeded()
+    const first = await page.evaluate(() => ({ y: scrollY, n: document.querySelectorAll('#app article.cast').length }))
+    await target.click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    // the feed again by a link, which starts it over, scrolled a little way into its first page
+    await link(page, '/channel/longfeed')
+    await page.locator('#app article.cast', { hasText: 'long feed cast 20' }).first().waitFor({ timeout: 10e3 })
+    const second = await page.evaluate(() => (scrollTo(0, 600), scrollY))
+    assert.ok(second > 0 && first.y - second > 1000, `${second} vs ${first.y}`)
+    await page.locator('#app article.cast', { hasText: 'long feed cast 9' }).first().click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.goBack({ waitUntil: 'commit' })
+    await spot(page, '/channel/longfeed', second)
+    await page.goBack({ waitUntil: 'commit' })
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    // the first visit comes back as it was: its spot and its 2 pages, not the second visit's
+    await page.goBack({ waitUntil: 'commit' })
+    await spot(page, '/channel/longfeed', first.y)
+    assert.ok(await cards.count() >= first.n, 'the later pages are gone')
+    assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test('Back to a channel reached from another channel that was refreshed finds its place', async () => {
+    const { page, errors, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/channel/longfeed' })
+    const cards = page.locator('#app article.cast')
+    await cards.first().waitFor({ timeout: 30e3 })
+    await page.locator('#app button[aria-label="Refresh"]').click()
+    await page.locator('#app article.cast', { hasText: 'long feed cast 20' }).first().waitFor({ timeout: 10e3 })
+    // the same page, drawn for another channel
+    await link(page, '/channel/second')
+    await page.locator('#app article.cast', { hasText: 'long feed cast 20' }).first().waitFor({ timeout: 10e3 })
+    await deep(page)
+    const target = page.locator('#app article.cast', { hasText: 'long feed cast 40' }).first()
+    await target.scrollIntoViewIfNeeded()
+    const before = await page.evaluate(() => ({ y: scrollY, n: document.querySelectorAll('#app article.cast').length }))
+    await target.click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.goBack({ waitUntil: 'commit' })
+    await spot(page, '/channel/second', before.y)
+    assert.ok(await cards.count() >= before.n, 'the later pages are gone')
+    assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test('a reload stays where the page was', async () => {
+    const { page, errors, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/channel/longfeed' })
+    await page.locator('#app article.cast', { hasText: 'long feed cast 20' }).first().waitFor({ timeout: 30e3 })
+    const y = await page.evaluate(() => (scrollTo(0, 1000), scrollY))
+    assert.equal(y, 1000)
+    await page.reload({ waitUntil: 'commit' })
+    await page.waitForFunction((y) => document.querySelector('#app article.cast') && Math.abs(scrollY - y) < 2, y, { timeout: 15e3 })
+    assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test('Home\'s threaded Following comes back with its pages and goes on without repeats; its tab comes back too', async () => {
+    const { page, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/?as=reader' })
+    const cards = page.locator('#app article.cast')
+    await page.locator('#app article.cast', { hasText: 'following cast 1' }).first().waitFor({ timeout: 30e3 })
+    await deep(page)
+    const target = page.locator('#app article.cast', { hasText: 'following cast 40' }).first()
+    await target.scrollIntoViewIfNeeded()
+    const before = await page.evaluate(() => ({ y: scrollY, n: document.querySelectorAll('#app article.cast').length }))
+    await target.click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.goBack({ waitUntil: 'commit' })
+    await spot(page, '/?as=reader', before.y)
+    assert.ok(await cards.count() >= before.n, 'the later pages are gone')
+    // scrolling on loads the third page, and nothing shows twice
+    await page.waitForFunction(() => (scrollTo(0, document.documentElement.scrollHeight), document.querySelector('#app').innerText.includes('following cast 75')), null, { polling: 100, timeout: 30e3 })
+    const shown = await page.$$eval('#app article.cast', (as) => as.map((a) => a.innerText.match(/following cast \d+/)?.[0]).filter(Boolean))
+    assert.equal(new Set(shown).size, shown.length, `repeated: ${shown}`)
+    // Trending, left for a cast, is the tab Back comes back to
+    await page.getByRole('tab', { name: 'Trending' }).click()
+    await page.locator('#app article.cast', { hasText: 'cast number 3' }).first().click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.goBack({ waitUntil: 'commit' })
+    await page.waitForFunction(() => location.search === '?as=reader' && document.querySelector('#app [role="tab"][aria-selected="true"]')?.textContent === 'Trending', null, { timeout: 10e3 })
+    await close()
+  })
+
+  test('Back after leaving while Following\'s next page was loading shows that page in full', async () => {
+    const { page, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/?as=slowpoke' })
+    await page.locator('#app article.cast', { hasText: 'following cast 25' }).first().waitFor({ timeout: 30e3 })
+    // the next page is asked for (it takes 2 s), and a cast is opened meanwhile; that page arrives after the feed is left
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight))
+    await page.locator('#app .spinner').waitFor({ timeout: 5e3 })
+    await page.locator('#app article.cast', { hasText: 'following cast 24' }).first().click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.waitForTimeout(2500)
+    await page.goBack({ waitUntil: 'commit' })
+    await page.locator('#app article.cast', { hasText: 'following cast 24' }).first().waitFor({ timeout: 10e3 })
+    await page.waitForFunction(() => (scrollTo(0, document.documentElement.scrollHeight), document.querySelector('#app').innerText.includes('following cast 26')), null, { polling: 100, timeout: 15e3 })
+    await close()
+  })
+
+  test('Back to a profile, or a reload of it whose look draws late, keeps the casts where they were; its tab comes back too', async () => {
+    const { page, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/u/looky' })
+    await page.locator('#app').getByText('About line 8').waitFor({ timeout: 30e3 })
+    await page.locator('#app article.cast', { hasText: 'looky cast 1' }).first().waitFor({ timeout: 30e3 })
+    await deep(page)
+    const target = page.locator('#app article.cast', { hasText: 'looky cast 40' }).first()
+    await target.scrollIntoViewIfNeeded()
+    const top = (await target.boundingBox()).y
+    await target.click()
+    await page.waitForFunction(() => location.pathname.startsWith('/c/'))
+    await page.goBack({ waitUntil: 'commit' })
+    await page.locator('#app').getByText('About line 8').waitFor({ timeout: 10e3 })
+    await page.waitForTimeout(500)
+    assert.ok(Math.abs((await target.boundingBox()).y - top) < 2, `${(await target.boundingBox()).y} vs ${top}`)
+    // after a reload the look comes a second and a half after the casts, and pushes them down: the page keeps them in
+    // place until it has settled
+    const near = page.locator('#app article.cast', { hasText: 'looky cast 15' }).first()
+    await near.scrollIntoViewIfNeeded()
+    const nearTop = (await near.boundingBox()).y
+    await page.reload({ waitUntil: 'commit' })
+    await page.locator('#app').getByText('About line 8').waitFor({ timeout: 10e3 })
+    await page.waitForTimeout(1000)
+    assert.ok(Math.abs((await near.boundingBox()).y - nearTop) < 2, `${(await near.boundingBox()).y} vs ${nearTop}`)
+    await page.getByRole('tab', { name: 'Replies' }).click()
+    await link(page, '/channel/longfeed')
+    await page.locator('#app article.cast', { hasText: 'long feed cast 1' }).first().waitFor({ timeout: 10e3 })
+    await page.goBack({ waitUntil: 'commit' })
+    await page.waitForFunction(() => location.pathname === '/u/looky' && document.querySelector('#app [role="tab"][aria-selected="true"]')?.textContent === 'Replies', null, { timeout: 10e3 })
     await close()
   })
 

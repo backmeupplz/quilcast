@@ -20,6 +20,7 @@ import './style.css'
 import { keepCampaign } from './campaign.ts'
 import { addLocal, answered, exportLocal, IMPORT_MAX, localFollows, localSources, merger, ofAccount, parseImport, pool, removeLocal, room, setLocal, stillFollowed, toOffer, within, type Local } from './local.ts'
 import { asOf, browsePath, recentsOf, remember, repliesFit } from './browse.ts'
+import { allSpots, entry, holding, keepSpot, keepState, navigated, placeKept, showing, spotOf, start, stateOf, takeList } from './restore.ts'
 
 // views most visits never open load when first needed
 const lazy = <P extends object>(load: () => Promise<(p: P) => any>) => (p: P) => {
@@ -227,16 +228,21 @@ function AccountMenu({ me, quorum }: { me: User; quorum?: boolean }) {
 type Page = { casts: Cast[]; next?: { cursor?: string | null } }
 type Chunk<T> = { items: T[]; cursor: string | null }
 
-/** Cursor pagination with infinite scroll. `id` dedupes items across pages. */
-function Pager<T>({ load, k, empty, id, row, initial }: { load: (cursor?: string) => Promise<Chunk<T>>; k: string; empty?: string; id: (t: T) => string; row: (items: T[]) => ComponentChildren; initial?: () => T[] }) {
-  const [items, setItems] = useState<T[]>(() => initial?.() || [])
-  const [cursor, setCursor] = useState<string | null | undefined>(undefined)
+/** Cursor pagination with infinite scroll. `id` dedupes items across pages. `fresh`: loads again on Back too.
+ *  `restored`: told of a list Back brought back for `k`, before its next page loads. */
+function Pager<T>({ load, k, empty, id, row, initial, fresh, restored }: { load: (cursor?: string) => Promise<Chunk<T>>; k: string; empty?: string; id: (t: T) => string; row: (items: T[]) => ComponentChildren; initial?: () => T[]; fresh?: boolean; restored?: (k: string, items: T[]) => void }) {
+  // Back or Forward onto this page shows the pages loaded before, and goes on from there (restore.ts)
+  const [kept] = useState(() => (fresh ? null : takeList<T>(k)))
+  const [items, setItems] = useState<T[]>(() => kept?.items || initial?.() || [])
+  const [cursor, setCursor] = useState<string | null | undefined>(kept?.cursor)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const sentinel = useRef<HTMLDivElement>(null)
   // `run` is new each time `k` changes, so a load from an earlier run is dropped and leaves the spinner alone, even when
   // `k` has come back to the same key meanwhile (a search typed, changed and typed again)
-  const state = useRef({ busy: false, run: {} })
+  const state = useRef({ busy: false, run: {}, mounted: false })
+  // the list loaded for `k` so far, which Back finds on this entry when it's left (restore.ts)
+  const got = useRef<{ k: string; items: T[]; cursor: string | null } | null>(kept && { k, ...kept })
   const more = async (reset = false) => {
     if ((state.current.busy && !reset) || (!reset && cursor === null)) return
     const run = state.current.run
@@ -248,7 +254,9 @@ function Pager<T>({ load, k, empty, id, row, initial }: { load: (cursor?: string
       if (state.current.run !== run) return
       setItems((prev) => {
         const seen = new Set(reset ? [] : prev.map(id))
-        return [...(reset ? [] : prev), ...r.items.filter((t) => !seen.has(id(t)))]
+        const next = [...(reset ? [] : prev), ...r.items.filter((t) => !seen.has(id(t)))]
+        got.current = { k, items: next, cursor: r.cursor }
+        return next
       })
       setCursor(r.cursor)
     } catch (e: any) {
@@ -260,8 +268,22 @@ function Pager<T>({ load, k, empty, id, row, initial }: { load: (cursor?: string
       }
     }
   }
+  useEffect(() => showing(k, () => (got.current?.k === k ? got.current : null)), [k])
   useEffect(() => {
     state.current.run = {}
+    // (the kept list is taken once, when this list first draws, or here when `k` changes under it)
+    const l = !state.current.mounted ? kept : fresh ? null : takeList<T>(k)
+    state.current.mounted = true
+    if (l) {
+      got.current = { k, ...l }
+      restored?.(k, l.items)
+      setItems(l.items)
+      setCursor(l.cursor)
+      state.current.busy = false
+      setBusy(false)
+      setErr('')
+      return
+    }
     // a cached first page shows instantly and is replaced when the fresh one arrives
     setItems(initial?.() || [])
     setCursor(undefined)
@@ -360,6 +382,8 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer, loc
   const shown = useRef({ k, set: new Set<string>() })
   return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => !silenced(c.recaster?.fid) && (!skip || pinKey(c.hash) !== skip) && ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
     initial={() => (cacheKey === '0:trending' && boot) || (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
+    // a list Back brought back (restore.ts) goes on without repeats: what it showed is what's in it (oncePerFeed)
+    restored={thread ? (k, cs) => void (shown.current = { k, set: new Set(cs.flatMap((c) => [c.hash, ...(c.up || []).map((p) => p.hash)])) }) : undefined}
     load={async (cursor) => {
       // taken now, not after the request: one Feed is reused when `k` changes, and an older key's load can end later
       const seen = shownFor(shown.current, k, !cursor)
@@ -389,9 +413,12 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer, loc
 }
 
 /** Tapping the tab or nav item you're already on reloads the list from the top. */
+// each history entry's count of reloads, part of its lists' keys, so Back to an entry reloaded before finds the list
+// it last had (restore.ts). Read on every draw: one page can be reused for another entry (/channel/a to /channel/b).
 function useReload(): [number, () => void] {
-  const [round, setRound] = useState(0)
-  const reload = () => (forget(), scrollTo(0, 0), setRound((r) => r + 1))
+  const [, redraw] = useState(0)
+  const round = stateOf<number>('round') || 0
+  const reload = () => (forget(), scrollTo(0, 0), keepState('round', (stateOf<number>('round') || 0) + 1), redraw((n) => n + 1))
   useEffect(() => {
     addEventListener('refresh', reload)
     return () => removeEventListener('refresh', reload)
@@ -487,11 +514,18 @@ function Home() {
   // without an account, the accounts followed on this device (anonymous mode, local.ts)
   const anon = !account?.done
   const local = useLocalFollows()
-  const [tab, setTab] = useState<'following' | 'trending'>(account?.done || as || local.length ? 'following' : 'trending')
+  type Tab = 'following' | 'trending'
+  // Back comes back to the tab it was on (restore.ts)
+  const tabOf = (as: string | null | undefined) => stateOf<Tab>(`home:${as || ''}`) || (account?.done || as || local.length ? 'following' : 'trending')
+  const [tab, setTab] = useState<Tab>(() => tabOf(as))
+  // the tab on screen when the page is left, picked or not, is the one Back comes back to
+  const tabNow = useRef(tab)
+  tabNow.current = tab
+  useEffect(() => holding(`home:${as || ''}`, () => tabNow.current), [as])
   const [round, reload] = useReload()
   useEffect(() => {
     setErr(null)
-    setTab(account?.done || as || local.length ? 'following' : 'trending')
+    setTab(tabOf(as))
     if (!as) return setWho(null)
     const k = known(as)
     setWho(k && { as, u: k })
@@ -511,7 +545,7 @@ function Home() {
   const following = tab === 'following'
   // signed out (or half-made), not browsing as anyone: Following is the device's list, merged here (local.ts)
   const localMode = following && !as && anon
-  const pick = (t: typeof tab) => (t === tab ? reload() : setTab(t))
+  const pick = (t: typeof tab) => (t === tab ? reload() : ((tabNow.current = t), setTab(t)))
   // the device's list, as it is now: a follow or unfollow elsewhere starts the feed over
   const fids = local.map((l) => l.fid).join()
   const [status, setStatus] = useState<LocalStatus>({ loading: null, skipped: [] })
@@ -675,7 +709,8 @@ function Notifications() {
       <Header title={t('Notifications')}>
         <Tabs tabs={[['all', t('All')], ['replies', t('Replies & mentions')], ...(account.inbox ? [['apps', t('Mini apps')] as ['apps', string]] : [])]} value={tab} set={(t) => (t === tab ? reload() : setTab(t))} />
       </Header>
-      {tab === 'apps' ? <AppNotes key={round} /> : <Pager<Note> k={`${tab}:${round}`} empty={t('Nothing yet. When people reply, like or follow you, it shows up here.')}
+      {/* fresh: opening the page marks everything as seen, so it shows what's new, Back or not */}
+      {tab === 'apps' ? <AppNotes key={round} /> : <Pager<Note> fresh k={`${tab}:${round}`} empty={t('Nothing yet. When people reply, like or follow you, it shows up here.')}
         id={(n) => `${n.type}:${n.cast?.hash}:${n.user.fid}:${n.timestamp}`}
         row={(ns) => group(ns.filter((n) => !silenced(n.user.fid) && !(n.cast && !ACT(n.type) && hides(n.cast)))).map((g) => <NoteRow key={g.key} g={g} />)}
         load={async (cursor) => {
@@ -898,7 +933,11 @@ function Profile({ id }: { id: string }) {
   const [u, setU] = useState<User | null>(() => known(id))
   const [err, setErr] = useState<(Error & { status?: number }) | null>(null)
   const [tries, setTries] = useState(0)
-  const [tab, setTab] = useState<'casts' | 'replies'>('casts')
+  // Back comes back to the tab it was on (restore.ts)
+  const [tab, setTab] = useState<'casts' | 'replies'>(() => stateOf(`profile:${id}`) || 'casts')
+  const tabNow = useRef(tab)
+  tabNow.current = tab
+  useEffect(() => holding(`profile:${id}`, () => tabNow.current), [id])
   const [following, setFollowing] = useState<boolean | null>(null)
   // they follow the viewer; shown only once known, so nothing jumps while it's asked
   const [followsYou, setFollowsYou] = useState(false)
@@ -939,7 +978,7 @@ function Profile({ id }: { id: string }) {
     const k = known(id)
     setU(k)
     setErr(null)
-    setTab('casts')
+    setTab(stateOf(`profile:${id}`) || 'casts')
     fromQ()
     setLook(null)
     setDraft(null)
@@ -1109,7 +1148,7 @@ function Profile({ id }: { id: string }) {
                     placeholder={t('Search @{name}\'s casts', { name: handle(u) })} aria-label={t('Search @{name}\'s casts', { name: handle(u) })} />
                 </div>
               )}
-              {!term && <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')]]} value={tab} set={setTab} />}
+              {!term && <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')]]} value={tab} set={(t) => ((tabNow.current = t), setTab(t))} />}
               {!self && blockOf(u.fid) ? (
                 <div class="note">{t('You blocked @{name}, so their casts are hidden.', { name: handle(u) })} <button class="link-btn" onClick={() => setMute('blocks', u.fid, false).catch((e) => toast(e.message))}>{t('Unblock')}</button></div>
               ) : term ? (
@@ -2165,10 +2204,94 @@ document.addEventListener('visibilitychange', () => {
 // a theme picked on another device shows up when this one comes back (prefs.ts)
 document.addEventListener('visibilitychange', () => void (document.visibilityState === 'visible' && settings.syncThemes && import('./prefs.ts').then((m) => m.pull())))
 
+// Back and Forward put the page where it was (#502): the app scrolls, not the browser, which would try before the page
+// has drawn its lists
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+// each history entry has an id in its state, so what's kept for it (restore.ts) is that visit's, not another visit's
+// to the same address. A new address is a new entry; one pushed at the same address (the image viewer's, ui.tsx) is
+// still the same page, and a replaceState (a search's words, the viewer's picture) keeps the entry's id.
+const ENTRY = 'quilcast:entry'
+const idIn = (s: unknown) => (s && typeof s === 'object' ? ((s as Record<string, unknown>)[ENTRY] as string | undefined) : undefined)
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+const tagged = (s: unknown, id: string) => (s == null || typeof s === 'object' ? { ...(s as object), [ENTRY]: id } : s)
+const push = history.pushState.bind(history)
+const replace = history.replaceState.bind(history)
+history.pushState = (s, u, url) => push(tagged(s, (url == null && idIn(history.state)) || newId()), u, url)
+history.replaceState = (s, u, url) => replace(tagged(s, idIn(history.state) || newId()), u, url)
+if (!idIn(history.state)) history.replaceState(history.state, '')
+start(idIn(history.state) || '')
+
+// a page reached by Back or Forward scrolls back to where it was, as soon as it's tall enough: at once when its lists
+// were kept (restore.ts), or within 3 s while they load. A list that loads afresh instead (or a page that waits for
+// one past those 3 s) starts at the top. Until those 3 s are up it keeps the spot while things above it draw late
+// (a profile's look), which would push the posts down. Scrolling, a tap or a key first leaves it where it is.
+let restoring: (() => void) | null = null
+// still on its way to the spot: until then, where the page is scrolled isn't a spot to keep
+let pending = false
+const INPUTS = ['wheel', 'touchstart', 'pointerdown', 'keydown']
+function scrollBack(y: number, ms = 3000) {
+  restoring?.()
+  scrollTo(0, 0)
+  if (!y) return
+  pending = true
+  const end = Date.now() + ms
+  let frame = 0
+  let height = -1
+  let reached = false
+  const stop = () => (cancelAnimationFrame(frame), INPUTS.forEach((ev) => removeEventListener(ev, stop, true)), restoring === stop && ((restoring = null), (pending = false)))
+  const step = () => {
+    const h = document.documentElement.scrollHeight
+    const to = Math.min(y, Math.max(0, h - innerHeight))
+    if (placeKept()) {
+      // moved while nothing on the page did: the scroll bar, dragged (which sends none of INPUTS)
+      if (reached && h === height && Math.abs(scrollY - to) > 1) return stop()
+      scrollTo(0, to)
+      reached ||= to === y
+      if (reached && restoring === stop) pending = false
+    }
+    height = h
+    if (Date.now() > end) stop()
+    else frame = requestAnimationFrame(step)
+  }
+  INPUTS.forEach((ev) => addEventListener(ev, stop, { capture: true, passive: true }))
+  restoring = stop
+  frame = requestAnimationFrame(step)
+}
+
+// a reload, or a Back from another site that loads the page again, has nothing kept in memory: the spots are kept in
+// this tab's sessionStorage when the page is hidden, and the page goes back to its spot within what it draws
+const SPOTS = 'quilcast:spots'
+const keepSpots = () => {
+  if (!pending) keepSpot(entry(), scrollY)
+  try {
+    sessionStorage.setItem(SPOTS, JSON.stringify(allSpots()))
+  } catch {}
+}
+addEventListener('pagehide', keepSpots)
+document.addEventListener('visibilitychange', () => void (document.visibilityState === 'hidden' && keepSpots()))
+try {
+  for (const [id, y] of JSON.parse(sessionStorage.getItem(SPOTS) || '[]') as [string, number][]) keepSpot(id, y)
+} catch {}
+if (spotOf(entry())) scrollBack(spotOf(entry()), 5000)
+
 const useRoute = () => {
   const [p, setP] = useState(location.pathname)
   useEffect(() => {
-    const f = () => (setP(location.pathname), scrollTo(0, 0))
+    const f = (e: Event) => {
+      // go() (api.ts) sends a popstate of its own for a link; the browser's is Back or Forward. (The image viewer's
+      // entries stop theirs before this, ui.tsx.)
+      const pop = e.isTrusted
+      // (an entry the browser added itself, for a #fragment, gets an id too)
+      if (!idIn(history.state)) history.replaceState(history.state, '')
+      const to = idIn(history.state) || ''
+      if (pop && to === entry()) return
+      // the page being left is still on screen: where it's scrolled to and its lists are what Back finds, unless it
+      // was still on its way back to its spot
+      if (!pending) keepSpot(entry(), scrollY)
+      navigated(to, pop)
+      setP(location.pathname)
+      pop ? scrollBack(spotOf(to)) : (restoring?.(), scrollTo(0, 0))
+    }
     addEventListener('popstate', f)
     return () => removeEventListener('popstate', f)
   }, [])
