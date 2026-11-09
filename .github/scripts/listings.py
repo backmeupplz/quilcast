@@ -148,8 +148,16 @@ def play(dry):
         print(f"Play accepts {changed} change{'s' if changed != 1 else ''}; nothing was sent (dry run)")
     else:
         # A release or listing still in review makes this fail rather than withdrawing it (Play's default cancels the review)
-        call("POST", f"{edits}/{edit}:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW")
-        print(f"{changed} Play listing change{'s' if changed != 1 else ''} sent to review")
+        try:
+            call("POST", f"{edits}/{edit}:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW")
+            print(f"{changed} Play listing change{'s' if changed != 1 else ''} sent to review")
+        except SystemExit as e:
+            # After a policy rejection Play won't send changes for review through the API: save them, a person sends them
+            if "changesNotSentForReview" not in str(e):
+                raise
+            call("POST", f"{edits}/{edit}:commit?changesNotSentForReview=true")
+            print(f"::warning::{changed} Play listing change{'s' if changed != 1 else ''} saved in Play Console but NOT in "
+                  "review: Play wants them sent from Publishing overview → Send changes for review")
 
 
 class OutOfTime(Exception):

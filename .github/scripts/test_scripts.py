@@ -105,6 +105,7 @@ class FakePlay:
     and then does, so a naive retry would leave it in twice"""
     def __init__(self, listings=()):
         self.images, self.calls, self.urls, self.flaky, self.listings, self.bodies = {}, [], [], True, list(listings), []
+        self.manual = False  # Play's answer while a policy rejection is open: commits can't be sent for review
 
     def urlopen(self, request, timeout=None):
         method, url = request.get_method(), request.full_url.split("?")[0]
@@ -113,6 +114,9 @@ class FakePlay:
         answer = {}
         if method == "POST" and url.endswith("/edits"):
             answer = {"id": "e"}
+        elif url.endswith(":commit") and self.manual and "changesNotSentForReview=true" not in request.full_url:
+            body = b'{"error": {"code": 400, "message": "Changes cannot be sent for review automatically. Please set the query parameter changesNotSentForReview to true."}}'
+            raise listings.urllib.error.HTTPError(url, 400, "Bad Request", {}, io.BytesIO(body))
         elif method == "GET" and url.endswith("/listings"):
             answer = {"listings": self.listings}
         elif method == "PUT" and "/listings/" in url:
@@ -592,6 +596,24 @@ class Scripts(unittest.TestCase):
         self.assertIn(("POST", "/e:commit"), fake.calls)
         # Play's default would withdraw a release in review and resubmit it
         self.assertTrue(any(u.endswith(":commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW") for u in fake.urls))
+
+    def test_play_changes_play_wont_send_for_review_are_saved_for_the_console(self):
+        fake = FakePlay()
+        fake.manual, fake.flaky = True, False
+        with tempfile.TemporaryDirectory() as root:
+            cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                os.makedirs("fastlane/metadata/android/de-DE")
+                with open("fastlane/metadata/android/de-DE/title.txt", "w") as f: f.write("Quilcast")
+                with mock.patch.dict(os.environ, {"PLAY_PACKAGE": "com.example"}), \
+                        mock.patch.object(listings.urllib.request, "urlopen", fake.urlopen), mock.patch.object(listings.time, "sleep"), \
+                        mock.patch("play.access_token", return_value="t"), contextlib.redirect_stdout(io.StringIO()) as out:
+                    listings.play(False)
+            finally:
+                os.chdir(cwd)
+        self.assertTrue(fake.urls[-1].endswith(":commit?changesNotSentForReview=true"))
+        self.assertIn("NOT in review", out.getvalue())
 
     def test_play_listing_update_keeps_the_promo_video(self):
         fake = FakePlay([{"language": "de-DE", "title": "Alt", "video": "https://youtu.be/x"}])

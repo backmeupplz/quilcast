@@ -58,8 +58,16 @@ def main():
         call("DELETE", f"{edits}/{edit}", None)
         print(f"Play accepts {name} ({code}) for production; nothing was sent (dry run)")
     else:
-        call("POST", f"{edits}/{edit}:commit?changesInReviewBehavior=CANCEL_IN_REVIEW_AND_SUBMIT")
-        print(f"{name} ({code}) is in review for Play production")
+        try:
+            call("POST", f"{edits}/{edit}:commit?changesInReviewBehavior=CANCEL_IN_REVIEW_AND_SUBMIT")
+            print(f"{name} ({code}) is in review for Play production")
+        except SystemExit as e:
+            # After a policy rejection Play won't send changes for review through the API: save them, a person sends them
+            if "changesNotSentForReview" not in str(e):
+                raise
+            call("POST", f"{edits}/{edit}:commit?changesNotSentForReview=true")
+            print(f"::warning::{name} ({code}) is saved in Play Console but NOT in review: Play wants it sent from "
+                  "Publishing overview → Send changes for review")
 
 
 if __name__ == "__main__":
