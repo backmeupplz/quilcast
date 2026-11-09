@@ -102,19 +102,23 @@ test('a bare domain glued to a letter of another script links nothing, not just 
 
 test('long runs of invisible characters or labels around a domain take linear time', () => {
   const a = (u: string) => `<a href="https://${u}/" target="_blank" rel="noopener noreferrer nofollow">${u}</a>`
-  for (const ch of ['​', '⁠']) {
-    const s = ch.repeat(20000) + ' quilcast.com'
+  // Times a second run: the first includes V8 compiling the regexes (~100 ms on a laptop, 336 ms on a busy
+  // build host) while the work itself is ~0.1 ms. Backtracking that grows with the input is slow on both runs.
+  const run = (s: string) => {
+    linkify(s), md(s)
     const t = performance.now()
     const out = [linkify(s), md(s)]
-    const ms = performance.now() - t
+    return { out, ms: performance.now() - t }
+  }
+  for (const ch of ['​', '⁠']) {
+    const s = ch.repeat(20000) + ' quilcast.com'
+    const { out, ms } = run(s)
     for (const o of out) assert.ok(o.endsWith(` ${a('quilcast.com')}`), o.slice(-120))
     assert.ok(ms < 200, `${ms} ms`)
   }
   // and long runs of labels before a glued letter, which the match backs off one label at a time
   for (const s of ['com.'.repeat(20000) + 'рф', 'x.' + 'a.'.repeat(20000) + 'м', 'x.' + 'co.​'.repeat(20000) + 'м']) {
-    const t = performance.now()
-    const out = [linkify(s), md(s)]
-    const ms = performance.now() - t
+    const { out, ms } = run(s)
     for (const o of out) assert.ok(!o.includes('<a'), o.slice(-120))
     assert.ok(ms < 200, `${ms} ms`)
   }
@@ -122,18 +126,14 @@ test('long runs of invisible characters or labels around a domain take linear ti
   for (const ch of ['​', '️', '⁠'])
     for (const [end, links] of [[' ', true], ['м', false], ['⃣', false], ['̃', false]] as const) {
       const s = 'quilcast.com' + ch.repeat(30000) + end
-      const t = performance.now()
-      const out = [linkify(s), md(s)]
-      const ms = performance.now() - t
+      const { out, ms } = run(s)
       for (const o of out) assert.equal(o.startsWith(a('quilcast.com')), links, o.slice(0, 120))
       assert.ok(ms < 200, `${ms} ms`)
     }
   // and long runs of marks, with or without invisible characters, before a domain or after its labels
   for (const [s, links] of [['a' + '̃'.repeat(30000) + 'quilcast.com', false], ['漢' + '̃'.repeat(30000) + 'quilcast.com', true],
     ['漢' + '̃​'.repeat(30000) + 'quilcast.com', true], ['x.' + 'a.'.repeat(20000) + 'm' + '̃'.repeat(20000), false]] as const) {
-    const t = performance.now()
-    const out = [linkify(s), md(s)]
-    const ms = performance.now() - t
+    const { out, ms } = run(s)
     for (const o of out) assert.equal(o.includes('<a'), links, o.slice(-120))
     assert.ok(ms < 200, `${ms} ms`)
   }
@@ -141,9 +141,7 @@ test('long runs of invisible characters or labels around a domain take linear ti
   for (const ch of ['​', '⁠', '­', '͏', '️', '᠋', '\u{e0100}'])
     for (const [start, links] of [['', true], [' ', true], ['a', false], ['а', false]] as const) {
       const s = start + ch.repeat(20000) + 'quilcast.com'
-      const t = performance.now()
-      const out = [linkify(s), md(s)]
-      const ms = performance.now() - t
+      const { out, ms } = run(s)
       for (const o of out) assert.equal(o.endsWith(`${a('quilcast.com')}`), links, o.slice(-120))
       assert.ok(ms < 200, `${ch.codePointAt(0)?.toString(16)} after '${start}': ${ms} ms`)
     }
