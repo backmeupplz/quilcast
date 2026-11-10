@@ -48,6 +48,25 @@ export const requireAccount = () => (account?.done ? true : (go('/join'), false)
 export const askPush = () => ('Notification' in window ? Notification.requestPermission().catch(() => 'denied' as const) : Promise.resolve('denied' as const))
 /** Whether this browser already has a push subscription for Quilcast. */
 export const pushOn = async () => !!(await (await navigator.serviceWorker?.getRegistration('/sw.js'))?.pushManager.getSubscription())
+export const APP_PUSH = 'quilcast:apppush'
+/** Whether mini apps' notifications are pushed here (Mini apps → Push notifications on this device). The subscription
+ *  alone doesn't say: accounts' own notifications (src/alerts.ts) use it too. Before that flag, a subscription was this. */
+export const appPushOn = async () => (await pushOn()) && (read<boolean | null>(APP_PUSH, null) ?? !Object.keys(read<{ on?: object } | null>('quilcast:alerts', null)?.on || {}).length)
+/** This browser's push subscription for Quilcast, made on first use; mini apps' notifications and the account's own
+ *  (src/alerts.ts) share it. The permission is asked first (see askPush). */
+export async function pushSubscription() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error("This browser can't show notifications.")
+  if (Notification.permission !== 'granted' && (await askPush()) !== 'granted') throw new Error('Notifications are blocked for Quilcast in this browser. Allow them in the site settings (the icon left of the address).')
+  const reg = await navigator.serviceWorker.register('/sw.js')
+  await navigator.serviceWorker.ready
+  const had = await reg.pushManager.getSubscription()
+  if (had) return had
+  const { key } = await (await fetch('/api/notify/vapid')).json()
+  // a browser without a reachable push service never answers, so this gives up instead of spinning forever
+  const timeout = new Promise<never>((_, no) => setTimeout(() => no(new Error("This browser's push service didn't answer. Try again in a minute.")), 20000))
+  const raw = Uint8Array.from(atob(key.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+  return Promise.race([reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw }), timeout])
+}
 /** Open a mini app (src/miniapp.tsx, loaded on first use). */
 export const launchApp = (m: AppMeta, ctx?: { cast?: Cast; embed?: string }) => requireAccount() && import('./miniapp.tsx').then((x) => x.launch(m, ctx))
 /** Mini apps pinned to the dock, in the order they were pinned. */

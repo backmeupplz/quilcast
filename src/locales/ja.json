@@ -1195,5 +1195,18 @@
   "Direction": "方向",
   "Right to left": "右から左",
   "Left to right": "左から右",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "プロフィールを横切って流れる1行のテキストで、ポインターを重ねると止まります。端末で視差効果を減らしている訪問者には止まって表示されます。色を指定しない場合は、ボックスの上にリンクの色で表示されます。"
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "プロフィールを横切って流れる1行のテキストで、ポインターを重ねると止まります。端末で視差効果を減らしている訪問者には止まって表示されます。色を指定しない場合は、ボックスの上にリンクの色で表示されます。",
+  "Follows": "フォロー",
+  "Mentions": "メンション",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "iPhone と iPad では、Quilcast をホーム画面に追加し（共有 → ホーム画面に追加）、そこから開くと通知を受け取れます。",
+  "Push notifications for @{username}": "@{username} のプッシュ通知",
+  "{name} replied": "{name} が返信しました",
+  "{name} mentioned you": "{name} があなたをメンションしました",
+  "{name} quoted your cast": "{name} があなたのキャストを引用しました",
+  "{n} more notification|{n} more notifications": "ほか {n} 件の通知",
+  "Sign in again to turn notifications on.": "通知をオンにするには、もう一度サインインしてください。",
+  "Too many accounts get notifications right now. Try again later.": "現在、通知を受け取るアカウントが多すぎます。しばらくしてからもう一度お試しください。",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "返信、メンション、引用、いいね、リキャスト、フォローが、Quilcast を閉じていてもこのデバイスに届きます。サーバーが 1 分に 1 回確認します。保存するのは、あなたの Farcaster ID とこのブラウザのプッシュ購読およびこれらの設定、そして数分間だけ送信済みの通知です。サインアウトすると消去されます。ミュートやブロックした人、ミュートしたワード、非表示にしたスパムは届きません。",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "このアカウントは通知を受け取るデバイスが多すぎます。先にどれかでオフにしてください。",
+  "This browser gets notifications for too many accounts.": "このブラウザは通知を受け取るアカウントが多すぎます。"
 }

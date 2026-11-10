@@ -1195,5 +1195,18 @@
   "Direction": "Richting",
   "Right to left": "Van rechts naar links",
   "Left to right": "Van links naar rechts",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Eén regel die over je profiel loopt en stilstaat zolang de aanwijzer erop rust. Bezoekers die hun apparaat om minder beweging vragen, zien hem stilstaan. Zonder kleuren krijgt hij de kleur van je links, op je vakken."
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Eén regel die over je profiel loopt en stilstaat zolang de aanwijzer erop rust. Bezoekers die hun apparaat om minder beweging vragen, zien hem stilstaan. Zonder kleuren krijgt hij de kleur van je links, op je vakken.",
+  "Follows": "Volgers",
+  "Mentions": "Vermeldingen",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "Zet Quilcast op iPhone en iPad op je beginscherm (Deel, dan Zet op beginscherm) en open het vanaf daar om meldingen te krijgen.",
+  "Push notifications for @{username}": "Pushmeldingen voor @{username}",
+  "{name} replied": "{name} antwoordde",
+  "{name} mentioned you": "{name} noemde je",
+  "{name} quoted your cast": "{name} citeerde je cast",
+  "{n} more notification|{n} more notifications": "{n} andere melding|{n} andere meldingen",
+  "Sign in again to turn notifications on.": "Log opnieuw in om meldingen aan te zetten.",
+  "Too many accounts get notifications right now. Try again later.": "Er krijgen nu te veel accounts meldingen. Probeer het later nog eens.",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Antwoorden, vermeldingen, citaten, likes, recasts en nieuwe volgers komen op dit apparaat binnen, ook als Quilcast dicht is. Onze server kijkt er eens per minuut naar. Hij bewaart je Farcaster-ID met het pushabonnement van deze browser en deze instellingen, en een paar minuten welke meldingen hij al stuurde; uitloggen haalt ze weg. Mensen die je dempt of blokkeert, gedempte woorden en spam die je verbergt blijven buiten.",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "Dit account krijgt op te veel apparaten meldingen. Zet ze eerst op een daarvan uit.",
+  "This browser gets notifications for too many accounts.": "Deze browser krijgt meldingen voor te veel accounts."
 }

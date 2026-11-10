@@ -9,13 +9,13 @@ import { useEffect, useState } from 'preact/hooks'
 import { formatUnits, parseUnits } from 'viem'
 import { arbitrum, base, baseSepolia, celo, degen, mainnet, monad, optimism, polygon, unichain, zora } from 'viem/chains'
 import { lang, t } from './i18n.ts'
-import { account, getUser, go, myUser, read, safeUrl, save, setAccount, settings, type Cast, type User } from './api.ts'
+import { account, accounts as signedIn, alertsKept, getUser, go, myUser, read, safeUrl, save, setAccount, settings, type Cast, type User } from './api.ts'
 import { base58, hex } from './fc.ts'
 import { choices, pair, qr, WC, wcChoice, wcLive } from './wallet.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
 import { castText, LOGO, proxied } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
-import { askPush, channelOf, Choose, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
+import { APP_PUSH, askPush, channelOf, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
 import { awake, sleepers } from './sleep.ts'
@@ -700,20 +700,16 @@ const details = (m: AppMeta) => api('/api/notify/token', { inbox: inboxSecret(),
 
 /** Pushes to this browser for every app with notifications on (permission asked first, see askPush). */
 export async function enablePush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error("This browser can't show notifications.")
-  if (Notification.permission !== 'granted' && (await askPush()) !== 'granted') throw new Error('Notifications are blocked for Quilcast in this browser. Allow them in the site settings (the icon left of the address).')
-  const reg = await navigator.serviceWorker.register('/sw.js')
-  await navigator.serviceWorker.ready
-  const { key } = await (await fetch('/api/notify/vapid')).json()
-  // a browser without a reachable push service never answers, so this gives up instead of spinning forever
-  const timeout = new Promise<never>((_, no) => setTimeout(() => no(new Error("This browser's push service didn't answer. Try again in a minute.")), 20000))
-  const sub = (await reg.pushManager.getSubscription()) || (await Promise.race([reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: unb64(key) }), timeout]))
+  const sub = await pushSubscription()
   await api('/api/notify/push', { inbox: inboxSecret(), subscription: sub.toJSON() })
+  save(APP_PUSH, true)
 }
 export async function disablePush() {
-  const sub = await (await navigator.serviceWorker?.getRegistration('/sw.js'))?.pushManager.getSubscription()
-  await sub?.unsubscribe()
-  if (account?.inbox) await api('/api/notify/push', { inbox: account.inbox, subscription: null }).catch(() => {})
+  save(APP_PUSH, false)
+  // the browser's subscription stays while an account's own notifications (src/alerts.ts) use it
+  if (!Object.keys(alertsKept().on).length) await (await (await navigator.serviceWorker?.getRegistration('/sw.js'))?.pushManager.getSubscription())?.unsubscribe()
+  // every signed-in account's mini app pushes stop, not just this one's: the subscription may live on for account alerts
+  await Promise.all(signedIn.filter((a) => a.inbox).map((a) => api('/api/notify/push', { inbox: a.inbox, subscription: null }).catch(() => {})))
 }
 
 /** Turn an app's notifications on or off: a token from our server, handed to the app in a signed webhook event

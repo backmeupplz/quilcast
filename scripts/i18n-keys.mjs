@@ -18,6 +18,11 @@ for (const s of src) {
 // the server's errors are shown in the app's toasts
 // (lowercase ones like 'bad json' are API replies no person sees)
 for (const s of server) all(s, new RegExp(String.raw`\b(?:fail\(\d+,|error:)\s*(?:${lit})`, 'g'), (m) => /^[A-Z]/.test(str(m, 1)) && keys.add(str(m, 1)))
+// push notifications the server words in the browser's language (server/alerts.mjs): say(lang, '…'), sayN(lang, n, '…', '…')
+for (const s of server) {
+  all(s, new RegExp(String.raw`\bsay\(\s*[\w.]+\s*,\s*(?:${lit})`, 'g'), (m) => keys.add(str(m, 1)))
+  all(s, new RegExp(String.raw`\bsayN\([^,]+,[^,]+,\s*(?:${lit})\s*,\s*(?:${lit})`, 'g'), (m) => keys.add(`${str(m, 1)}|${str(m, 3)}`))
+}
 
 // labels kept in English in module-level lists and translated where they're shown: t(label)
 const LABELS = [

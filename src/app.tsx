@@ -6,12 +6,13 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, hasTag, n, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, pushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
 import { checkAccounts, spamAccountOf, spamAt } from './spam.ts'
+import { alertsOn, canPush, KINDS, refreshAlerts, setAlerts, setKinds, spamChanged, type Kind } from './alerts.ts'
 import { listSkip, pinKey, usePinnedCast } from './castpin.ts'
 import { MOST, searchCasts } from './castsearch.ts'
 import { findChannels, getChannel, type Channel } from './channels.ts'
@@ -1426,7 +1427,7 @@ function Apps() {
   const [, force] = useState(0)
   useDock()
   const m = () => import('./miniapp.tsx')
-  useEffect(() => void pushOn().then(setPush, () => {}), [])
+  useEffect(() => void appPushOn().then(setPush, () => {}), [])
   useEffect(() => {
     // a tapped push notification lands here as ?n=<id>
     const n = new URLSearchParams(location.search).get('n')
@@ -1513,6 +1514,58 @@ function Apps() {
           </section>
         )}
       </div>
+    </>
+  )
+}
+
+// iOS Safari has Web Push only for sites added to the Home Screen and opened from there
+const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+const kindLabel = (k: Kind) => ({ replies: t('Replies'), mentions: t('Mentions'), quotes: t('Quotes'), likes: t('Likes'), recasts: t('Recasts'), follows: t('Follows') })[k]
+
+/** Settings → Notifications: push notifications for each account's activity on this device, and the kinds each
+ *  one gets (src/alerts.ts). */
+function AlertSettings() {
+  const mine = accounts.filter((a) => a.done && a.fid)
+  const [on, setOn] = useState<Map<number, Kind[]> | null>(null)
+  const [busy, setBusy] = useState<number | null>(null)
+  useEffect(() => void (canPush() && alertsOn().then(setOn)), [])
+  if (!canPush()) return <p class="hint">{ios ? t('On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.') : t("This browser can't show notifications.")}</p>
+  const run = async (a: Account, f: () => Promise<unknown>) => {
+    setBusy(a.fid!)
+    try {
+      await f()
+    } catch (e: any) {
+      toast(e.message)
+    }
+    setOn(await alertsOn())
+    setBusy(null)
+  }
+  const toggle = (a: Account) => {
+    const turnOn = !on?.has(a.fid!)
+    // the permission prompt has to come straight from the click
+    const asked = turnOn && Notification.permission !== 'granted' && askPush()
+    return run(a, async () => {
+      if (asked && (await asked) !== 'granted') throw new Error('Notifications are blocked for Quilcast in this browser. Allow them in the site settings (the icon left of the address).')
+      await setAlerts(a, turnOn)
+    })
+  }
+  const pick = (a: Account, kinds: Kind[], k: Kind) => run(a, () => setKinds(a, KINDS.filter((x) => (x === k ? !kinds.includes(k) : kinds.includes(x)))))
+  return (
+    <>
+      {mine.map((a) => {
+        const kinds = on?.get(a.fid!)
+        return (
+          <div key={a.fid}>
+            <div class="setting">
+              <span>{t('Push notifications for @{username}', { username: a.username || String(a.fid) })}</span>
+              <button class="btn ghost small" disabled={!on || busy === a.fid} onClick={() => toggle(a)}>{busy === a.fid ? t('Working…') : kinds ? t('Turn off') : t('Turn on')}</button>
+            </div>
+            {/* at least one kind stays on: turning the account off is the button above */}
+            {kinds && KINDS.map((k) => <label class="check alert-kind" key={k}><input type="checkbox" checked={kinds.includes(k)} disabled={busy === a.fid || (kinds.length === 1 && kinds.includes(k))} onChange={() => pick(a, kinds, k)} /> {kindLabel(k)}</label>)}
+          </div>
+        )
+      })}
+      <p class="hint">{t('Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser\'s push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.')}</p>
     </>
   )
 }
@@ -2038,6 +2091,12 @@ function Settings() {
             {changed.length > 0 && <div class="actions"><button class="btn small" onClick={saveProfile} disabled={saving}>{saving ? t('Saving…') : t('Save changes')}</button></div>}
           </section>
         )}
+        {account?.done && !app && (
+          <section id="notifications">
+            <h2>{t('Notifications')}</h2>
+            <AlertSettings />
+          </section>
+        )}
         {(!account?.done || local.length > 0) && (
           <section id="follows">
             <h2>{t('Following on this device')}</h2>
@@ -2121,15 +2180,15 @@ function Settings() {
           <div class="setting">
             <h2>{t('Spam')}</h2>
             <div class="seg">
-              {(['show', 'hide'] as const).map((v) => <button class={(settings.spam || 'show') === v ? 'on' : ''} onClick={() => ((settings.spam = v), saveSettings(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
+              {(['show', 'hide'] as const).map((v) => <button class={(settings.spam || 'show') === v ? 'on' : ''} onClick={() => ((settings.spam = v), saveSettings(), spamChanged(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
             </div>
           </div>
           <div class="lk-row"><span>{t('Spam accounts')}</span>
             <div class="seg">
-              {(['show', 'hide'] as const).map((v) => <button class={(settings.spamAccounts || 'show') === v ? 'on' : ''} onClick={() => ((settings.spamAccounts = v), saveSettings(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
+              {(['show', 'hide'] as const).map((v) => <button class={(settings.spamAccounts || 'show') === v ? 'on' : ''} onClick={() => ((settings.spamAccounts = v), saveSettings(), spamChanged(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
             </div>
           </div>
-          <label class="lk-row"><span>{t('Spam threshold')}</span><span class="lk-ctl"><input type="range" min={50} max={99} value={spamAt()} onInput={(e) => ((settings.spamAt = Number(e.currentTarget.value)), saveSettings(), force((x) => x + 1))} /><output>{spamAt()}%</output></span></label>
+          <label class="lk-row"><span>{t('Spam threshold')}</span><span class="lk-ctl"><input type="range" min={50} max={99} value={spamAt()} onInput={(e) => ((settings.spamAt = Number(e.currentTarget.value)), saveSettings(), spamChanged(), force((x) => x + 1))} /><output>{spamAt()}%</output></span></label>
           <p class="hint">{t('Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.')} {t('Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.')}</p>
         </section>
         {account && (
@@ -2364,6 +2423,20 @@ function App() {
     addEventListener('channels', f)
     return () => (removeEventListener('account', f), removeEventListener('mutes', f), removeEventListener('quorum', f), removeEventListener('channels', f))
   }, [])
+  // a tapped push notification (public/sw.js) opens its page here, in this window, as the account it was for
+  useEffect(() => {
+    const f = (e: MessageEvent) => {
+      // asked whether the app is here: yes, unless the service worker stopped waiting
+      if (e.data?.probe) return void (Date.now() <= e.data.until && e.ports[0]?.postMessage(1))
+      const path = e.data?.open
+      if (typeof path !== 'string' || !/^\/(?!\/)/.test(path)) return
+      const as = accounts.find((a) => a.done && a.fid === e.data.fid)
+      if (as && account?.fid !== as.fid) return localStorage.setItem('quilcast:current', idOf(as)), location.assign(path)
+      go(path)
+    }
+    navigator.serviceWorker?.addEventListener('message', f)
+    return () => navigator.serviceWorker?.removeEventListener('message', f)
+  }, [])
   // accounts that opened messages listen for them from the start (dms.ts loads only for them)
   useEffect(() => void (account?.dm && import('./dms.ts').then((m) => m.start())), [account?.dm])
   useEffect(() => {
@@ -2371,6 +2444,7 @@ function App() {
     loadMine().then(f)
     account?.fid && getUser(account.fid).then(f, () => {})
     syncMutes()
+    refreshAlerts().catch(() => {})
     settings.syncThemes && import('./prefs.ts').then((m) => m.pull())
   }, [account?.fid])
   const me = account?.done ? myUser() : null

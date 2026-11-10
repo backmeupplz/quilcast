@@ -1195,5 +1195,18 @@
   "Direction": "الاتجاه",
   "Right to left": "من اليمين إلى اليسار",
   "Left to right": "من اليسار إلى اليمين",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "سطر واحد يمر عبر ملفك الشخصي ويتوقف حين يستقر المؤشر عليه. الزوار الذين يطلبون من أجهزتهم حركة أقل يرونه ثابتًا. ومن دون ألوان يأخذ لون روابطك فوق مربعاتك."
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "سطر واحد يمر عبر ملفك الشخصي ويتوقف حين يستقر المؤشر عليه. الزوار الذين يطلبون من أجهزتهم حركة أقل يرونه ثابتًا. ومن دون ألوان يأخذ لون روابطك فوق مربعاتك.",
+  "Follows": "المتابعات",
+  "Mentions": "الإشارات",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "على iPhone وiPad، أضف Quilcast إلى الشاشة الرئيسية (مشاركة، ثم إضافة إلى الشاشة الرئيسية) وافتحه من هناك لتصلك الإشعارات.",
+  "Push notifications for @{username}": "إشعارات فورية لـ @{username}",
+  "{name} replied": "ردّ {name}",
+  "{name} mentioned you": "أشار إليك {name}",
+  "{name} quoted your cast": "اقتبس {name} كاستك",
+  "{n} more notification|{n} more notifications": "لا إشعارات أخرى ({n})|إشعار آخر واحد ({n})|إشعاران آخران ({n})|{n} إشعارات أخرى|{n} إشعارًا آخر|{n} إشعار آخر",
+  "Sign in again to turn notifications on.": "سجّل الدخول مرة أخرى لتفعيل الإشعارات.",
+  "Too many accounts get notifications right now. Try again later.": "هناك حسابات كثيرة جدًا تتلقى الإشعارات الآن. حاول مرة أخرى لاحقًا.",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "تصل الردود والإشارات والاقتباسات والإعجابات والريكاستات والمتابعات إلى هذا الجهاز حتى عندما يكون Quilcast مغلقًا. يبحث خادمنا عنها مرة كل دقيقة. يحتفظ بمعرّف Farcaster الخاص بك مع اشتراك الإشعارات في هذا المتصفح وهذه الإعدادات، ولبضع دقائق بالإشعارات التي أرسلها بالفعل؛ وتسجيل الخروج يزيلها. لا يصلك شيء ممن كتمتهم أو حظرتهم، ولا من الكلمات المكتومة، ولا من الرسائل المزعجة التي تخفيها.",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "يتلقى هذا الحساب الإشعارات على أجهزة كثيرة جدًا. أوقفها على أحدها أولًا.",
+  "This browser gets notifications for too many accounts.": "يتلقى هذا المتصفح الإشعارات لحسابات كثيرة جدًا."
 }

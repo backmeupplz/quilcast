@@ -493,6 +493,8 @@ a.searchbox { margin: 0; }
 .setting { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; }
 .setting h2 { margin: 0; }
 .setting + .setting { border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
+/* Settings → Notifications: an account's kinds, under its switch */
+.check.alert-kind { min-height: 32px; padding-inline-start: 12px; font-weight: 400; }
 .btns { display: flex; gap: 6px; }
 .photo-row { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
 .field { display: block; margin-top: 8px; }

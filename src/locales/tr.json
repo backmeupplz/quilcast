@@ -1195,5 +1195,18 @@
   "Direction": "Yön",
   "Right to left": "Sağdan sola",
   "Left to right": "Soldan sağa",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Profilinde kayan ve işaretçi üzerinde durduğu sürece duran tek bir satır. Cihazından daha az hareket isteyen ziyaretçiler onu sabit görür. Renk seçmezsen kutularının üzerinde bağlantılarının rengini alır."
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Profilinde kayan ve işaretçi üzerinde durduğu sürece duran tek bir satır. Cihazından daha az hareket isteyen ziyaretçiler onu sabit görür. Renk seçmezsen kutularının üzerinde bağlantılarının rengini alır.",
+  "Follows": "Takipler",
+  "Mentions": "Bahsetmeler",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "iPhone ve iPad’de Quilcast’i Ana Ekran’a ekleyin (Paylaş, sonra Ana Ekrana Ekle) ve bildirim almak için oradan açın.",
+  "Push notifications for @{username}": "@{username} için anlık bildirimler",
+  "{name} replied": "{name} yanıtladı",
+  "{name} mentioned you": "{name} sizden bahsetti",
+  "{name} quoted your cast": "{name} cast’inizi alıntıladı",
+  "{n} more notification|{n} more notifications": "{n} bildirim daha|{n} bildirim daha",
+  "Sign in again to turn notifications on.": "Bildirimleri açmak için yeniden giriş yapın.",
+  "Too many accounts get notifications right now. Try again later.": "Şu anda çok fazla hesap bildirim alıyor. Daha sonra yeniden deneyin.",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Yanıtlar, bahsetmeler, alıntılar, beğeniler, recast’ler ve takipler Quilcast kapalıyken bile bu cihaza gelir. Sunucumuz dakikada bir bunlara bakar. Farcaster kimliğinizi bu tarayıcının anlık bildirim aboneliği ve bu ayarlarla birlikte, birkaç dakika boyunca da hangi bildirimleri gönderdiğini saklar; oturumu kapatınca silinir. Sessize aldığınız ya da engellediğiniz kişiler, sessize alınan kelimeler ve gizlediğiniz spam dışarıda kalır.",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "Bu hesap çok fazla cihazda bildirim alıyor. Önce birinde kapatın.",
+  "This browser gets notifications for too many accounts.": "Bu tarayıcı çok fazla hesap için bildirim alıyor."
 }

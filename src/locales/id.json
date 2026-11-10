@@ -1195,5 +1195,18 @@
   "Direction": "Arah",
   "Right to left": "Kanan ke kiri",
   "Left to right": "Kiri ke kanan",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Satu baris yang berjalan melintasi profilmu dan berhenti selama penunjuk berada di atasnya. Pengunjung yang meminta perangkatnya mengurangi gerakan melihatnya diam. Tanpa warna, teks ini memakai warna tautanmu di atas kotakmu."
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Satu baris yang berjalan melintasi profilmu dan berhenti selama penunjuk berada di atasnya. Pengunjung yang meminta perangkatnya mengurangi gerakan melihatnya diam. Tanpa warna, teks ini memakai warna tautanmu di atas kotakmu.",
+  "Follows": "Pengikut baru",
+  "Mentions": "Sebutan",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "Di iPhone dan iPad, tambahkan Quilcast ke Layar Utama (Bagikan, lalu Tambah ke Layar Utama) dan buka dari sana untuk menerima notifikasi.",
+  "Push notifications for @{username}": "Notifikasi push untuk @{username}",
+  "{name} replied": "{name} membalas",
+  "{name} mentioned you": "{name} menyebut Anda",
+  "{name} quoted your cast": "{name} mengutip cast Anda",
+  "{n} more notification|{n} more notifications": "{n} notifikasi lainnya",
+  "Sign in again to turn notifications on.": "Masuk lagi untuk menyalakan notifikasi.",
+  "Too many accounts get notifications right now. Try again later.": "Terlalu banyak akun yang menerima notifikasi saat ini. Coba lagi nanti.",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Balasan, sebutan, kutipan, suka, recast, dan pengikut baru sampai ke perangkat ini meski Quilcast ditutup. Server kami memeriksanya sekali semenit. Server menyimpan ID Farcaster-mu bersama langganan push browser ini dan pengaturan ini, dan selama beberapa menit notifikasi mana yang sudah dikirim; keluar dari akun menghapusnya. Orang yang kamu bisukan atau blokir, kata yang dibisukan, dan spam yang kamu sembunyikan tidak ikut.",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "Akun ini menerima notifikasi di terlalu banyak perangkat. Matikan dulu di salah satunya.",
+  "This browser gets notifications for too many accounts.": "Browser ini menerima notifikasi untuk terlalu banyak akun."
 }

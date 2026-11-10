@@ -230,9 +230,13 @@ export type Progress = (stage: 'uploading' | 'processing', fraction?: number, se
 
 /** Headers that prove this browser's key signed "<what>:<fid>:<ts>:<body>" for the account just now; our server checks the
  *  key against the node (server/looks.mjs keySigned). */
-async function keySigned(what: string, body = '', as = account!) {
-  await ensureSigner(fresh(as))
-  const key = await signerOf(fresh(as)).catch(() => replaceSigner(fresh(as)).then(() => signerOf(fresh(as))))
+// only background work meets it, and that work gives up quietly: never shown, so not translated
+const NO_KEY = 'no key in this browser'
+async function keySigned(what: string, body = '', as = account!, add = true) {
+  // `add` false: only with the key this browser has now (background work), never a new one
+  if (!add && !hasKey(fresh(as))) throw new Error(NO_KEY)
+  if (add) await ensureSigner(fresh(as))
+  const key = await (add ? signerOf(fresh(as)).catch(() => replaceSigner(fresh(as)).then(() => signerOf(fresh(as)))) : signerOf(fresh(as)))
   const ts = Date.now()
   const sig = await key.sign(new TextEncoder().encode(`${what}:${as.fid}:${ts}:${body}`))
   return { 'x-key': '0x' + hex(key.pub), 'x-ts': String(ts), 'x-sig': hex(sig) }
@@ -435,8 +439,8 @@ export const setUserData = (type: number, value: string) => send(MT.USER_DATA_AD
 
 /** A request to our server signed with the account's Farcaster key. A key ensureSigner just added takes the node a
  *  few seconds to list; one the node doesn't list at all is replaced (`tries` > 1). */
-async function keyFetch(url: string, what: string, method: string, body = '', tries = 3, as = account!, extra: Record<string, string> = {}): Promise<any> {
-  const r = await fetch(url, { method, headers: { ...(method !== 'GET' && { 'content-type': 'application/json' }), ...extra, ...(await keySigned(what, body, as)) }, body: method === 'GET' ? undefined : body })
+async function keyFetch(url: string, what: string, method: string, body = '', tries = 3, as = account!, extra: Record<string, string> = {}, add = true): Promise<any> {
+  const r = await fetch(url, { method, headers: { ...(method !== 'GET' && { 'content-type': 'application/json' }), ...extra, ...(await keySigned(what, body, as, add)) }, body: method === 'GET' ? undefined : body })
   const j = await r.json().catch(() => null)
   if (r.status === 403 && tries > 1) return ((await signerListed(fresh(as))) ? sleep(3000) : replaceSigner(fresh(as))).then(() => keyFetch(url, what, method, body, tries - 1, as, extra))
   if (!r.ok) throw new Error(j?.error || t('Saving failed ({status})', { status: r.status }))
@@ -594,6 +598,12 @@ export async function sendReport(r: { fid: number; hash?: string; reason: string
   const res = await fetch('/api/report', { method: 'POST', body, headers: { 'content-type': 'application/json', ...who } })
   if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || "The report couldn't be sent. Try again.")
 }
+/** Whether `a` has a key that works now in this browser, so signing with it never has to add one. */
+export const hasKey = (a: Account) => !!(a.pub || a.signer) && a.scopes === SCOPES_VERSION
+/** Signs `a` up for push notifications of its activity on this browser (src/alerts.ts, server/alerts.mjs). In the
+ *  `background` (not a click for this account) it signs only with the key there is: never a new one, nor a retry that replaces it. */
+export const saveAlerts = (a: Account, body: string, background = false) =>
+  keyFetch(`/api/alerts/${a.fid}`, 'quilcast-alerts', 'PUT', body, background ? 1 : 3, a, {}, !background)
 export const saveMutes = (m: object) => keyFetch(`/api/mutes/${account!.fid}`, 'quilcast-mutes', 'PUT', JSON.stringify(m))
 /** The account's synced theme settings (src/prefs.ts). `ask` lets it add a key (Settings turning sync on); without it,
  *  like fetchMutes, it answers null when this browser has no working key. */

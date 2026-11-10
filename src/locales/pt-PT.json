@@ -1195,5 +1195,18 @@
   "Direction": "Direção",
   "Right to left": "Da direita para a esquerda",
   "Left to right": "Da esquerda para a direita",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Uma linha que atravessa o teu perfil e para enquanto o ponteiro está sobre ela. Quem pede menos movimento ao dispositivo vê-a parada. Sem cores, usa a cor das tuas ligações, sobre as tuas caixas."
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "Uma linha que atravessa o teu perfil e para enquanto o ponteiro está sobre ela. Quem pede menos movimento ao dispositivo vê-a parada. Sem cores, usa a cor das tuas ligações, sobre as tuas caixas.",
+  "Follows": "Novos seguidores",
+  "Mentions": "Menções",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "No iPhone e no iPad, adicione o Quilcast ao ecrã principal (Partilhar e depois Adicionar ao ecrã principal) e abra-o a partir daí para receber notificações.",
+  "Push notifications for @{username}": "Notificações push de @{username}",
+  "{name} replied": "{name} respondeu",
+  "{name} mentioned you": "{name} mencionou-o",
+  "{name} quoted your cast": "{name} citou o seu cast",
+  "{n} more notification|{n} more notifications": "Mais {n} notificação|Mais {n} notificações",
+  "Sign in again to turn notifications on.": "Inicie sessão novamente para ativar as notificações.",
+  "Too many accounts get notifications right now. Try again later.": "Há demasiadas contas a receber notificações neste momento. Tente mais tarde.",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Respostas, menções, citações, gostos, recasts e novos seguidores chegam a este dispositivo mesmo com o Quilcast fechado. O nosso servidor procura-os uma vez por minuto. Guarda o seu ID do Farcaster com a subscrição push deste navegador e estas definições e, durante alguns minutos, que notificações já enviou; terminar sessão apaga-os. Pessoas que silencia ou bloqueia, palavras silenciadas e o spam que oculta ficam de fora.",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "Esta conta recebe notificações em demasiados dispositivos. Desative-as primeiro num deles.",
+  "This browser gets notifications for too many accounts.": "Este navegador recebe notificações de demasiadas contas."
 }

@@ -1195,5 +1195,18 @@
   "Direction": "方向",
   "Right to left": "從右到左",
   "Left to right": "從左到右",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "一行文字從你的個人檔案上捲動而過，滑鼠指標停在上面時會暫停。在裝置上選擇減少動態效果的訪客會看到它靜止不動。不設顏色時，它會以你的連結顏色顯示在你的方框上。"
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "一行文字從你的個人檔案上捲動而過，滑鼠指標停在上面時會暫停。在裝置上選擇減少動態效果的訪客會看到它靜止不動。不設顏色時，它會以你的連結顏色顯示在你的方框上。",
+  "Follows": "追蹤",
+  "Mentions": "提及",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "在 iPhone 和 iPad 上，請把 Quilcast 加入主畫面（分享 → 加入主畫面），並從那裡開啟，才能收到通知。",
+  "Push notifications for @{username}": "@{username} 的推播通知",
+  "{name} replied": "{name} 回覆了",
+  "{name} mentioned you": "{name} 提到了你",
+  "{name} quoted your cast": "{name} 引用了你的 cast",
+  "{n} more notification|{n} more notifications": "還有 {n} 則通知",
+  "Sign in again to turn notifications on.": "請重新登入以開啟通知。",
+  "Too many accounts get notifications right now. Try again later.": "目前接收通知的帳號太多，請稍後再試。",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "即使關閉 Quilcast，回覆、提及、引用、按讚、轉發和追蹤也會推播到這台裝置。我們的伺服器每分鐘查看一次。它會保存你的 Farcaster ID、這個瀏覽器的推播訂閱和這些設定，並在幾分鐘內記住已經送出哪些通知；登出會清除這些資訊。你靜音或封鎖的人、靜音的字詞以及你隱藏的垃圾內容不會推播。",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "這個帳號在太多裝置上接收通知。請先在其中一台裝置上關閉。",
+  "This browser gets notifications for too many accounts.": "這個瀏覽器接收太多帳號的通知。"
 }

@@ -693,6 +693,39 @@ test('mutes: private to the account, read and written only with its key', async 
   assert.equal((await call('GET', 7, '', { key: ed25519.utils.randomSecretKey() })).status, 403)
 })
 
+test('alerts: an account signs up a browser with its own key; the browser alone can check or stop it', async () => {
+  const keys = { p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg' }
+  const endpoint = 'https://fcm.googleapis.com/fcm/send/alerts-test'
+  const put = (fid, b, { key = signer, what = 'quilcast-alerts' } = {}) => {
+    const body = JSON.stringify(b)
+    const ts = Date.now()
+    return fetch(`${base}/api/alerts/${fid}`, { method: 'PUT', body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex') } })
+  }
+  const post = (fid, what, b) => fetch(`${base}/api/alerts/${fid}/${what}`, { method: 'POST', body: JSON.stringify(b) })
+  const sub = { endpoint, keys }
+  const good = { subscription: sub, kinds: ['likes', 'replies', 'nonsense'], lang: 'de', spam: { casts: true, at: 80 } }
+  // unsigned, signed for something else, with another account's key or for another account: refused
+  assert.equal((await fetch(`${base}/api/alerts/7`, { method: 'PUT', body: JSON.stringify(good) })).status, 401)
+  assert.equal((await put(7, good, { what: 'quilcast-mutes' })).status, 401)
+  assert.equal((await put(7, good, { key: signer9 })).status, 403)
+  assert.equal((await put(8, good)).status, 403)
+  // pushes only go to browsers' push services, and something has to be asked for
+  assert.equal((await put(7, { ...good, subscription: { ...sub, endpoint: 'https://evil.example/push' } })).status, 400)
+  assert.equal((await put(7, { ...good, kinds: ['nonsense'] })).status, 400)
+  assert.equal((await fetch(`${base}/api/alerts/7`)).status, 405)
+  assert.equal((await fetch(`${base}/api/alerts/7/off`, { method: 'PUT' })).status, 405)
+  assert.deepEqual(await (await post(7, 'state', { endpoint })).json(), null)
+  const r = await put(7, good)
+  assert.equal(r.status, 200)
+  const settings = { kinds: ['replies', 'likes'], lang: 'de', spam: { casts: true, accounts: false, at: 80 } }
+  assert.deepEqual(await r.json(), settings)
+  assert.deepEqual(await (await post(7, 'state', { endpoint })).json(), settings)
+  assert.deepEqual(await (await post(7, 'state', { endpoint: endpoint + 'x' })).json(), null)
+  assert.equal((await post(7, 'state', {})).status, 400)
+  assert.deepEqual(await (await post(7, 'off', { endpoint })).json(), { ok: true })
+  assert.deepEqual(await (await post(7, 'state', { endpoint })).json(), null)
+})
+
 test('stats: accounts a day and campaign sign-ups, counts only', async () => {
   const signed = (what, fid, body = '', key = signer11) => {
     const ts = Date.now()
@@ -1066,6 +1099,8 @@ test('deleting an account: only with its own key, and only files it alone put he
   assert.equal((await fetch(`${base}/api/mutes/7`, { method: 'PUT', body: mutes, headers: sign('quilcast-mutes', 7, signer, Date.now(), mutes) })).status, 200)
   const prefs = JSON.stringify({ theme: null, mode: 'dark', holidays: true, at: 1 })
   assert.equal((await fetch(`${base}/api/prefs/7`, { method: 'PUT', body: prefs, headers: sign('quilcast-prefs', 7, signer, Date.now(), prefs) })).status, 200)
+  const alerts = JSON.stringify({ subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/deleted', keys: { p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg' } }, kinds: ['follows'] })
+  assert.equal((await fetch(`${base}/api/alerts/7`, { method: 'PUT', body: alerts, headers: sign('quilcast-alerts', 7, signer, Date.now(), alerts) })).status, 200)
   const draft = JSON.stringify({ id: crypto.randomUUID(), box: 'aXY=.c2VhbGVk' })
   assert.equal((await fetch(`${base}/api/drafts/7`, { method: 'PUT', body: draft, headers: sign('quilcast-drafts', 7, signer, Date.now(), draft) })).status, 200)
   await writeFile(join(media, 'translations', 'de', `${'7a'.repeat(20)}.json`), '{"from":"en","text":"x"}')
@@ -1092,6 +1127,7 @@ test('deleting an account: only with its own key, and only files it alone put he
   assert.equal(await (await fetch(`${base}/api/look/7`)).json(), null)
   assert.ok(!existsSync(join(media, 'prefs', '7.json')))
   assert.equal(await (await fetch(`${base}/api/pin/7`)).json(), null)
+  assert.deepEqual(await (await fetch(`${base}/api/alerts/7/state`, { method: 'POST', body: JSON.stringify({ endpoint: 'https://fcm.googleapis.com/fcm/send/deleted' }) })).json(), null)
   assert.ok(!existsSync(join(media, 'pins', '7.json')))
   assert.ok(!existsSync(join(media, 'mutes', '7.json')) && !existsSync(join(media, 'drafts', '7')) && !existsSync(join(media, 'owners', '7')))
   assert.ok(!existsSync(join(media, 'translations', 'de', `${'7a'.repeat(20)}.json`)) && existsSync(join(media, 'translations', 'de', `${'9a'.repeat(20)}.json`)))

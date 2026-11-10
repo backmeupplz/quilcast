@@ -1195,5 +1195,18 @@
   "Direction": "방향",
   "Right to left": "오른쪽에서 왼쪽",
   "Left to right": "왼쪽에서 오른쪽",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "프로필을 가로질러 흐르는 한 줄로, 포인터를 올려 두면 멈춰요. 기기에서 동작 줄이기를 켠 방문자에게는 멈춘 채로 보여요. 색을 정하지 않으면 박스 위에 링크 색으로 표시돼요."
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "프로필을 가로질러 흐르는 한 줄로, 포인터를 올려 두면 멈춰요. 기기에서 동작 줄이기를 켠 방문자에게는 멈춘 채로 보여요. 색을 정하지 않으면 박스 위에 링크 색으로 표시돼요.",
+  "Follows": "팔로우",
+  "Mentions": "멘션",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "iPhone과 iPad에서는 Quilcast를 홈 화면에 추가하고(공유 → 홈 화면에 추가) 거기서 열어야 알림을 받을 수 있어요.",
+  "Push notifications for @{username}": "@{username} 푸시 알림",
+  "{name} replied": "{name}님이 답글을 남겼어요",
+  "{name} mentioned you": "{name}님이 회원님을 멘션했어요",
+  "{name} quoted your cast": "{name}님이 회원님의 캐스트를 인용했어요",
+  "{n} more notification|{n} more notifications": "알림 {n}개 더",
+  "Sign in again to turn notifications on.": "알림을 켜려면 다시 로그인하세요.",
+  "Too many accounts get notifications right now. Try again later.": "지금은 알림을 받는 계정이 너무 많아요. 나중에 다시 시도하세요.",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "답글, 멘션, 인용, 좋아요, 리캐스트, 팔로우가 Quilcast를 닫아 두어도 이 기기로 와요. 서버가 1분에 한 번 확인해요. 서버는 Farcaster ID와 이 브라우저의 푸시 구독, 이 설정을 함께 보관하고, 몇 분 동안은 이미 보낸 알림도 기억해요. 로그아웃하면 지워져요. 뮤트하거나 차단한 사람, 뮤트한 단어, 숨긴 스팸은 오지 않아요.",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "이 계정은 너무 많은 기기에서 알림을 받고 있어요. 먼저 그중 한 곳에서 끄세요.",
+  "This browser gets notifications for too many accounts.": "이 브라우저는 너무 많은 계정의 알림을 받고 있어요."
 }

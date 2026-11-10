@@ -100,7 +100,52 @@ await settle()
 // 0.19.2–0.20.3 lost accounts signed into with a phrase or wallet and marked the selected one done without an FID:
 // one with no keys at all goes, one still being set up goes back to its setup
 accounts = accounts.filter((a) => a.custody || a.wallet).map((a) => (a.done && !a.fid ? { ...a, done: false } : a))
+/** A window a tapped push notification opened (public/sw.js) carries the account it was for as `?as-fid=`: that
+ *  account, when it's signed in here, is the one the app starts as. Either way the parameter leaves the address;
+ *  an FID that isn't a signed-in account here changes nothing. */
+export function notifiedAs(href: string, list: Account[]): { id: string | null; path: string } | null {
+  const u = new URL(href)
+  const raw = u.searchParams.get('as-fid')
+  if (raw === null) return null
+  u.searchParams.delete('as-fid')
+  const a = /^[1-9]\d{0,15}$/.test(raw) ? list.find((a) => a.done && a.fid === Number(raw)) : undefined
+  return { id: a ? idOf(a) : null, path: u.pathname + u.search + u.hash }
+}
+if (typeof location !== 'undefined') {
+  const n = notifiedAs(location.href, accounts)
+  if (n) n.id && localStorage.setItem('quilcast:current', n.id), history.replaceState(history.state, '', n.path)
+}
 export let account: Account | null = accounts.find((a) => idOf(a) === localStorage.getItem('quilcast:current')) || accounts[0] || null
+
+// --- push notifications for the account's activity (src/alerts.ts, server/alerts.mjs) ---
+// the accounts on here, each with the push subscription it was signed up with, and the sign-outs not yet sent
+export type AlertsKept = { on: Record<string, { endpoint: string; kinds: string[]; sent?: string }>; off: [number, string][] }
+export const ALERTS = 'quilcast:alerts'
+export const alertsKept = (): AlertsKept => {
+  const k = read<Partial<AlertsKept> | null>(ALERTS, null)
+  const on = k?.on && typeof k.on === 'object' ? Object.fromEntries(Object.entries(k.on).filter(([, v]) => typeof v?.endpoint === 'string')) : {}
+  return { on, off: Array.isArray(k?.off) ? k.off.filter((x) => Number.isSafeInteger(x?.[0]) && typeof x?.[1] === 'string') : [] }
+}
+/** Sends the sign-outs still waiting (unsigned: the endpoint is this browser's secret). Each one stays on the list
+ *  until the server took it, so one lost on the way (offline, the page leaving) goes again on the next start. */
+export async function flushAlertsOff() {
+  for (const [fid, endpoint] of alertsKept().off) {
+    const done = await fetch(`/api/alerts/${fid}/off`, { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ endpoint }) }).then((r) => r.ok, () => false)
+    if (done) {
+      const k = alertsKept()
+      save(ALERTS, { ...k, off: k.off.filter(([f, e]) => f !== fid || e !== endpoint) })
+    }
+  }
+}
+/** The account's push notifications stop reaching this browser: when it signs out here, or the subscription goes. */
+export function forgetAlerts(fid?: number) {
+  const k = alertsKept()
+  const had = fid ? k.on[fid] : undefined
+  if (!had) return Promise.resolve()
+  const { [fid!]: _, ...on } = k.on
+  save(ALERTS, { on, off: [...k.off.filter(([f, e]) => f !== fid || e !== had.endpoint), [fid!, had.endpoint]] })
+  return flushAlertsOff()
+}
 
 /** Save `a` (added or updated, matched by idOf) and select it; `null` removes the selected account. Resolves once its
  *  secrets are in the vault (or failed to get there and stayed in localStorage). */
@@ -114,6 +159,7 @@ export const setAccount = (a: Account | null) => {
     i < 0 ? accounts.push(a) : (accounts[i] = a)
   } else accounts = accounts.filter((x) => !account || idOf(x) !== idOf(account))
   account = a || accounts.find((x) => x.done) || accounts[0] || null
+  for (const g of gone) forgetAlerts(g.fid)
   const saved = persist(gone)
   account ? localStorage.setItem('quilcast:current', idOf(account)) : localStorage.removeItem('quilcast:current')
   localStorage.removeItem('quilcast:account')
@@ -128,6 +174,7 @@ export const removeAccount = (a: Account) => {
   if (fresh.length || !legacy) accounts = fresh.map(withSecrets)
   const gone = accounts.filter((x) => idOf(x) === idOf(a))
   accounts = accounts.filter((x) => idOf(x) !== idOf(a))
+  forgetAlerts(a.fid)
   const saved = persist(gone.length ? gone : [a])
   dispatchEvent(new Event('account'))
   return saved

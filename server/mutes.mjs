@@ -17,6 +17,9 @@ export async function getMutes(req, fid, node) {
   return cleanMutes(await readFile(file(fid), 'utf8').then(JSON.parse, () => null))
 }
 
+/** The account's list as kept, for its push notifications (server/alerts.mjs). */
+export const readMutes = (fid) => readFile(file(fid), 'utf8').then(JSON.parse, () => null).then((m) => cleanMutes(m))
+
 /** The account's list goes; whether it had one. */
 export const dropMutes = (fid) => rm(file(fid)).then(() => true, () => false)
 

@@ -24,6 +24,7 @@ import { credits, gifs, pick, refresh } from './shrek.mjs'
 import { getDesign, getLook, keySigned, listLooks, loadLooks, putDesign, putLook } from './looks.mjs'
 import { joined, loadStats, ready as statsReady, stats } from './stats.mjs'
 import { getMutes, loadMutes, putMutes } from './mutes.mjs'
+import { alertState, flushAlerts, loadAlerts, offAlerts, putAlerts, watchAlerts } from './alerts.mjs'
 import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
@@ -51,6 +52,22 @@ loadTranslations(DATA)
 // cast translations (server/translate.mjs): free OpenRouter models, set by OPENROUTER_API_KEY
 const TRANSLATOR = { key: process.env.OPENROUTER_API_KEY, url: process.env.OPENROUTER_URL, site: SITE, models: process.env.OPENROUTER_MODELS?.split(',').map((m) => m.trim()).filter(Boolean) }
 loadMutes(DATA)
+// push notifications for accounts' own activity (server/alerts.mjs): a look at the node for each signed-up account every minute
+loadAlerts(DATA)
+watchAlerts({ node: NODE, spamUrl: process.env.SPAM_URL || 'https://spam.quilcast.com', every: Number(process.env.ALERTS_EVERY_MS) || 60e3 })
+// a deploy stops the server with SIGTERM (within Docker's 10 s before SIGKILL): it keeps serving for 5 s, while the
+// proxy may still send requests here, then takes no new connections, lets the requests under way finish (up to 2 s)
+// and the 1 s debounced writes (mini app inboxes, …) land, and writes what alerts handled last, so nothing is pushed twice
+const wait = (ms) => new Promise((ok) => setTimeout(ok, ms))
+process.once('SIGTERM', async () => {
+  await wait(5000)
+  const closed = new Promise((ok) => server.close(ok))
+  server.closeIdleConnections()
+  await Promise.race([closed, wait(2000)])
+  await wait(1500)
+  await flushAlerts().catch((e) => console.error('alerts', e.message))
+  process.exit(0)
+})
 loadReports(DATA)
 loadDrafts(DATA)
 loadPrefs(DATA)
@@ -1012,7 +1029,7 @@ async function send(req, res, code, headers, body, memo) {
   res.writeHead(code, { ...headers, 'content-length': body.length }).end(body)
 }
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   for (const [k, v] of Object.entries(SECURITY)) res.setHeader(k, v)
   // no-transform: Cloudflare leaves the page as we sent it (no analytics beacon or other rewriting)
   // with no control characters, which no page needs (they're HTML parse errors): an ESC from a cast's text would fail
@@ -1147,6 +1164,17 @@ createServer(async (req, res) => {
       const r = await (req.method === 'GET' ? getMutes : putMutes)(req, fid, NODE).catch((e) => e)
       const err = r instanceof Error
       if (err && !r.status) console.error('mutes', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // push notifications for the account's activity (server/alerts.mjs)
+    const alerts = path.match(/^\/api\/alerts\/([1-9]\d{0,9})(?:\/(state|off))?$/)
+    if (alerts) {
+      const fid = Number(alerts[1])
+      if (alerts[2] ? req.method !== 'POST' : req.method !== 'PUT') return json(405, { error: alerts[2] ? 'POST' : 'PUT' })
+      if (limited(`alerts:${ip}`, 120, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      const r = await (alerts[2] === 'state' ? alertState(req, fid) : alerts[2] === 'off' ? offAlerts(req, fid) : putAlerts(req, fid, NODE)).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('alerts', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
     }
     // theme sync (server/prefs.mjs)

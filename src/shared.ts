@@ -490,6 +490,14 @@ export function cleanPrefs(x: any): Prefs | null {
   return { theme: Object.keys(th).length ? th : null, library: cleanLibrary(x.library), mode: pick(x.mode, ['system', 'light', 'dark'] as const) || 'system', holidays: x.holidays !== false, quorum: x.quorum === true, at: x.at }
 }
 
+// plural forms in each language's order (src/i18n.ts, and server/alerts.mjs's pushes); the translation holds them joined with "|"
+// (a rule a language has but its forms don't, like French "many" for a million, takes the last form)
+const two: Intl.LDMLPluralRule[] = ['one', 'other']
+const slavic: Intl.LDMLPluralRule[] = ['one', 'few', 'many']
+export const PLURALS = {
+  en: two, ar: ['zero', 'one', 'two', 'few', 'many', 'other'], de: two, es: two, fr: two, hi: two, id: ['other'], it: two, ja: ['other'], ko: ['other'],
+  nl: two, pl: slavic, 'pt-BR': two, 'pt-PT': two, ru: slavic, sv: two, th: ['other'], tr: two, uk: slavic, vi: ['other'], 'zh-Hans': ['other'], 'zh-Hant': ['other'],
+} satisfies Record<string, Intl.LDMLPluralRule[]>
 /** Mutes cut down to what's allowed and still running; the same word or person once, the later entry winning. */
 export function cleanMutes(raw: any, now = Date.now()): Mutes {
   const list = <T,>(xs: unknown, ok: (v: any) => T | undefined, max: number) => {

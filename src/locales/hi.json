@@ -1195,5 +1195,18 @@
   "Direction": "दिशा",
   "Right to left": "दाएँ से बाएँ",
   "Left to right": "बाएँ से दाएँ",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "एक पंक्ति जो आपकी प्रोफ़ाइल पर चलती है और पॉइंटर रुकने पर थम जाती है। जिन विज़िटर ने अपने डिवाइस पर कम गति चुनी है, उन्हें यह स्थिर दिखती है। रंगों के बिना यह आपके बॉक्स पर आपके लिंक का रंग लेती है।"
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "एक पंक्ति जो आपकी प्रोफ़ाइल पर चलती है और पॉइंटर रुकने पर थम जाती है। जिन विज़िटर ने अपने डिवाइस पर कम गति चुनी है, उन्हें यह स्थिर दिखती है। रंगों के बिना यह आपके बॉक्स पर आपके लिंक का रंग लेती है।",
+  "Follows": "फ़ॉलो",
+  "Mentions": "मेंशन",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "iPhone और iPad पर, Quilcast को होम स्क्रीन पर जोड़ें (शेयर करें, फिर होम स्क्रीन पर जोड़ें) और सूचनाएँ पाने के लिए उसे वहीं से खोलें।",
+  "Push notifications for @{username}": "@{username} के लिए पुश सूचनाएँ",
+  "{name} replied": "{name} ने जवाब दिया",
+  "{name} mentioned you": "{name} ने आपको मेंशन किया",
+  "{name} quoted your cast": "{name} ने आपका कास्ट कोट किया",
+  "{n} more notification|{n} more notifications": "{n} और सूचना|{n} और सूचनाएँ",
+  "Sign in again to turn notifications on.": "सूचनाएँ चालू करने के लिए फिर से साइन इन करें।",
+  "Too many accounts get notifications right now. Try again later.": "अभी बहुत सारे खाते सूचनाएँ पा रहे हैं। बाद में फिर कोशिश करें।",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "जवाब, मेंशन, कोट, लाइक, रीकास्ट और फ़ॉलो इस डिवाइस पर तब भी पहुँचते हैं जब Quilcast बंद हो। हमारा सर्वर हर मिनट एक बार इन्हें देखता है। वह आपका Farcaster ID इस ब्राउज़र की पुश सदस्यता और इन सेटिंग्स के साथ रखता है, और कुछ मिनटों तक यह भी कि कौन-सी सूचनाएँ भेजी जा चुकी हैं; साइन आउट करने पर ये हट जाते हैं। जिन लोगों को आप म्यूट या ब्लॉक करते हैं, म्यूट किए गए शब्द और जो स्पैम आप छिपाते हैं, वे बाहर रहते हैं।",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "इस खाते को बहुत सारे डिवाइसों पर सूचनाएँ मिल रही हैं। पहले उनमें से किसी एक पर इन्हें बंद करें।",
+  "This browser gets notifications for too many accounts.": "इस ब्राउज़र को बहुत सारे खातों की सूचनाएँ मिल रही हैं।"
 }

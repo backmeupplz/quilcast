@@ -1195,5 +1195,18 @@
   "Direction": "Riktning",
   "Right to left": "Höger till vänster",
   "Left to right": "Vänster till höger",
-  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "En rad som rullar över din profil och stannar medan pekaren vilar på den. Besökare som bett sin enhet om mindre rörelse ser den stå still. Utan egna färger får den färgen på dina länkar, på dina rutor."
+  "One line that scrolls across your profile and stops while a pointer rests on it. Visitors who ask their device for less motion see it standing still. Without colors it takes the color of your links, on your boxes.": "En rad som rullar över din profil och stannar medan pekaren vilar på den. Besökare som bett sin enhet om mindre rörelse ser den stå still. Utan egna färger får den färgen på dina länkar, på dina rutor.",
+  "Follows": "Följningar",
+  "Mentions": "Omnämnanden",
+  "On iPhone and iPad, add Quilcast to your Home Screen (Share, then Add to Home Screen) and open it from there to get notifications.": "På iPhone och iPad lägger du till Quilcast på hemskärmen (Dela, sedan Lägg till på hemskärmen) och öppnar det därifrån för att få notiser.",
+  "Push notifications for @{username}": "Pushnotiser för @{username}",
+  "{name} replied": "{name} svarade",
+  "{name} mentioned you": "{name} nämnde dig",
+  "{name} quoted your cast": "{name} citerade din cast",
+  "{n} more notification|{n} more notifications": "{n} notis till|{n} notiser till",
+  "Sign in again to turn notifications on.": "Logga in igen för att slå på notiser.",
+  "Too many accounts get notifications right now. Try again later.": "Just nu får för många konton notiser. Försök igen senare.",
+  "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Svar, omnämnanden, citat, gillanden, recasts och nya följare når den här enheten även när Quilcast är stängt. Vår server letar efter dem en gång i minuten. Den sparar ditt Farcaster-ID med den här webbläsarens push-prenumeration och de här inställningarna, och i några minuter vilka notiser den redan skickat; när du loggar ut tas de bort. Personer du tystar eller blockerar, tystade ord och spam du döljer hålls utanför.",
+  "This account gets notifications on too many devices. Turn them off on one of them first.": "Det här kontot får notiser på för många enheter. Stäng av dem på någon av dem först.",
+  "This browser gets notifications for too many accounts.": "Den här webbläsaren får notiser för för många konton."
 }

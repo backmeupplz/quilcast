@@ -2,6 +2,7 @@
 // loaded before the app renders) and falls back to the English. {name} placeholders are filled from `vars`.
 // The language is the one picked in Settings, else the browser's first one we have, else English.
 import { settings } from './api.ts'
+import { PLURALS } from './shared.ts'
 
 export const LANGS = {
   en: 'English', ar: 'العربية', de: 'Deutsch', es: 'Español', fr: 'Français', hi: 'हिन्दी', id: 'Bahasa Indonesia', it: 'Italiano', ja: '日本語',
@@ -53,19 +54,11 @@ export async function loadLang() {
 const fill = (s: string, vars?: Record<string, string | number>) => (vars ? s.replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(vars, k) ? String(vars[k]) : m)) : s)
 export const t = (s: string, vars?: Record<string, string | number>) => fill(dict[s] || s, vars)
 
-// plural forms in each language's order; the translation holds them joined with "|"
-// (a rule a language has but its forms don't, like French "many" for a million, takes the last form)
-const two: Intl.LDMLPluralRule[] = ['one', 'other']
-const slavic: Intl.LDMLPluralRule[] = ['one', 'few', 'many']
-const FORMS: Record<Lang, Intl.LDMLPluralRule[]> = {
-  en: two, ar: ['zero', 'one', 'two', 'few', 'many', 'other'], de: two, es: two, fr: two, hi: two, id: ['other'], it: two, ja: ['other'], ko: ['other'],
-  nl: two, pl: slavic, 'pt-BR': two, 'pt-PT': two, ru: slavic, sv: two, th: ['other'], tr: two, uk: slavic, vi: ['other'], 'zh-Hans': ['other'], 'zh-Hant': ['other'],
-}
 const rules = new Intl.PluralRules(lang)
 /** A count with its word: tn(3, '{n} reply', '{n} replies'). */
 export function tn(n: number, one: string, other: string, vars?: Record<string, string | number>) {
   const forms = (dict[`${one}|${other}`] || `${one}|${other}`).split('|')
-  const order = dict[`${one}|${other}`] ? FORMS[lang] : FORMS.en
+  const order = dict[`${one}|${other}`] ? PLURALS[lang] : PLURALS.en
   const i = order.indexOf(rules.select(n))
   return fill(forms[i < 0 ? forms.length - 1 : Math.min(i, forms.length - 1)], { n, ...vars })
 }
