@@ -11,7 +11,7 @@ import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
 import { castText, imagesIn, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
-import { clientIp, fetchJson, gate, imageInfo, keep, parseJson, readJson, readText, safeGet } from './net.mjs'
+import { clientIp, fetchJson, gate, imageInfo, keep, lru, parseJson, picInfo, readJson, readText, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
@@ -129,6 +129,15 @@ async function apps() {
 
 const renders = gate(2)
 const previews = gate(16)
+// /api/img's pictures: 64 MB of them (none over 2 MB) kept a day, an address that gave no picture ten minutes. Fetched
+// through a gate of their own, as a feed of new avatars at once mustn't hold up link previews.
+const pics = lru({ bytes: 64e6, count: 20000, big: 2e6, ttl: 86400e3, miss: 600e3 })
+const picFetches = gate(24, 300)
+const pic = (u) => pics.get(u, async () => {
+  const r = await picFetches(() => safeGet(u, { max: 8e6, timeout: 8000 }))
+  const info = r.status === 200 && !r.truncated && picInfo(r.body)
+  return info && info.w * info.h <= 50e6 ? { type: info.type, body: r.body } : null
+})
 const gifCache = new Map()
 
 // --- share cards ---
@@ -1323,19 +1332,20 @@ createServer(async (req, res) => {
       return res.writeHead(200, { 'content-type': r.type, 'content-length': r.body.length, 'cache-control': 'public, max-age=31536000, immutable' }).end(r.body)
     }
 
-    // A Markdown picture in a cast (shared.ts markdown), fetched here so its host never sees who is reading (no
-    // tracking pixels) and can't point a reader's browser at their own network: public addresses only (safeGet, also
-    // after redirects), a real PNG, JPEG, GIF or WebP by its bytes, at most 8 MB and 50 megapixels, served inert.
-    // ponytail: no cache of our own, each view fetches it again; keep() the small ones if traffic grows
+    // Another site's picture (shared.ts proxied: avatars, link previews, embeds, mini app icons, Markdown pictures),
+    // fetched here so its host never sees who is looking (no tracking pixels) and can't point a reader's browser at
+    // their own network: public addresses only (safeGet, also after redirects), a real PNG, JPEG, GIF, WebP, AVIF or
+    // SVG by its bytes, at most 8 MB and 50 megapixels, served inert. Kept a while (pics), so a popular avatar is
+    // fetched once, not once per reader, and only fetches count towards the limit.
+    // ponytail: served at the size it comes in; resize (avatars are shown at 40 px) if this traffic grows
     if (path === '/api/img') {
       const target = safeUrl(url.searchParams.get('u'))
       if (!target || target.length > 2048) return res.writeHead(400).end()
-      if (limited(`img:${ip}`, 300)) return res.writeHead(429).end()
-      const r = await previews(() => safeGet(target, { max: 8e6, timeout: 8000 })).catch(() => null)
-      const info = r?.status === 200 && !r.truncated && imageInfo(r.body)
-      if (!info || info.w * info.h > 50e6) return res.writeHead(404).end()
+      if (!pics.has(target) && limited(`img:${ip}`, 600)) return res.writeHead(429).end()
+      const p = await pic(target)
+      if (!p) return res.writeHead(404).end()
       res.setHeader('content-security-policy', "default-src 'none'; sandbox")
-      return res.writeHead(200, { 'content-type': info.type, 'content-length': r.body.length, 'cache-control': 'public, max-age=86400' }).end(r.body)
+      return res.writeHead(200, { 'content-type': p.type, 'content-length': p.body.length, 'cache-control': 'public, max-age=86400' }).end(p.body)
     }
 
     if (path === '/api/poster') {

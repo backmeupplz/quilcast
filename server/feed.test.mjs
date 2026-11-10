@@ -18,7 +18,7 @@ test('xml escapes markup and drops what XML 1.0 cannot hold', () => {
 test("a cast's HTML: Markdown as the app shows it, links absolute, line breaks kept, pictures and quotes below", () => {
   const out = castHtml(cast({
     text: 'hi **there** @bob in /dev\nsee [docs](https://a.com/?x=1&y=2) <script>alert(1)</script>\n![pic](https://b.com/p.png)',
-    embeds: [{ url: 'https://imagedelivery.net/a/b/original' }, { url: 'https://example.com/page' }, { url: 'javascript:alert(1)' }, { cast_id: { fid: 2, hash: '0x' + h('cd') } }, { cast_id: { hash: 'nope' } }],
+    embeds: [{ url: 'https://imagedelivery.net/a/b/original' }, { url: 'https://i.imgur.com/x.png' }, { url: 'https://example.com/page' }, { url: 'javascript:alert(1)' }, { cast_id: { fid: 2, hash: '0x' + h('cd') } }, { cast_id: { hash: 'nope' } }],
   }), SITE)
   assert.match(out, /<strong>there<\/strong>/)
   assert.match(out, /<a href="https:\/\/quilcast\.test\/u\/bob">@bob<\/a>/)
@@ -28,6 +28,9 @@ test("a cast's HTML: Markdown as the app shows it, links absolute, line breaks k
   assert.match(out, /src="https:\/\/quilcast\.test\/api\/img\?u=/)
   assert.ok(!out.includes('<script>'), out)
   assert.match(out, /<p><img src="https:\/\/imagedelivery\.net\/a\/b\/original" alt="" referrerpolicy="no-referrer"><\/p>/)
+  // another site's embed loads through our proxy, so its host never sees the reader
+  assert.ok(out.includes(`<p><img src="${SITE}/api/img?u=https%3A%2F%2Fi.imgur.com%2Fx.png" alt=""`), out)
+  assert.ok(!out.includes('src="https://i.imgur.com'), out)
   assert.match(out, /<p><a href="https:\/\/example\.com\/page">https:\/\/example\.com\/page<\/a><\/p>/)
   assert.match(out, new RegExp(`<a href="${SITE}/c/0x${h('cd')}">Quoted cast</a>`))
   assert.ok(!out.includes('javascript:'), out)
@@ -88,8 +91,9 @@ test('a whole feed is RSS 2.0 with a self link, an image only when it is https, 
   assert.match(doc, /<title>A &amp; B &lt;x&gt;<\/title>/)
   assert.match(doc, /<description>bio &quot;quoted&quot;<\/description>/)
   assert.match(doc, /<atom:link href="https:\/\/quilcast\.test\/u\/ann\/rss\?replies=1" rel="self" type="application\/rss\+xml" \/>/)
-  assert.match(doc, /<image><url>https:\/\/img\/p\.png<\/url><title>A &amp; B &lt;x&gt;<\/title><link>https:\/\/quilcast\.test\/u\/ann<\/link><\/image>/)
+  assert.match(doc, /<image><url>https:\/\/quilcast\.test\/api\/img\?u=https%3A%2F%2Fimg%2Fp\.png<\/url><title>A &amp; B &lt;x&gt;<\/title><link>https:\/\/quilcast\.test\/u\/ann<\/link><\/image>/)
   assert.equal(doc.match(/<item>/g).length, 1)
   assert.ok(doc.endsWith('</channel></rss>\n'))
   assert.ok(!rss({ title: 't', link: 'l', self: 's', desc: 'd', image: 'http://insecure/p.png', casts: [], site: SITE }).includes('<image>'))
+  assert.ok(rss({ title: 't', link: 'l', self: 's', desc: 'd', image: 'https://imagedelivery.net/a/b/w=400', casts: [], site: SITE }).includes('<image><url>https://imagedelivery.net/a/b/w=400</url>'))
 })

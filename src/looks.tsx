@@ -8,7 +8,7 @@ import { t } from './i18n.ts'
 import { PRESETS as EFFECTS, start } from './fx.ts'
 import { ProfileAmp } from './amp.tsx'
 import { BASE, museum, skinShot, type MuseumSkin } from './skin.ts'
-import { ampItem, cleanDesign, cleanLook, cleanMarquee, DESIGN_KEYS, lookPage, marqueeStyle, type Marquee as MarqueeT, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, sized, type Look, type Sticker } from './shared.ts'
+import { ampItem, cleanDesign, cleanLook, cleanMarquee, DESIGN_KEYS, lookPage, marqueeStyle, type Marquee as MarqueeT, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, proxied, sized, type Look, type Sticker } from './shared.ts'
 import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 import { GifPicker } from './gifs.tsx'
 
@@ -26,7 +26,7 @@ export const vars = lookVars
 export const Bg = ({ l }: { l: Look }) =>
   lookPage(l) || l.bgImg ? (
     <div class={`lk-bg ${l.bgMode || 'tile'}`} aria-hidden="true"
-      style={{ backgroundColor: lookPage(l), backgroundImage: l.bgImg ? `url("${l.bgImg}")` : undefined, '--lk-dim': l.bgDim ? String(l.bgDim / 100) : undefined }} />
+      style={{ backgroundColor: lookPage(l), backgroundImage: l.bgImg ? `url("${proxied(l.bgImg)}")` : undefined, '--lk-dim': l.bgDim ? String(l.bgDim / 100) : undefined }} />
   ) : null
 
 /** The look's effect (src/fx.ts), on a canvas over the page background and behind the boxes, that never takes a click. */
@@ -94,7 +94,7 @@ const boxesOf = (l: Look) =>
 export function At({ l, at, edit, children }: { l: Look; at: Sticker['at']; edit?: Set; children: ComponentChildren }) {
   const boxes = boxesOf(l)
   const here = (l.stickers || []).map((s, i) => [s, i] as const).filter(([s]) => s.at === at || (at === 'head' && !boxes.has(s.at)))
-  return <div class="lk-at" data-at={at}>{children}{here.map(([s, i]) => (edit ? <EditSticker s={s} i={i} set={edit} /> : <img class="lk-stk" src={s.src} alt="" loading="lazy" referrerpolicy="no-referrer" style={place(s)} />))}</div>
+  return <div class="lk-at" data-at={at}>{children}{here.map(([s, i]) => (edit ? <EditSticker s={s} i={i} set={edit} /> : <img class="lk-stk" src={proxied(s.src)} alt="" loading="lazy" referrerpolicy="no-referrer" style={place(s)} />))}</div>
 }
 // a sticker's width is a share of its box; a theme's (on the screen) passes its own `unit`
 type Unit = (w: number) => string
@@ -162,7 +162,7 @@ export function EditSticker({ s, i, set, at = spot, unit = pct, class: cls = '' 
   }
   return (
     <div ref={ref} class={`lk-stk edit ${cls}`} data-i={i} tabIndex={0} style={place(s, unit)} onPointerDown={drag} onKeyDown={key} aria-label={t('Sticker')}>
-      <img src={s.src} alt="" draggable={false} referrerpolicy="no-referrer" />
+      <img src={proxied(s.src)} alt="" draggable={false} referrerpolicy="no-referrer" />
       <button class="lk-x" aria-label={t('Remove')} onClick={remove}>×</button>
       <span class="lk-turn" onPointerDown={turn} aria-hidden="true" />
     </div>
@@ -455,7 +455,7 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
           <AmpCheck list={d.amp?.list || []} />
           <div class="field"><span>{t('Skin')}</span>
             <div class="lk-skin-row">
-              <button type="button" class="lk-skin-btn" aria-label={t('Choose a skin')} onClick={() => setSkins(true)}><img class="lk-skin" src={skinShot(d.amp?.skin || BASE)} alt="" loading="lazy" /></button>
+              <button type="button" class="lk-skin-btn" aria-label={t('Choose a skin')} onClick={() => setSkins(true)}><img class="lk-skin" src={proxied(skinShot(d.amp?.skin || BASE))} alt="" loading="lazy" /></button>
               <button type="button" class="btn ghost small" onClick={() => setSkins(true)}>{t('Choose a skin')}</button>
             </div>
           </div>
@@ -566,7 +566,7 @@ function SkinPicker({ pick, close }: { pick: (md5: string) => void; close: () =>
         <button class="btn ghost small" onClick={close}>{t('Back')}</button>
       </div>
       {!list ? <div class="spinner" /> : !list.length ? <p class="hint">{t('No skins found.')}</p> : (
-        <div class="lk-skins">{list.map((k) => <button onClick={() => pick(k.md5)} title={k.filename.replace(/\.(wsz|zip)$/i, '')}><img src={skinShot(k.md5)} alt={k.filename} loading="lazy" /></button>)}</div>
+        <div class="lk-skins">{list.map((k) => <button onClick={() => pick(k.md5)} title={k.filename.replace(/\.(wsz|zip)$/i, '')}><img src={proxied(skinShot(k.md5))} alt={k.filename} loading="lazy" /></button>)}</div>
       )}
       {list && more && <button class="btn ghost small" onClick={next}>{t('More skins')}</button>}
       <p class="hint">{t('Skins from the Winamp Skin Museum.')}</p>

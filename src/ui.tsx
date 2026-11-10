@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, poster, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, poster, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -80,7 +80,7 @@ export const Logo = ({ size = 28 }: { size?: number }) => (
   </svg>
 )
 
-export const WalletIcon = ({ w }: { w?: { icon: string } }) => (w?.icon ? <img class="wallet-icon" src={w.icon} alt="" /> : <Icon d={P.wallet} size={16} />)
+export const WalletIcon = ({ w }: { w?: { icon: string } }) => (w?.icon ? <img class="wallet-icon" src={proxied(w.icon)} alt="" /> : <Icon d={P.wallet} size={16} />)
 /** A list to choose a wallet from: the mini app connect prompts and "Use a wallet" both show it. */
 export function Choose<W extends { name: string; icon: string }>({ list, value, set }: { list: W[]; value?: W; set: (w: W) => void }) {
   // the mini app prompts don't re-render on a pick, so the pick is kept here too; `value` alone would stay stale
@@ -143,13 +143,13 @@ export const Tabs = <T extends string>({ tabs, value, set }: { tabs: [T, string]
  * asked for over https://, as Chrome would anyway, so the page never loads mixed content. `low`: a link preview's
  * pictures (other sites', often huge for their box) come after the casts' own (server/home.mjs too). */
 export const Img = ({ low, ...p }: { src?: string; class?: string; style?: string; srcset?: string; sizes?: string; low?: boolean; onError?: () => void }) => (
-  <img alt="" loading="lazy" fetchpriority={low ? 'low' : undefined} referrerpolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} {...p} src={p.src?.replace(/^http:\/\//i, 'https://')} />
+  <img alt="" loading="lazy" fetchpriority={low ? 'low' : undefined} referrerpolicy="no-referrer" onError={(e) => (e.currentTarget.style.display = 'none')} {...p} src={p.src && proxied(p.src).replace(/^http:\/\//i, 'https://')} />
 )
 
 /** A mini app's icon, or the first letter of its name when there's none or it won't load. */
 export function AppIcon({ src, name }: { src?: string; name?: string }) {
   const [bad, setBad] = useState(false)
-  return src && !bad ? <img class="app-icon" alt="" loading="lazy" referrerpolicy="no-referrer" src={src} onError={() => setBad(true)} /> : <span class="app-icon">{[...(name || '?')][0]}</span>
+  return src && !bad ? <img class="app-icon" alt="" loading="lazy" referrerpolicy="no-referrer" src={proxied(src)} onError={() => setBad(true)} /> : <span class="app-icon">{[...(name || '?')][0]}</span>
 }
 
 /** A popup that closes on any click outside it. */
@@ -575,7 +575,7 @@ export function Lightbox({ urls, index, close }: { urls: string[]; index: number
       }}
       onPointerUp={(e) => up(e)} onPointerCancel={(e) => up(e)}>
       {/* keyed: the next picture comes in fitted, not shrinking from the last one's zoom */}
-      <img key={i} ref={pic} src={src} alt="" referrerpolicy="no-referrer" draggable={false} onClick={stop}
+      <img key={i} ref={pic} src={src && proxied(src)} alt="" referrerpolicy="no-referrer" draggable={false} onClick={stop}
         style={{ transform: `translate(${z.x}px, ${z.y}px) scale(${z.z})` }} />
       <button class="lb-btn lb-close" aria-label={t('Close')} onClick={shut}><Icon d={P.x} size={22} /></button>
       {many && (
@@ -762,7 +762,7 @@ export function ThemeLayers({ stickers = true }: { stickers?: boolean }) {
       {th.bgImg && <div class={`th-bg ${th.bgMode || 'tile'}`} aria-hidden="true" />}
       {th.fx && <canvas class="lk-fx th-fx" ref={fx} aria-hidden="true" />}
       {stickers && th.stickers?.map((s) => (
-        <img class="lk-stk th-stk" src={s.src} alt="" loading="lazy" referrerpolicy="no-referrer" style={{ left: `${s.x}%`, top: `${s.y}%`, width: screenUnit(s.w), rotate: s.r ? `${s.r}deg` : undefined }} />
+        <img class="lk-stk th-stk" src={proxied(s.src)} alt="" loading="lazy" referrerpolicy="no-referrer" style={{ left: `${s.x}%`, top: `${s.y}%`, width: screenUnit(s.w), rotate: s.r ? `${s.r}deg` : undefined }} />
       ))}
     </>
   )
@@ -905,7 +905,7 @@ export function DesignCard({ id, by }: { id: string; by?: User }) {
   return (
     <div class="design look on" style={lookVars(d)} onClick={stop}>
       <div class={`lk-bg ${d.bgMode || 'tile'}`} aria-hidden="true"
-        style={{ backgroundColor: lookPage(d), backgroundImage: d.bgImg ? `url("${d.bgImg}")` : undefined, '--lk-dim': d.bgDim ? String(d.bgDim / 100) : undefined }} />
+        style={{ backgroundColor: lookPage(d), backgroundImage: d.bgImg ? `url("${proxied(d.bgImg)}")` : undefined, '--lk-dim': d.bgDim ? String(d.bgDim / 100) : undefined }} />
       <div class="lk-box">
         <span class="design-who">
           {by ? <Avatar u={by} size={36} link={false} /> : <Logo size={36} />}

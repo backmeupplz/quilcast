@@ -123,6 +123,24 @@ export function imageInfo(b) {
   return null
 }
 
+/** What /api/img serves (server/index.mjs): imageInfo's formats, AVIF, ICO, or SVG (no size read: an <img> draws an SVG
+ *  without its scripts or anything it links to, and /api/img sandboxes it should it be opened as a page). */
+export function picInfo(b) {
+  const info = imageInfo(b)
+  if (info) return info
+  const brands = b.length > 32 && b.toString('latin1', 4, 8) === 'ftyp' && b.toString('latin1', 8, Math.min(b.readUInt32BE(0), 64))
+  if (brands && /avi[fs]/.test(brands)) {
+    const i = b.indexOf('ispe')
+    return i > 0 && i + 16 <= b.length ? { type: 'image/avif', w: b.readUInt32BE(i + 8), h: b.readUInt32BE(i + 12) } : null
+  }
+  // an XML declaration, comments and a doctype without an internal subset (no entities) may come first
+  // (one group whose comments can't run past their own -->, so it takes linear time on any run of them)
+  if (/^﻿?\s*(?:<\?xml[^>]*\?>\s*)?(?:<!--(?:(?!-->)[\s\S])*-->\s*|<!DOCTYPE svg[^>[]*>\s*)*<svg[\s>]/i.test(b.toString('utf8', 0, 4096))) return { type: 'image/svg+xml', w: 0, h: 0 }
+  // a site's favicon.ico (unfurl.mjs): a 0 is 256 px
+  if (b.length > 22 && b.readUInt32BE(0) === 0x00000100 && b.readUInt16LE(4) > 0) return { type: 'image/x-icon', w: b[6] || 256, h: b[7] || 256 }
+  return null
+}
+
 /** JSON from a URL we trust (the node), or null on a non-2xx; gives up after `ms`. */
 export const fetchJson = (url, ms = 5000) => fetch(url, { signal: AbortSignal.timeout(ms) }).then((r) => (r.ok ? r.json() : null))
 
@@ -147,6 +165,41 @@ export function gate(n, wait = 30) {
 
 /** Put `v` (a value or a promise) in a cache of at most `max` entries, oldest out first; a rejected promise drops out, so it's retried. */
 export const keep = (map, max, k, v) => (map.size >= max && map.delete(map.keys().next().value), map.set(k, v), Promise.resolve(v).catch(() => map.delete(k)), v)
+
+/** A cache of loads by key, least recently used out first once its values' `body`s pass `bytes` or it holds `count`:
+ *  a value is kept `ttl` ms, a null (nothing there) `miss` ms, and one with a body over `big` not at all. A load that
+ *  throws (a timeout, a full gate) isn't kept, and a key has one load at a time. */
+export function lru({ bytes, count, big, ttl, miss }) {
+  const kept = new Map()
+  const loading = new Map()
+  let total = 0
+  const drop = (k) => {
+    const e = kept.get(k)
+    if (e) (total -= e.size), kept.delete(k)
+  }
+  const fresh = (k) => {
+    const e = kept.get(k)
+    return e && e.until > Date.now() ? e : null
+  }
+  const get = (k, load) => {
+    const e = fresh(k)
+    if (e) return kept.delete(k), kept.set(k, e), Promise.resolve(e.v)
+    if (loading.has(k)) return loading.get(k)
+    const p = load().then((v) => {
+      drop(k)
+      const size = v?.body?.length || 0
+      if (size <= big) kept.set(k, { v, size, until: Date.now() + (v ? ttl : miss) }), (total += size)
+      for (const old of kept.keys()) {
+        if (total <= bytes && kept.size <= count) break
+        drop(old)
+      }
+      return v
+    }, () => null).finally(() => loading.delete(k))
+    loading.set(k, p)
+    return p
+  }
+  return { get, has: (k) => !!fresh(k) || loading.has(k), get size() { return kept.size }, get bytes() { return total } }
+}
 
 /** An error that carries the HTTP status to answer with. */
 export const fail = (status, message) => Object.assign(new Error(message), { status })

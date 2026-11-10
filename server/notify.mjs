@@ -10,6 +10,7 @@ import { rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fail, keep, readJson, safeGet } from './net.mjs'
 import { push, validSubscription } from './push.mjs'
+import { proxied } from '../src/shared.ts'
 
 // ponytail: one JSON file rewritten on change; a database when there are more than tens of thousands of tokens
 const MAX_TOKENS = 100e3
@@ -145,7 +146,8 @@ async function deliver(req) {
     t.ids[id] = now
     const item = { id: randomBytes(9).toString('base64url'), app: t.origin, name: t.name, icon: t.icon, notificationId: id, title, body, targetUrl: target, at: now }
     box.items = [item, ...box.items].slice(0, MAX_ITEMS)
-    if (box.push) pushes.push([box, { title: `${t.name}: ${title}`, body, icon: t.icon, url: `/apps?n=${item.id}` }])
+    // the icon through /api/img, so the app's host doesn't see who got its notification (shared.ts proxied)
+    if (box.push) pushes.push([box, { title: `${t.name}: ${title}`, body, icon: t.icon && proxied(t.icon), url: `/apps?n=${item.id}` }])
     result.successfulTokens.push(tk)
   }
   persist()

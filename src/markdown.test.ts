@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { castText, LINK_RE, linkify, markdown as md, MENTION_END, styled } from './shared.ts'
+import { castText, LINK_RE, linkify, markdown as md, MENTION_END, proxied, styled } from './shared.ts'
 
 test('plain casts render as before: text, line breaks, links, mentions, channels', () => {
   assert.equal(md('gm\n\nhi @dwr see quilcast.com on /base'), 'gm\n\nhi <a href="/u/dwr">@dwr</a> see <a href="https://quilcast.com/" target="_blank" rel="noopener noreferrer nofollow">quilcast.com</a> on <a class="chan-ref" href="/channel/base">/base</a>')
@@ -167,6 +167,8 @@ test('inline formatting', () => {
   // the app's own uploads that stay on our server load straight from it too; a look-alike host still goes through /api/img
   assert.match(md('![](https://quilcast.com/m/0123456789abcdef01234567.png)'), /src="https:\/\/quilcast\.com\/m\/0123456789abcdef01234567\.png"/)
   assert.match(md('![](https://quilcast.com.evil.com/m/a.png)'), /src="\/api\/img\?u=/)
+  // Tenor's GIFs load as they are too (#572)
+  assert.match(md('![](https://media.tenor.com/abcAAAAx/cat.webp)'), /src="https:\/\/media\.tenor\.com\//)
   assert.match(md('[x](https://a.com) https://b.com @dwr'), /^(?:[^<]*<a [^>]*>[^<]*<\/a>){3}$/)
   for (const a of md('[x](https://a.com) https://b.com').match(/<a [^>]*>/g)!) assert.match(a, /rel="noopener noreferrer nofollow"/)
 })
@@ -376,4 +378,12 @@ test('#hashtags link to the tag\'s casts, matching what Hypersnap indexes as a t
   assert.equal(md('[#gm @dwr /base](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow">#gm @dwr /base</a>')
   assert.equal(md('[**#gm**](https://x.com)'), '<a class="md-link" href="https://x.com/" target="_blank" rel="noopener noreferrer nofollow"><strong>#gm</strong></a>')
   assert.ok(hasTag('#gm') && hasTag('gm #farcaster') && !hasTag('gm') && !hasTag('#1') && !hasTag('a#b'))
+})
+
+// #572: every other site's picture (avatars, link previews, embeds, mini app icons) loads through /api/img
+test('proxied sends only other sites\' pictures through /api/img', () => {
+  for (const u of ['https://i.imgur.com/a.png', 'http://example.com/a.gif', 'https://ipfs.io/ipfs/Qm/a.svg', 'https://quilcast.com.evil.com/m/a.png', 'https://imagedelivery.net.evil.com/a', 'https://imagedelivery.net@evil.com/a', '//evil.com/a.png', '/\\evil.com/a.png', '/\t/evil.com/a.png', '/\n/evil.com/a.png', 'HTTPS://tenor.com/a.gif'])
+    assert.equal(proxied(u), `/api/img?u=${encodeURIComponent(u)}`, u)
+  for (const u of ['https://imagedelivery.net/a/b/w=144', 'https://quilcast.com/m/0123456789abcdef01234567.png', 'https://media.tenor.com/x/a.webp', 'https://media1.tenor.com/x/a.gif', '/api/img?u=x', '/i/a/b/w=600.webp', 'data:image/png;base64,AA', 'blob:https://quilcast.com/1', ''])
+    assert.equal(proxied(u), u, u)
 })

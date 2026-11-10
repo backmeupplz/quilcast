@@ -31,6 +31,15 @@ export const sized = (u: string, variant: string) => u.replace(/^(https:\/\/imag
 /** A feed picture's widths for the browser to pick from by its box (a phone's 326 px box needn't load 1200 px); only for
  *  boxes that don't take their size from the picture (ui.tsx Media), as a srcset changes a picture's natural size. */
 export const srcsetOf = (u: string) => (sized(u, 'w=600') === u ? undefined : `${sized(u, 'w=600')} 600w, ${sized(u, 'w=1200')} 1200w`)
+/** Where another site's picture loads from: through our /api/img (server/index.mjs), so its host never sees who is
+ *  looking (no tracking pixels: an avatar, a link preview or a mini app icon can't log readers' IP addresses).
+ *  Ours, Farcaster's image CDN and Tenor's GIFs, and pictures already on this page's origin or inline, load as they are. */
+const DIRECT = /^(?:https:\/\/(?:imagedelivery\.net|quilcast\.com|media1?\.tenor\.com)\/|\/(?![/\\])|data:|blob:)/i
+export function proxied(u: string) {
+  // tested as a browser reads it, without the tabs and line breaks it drops (/\t/evil.com is //evil.com)
+  const bare = u.replace(/[\t\n\r]/g, '')
+  return !u || DIRECT.test(bare) || (typeof location !== 'undefined' && bare.startsWith(`${location.origin}/`)) ? u : `/api/img?u=${encodeURIComponent(u)}`
+}
 /** The home page's first picture through quilcast.com itself (server/index.mjs /i/), so a phone gets it over the
  *  page's own connection instead of opening one to the CDN first. Always WebP (every browser shows it, and the CDN in
  *  front of us caches it by its extension). */
@@ -799,9 +808,6 @@ const INLINE = new RegExp([
   /(?<!\w)_(?=[^\s_])(?<em2>[\s\S]*?[^\s_])_(?!\w)/.source,
 ].join('|'), 'gu')
 
-/** Where a Markdown picture loads from: Farcaster's image CDN and our own /m/ files (where the app's uploads go) as they are, anything else
- *  through our /api/img (server/index.mjs), so the picture's host never sees who is reading. */
-export const pictureSrc = (u: string) => (/^https:\/\/(imagedelivery\.net|quilcast\.com\/m)\//.test(u) ? u : `/api/img?u=${encodeURIComponent(u)}`)
 
 // a "#" right after one of these is no hashtag to Hypersnap (HASHTAG's lookbehind), also across emphasis: "_#gm_" isn't one
 const NOT_BEFORE_TAG = /[\p{Alphabetic}\p{N}_/&#]$/u
@@ -822,7 +828,7 @@ function inline(s: string, tags: Set<string> | null, before = '', after = ''): s
     if (g.code !== undefined) out += `<code>${html(g.code.replace(/^ (.*[^ ].*) $/s, '$1'))}</code>`
     else if (g.src !== undefined) {
       const u = safeUrl(bare(g.src))
-      out += u ? `<img class="md-img" src="${html(pictureSrc(u))}" alt="${html(g.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : html(g.alt)
+      out += u ? `<img class="md-img" src="${html(proxied(u))}" alt="${html(g.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : html(g.alt)
     } else if (g.label !== undefined) {
       const u = safeUrl(bare(g.href))
       // its text can say anything, so the app shows where it really goes before opening it (ui.tsx LinkSheet)

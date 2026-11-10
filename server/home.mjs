@@ -2,7 +2,7 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { boxOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
+import { boxOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, proxied, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { channelOf } from './channels.mjs'
 
@@ -77,7 +77,9 @@ export function body(d, version, now = Date.now()) {
   let first = true
   let lead = null
   let meta = ''
+  // another site's picture comes through /api/img, so it never sees who is reading (shared.ts proxied)
   const img = (src, k = '', set, low) => {
+    src = proxied(src)
     const top = set && first && (first = false, true)
     if (top) (lead = src), (src = viaUs(src)), (set = viaUs(set)), (meta = `<meta name="quilcast:lead" content="${esc(set)}" data-sizes="${IMG_SIZES}">`)
     // the others wait (data-src) until the first one is on screen: index.html's head script lets them load then

@@ -81,3 +81,13 @@ test('an X article shows its cover, title and opening instead of its bare link',
   const html = page([article])
   assert.match(html, /<div class="tw-article"><img[^>]*class="lc-img"[^>]*><div class="lc-text"><span class="lc-title">Hot wallets<\/span><span class="lc-desc">what a week<\/span>/)
 })
+
+// #572: another site's picture (an avatar, a link preview's image, a tweet's photo) comes through /api/img, so its
+// host never sees who is reading; ours and Farcaster's image CDN load as they are
+test("other sites' pictures load through /api/img", () => {
+  const html = body({ casts: [{ ...cast('b'.repeat(40), [plain, tweet, 'https://imagedelivery.net/a/b/original']), author: { ...author, pfp_url: 'https://i.imgur.com/me.png' } }], got, shapes: {} }, '0.0.0', Date.parse('2026-10-28T12:00:00Z')).html
+  const srcs = [...html.matchAll(/<img[^>]* (?:data-)?src="([^"]*)"/g)].map((m) => m[1].replaceAll('&amp;', '&'))
+  for (const u of ['https://i.imgur.com/me.png', 'https://example.com/og.png', 'https://pbs.twimg.com/media/a.jpg']) assert.ok(srcs.includes(`/api/img?u=${encodeURIComponent(u)}`), u)
+  assert.ok(srcs.some((s) => s.startsWith('https://imagedelivery.net/') || s.startsWith('/i/')), 'the CDN picture loads as it is')
+  assert.ok(!srcs.some((s) => /^https?:\/\/(?!imagedelivery\.net\/)/.test(s)), srcs.join(' '))
+})

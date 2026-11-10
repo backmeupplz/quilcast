@@ -13,7 +13,7 @@ import { account, getUser, go, myUser, read, safeUrl, save, setAccount, settings
 import { base58, hex } from './fc.ts'
 import { choices, pair, qr, WC, wcChoice, wcLive } from './wallet.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
-import { castText, LOGO } from './shared.ts'
+import { castText, LOGO, proxied } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
 import { askPush, channelOf, Choose, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
@@ -927,7 +927,7 @@ addEventListener('message', (e) => {
 
 // an icon that fails to load falls back to the name's first letter
 const AppIcon = ({ app }: { app: App }) =>
-  app.icon ? <img class="app-icon" alt="" referrerpolicy="no-referrer" src={app.icon} onError={() => ((app.icon = undefined), update())} /> : <span class="app-icon">{[...app.name][0]}</span>
+  app.icon ? <img class="app-icon" alt="" referrerpolicy="no-referrer" src={proxied(app.icon)} onError={() => ((app.icon = undefined), update())} /> : <span class="app-icon">{[...app.name][0]}</span>
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
 async function pickSol(app: App, w: SolWallet) {

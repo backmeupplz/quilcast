@@ -5,6 +5,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { read, save, safeUrl, settings } from './api.ts'
 import { matches, newest, toActivity, type Activity } from './activity.ts'
 import { t } from './i18n.ts'
+import { proxied } from './shared.ts'
 import { ago, Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
 import { logoOf, tokensOn } from './tokens.ts'
 import { explorer, pending, SendSheet, SwapSheet } from './walletmove.tsx'
@@ -32,11 +33,11 @@ const pick = (w: WalletEntry) => (setActive(w.id), save('quilcast:wallet', `quil
 // (logos are LI.FI's)
 const LOGO = 'https://raw.githubusercontent.com/lifinance/types/main/src/assets/icons/chains/'
 export const CHAINS = [
-  { id: 8453, name: 'Base', host: 'base.blockscout.com', symbol: 'ETH', rpc: 'https://mainnet.base.org', logo: LOGO + 'base.svg' },
-  { id: 1, name: 'Ethereum', host: 'eth.blockscout.com', symbol: 'ETH', rpc: 'https://ethereum-rpc.publicnode.com', logo: LOGO + 'ethereum.svg' },
-  { id: 10, name: 'Optimism', host: 'explorer.optimism.io', symbol: 'ETH', rpc: 'https://mainnet.optimism.io', logo: LOGO + 'optimism.svg' },
-  { id: 42161, name: 'Arbitrum', host: 'arbitrum.blockscout.com', symbol: 'ETH', rpc: 'https://arb1.arbitrum.io/rpc', logo: LOGO + 'arbitrum.svg' },
-  { id: 137, name: 'Polygon', host: 'polygon.blockscout.com', symbol: 'POL', rpc: 'https://polygon-bor-rpc.publicnode.com', logo: LOGO + 'polygon.svg' },
+  { id: 8453, name: 'Base', host: 'base.blockscout.com', symbol: 'ETH', rpc: 'https://mainnet.base.org', logo: proxied(LOGO + 'base.svg') },
+  { id: 1, name: 'Ethereum', host: 'eth.blockscout.com', symbol: 'ETH', rpc: 'https://ethereum-rpc.publicnode.com', logo: proxied(LOGO + 'ethereum.svg') },
+  { id: 10, name: 'Optimism', host: 'explorer.optimism.io', symbol: 'ETH', rpc: 'https://mainnet.optimism.io', logo: proxied(LOGO + 'optimism.svg') },
+  { id: 42161, name: 'Arbitrum', host: 'arbitrum.blockscout.com', symbol: 'ETH', rpc: 'https://arb1.arbitrum.io/rpc', logo: proxied(LOGO + 'arbitrum.svg') },
+  { id: 137, name: 'Polygon', host: 'polygon.blockscout.com', symbol: 'POL', rpc: 'https://polygon-bor-rpc.publicnode.com', logo: proxied(LOGO + 'polygon.svg') },
 ]
 
 /** A token's logo with its chain's in the corner. A token the explorer has no picture for (or a broken one), and
@@ -48,7 +49,7 @@ export function Coin({ chain, address, symbol, src }: { chain: number; address?:
   const c = CHAINS.find((c) => c.id === chain)
   return (
     <span class="coin">
-      {url ? <img class="token-icon" src={url} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => (url === src ? lifi() : setUrl(undefined))} /> : <span class="token-icon">{symbol[0]}</span>}
+      {url ? <img class="token-icon" src={proxied(url)} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => (url === src ? lifi() : setUrl(undefined))} /> : <span class="token-icon">{symbol[0]}</span>}
       {c && <img class="coin-chain" src={c.logo} alt="" title={c.name} referrerpolicy="no-referrer" />}
     </span>
   )
@@ -118,7 +119,7 @@ function NftImage({ src }: { src: string }) {
   const path = ipfsPath(src)
   const [i, setI] = useState(0)
   const url = path ? GATEWAYS[i] && GATEWAYS[i] + path : i === 0 ? src : undefined
-  return url ? <img src={url} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => setI(i + 1)} /> : <span class="nft-blank" />
+  return url ? <img src={proxied(url)} alt="" loading="lazy" referrerpolicy="no-referrer" onError={() => setI(i + 1)} /> : <span class="nft-blank" />
 }
 
 const fmt = (n: number, max = 4) => n.toLocaleString(undefined, { maximumFractionDigits: n >= 1 ? Math.min(max, 2) : max })

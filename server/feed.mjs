@@ -1,7 +1,7 @@
 // RSS 2.0 feeds of an account's casts (/u/<name>/rss) and a channel's (/channel/<id>/rss), for feed readers. Each item
 // is a cast: its link and guid are its page here, its title a short cut of its text, its description the text as the
 // app shows it (shared.ts markdown, links absolute) with its pictures and links below.
-import { castText, isImg, markdown, taggable, unmarkdown, urlsOf } from '../src/shared.ts'
+import { castText, isImg, markdown, proxied, taggable, unmarkdown, urlsOf } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { clip, fname, nameOf } from './profile.mjs'
 
@@ -13,13 +13,15 @@ export const xml = (s) => String(s ?? '').replace(BAD, '').replace(/[&<>"']/g, (
 const html = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const HASH = /^(0x)?[0-9a-f]{40}$/
 const handle = (u) => (fname(u) ? `@${fname(u)}` : `!${u.fid}`)
+/** A picture's address for a reader: another site's through our /api/img (shared.ts proxied), absolute against `site`. */
+const pic = (u, site) => (proxied(u).startsWith('/') ? site : '') + proxied(u)
 
 /** A cast as HTML for a reader: its text with line breaks kept (the app shows it pre-wrap), then its pictures, links and
  *  quoted casts. Links the app keeps relative (/u/…, /channel/…, /api/img?…) point at `site`. */
 export function castHtml(c, site) {
   // tags as Hypersnap indexed them, from the text without its mentions put back in (ui.tsx RichText)
   const text = markdown(castText(c, true), taggable(c.text || '')).split(/(<pre[\s\S]*?<\/pre>)/).map((p, i) => (i % 2 ? p : p.replace(/\n/g, '<br>'))).join('')
-  const media = urlsOf(c).map((u) => (isImg(u) ? `<p><img src="${html(u)}" alt="" referrerpolicy="no-referrer"></p>` : `<p><a href="${html(u)}">${html(u)}</a></p>`))
+  const media = urlsOf(c).map((u) => (isImg(u) ? `<p><img src="${html(pic(u, site))}" alt="" referrerpolicy="no-referrer"></p>` : `<p><a href="${html(u)}">${html(u)}</a></p>`))
   const quotes = (c.embeds || []).flatMap((e) => (HASH.test(e?.cast_id?.hash) ? [`<p><a href="${site}/c/${e.cast_id.hash}">Quoted cast</a></p>`] : []))
   return (text ? `<div>${text}</div>` : '').replace(/ (href|src)="\//g, (_, a) => ` ${a}="${site}/`) + media.join('') + quotes.join('')
 }
@@ -52,7 +54,7 @@ export function rss({ title, link, self, desc, image, casts, site, ttl = 15 }) {
     '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel>' +
     `<title>${xml(title)}</title><link>${xml(link)}</link><description>${xml(desc)}</description>` +
     `<atom:link href="${xml(self)}" rel="self" type="application/rss+xml" /><generator>Quilcast</generator><ttl>${ttl}</ttl>` +
-    (img ? `<image><url>${xml(image)}</url><title>${xml(title)}</title><link>${xml(link)}</link></image>` : '') +
+    (img ? `<image><url>${xml(pic(image, site))}</url><title>${xml(title)}</title><link>${xml(link)}</link></image>` : '') +
     casts.map((c) => item(c, site)).join('') +
     '</channel></rss>\n'
 }
