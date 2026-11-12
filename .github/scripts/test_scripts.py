@@ -655,6 +655,25 @@ class Scripts(unittest.TestCase):
         self.assertIn("\n-      - yes\n+      - fdroid\n", out.getvalue())
         self.assertIn("Dry run: nothing pushed", out.getvalue())
 
+    def test_fdroid_closed_merge_request_updates_the_fork_then_fails(self):
+        for state in ("closed", "merged"):
+            def urlopen(url):
+                if "merge_requests" not in url:
+                    self.assertEqual(state, "closed", "a merged merge request needs nothing from the fork")
+                body = json.dumps({"state": state, "iid": 123, "web_url": "https://gitlab.com/mr"}) if "merge_requests" in url else METADATA
+                return io.BytesIO(body.encode())
+            env = {"FDROID_MR": "123", "FDROID_APP_ID": "com.example", "FDROID_FORK": "backmeupplz/fdroiddata", "FDROID_BRANCH": "com.example"}
+            with mock.patch.dict(os.environ, env), mock.patch("sys.argv", ["fdroid.py", "0.4.4", "8", "a" * 40, "--dry-run"]), \
+                    mock.patch.object(fdroid.urllib.request, "urlopen", urlopen), contextlib.redirect_stdout(io.StringIO()) as out:
+                if state == "merged":
+                    fdroid.main()
+                    self.assertIn("is merged", out.getvalue())
+                else:
+                    with self.assertRaises(SystemExit) as exit:
+                        fdroid.main()
+                    self.assertIn("+  - versionName: 0.4.4\n", out.getvalue())
+                    self.assertIn("is closed, not merged", exit.exception.code)
+
     def test_fdroid_push_failure_reports_git_output_without_the_token(self):
         def urlopen(url):
             body = json.dumps({"state": "opened", "iid": 123, "web_url": "https://gitlab.com/mr"}) if "merge_requests" in url else METADATA

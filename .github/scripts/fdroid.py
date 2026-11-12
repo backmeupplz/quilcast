@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Shared release script: keep .github/scripts/ identical in absplus, meshtastic-plus, todorant and quilcast. Repo values come from env.
 """Brings the app's open fdroiddata merge request up to a release: its metadata keeps one build entry, this version.
-Once the merge request is merged, F-Droid's checkupdates follows new tags itself and this does nothing.
+Once the merge request is merged, F-Droid's checkupdates follows new tags itself and this does nothing. A merge request closed
+unmerged still gets its fork branch updated, then this fails: the release reaches F-Droid only once it is reopened.
   fdroid.py <version> <version code> <commit> [--dry-run]   (--dry-run prints the change and pushes nothing)
   env: FDROID_MR (merge request number in fdroid/fdroiddata), FDROID_APP_ID, FDROID_FORK (e.g. backmeupplz/fdroiddata),
        FDROID_BRANCH, GITLAB_TOKEN (write_repository on the fork; only needed to push),
@@ -50,11 +51,16 @@ def git_failure(command, status, output, token):
 
 def main():
     version, code, commit = sys.argv[1:4]
-    dry = "--dry-run" in sys.argv
-    fork, branch, path = os.environ["FDROID_FORK"], os.environ["FDROID_BRANCH"], f"metadata/{os.environ['FDROID_APP_ID']}.yml"
     mr = json.load(urllib.request.urlopen(API + "fdroid%2Ffdroiddata/merge_requests/" + os.environ["FDROID_MR"]))
+    if mr["state"] == "merged":
+        return print(f"F-Droid merge request !{mr['iid']} is merged: F-Droid picks up new tags itself")
+    update(mr, version, code, commit, "--dry-run" in sys.argv)
     if mr["state"] != "opened":
-        return print(f"F-Droid merge request !{mr['iid']} is {mr['state']}: F-Droid picks up new tags itself")
+        sys.exit(f"F-Droid merge request !{mr['iid']} is {mr['state']}, not merged: F-Droid ships nothing until it is reopened: {mr['web_url']}")
+
+
+def update(mr, version, code, commit, dry):
+    fork, branch, path = os.environ["FDROID_FORK"], os.environ["FDROID_BRANCH"], f"metadata/{os.environ['FDROID_APP_ID']}.yml"
     old = urllib.request.urlopen(f"{API}{quote(fork, safe='')}/repository/files/{quote(path, safe='')}/raw?ref={quote(branch)}").read().decode()
     new = rewrite(old, version, code, commit, os.environ.get("FDROID_UPDATE_CHECK_MODE"), os.environ.get("FDROID_BINARIES"),
                   os.environ.get("FDROID_GRADLE"))
