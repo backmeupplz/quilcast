@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Hesabın Hypersnap’e kaydediliyor",
   "The node asks for an unexpected amount of work. Check the node in settings.": "Düğüm beklenmedik miktarda iş istiyor. Ayarlardan düğümü kontrol et.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Hesabın henüz ağa ulaşmadı. Bir dakika sonra tekrar dene.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Cüzdanın üç imza isteyecek: biri hesabı kaydeder, ikisi imzalama anahtarını ekler."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Cüzdanın üç imza isteyecek: biri hesabı kaydeder, ikisi imzalama anahtarını ekler.",
+  "A part of this article is missing.": "Bu makalenin bir bölümü eksik.",
+  "An article needs a title.": "Bir makalenin başlığı olmalı.",
+  "Articles": "Makaleler",
+  "Casts to publish: {n}": "Yayınlanacak cast sayısı: {n}",
+  "Cover image": "Kapak görseli",
+  "Edit": "Düzenle",
+  "New article": "Yeni makale",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "{total} casttan yalnızca {n} tanesi gönderildi. Kalanını göndermek için yeniden yayınla.",
+  "Part {n} of an article": "Bir makalenin {n}. bölümü",
+  "Publish": "Yayınla",
+  "Read article": "Makaleyi oku",
+  "The rest of this article couldn't be loaded.": "Bu makalenin geri kalanı yüklenemedi.",
+  "The title is too long.": "Başlık çok uzun.",
+  "This article is too long to publish.": "Bu makale yayınlanamayacak kadar uzun.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Makaleni yaz. Markdown çalışır: # başlıklar, **kalın**, _italik_, - listeler, > alıntılar ve |tablolar|.",
+  "The cover image's address is too long.": "Kapak görselinin adresi çok uzun.",
+  "A table in this article is too wide to publish.": "Bu makaledeki bir tablo yayınlanamayacak kadar geniş."
 }

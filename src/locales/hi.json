@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Hypersnap पर आपका अकाउंट रजिस्टर हो रहा है",
   "The node asks for an unexpected amount of work. Check the node in settings.": "नोड अनपेक्षित मात्रा में काम माँग रहा है। सेटिंग्स में नोड जाँचें।",
   "Your account hasn't reached the network yet. Try again in a minute.": "आपका अकाउंट अभी नेटवर्क तक नहीं पहुँचा है। एक मिनट बाद फिर कोशिश करें।",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "आपका वॉलेट तीन सिग्नेचर माँगेगा: एक अकाउंट रजिस्टर करने के लिए और दो साइनिंग की जोड़ने के लिए।"
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "आपका वॉलेट तीन सिग्नेचर माँगेगा: एक अकाउंट रजिस्टर करने के लिए और दो साइनिंग की जोड़ने के लिए।",
+  "A part of this article is missing.": "इस लेख का एक हिस्सा गायब है।",
+  "An article needs a title.": "लेख के लिए टाइटल ज़रूरी है।",
+  "Articles": "लेख",
+  "Casts to publish: {n}": "प्रकाशित होने वाली कास्ट: {n}",
+  "Cover image": "कवर इमेज",
+  "Edit": "बदलें",
+  "New article": "नया लेख",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "{total} में से सिर्फ़ {n} कास्ट भेजी गईं। बाकी भेजने के लिए फिर से प्रकाशित करें।",
+  "Part {n} of an article": "एक लेख का भाग {n}",
+  "Publish": "प्रकाशित करें",
+  "Read article": "लेख पढ़ें",
+  "The rest of this article couldn't be loaded.": "इस लेख का बाकी हिस्सा लोड नहीं हो सका।",
+  "The title is too long.": "टाइटल बहुत लंबा है।",
+  "This article is too long to publish.": "यह लेख प्रकाशित करने के लिए बहुत लंबा है।",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "अपना लेख लिखें। Markdown चलता है: # हेडिंग, **बोल्ड**, _इटैलिक_, - सूचियाँ, > उद्धरण और |टेबल|।",
+  "The cover image's address is too long.": "कवर इमेज का पता बहुत लंबा है।",
+  "A table in this article is too wide to publish.": "इस लेख की एक टेबल प्रकाशित करने के लिए बहुत चौड़ी है।"
 }

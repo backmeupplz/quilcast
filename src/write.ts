@@ -1,12 +1,13 @@
 // Signed writes: everything here needs the account's keys.
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting, setAccount, settings, updateAccount, users, type Account, type Cast } from './api.ts'
+import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting, publishedArticle, setAccount, settings, updateAccount, users, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
 import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { search } from './pow.worker.ts'
+import { ARTICLE, type Outgoing, type Part } from './article.ts'
 import { castEmbeds, queue } from './shared.ts'
 
 /** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
@@ -248,6 +249,37 @@ export async function post(text: string, o: { parent?: CastRef; channel?: string
   const up = o.parent && posting.get(o.parent.hash)
   if (up) up.direct_replies = [...(up.direct_replies || []), c]
   return hash
+}
+
+/** Publish an article (article.ts splitArticle) as its chain of casts: the first with the title and cover, then each part
+ *  replying to the one before it, all in article Markdown and placed in the chain. `sent` are the hashes of the casts an
+ *  earlier try already sent (it stopped partway): those aren't sent again. `onSent` hears each cast's hash as it goes,
+ *  so a try that fails partway can go on later. Returns every hash, the first cast's first. */
+export async function postArticle(parts: Outgoing[], sent: string[] = [], onSent: (hashes: string[]) => void = () => {}) {
+  const as = account!
+  const fid = as.fid!
+  const count = parts.length
+  const hashes = [...sent]
+  const shown: Part[] = []
+  for (let i = 0; i < count; i++) {
+    if (i >= hashes.length) {
+      // a node takes 10 mentions a cast: the rest stay as text
+      const m = await mentions(parts[i].text, fidByName, 10)
+      const root = i ? { fid, hash: hashes[0] } : undefined
+      const body = castBody({ ...m, embeds: parts[i].embeds, parent: i ? { fid, hash: hashes[i - 1] } : undefined, format: ARTICLE, chain: { root, index: i, count } })
+      hashes.push(await send(MT.CAST_ADD, body, as))
+      onSent([...hashes])
+    }
+    // as the node will have it, with the text as written, mentions in (no positions needed)
+    shown.push({ fid, hash: hashes[i], at: Math.floor(Date.now() / 1000) - 1609459200 - 600, text: parts[i].text, mentions: [], positions: [], embeds: parts[i].embeds.map((url) => ({ url })), format: ARTICLE, chain: { ...(i && { root: { fid, hash: hashes[0] } }), index: i, count } })
+  }
+  publishedArticle(shown)
+  // the first cast shows as "Posting…" until the node has it, like any other
+  posting.set(hashes[0], {
+    hash: hashes[0], text: parts[0].text, timestamp: new Date().toISOString(), author: myUser()!, parent_hash: null, parent_url: null, parent_author: { fid: null },
+    embeds: parts[0].embeds.map((url) => ({ url })), reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: count > 1 ? 1 : 0 }, article: shown[0],
+  })
+  return hashes
 }
 
 const json = async (r: Response) => {

@@ -9,8 +9,9 @@ import { createServer } from 'node:http'
 import { extname, join, normalize, relative } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, imagesIn, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
+import { castText, imagesIn, queue, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
+import { classify, coverOf, headOf, isArticle, maybeArticle, plainOpening } from '../src/article.ts'
 import { clientIp, fetchJson, gate, imageInfo, keep, lru, parseJson, picInfo, readJson, readText, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
@@ -852,6 +853,27 @@ async function nodeJson(path) {
   if (!r.ok) throw new Error(`node answered ${r.status}`)
   return r.json()
 }
+// Farcaster Articles (src/article.ts): /v2 casts don't say which casts are articles, so one that could be (maybeArticle) is
+// looked up in the node's /v1 API: the cast as an article's first or later part, or null. Kept, as a cast never
+// changes; a failure is null and isn't kept. Eight at a time, so a page of casts doesn't flood the node.
+const formats = new Map()
+const formatLookups = queue(8)
+function articleOf(c) {
+  const hash = String(c?.hash || '').replace(/^0x/, '').toLowerCase()
+  if (!c?.author?.fid || !/^[0-9a-f]{40}$/.test(hash) || !maybeArticle(c)) return Promise.resolve(null)
+  let p = formats.get(hash)
+  if (!p) {
+    p = formatLookups(async () => classify(nodeJson, await nodeJson(`/v1/castById?fid=${c.author.fid}&hash=0x${hash}`)))
+    keep(formats, 5000, hash, p)
+    p.catch(() => formats.get(hash) === p && formats.delete(hash))
+  }
+  // a failure is "don't know" (undefined), which leaves the app to ask, not "isn't one"
+  return p.catch(() => undefined)
+}
+/** Marks each cast that's part of an article (`article`, as the app's api.ts articleOf has it), waiting at most `ms`:
+ *  one not back by then is left for the app to ask about. */
+const markArticles = (casts, ms) =>
+  Promise.race([Promise.allSettled(casts.map((c) => articleOf(c).then((a) => a !== undefined && (c.article = a)))), new Promise((ok) => setTimeout(ok, ms))])
 // by-username only knows fnames; ENS names ("shoni.eth") are found by search, exact match only. An unused FID comes
 // back as an empty user.
 async function findUser(name) {
@@ -868,7 +890,12 @@ function getProfile(name) {
   const k = name.toLowerCase()
   const hit = profiles.get(k)
   if (hit && hit.at > Date.now() - 600e3) return hit.p
-  const p = findUser(name).then(async (u) => u && { u, casts: (await nodeJson(`/v2/farcaster/feed/user/casts?fid=${u.fid}&limit=25`).catch(() => null))?.casts || [] })
+  const p = findUser(name).then(async (u) => {
+    if (!u) return u
+    const casts = (await nodeJson(`/v2/farcaster/feed/user/casts?fid=${u.fid}&limit=25`).catch(() => null))?.casts || []
+    await markArticles(casts, 2000)
+    return { u, casts }
+  })
   keep(profiles, 2000, k, { at: Date.now(), p })
   p.catch(() => profiles.delete(k))
   return p
@@ -948,6 +975,7 @@ async function drawHome() {
     ...w.links.map((u) => previews(() => unfurl(u)).then((x) => (got[`u:${u}`] = x ?? null))),
     ...w.quotes.map((h) => getCast(h).then((c) => c && (got[`c:${h}`] = lean(c)))),
     ...w.lone.map((u) => (shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOfAny(u)).catch(() => null))).then((x) => (sizes[u] = x))),
+    markArticles(casts, 3000),
   ]), new Promise((ok) => setTimeout(ok, 3000))])
   const data = { casts, got: { ...got }, shapes: { ...sizes } }
   const { html: app, css, lead, meta } = homeBody(data, VERSION)
@@ -1457,6 +1485,17 @@ const server = createServer(async (req, res) => {
       if (!cache.has(hash) && limited(`look:${ip}`, 120)) return app()
       const c = await getCast(hash)
       if (!c) return app()
+      const by = `${c.author?.display_name || c.author?.username} (@${c.author?.username})`
+      // an article shares as its title, opening and cover
+      const a = await Promise.race([articleOf(c), new Promise((ok) => setTimeout(() => ok(null), 2000))])
+      if (isArticle(a)) {
+        const { title, opening } = headOf(castText(c))
+        const cover = coverOf(c.embeds)
+        const desc = cut(plainOpening(opening, c.embeds).replace(/\s+/g, ' '), 280) || `An article by ${by} on Farcaster`
+        const image = cover ? sized(cover, 'w=1200') : `${SITE}/og/c/${hash}.png`
+        const json = { '@context': 'https://schema.org', '@type': 'Article', headline: cut(title, 110), url: SITE + path, datePublished: c.timestamp, author: { '@type': 'Person', name: c.author?.display_name || c.author?.username, url: `${SITE}/u/${c.author?.username || c.author?.fid}` }, ...(cover && { image }) }
+        return html(page({ title: `${title} · ${by} on Quilcast`, desc, path, image, alt: title, embed: `${SITE}/og/c/${hash}.3x2.png`, json }))
+      }
       const desc = cut(unmarkdown(castText(c)), 280) || 'A cast on Farcaster'
       return html(page({ title: `${c.author?.display_name || c.author?.username} (@${c.author?.username}) on Quilcast`, desc, path, image: `${SITE}/og/c/${hash}.png`, alt: desc, embed: `${SITE}/og/c/${hash}.3x2.png` }))
     }

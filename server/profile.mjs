@@ -1,6 +1,7 @@
 // A profile page as search engines see it: its description, ProfilePage JSON-LD, and the profile header with the
 // latest casts as plain HTML inside #app (a <section>, which the app never renders at its top, so Preact drops it
 // whole on start instead of reusing its nodes).
+import { headOf, isArticle, isArticlePart, plainOpening } from '../src/article.ts'
 import { castText, n, sized } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 
@@ -48,16 +49,24 @@ export function ld(u, url) {
   return { '@context': 'https://schema.org', '@type': 'ProfilePage', url, ...(u.registered_at && { dateCreated: u.registered_at }), mainEntity: person }
 }
 
+// a cast's words; an article's title, then its opening as it reads
+const text = (c) => {
+  if (!isArticle(c.article)) return `<p class="text">${esc(castText(c))}</p>`
+  const { title, opening: all } = headOf(castText(c))
+  const opening = plainOpening(all, c.embeds)
+  return `<p class="text"><b>${esc(title)}</b>${opening ? `\n${esc(opening)}` : ''}</p>`
+}
 /** The profile header and up to ten latest casts, each linking to its own page, in the app's own classes. */
 export function body(u, casts) {
   const name = esc(nameOf(u))
   const at = esc(fname(u) || `!${u.fid}`)
   const f = u.follower_count || 0
-  const items = casts.filter((c) => /^(0x)?[0-9a-f]{40}$/.test(c?.hash) && !removed.casts.includes(c.hash)).slice(0, 10).map((c) => {
+  // an article's later parts are in the article (server/index.mjs marks them)
+  const items = casts.filter((c) => /^(0x)?[0-9a-f]{40}$/.test(c?.hash) && !removed.casts.includes(c.hash) && !isArticlePart(c.article)).slice(0, 10).map((c) => {
     const d = new Date(c.timestamp)
     const when = isNaN(d) ? '' : `<span class="dot">·</span><a href="/c/${c.hash}"><time datetime="${d.toISOString()}">${DAY.format(d)}</time></a>`
     return `<article class="cast"><div class="body"><header><span class="name">${name}</span><span class="handle">@${at}</span>${when}</header>` +
-      `${c.parent_hash ? '<div class="replying">Reply</div>' : ''}<p class="text">${esc(castText(c))}</p></div></article>`
+      `${c.parent_hash ? '<div class="replying">Reply</div>' : ''}${text(c)}</div></article>`
   })
   const pfp = u.pfp_url && /^https:\/\//.test(u.pfp_url) ? `<span class="avatar ssr-pfp"><img src="${esc(sized(u.pfp_url, 'w=176'))}" alt="" width="72" height="72" referrerpolicy="no-referrer" /></span>` : ''
   const bio = u.profile?.bio?.text ? `<p class="text">${esc(u.profile.bio.text)}</p>` : ''

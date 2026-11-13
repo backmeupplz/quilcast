@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Registrando tu cuenta en Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "El nodo pide una cantidad de trabajo inesperada. Revisa el nodo en los ajustes.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Tu cuenta aún no ha llegado a la red. Inténtalo de nuevo en un minuto.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Tu cartera pedirá tres firmas: una registra la cuenta y dos añaden la clave de firma."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Tu cartera pedirá tres firmas: una registra la cuenta y dos añaden la clave de firma.",
+  "A part of this article is missing.": "Falta una parte de este artículo.",
+  "An article needs a title.": "Un artículo necesita un título.",
+  "Articles": "Artículos",
+  "Casts to publish: {n}": "Casts por publicar: {n}",
+  "Cover image": "Imagen de portada",
+  "Edit": "Editar",
+  "New article": "Nuevo artículo",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Solo se enviaron {n} de {total} casts. Vuelve a publicar para enviar el resto.",
+  "Part {n} of an article": "Parte {n} de un artículo",
+  "Publish": "Publicar",
+  "Read article": "Leer artículo",
+  "The rest of this article couldn't be loaded.": "No se pudo cargar el resto de este artículo.",
+  "The title is too long.": "El título es demasiado largo.",
+  "This article is too long to publish.": "Este artículo es demasiado largo para publicarlo.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Escribe tu artículo. Funciona Markdown: # títulos, **negrita**, _cursiva_, - listas, > citas y |tablas|.",
+  "The cover image's address is too long.": "La dirección de la imagen de portada es demasiado larga.",
+  "A table in this article is too wide to publish.": "Una tabla de este artículo es demasiado ancha para publicarla."
 }

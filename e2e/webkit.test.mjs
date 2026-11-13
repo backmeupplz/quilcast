@@ -37,9 +37,25 @@ const followingAsked = []
 // for the tests that run at once
 const liveNews = {}
 const newCast = (i) => cast(30 + i, { hash: '0x' + i.toString(16).padStart(40, 'e'), text: `brand new cast ${i}`, author: i % 2 ? { fid: 21, username: 'newbie' } : { fid: 22, username: 'other' } })
+// #643: a Farcaster Article by @writer: its first cast 0xa7… (title, opening, cover) and its second part 0xa8…, which
+// replies to it like a thread; /v2 knows nothing of them being one, /v1 does. 0xa9… is a real reply.
+const writer = { fid: 31, username: 'writer', display_name: 'Writer' }
+const ART = { root: 'a7'.repeat(20), part: 'a8'.repeat(20), reply: 'a9'.repeat(20) }
+const COVER = 'https://imagedelivery.net/abc/cover/original'
+const artRoot = cast(31, { hash: ART.root, text: 'Gardens on Mars\n\n## Soil\nIt is **red** dust.', embeds: [{ url: COVER }], author: writer, replies: { count: 2 } })
+const artPart = cast(31, { hash: ART.part, parent_hash: ART.root, parent_author: { fid: 31 }, text: 'The second part, with ++underline++.\n- one\n- two', author: writer })
+const artReply = cast(32, { hash: ART.reply, parent_hash: ART.root, parent_author: { fid: 31 }, text: 'what a read', author: { fid: 32, username: 'fan' } })
+const v1 = (c, body) => ({ hash: '0x' + c.hash, data: { type: 'MESSAGE_TYPE_CAST_ADD', fid: c.author.fid, timestamp: 185079816, castAddBody: { text: c.text, embeds: c.embeds, mentions: [], mentionsPositions: [], formatVersion: 1, ...body } } })
+const artMessages = [v1(artRoot, { chain: { index: 0, count: 2 } }), v1(artPart, { parentCastId: { fid: 31, hash: '0x' + ART.root }, chain: { root: { fid: 31, hash: '0x' + ART.root }, index: 1, count: 2 } })]
 const node = createServer((q, r) => {
   r.setHeader('content-type', 'application/json')
   r.setHeader('access-control-allow-origin', '*')
+  const art = new URL(q.url, 'http://x')
+  if (art.pathname === '/v1/castById' && art.searchParams.get('fid') === '31') return r.end(JSON.stringify(artMessages.find((m) => m.hash === art.searchParams.get('hash')) || {}))
+  if (art.pathname === '/v1/castsByFid' && art.searchParams.get('fid') === '31') return r.end(JSON.stringify({ messages: artMessages, nextPageToken: '' }))
+  if (art.pathname === '/v2/farcaster/cast' && [ART.root, ART.part].includes(art.searchParams.get('identifier'))) return r.end(JSON.stringify({ cast: art.searchParams.get('identifier') === ART.root ? artRoot : artPart }))
+  if (art.pathname === '/v2/farcaster/cast/conversation' && art.searchParams.get('identifier') === ART.root) return r.end(JSON.stringify({ conversation: { cast: { ...artRoot, direct_replies: [artPart, artReply] } } }))
+  if (art.pathname === '/v2/farcaster/cast/conversation' && art.searchParams.get('identifier') === ART.part) return r.end(JSON.stringify({ conversation: { cast: { ...artPart, direct_replies: [] } } }))
   if (q.url.startsWith('/v2/farcaster/feed/trending')) return r.end(JSON.stringify({ casts: [cast(1, { embeds: [{ url: 'https://imagedelivery.net/abc/one/original' }, { url: 'https://imagedelivery.net/abc/two/original' }] }), cast(2), cast(3), busy] }))
   // @user7, browsed as (#490), follows the authors of casts 5 and 6
   if (q.url.startsWith('/v2/farcaster/feed/following')) {
@@ -286,6 +302,32 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await page.evaluate(() => history.back())
     await page.waitForFunction(() => location.search === '?q=see' && document.querySelector('#app .profile-search input')?.value === 'see')
     await page.locator('#app article.cast', { hasText: 'nothing to see' }).waitFor({ timeout: 30e3 })
+    await close()
+  })
+
+  // #643: a Farcaster Article reads as one: its page has the cover, the title and every part in article Markdown, and its
+  // parts aren't listed again as replies; a part's page leads back to it, above which the first cast is the article's card
+  test('a Farcaster Article opens whole on its page, and a part of it leads back to it', async () => {
+    const { page, errors, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: `/c/${ART.root}` })
+    const full = page.locator('#app .fc-article.full')
+    await full.locator('ul li', { hasText: 'two' }).waitFor({ timeout: 30e3 })
+    assert.equal(await full.locator('h1.fa-title').innerText(), 'Gardens on Mars')
+    assert.equal(await full.locator('h3').first().innerText(), 'Soil')
+    assert.equal(await full.locator('strong').first().innerText(), 'red')
+    assert.equal(await full.locator('u').innerText(), 'underline')
+    assert.ok(await full.locator('img.fa-cover').count())
+    // the real reply is listed, the part isn't
+    await page.locator('#app article.cast', { hasText: 'what a read' }).waitFor({ timeout: 10e3 })
+    assert.equal(await page.locator('#app article.cast:not(.focus)', { hasText: 'The second part' }).count(), 0)
+    // the part's own page
+    await link(page, `/c/${ART.part}`)
+    await page.locator('#app .fc-article.full a.fa-more', { hasText: '2' }).waitFor({ timeout: 30e3 })
+    assert.equal(await page.locator('#app .fc-article.full a.fa-more').getAttribute('href'), `/c/${ART.root}`)
+    const card = page.locator('#app article.cast:not(.focus) .fc-article')
+    await card.waitFor({ timeout: 10e3 })
+    assert.equal(await card.locator('.fa-title').innerText(), 'Gardens on Mars')
+    assert.ok(!(await card.innerText()).includes('## Soil'))
+    assert.deepEqual(errors, [])
     await close()
   })
 

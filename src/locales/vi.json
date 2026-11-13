@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Đang đăng ký tài khoản của bạn trên Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "Node yêu cầu khối lượng công việc bất thường. Hãy kiểm tra node trong phần cài đặt.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Tài khoản của bạn chưa lên mạng. Hãy thử lại sau một phút.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Ví của bạn sẽ yêu cầu ba chữ ký: một để đăng ký tài khoản và hai để thêm khóa ký."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Ví của bạn sẽ yêu cầu ba chữ ký: một để đăng ký tài khoản và hai để thêm khóa ký.",
+  "A part of this article is missing.": "Thiếu một phần của bài viết này.",
+  "An article needs a title.": "Bài viết cần có tiêu đề.",
+  "Articles": "Bài viết",
+  "Casts to publish: {n}": "Số cast sẽ đăng: {n}",
+  "Cover image": "Ảnh bìa",
+  "Edit": "Sửa",
+  "New article": "Bài viết mới",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Chỉ {n} trên {total} cast đã được gửi. Hãy đăng lại để gửi phần còn lại.",
+  "Part {n} of an article": "Phần {n} của một bài viết",
+  "Publish": "Đăng",
+  "Read article": "Đọc bài viết",
+  "The rest of this article couldn't be loaded.": "Không tải được phần còn lại của bài viết này.",
+  "The title is too long.": "Tiêu đề quá dài.",
+  "This article is too long to publish.": "Bài viết này quá dài để đăng.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Viết bài của bạn. Có thể dùng Markdown: # tiêu đề, **đậm**, _nghiêng_, - danh sách, > trích dẫn và |bảng|.",
+  "The cover image's address is too long.": "Địa chỉ ảnh bìa quá dài.",
+  "A table in this article is too wide to publish.": "Một bảng trong bài viết này quá rộng để đăng."
 }

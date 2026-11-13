@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "正在 Hypersnap 上註冊你的帳號",
   "The node asks for an unexpected amount of work. Check the node in settings.": "節點要求的工作量異常。請在設定中檢查節點。",
   "Your account hasn't reached the network yet. Try again in a minute.": "你的帳號還沒有抵達網路。請一分鐘後再試。",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "你的錢包會請求三次簽署：一次用於註冊帳號，兩次用於新增簽署金鑰。"
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "你的錢包會請求三次簽署：一次用於註冊帳號，兩次用於新增簽署金鑰。",
+  "A part of this article is missing.": "這篇文章缺少一部分。",
+  "An article needs a title.": "文章需要標題。",
+  "Articles": "文章",
+  "Casts to publish: {n}": "將發佈的貼文：{n}",
+  "Cover image": "封面圖片",
+  "Edit": "編輯",
+  "New article": "新文章",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "{total} 則貼文中只送出了 {n} 則。再次發佈即可送出其餘部分。",
+  "Part {n} of an article": "文章的第 {n} 部分",
+  "Publish": "發佈",
+  "Read article": "閱讀文章",
+  "The rest of this article couldn't be loaded.": "無法載入這篇文章的其餘部分。",
+  "The title is too long.": "標題太長了。",
+  "This article is too long to publish.": "這篇文章太長，無法發佈。",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "寫下你的文章。支援 Markdown：# 標題、**粗體**、_斜體_、- 清單、> 引用和 |表格|。",
+  "The cover image's address is too long.": "封面圖片的網址太長了。",
+  "A table in this article is too wide to publish.": "這篇文章裡有個表格太寬，無法發佈。"
 }

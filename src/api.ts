@@ -2,7 +2,8 @@
 // loaded on demand so readers never download the crypto.
 import { drop, dropEd, hex, keep, newEd, SECRETS, secretsOf, type Secrets } from './keys.ts'
 import { isLocal } from './local.ts'
-import { LINK_RE, safeUrl, toUrl } from './shared.ts'
+import { classify, loadArticle, maybeArticle, partText, type Article, type Part } from './article.ts'
+import { LINK_RE, queue, safeUrl, toUrl } from './shared.ts'
 import { checkSpam } from './spam.ts'
 
 export const read = <T,>(k: string, d: T): T => {
@@ -346,6 +347,8 @@ export type Cast = {
   // from nodes with Hypersnap PR #43 (asked with viewer_fid), and #40 on a following feed asked with_recasts
   viewer_context?: { liked?: boolean; recasted?: boolean }
   recaster?: User
+  // the signed-out home page's casts say which are articles (server/home.mjs), as articleOf would
+  article?: Part | null
 }
 
 // authors we've seen, so replies can say who they reply to
@@ -383,3 +386,60 @@ export const myUser = (): User | null => (account?.fid ? users.get(account.fid) 
 export const isMe = (id: string) => !!account?.fid && (id === String(account.fid) || id.toLowerCase() === account.username?.toLowerCase())
 /** Casts this tab just sent, shown as "Posting…" until the node has indexed them. */
 export const posting = new Map<string, Cast>()
+
+// --- Farcaster Articles (article.ts) ---
+// Hypersnap's /v2 casts don't say which casts are articles, so a cast that could be one (maybeArticle) is looked up
+// once in the node's /v1 API, four at a time. `parts` has the answers: the cast as an article's first or later part,
+// or null. A failed lookup isn't kept.
+const parts = new Map<string, Part | null>()
+const asked = new Map<string, Promise<Part | null>>()
+const lookups = queue(4)
+const v1 = (path: string) =>
+  fetch(settings.node + path).then(async (r) => {
+    // the node answers a cast it doesn't have (or not by that FID) with 400 or 404
+    if (r.status === 400 || r.status === 404) return null
+    if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { status: r.status })
+    return JSON.parse(await r.text(), fids)
+  })
+const keepKnown = (hash: string, p: Part | null) => {
+  if (parts.size >= 5000) parts.delete(parts.keys().next().value!)
+  parts.set(hash, p)
+}
+/** What's known so far about `c` being part of an article: the Part, null when it isn't, undefined when not asked. */
+export const articleNow = (c: Cast): Part | null | undefined => (parts.has(c.hash) ? parts.get(c.hash) : c.article !== undefined ? c.article : maybeArticle(c) ? undefined : null)
+/** `c` as an article's first cast or a later part, or null. */
+export function articleOf(c: Cast): Promise<Part | null> {
+  const now = articleNow(c)
+  if (now !== undefined) return Promise.resolve(now)
+  let p = asked.get(c.hash)
+  if (!p) {
+    p = lookups(async () => classify(v1, await v1(`/v1/castById?fid=${c.author.fid}&hash=0x${c.hash}`))).then((part) => {
+      keepKnown(c.hash, part)
+      return part
+    }, () => null).finally(() => asked.delete(c.hash))
+    asked.set(c.hash, p)
+  }
+  return p
+}
+export type ArticleRead = Article & { texts: (string | undefined)[] }
+const articles = new Map<string, Promise<ArticleRead>>()
+/** The whole article from its first cast, with each part's text as it reads (mentions put back). A complete one is
+ *  kept for the page's life; one with parts missing (not all indexed yet, or still growing) a minute; a failure not. */
+export function readArticle(root: Part): Promise<ArticleRead> {
+  let p = articles.get(root.hash)
+  if (!p) {
+    p = loadArticle(v1, root as Part & { chain: NonNullable<Part['chain']> }).then(async (a) => {
+      await loadUsers(a.parts.flatMap((x) => x?.mentions || []))
+      return { ...a, texts: a.parts.map((x) => x && partText(x, (fid) => users.get(fid)?.username)) }
+    })
+    articles.set(root.hash, p)
+    const drop = () => articles.get(root.hash) === p && articles.delete(root.hash)
+    p.then((a) => (!a.complete || !root.chain?.count) && setTimeout(drop, 60e3), drop)
+  }
+  return p
+}
+/** An article this tab just published, known before the node has it. */
+export function publishedArticle(parts: Part[]) {
+  for (const x of parts) keepKnown(x.hash, x)
+  articles.set(parts[0].hash, Promise.resolve({ parts, complete: true, texts: parts.map((x) => x.text) }))
+}

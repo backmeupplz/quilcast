@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Registrando sua conta no Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "O nó pede uma quantidade de trabalho inesperada. Confira o nó nas configurações.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Sua conta ainda não chegou à rede. Tente de novo em um minuto.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Sua carteira vai pedir três assinaturas: uma registra a conta e duas adicionam a chave de assinatura."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Sua carteira vai pedir três assinaturas: uma registra a conta e duas adicionam a chave de assinatura.",
+  "A part of this article is missing.": "Falta uma parte deste artigo.",
+  "An article needs a title.": "Um artigo precisa de um título.",
+  "Articles": "Artigos",
+  "Casts to publish: {n}": "Casts a publicar: {n}",
+  "Cover image": "Imagem de capa",
+  "Edit": "Editar",
+  "New article": "Novo artigo",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Só {n} de {total} casts foram enviados. Publique de novo para enviar o resto.",
+  "Part {n} of an article": "Parte {n} de um artigo",
+  "Publish": "Publicar",
+  "Read article": "Ler artigo",
+  "The rest of this article couldn't be loaded.": "Não foi possível carregar o resto deste artigo.",
+  "The title is too long.": "O título é longo demais.",
+  "This article is too long to publish.": "Este artigo é longo demais para ser publicado.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Escreva seu artigo. Markdown funciona: # títulos, **negrito**, _itálico_, - listas, > citações e |tabelas|.",
+  "The cover image's address is too long.": "O endereço da imagem de capa é longo demais.",
+  "A table in this article is too wide to publish.": "Uma tabela deste artigo é larga demais para ser publicada."
 }

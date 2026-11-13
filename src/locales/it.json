@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Registrazione del tuo account su Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "Il nodo richiede una quantità di lavoro inattesa. Controlla il nodo nelle impostazioni.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Il tuo account non ha ancora raggiunto la rete. Riprova tra un minuto.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Il tuo wallet chiederà tre firme: una registra l’account e due aggiungono la chiave di firma."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Il tuo wallet chiederà tre firme: una registra l’account e due aggiungono la chiave di firma.",
+  "A part of this article is missing.": "Manca una parte di questo articolo.",
+  "An article needs a title.": "Un articolo ha bisogno di un titolo.",
+  "Articles": "Articoli",
+  "Casts to publish: {n}": "Cast da pubblicare: {n}",
+  "Cover image": "Immagine di copertina",
+  "Edit": "Modifica",
+  "New article": "Nuovo articolo",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Sono partiti solo {n} cast su {total}. Pubblica di nuovo per inviare il resto.",
+  "Part {n} of an article": "Parte {n} di un articolo",
+  "Publish": "Pubblica",
+  "Read article": "Leggi l’articolo",
+  "The rest of this article couldn't be loaded.": "Non è stato possibile caricare il resto di questo articolo.",
+  "The title is too long.": "Il titolo è troppo lungo.",
+  "This article is too long to publish.": "Questo articolo è troppo lungo per essere pubblicato.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Scrivi il tuo articolo. Il Markdown funziona: # titoli, **grassetto**, _corsivo_, - elenchi, > citazioni e |tabelle|.",
+  "The cover image's address is too long.": "L’indirizzo dell’immagine di copertina è troppo lungo.",
+  "A table in this article is too wide to publish.": "Una tabella di questo articolo è troppo larga per essere pubblicata."
 }

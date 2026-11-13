@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "جارٍ تسجيل حسابك على Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "تطلب العقدة كمية عمل غير متوقعة. تحقق من العقدة في الإعدادات.",
   "Your account hasn't reached the network yet. Try again in a minute.": "لم يصل حسابك إلى الشبكة بعد. حاول مرة أخرى بعد دقيقة.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "ستطلب محفظتك ثلاثة توقيعات: واحد لتسجيل الحساب واثنان لإضافة مفتاح التوقيع."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "ستطلب محفظتك ثلاثة توقيعات: واحد لتسجيل الحساب واثنان لإضافة مفتاح التوقيع.",
+  "A part of this article is missing.": "جزء من هذا المقال مفقود.",
+  "An article needs a title.": "يحتاج المقال إلى عنوان.",
+  "Articles": "المقالات",
+  "Casts to publish: {n}": "الكاستات التي ستُنشر: {n}",
+  "Cover image": "صورة الغلاف",
+  "Edit": "تعديل",
+  "New article": "مقال جديد",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "لم يُنشر إلا {n} من {total} كاست. انشر مرة أخرى لإرسال الباقي.",
+  "Part {n} of an article": "الجزء {n} من مقال",
+  "Publish": "نشر",
+  "Read article": "اقرأ المقال",
+  "The rest of this article couldn't be loaded.": "تعذّر تحميل بقية هذا المقال.",
+  "The title is too long.": "العنوان طويل جدًا.",
+  "This article is too long to publish.": "هذا المقال أطول من أن يُنشر.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "اكتب مقالك. يدعم Markdown: ‏# للعناوين، و**عريض**، و_مائل_، و- للقوائم، و> للاقتباسات، و|جداول|.",
+  "The cover image's address is too long.": "عنوان صورة الغلاف طويل جدًا.",
+  "A table in this article is too wide to publish.": "أحد الجداول في هذا المقال أعرض من أن يُنشر."
 }

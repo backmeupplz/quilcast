@@ -315,6 +315,38 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .tw-video img { width: 100%; max-height: 420px; object-fit: cover; display: block; }
 .tw-video .play { pointer-events: none; }
 /* an X article: its cover, title and opening, drawn like a link card inside the post */
+/* Farcaster Articles (ui.tsx ArticleCard, ArticleView; articles.tsx ArticleEditor): the feed's card, like .tw-article, and the
+   page. Article Markdown is a block per line (shared.ts articleHtml), so its paragraphs carry the spacing */
+.fc-article { margin-top: 8px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); overflow: hidden; }
+.fc-article .fa-cover { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; display: block; background: var(--soft); }
+.fa-text { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 12px; min-width: 0; }
+.fc-article .fa-title { font-size: 1.15em; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.fa-open { -webkit-line-clamp: 4; max-height: max(4lh, 160px); display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; color: var(--muted); }
+.fa-more { color: var(--accent); font-size: 14px; font-weight: 600; }
+.fc-article.full { border: 0; border-radius: 0; overflow: visible; margin-top: 10px; }
+.fc-article.full .fa-cover { border-radius: calc(12px * var(--rs, 1)); margin-bottom: 12px; }
+.fc-article.full .fa-title { display: block; margin: 0 0 10px; font-size: 1.6em; }
+.fc-article.part { border: 0; margin-top: 4px; }
+.fc-article.full > .fa-more { display: block; margin-bottom: 8px; }
+.article-text { font-size: 1.02em; line-height: 1.55; }
+.article-text p { margin: 0 0 0.45em; }
+.article-text .md-gap { min-height: 0.6em; }
+.article-text :is(h2, h3) { margin: 0.9em 0 0.35em; }
+.article-text h2 { font-size: 1.35em; }
+.article-text h3 { font-size: 1.15em; }
+.article-text li > p, .article-text blockquote p { margin: 0; }
+.article-text u { text-underline-offset: 2px; }
+.article-text pre.md-math code, .article-text code.md-math { font-style: italic; }
+.fc-article.full > .text + .text { margin-top: 0; }
+.article-editor { display: flex; flex-direction: column; gap: 10px; padding: 12px 16px 24px; }
+.ae-title { font-size: 1.4em; font-weight: 700; padding: 8px 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); background: var(--card); color: var(--ink); }
+.ae-body { min-height: 320px; padding: 10px; font: inherit; line-height: 1.5; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); background: var(--card); color: var(--ink); resize: vertical; }
+.ae-cover { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.ae-cover img { width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: calc(12px * var(--rs, 1)); background: var(--soft); }
+.ae-add, .ae-tools .btn { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; }
+.ae-tools { display: flex; gap: 8px; }
+.ae-foot { display: flex; align-items: center; gap: 8px; }
+.ae-foot .muted { flex: 1; font-size: 14px; }
 .tw-article { margin-top: 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); overflow: hidden; }
 .tw-article .lc-img { aspect-ratio: 5 / 2; }
 .tw-quote { margin-top: 8px; padding: 8px 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(10px * var(--rs, 1)); font-size: 14px; }

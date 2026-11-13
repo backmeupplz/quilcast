@@ -1,7 +1,8 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, back, follow, get, go, LINK_RE, read, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type Cast, type User } from './api.ts'
-import { boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, poster, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { account, articleNow, articleOf, back, follow, get, go, LINK_RE, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
+import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
+import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, poster, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -193,7 +194,7 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
 /** Text with Markdown (shared.ts markdown), or `plain`: only its links, mentions and channels made live. A cast's text
  *  passes `tags`, the tags Hypersnap indexed from its own text (taggable(c.text)): the text shown has its mentions put
  *  back in, or is a translation, and a tag that reads differently there would find nothing. */
-export function RichText({ text, class: cls = 'text', plain, tags }: { text: string; class?: string; plain?: boolean; tags?: Set<string> }) {
+export function RichText({ text, class: cls = 'text', plain, tags, article }: { text: string; class?: string; plain?: boolean; tags?: Set<string>; article?: boolean }) {
   // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round. A link's click is
   // the link's, not the card's around it.
   // a Markdown picture opens in the image viewer, with the text's other pictures a swipe away, like a cast's embeds
@@ -214,7 +215,7 @@ export function RichText({ text, class: cls = 'text', plain, tags }: { text: str
     const label = a.classList.contains('md-link')
     if ((label || lookalike(a.href)) && a.host !== location.host && shell.link(a.href, { label })) e.preventDefault()
   }
-  return <div class={cls} dir="auto" onClick={click} onClickCapture={ask} onAuxClickCapture={ask} dangerouslySetInnerHTML={{ __html: plain ? linkify(text, tags) : markdown(text, tags) }} />
+  return <div class={cls} dir="auto" onClick={click} onClickCapture={ask} onAuxClickCapture={ask} dangerouslySetInnerHTML={{ __html: plain ? linkify(text, tags) : article ? articleHtml(text, tags) : markdown(text, tags) }} />
 }
 
 // long text in feeds folds at 10 lines; the button shows only when something is cut
@@ -1142,7 +1143,89 @@ const COLLECT = (hash: string): AppMeta => ({ url: `https://collect.quilcast.com
 
 /** A cast row. `focus` is the thread's main cast; `line` draws the thread connector down to the next row; `owner` is
  *  the profile it's shown on (see hides()). */
-export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number; onTop?: boolean }) {
+// --- Farcaster Articles (article.ts) ---
+/** `c` as an article's first cast or a later part, once known (api.ts articleOf), else null. */
+export function useArticle(c: Cast) {
+  const [a, setA] = useState(() => articleNow(c))
+  useEffect(() => {
+    let live = true
+    const now = articleNow(c)
+    setA(now)
+    if (now === undefined) articleOf(c).then((p) => live && setA(p))
+    return () => void (live = false)
+  }, [c.hash])
+  return a || null
+}
+/** A part's text and embeds as the article shows them: text in article Markdown, embeds where [$N] puts them or after
+ *  the text, and links alone on a line as previews. `skip`: embeds shown elsewhere (the cover). */
+function ArticleBlocks({ c, text, raw, embeds, skip, format = ARTICLE }: { c: Cast; text: string; raw: string; embeds: Embed[]; skip?: number[]; format?: number }) {
+  // the tags Hypersnap indexed are each part's own (taggable of its text as the node has it)
+  const tags = taggable(raw)
+  // a part in another format (the FIP only says parts SHOULD be article Markdown) reads as plain text, as any cast in a
+  // format we don't know
+  if (format !== ARTICLE) return <><RichText text={text} tags={tags} plain /><Embeds c={{ ...c, text: '', embeds }} /></>
+  return (
+    <>
+      {segments(text, embeds, skip).map((s, i) => ('text' in s ? <RichText key={i} text={s.text} class="text article-text" tags={tags} article /> : <Embeds key={i} c={{ ...c, text: '', embeds: s.embeds }} />))}
+    </>
+  )
+}
+/** An article in a feed: its cover, title and opening, a tap away from the whole of it. */
+function ArticleCard({ c }: { c: Cast }) {
+  const { title, opening: all } = headOf(castText(c, true))
+  const cover = coverOf(c.embeds)
+  const opening = cardOpening(all, c.embeds)
+  return (
+    <div class="fc-article">
+      {cover && <Img class="fa-cover" src={sized(cover, 'w=1200')} srcset={srcsetOf(cover)} sizes={IMG_SIZES} />}
+      <div class="fa-text">
+        <b class="fa-title" dir="auto">{title}</b>
+        {opening && <RichText text={opening} class="text article-text fa-open" tags={taggable(c.text || '')} article />}
+        <span class="fa-more">{t('Read article')}</span>
+      </div>
+    </div>
+  )
+}
+/** A whole article on its cast's page: the cover, the title, the opening and every part after it, read from the node.
+ *  `onParts` hears the parts' hashes, so the page can leave them out of the replies. */
+export function ArticleView({ c, root, onParts, given }: { c: Cast; root: Part; onParts?: (hashes: string[]) => void; given?: ArticleRead }) {
+  const [got, setA] = useState<ArticleRead | null>(null)
+  const [failed, setFailed] = useState(false)
+  // `given`: the article as it's being written (articles.tsx's preview); an article of one cast is all here
+  const one = root.chain?.count === 1
+  const a = given || got || (one ? { parts: [root], complete: true, texts: [] } : null)
+  useEffect(() => {
+    let live = true
+    setA(null)
+    setFailed(false)
+    if (!given && !one) readArticle(root).then((x) => live && (setA(x), onParts?.(x.parts.flatMap((p) => p?.hash || []))), () => live && setFailed(true))
+    return () => void (live = false)
+  }, [root.hash, !given])
+  const { title, opening } = headOf(castText(c, true))
+  const cover = coverOf(c.embeds)
+  return (
+    <div class="fc-article full">
+      {cover && <Img class="fa-cover" src={sized(cover, 'w=1200')} srcset={srcsetOf(cover)} sizes={IMG_SIZES} />}
+      <h1 class="fa-title" dir="auto">{title}</h1>
+      <ArticleBlocks c={c} text={opening} raw={c.text || ''} embeds={c.embeds} skip={cover ? [0] : []} />
+      {a ? a.parts.slice(1).map((p, i) => (p ? <ArticleBlocks key={p.hash} c={c} text={a.texts[i + 1]!} raw={p.text} embeds={p.embeds} format={p.format} /> : <div key={i} class="note">{t('A part of this article is missing.')}</div>))
+        : failed ? <div class="note">{t("The rest of this article couldn't be loaded.")}</div> : <div class="spinner" />}
+    </div>
+  )
+}
+/** A later part of an article, on its own: its text, and the way to the whole article. */
+function ArticlePart({ c, part, full }: { c: Cast; part: Part; full?: boolean }) {
+  const link = <a class="fa-more" href={`/c/${part.chain!.root!.hash}`} onClick={stop}>{t('Part {n} of an article', { n: part.chain!.index + 1 })} · {t('Read article')}</a>
+  return full ? (
+    <div class="fc-article full">
+      {link}
+      <ArticleBlocks c={c} text={castText(c, true)} raw={c.text || ''} embeds={c.embeds} format={part.format} />
+    </div>
+  ) : <div class="fc-article part">{link}</div>
+}
+
+export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, onArticle }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number; onTop?: boolean; onArticle?: (hashes: string[]) => void }) {
+  const art = useArticle(c)
   // `mine` is what the node said at sign-in, and its counts include those; taps since then adjust from there
   const was = useMemo(() => [c.viewer_context?.liked ?? mine.likes.has(c.hash), c.viewer_context?.recasted ?? mine.recasts.has(c.hash)], [c.hash, mineVersion])
   const [, redraw] = useState(0)
@@ -1263,8 +1346,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop }:
     return (
       <article class="cast focus">
         <header><Avatar u={c.author} size={44} /><div class="who">{name}</div>{ch && <a class="chan" href={`/channel/${ch}`} onClick={stop}>/{ch}</a>}</header>
-        <Said c={c} full />
-        <Embeds c={c} />
+        {isArticle(art) ? <ArticleView c={c} root={art} onParts={onArticle} /> : art ? <ArticlePart c={c} part={art} full /> : <><Said c={c} full /><Embeds c={c} /></>}
         <div class="when">{sending ? <span class="posting"><span class="pulse" /> {t('Posting…')}</span> : new Date(c.timestamp).toLocaleString(lang, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' })}</div>
         {stats.length > 0 && <div class="stats">{stats.map(([k, x, word]) => <a href={`/c/${c.hash}/${k}`}><b>{n(x)}</b> {word}</a>)}</div>}
         {actions}
@@ -1284,8 +1366,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop }:
           {ch && <a class="chan" href={`/channel/${ch}`} onClick={stop}>/{ch}</a>}
         </header>
         {c.parent_hash && !inThread && <div class="replying">{parentUser ? <>{t('Replying to')} <a href={userPath(parentUser)} onClick={stop}>@{handle(parentUser)}</a></> : t('Replying to a cast')}</div>}
-        <Said c={c} />
-        <Embeds c={c} />
+        {isArticle(art) ? <ArticleCard c={c} /> : art ? <ArticlePart c={c} part={art} /> : <><Said c={c} /><Embeds c={c} /></>}
         {actions}
       </div>
     </article>

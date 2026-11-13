@@ -2,7 +2,8 @@
 // #app, in the app's own markup (src/app.tsx Home, src/ui.tsx CastCard), so it paints before the script loads and
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
-import { boxOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, proxied, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
+import { cardOpening, coverOf, headOf, isArticle } from '../src/article.ts'
+import { articleHtml, boxOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, proxied, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { channelOf } from './channels.mjs'
 
@@ -151,13 +152,21 @@ export function body(d, version, now = Date.now()) {
     const { strip, compact } = embedLayout(urls, spaces.length + links.length)
     return (strip ? `<div class="strip">${media(urls)}</div>` : media(urls)) + (compact ? `<div class="cards">${cards}</div>` : cards) + quotesOf(c).map(quote).join('')
   }
+  // an article: its cover, title and opening (ui.tsx ArticleCard)
+  const article = (c) => {
+    const { title, opening: all } = headOf(castText(c, true))
+    const cover = coverOf(c.embeds)
+    const opening = cardOpening(all, c.embeds)
+    return `<div class="fc-article">${cover ? img(sized(cover, 'w=1200'), 'fa-cover', srcsetOf(cover)) : ''}<div class="fa-text"><b class="fa-title" dir="auto">${esc(title)}</b>` +
+      `${opening ? `<div class="text article-text fa-open" dir="auto">${articleHtml(opening, taggable(c.text || ''))}</div>` : ''}<span class="fa-more">Read article</span></div></div>`
+  }
   const count = (x) => `<span>${x ? n(x) : ''}</span>`
   const cast = (c) => {
     const ch = channelOf(c.parent_url)
     return `<article class="cast" data-href="/c/${esc(c.hash)}"><div class="rail">${avatar(c.author)}</div><div class="body"><header>` +
       `<a class="name" href="${esc(userPath(c.author))}">${esc(nameOf(c.author))}</a><span class="handle">@${esc(handle(c.author))}</span><span class="dot">·</span>` +
       `<time datetime="${esc(c.timestamp)}">${ago(c.timestamp)}</time>${ch ? `<span class="chan">/${esc(ch)}</span>` : ''}</header>` +
-      `<div>${rich(castText(c, true), 'text fold', false, taggable(c.text || ''))}<script>${FOLD}</script></div>${embeds(c)}` +
+      (isArticle(c.article) ? article(c) : `<div>${rich(castText(c, true), 'text fold', false, taggable(c.text || ''))}<script>${FOLD}</script></div>${embeds(c)}`) +
       `<footer><button class="act" aria-label="Reply">${icon(P.reply)}${count(c.replies?.count)}</button>` +
       `<span class="wrap-menu"><button class="act rc" aria-label="Recast or quote" aria-haspopup="menu">${icon(P.recast)}${count(c.reactions?.recasts_count)}</button></span>` +
       `<button class="act lk" aria-label="Like">${icon(P.like)}${count(c.reactions?.likes_count)}</button><button class="act" aria-label="Share">${icon(P.share)}</button>` +

@@ -36,6 +36,7 @@ const WalletPage = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletP
 const WalletSettings = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletSettings))
 const WalletPanel = lazy<{ close: () => void }>(() => import('./walletui.tsx').then((m) => m.WalletPanel))
 const SpaceRoom = lazy<{ id: string }>(() => import('./spaces.tsx').then((m) => m.SpaceRoom))
+const ArticleEditor = lazy<{}>(() => import('./articles.tsx').then((m) => m.ArticleEditor))
 const ThemeSettings = lazy<{}>(() => import('./themes.tsx').then((m) => m.ThemeSettings))
 const ThemeEditor = lazy<{ start: Theme | null; close: () => void }>(() => import('./themes.tsx').then((m) => m.Editor))
 
@@ -981,6 +982,8 @@ function Thread({ hash }: { hash: string }) {
   const [lost, setLost] = useState(false)
   const [err, setErr] = useState('')
   const [quotes, setQuotes] = useState(0)
+  // an article's later parts reply to the part before them: the article shows them, so the replies leave them out
+  const [parts, setParts] = useState<string[]>([])
   useEffect(() => {
     let live = true
     setC(null)
@@ -988,6 +991,7 @@ function Thread({ hash }: { hash: string }) {
     setLost(false)
     setErr('')
     setQuotes(0)
+    setParts([])
     quotesOf(hash).then((q) => live && setQuotes(q.length), () => {})
     // walk up to five parents so the reply reads in context
     let walked = false
@@ -1037,12 +1041,12 @@ function Thread({ hash }: { hash: string }) {
         <>
           {lost && <div class="note">{t('This cast is unavailable.')}</div>}
           {up.map((p) => <CastCard key={p.hash} c={p} line inThread />)}
-          <CastCard c={c} focus quotes={quotes} />
+          <CastCard c={c} focus quotes={quotes} onArticle={setParts} />
           <button class="reply-prompt" onClick={() => (account?.done ? shell.compose({ parent: c }) : go('/join'))}>
             {account?.done && <Avatar u={myUser()!} size={32} link={false} />}
             <span>{t('Post your reply')}</span>
           </button>
-          {(c.direct_replies || []).filter((r) => !hides(r)).map((r) => {
+          {(c.direct_replies || []).filter((r) => !hides(r) && !parts.includes(r.hash)).map((r) => {
             const kids = (r.direct_replies || []).filter((k) => !hides(k))
             return (
               <div class="reply-group" key={r.hash}>
@@ -1052,7 +1056,7 @@ function Thread({ hash }: { hash: string }) {
               </div>
             )
           })}
-          {!c.direct_replies ? c.replies?.count > 0 && <div class="spinner" /> : !c.direct_replies.length && <div class="note">{t('No replies yet.')}</div>}
+          {!c.direct_replies ? c.replies?.count > 0 && <div class="spinner" /> : !c.direct_replies.some((r) => !parts.includes(r.hash)) && <div class="note">{t('No replies yet.')}</div>}
         </>
       )}
     </>
@@ -2589,6 +2593,7 @@ function App() {
           : r0 === 'notifications' ? <Notifications />
           : r0 === 'messages' ? <Messages id={r1 && decode(r1)} />
           : r0 === 'settings' ? <Settings />
+          : r0 === 'write' ? (me ? <ArticleEditor /> : <Join />)
           : r0 === 'apps' ? <Apps />
           : r0 === 'wallet' ? (me ? <WalletPage /> : <Join />)
           : r0 === 'spaces' ? (r1 && me ? <SpaceRoom id={decode(r1)} /> : me ? <Spaces /> : <Join />)
@@ -2596,7 +2601,7 @@ function App() {
           : r0 === 'theme' ? <><Header title={t('Theme')} /><div class="design-page"><ThemeCard id={r1} big /></div></>
             : r0 === 'join' ? <><Header /><Join step={r1} /></>
               : <Home />
-  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ['channel', t('Channels'), P.hash], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps], ['spaces', t('Spaces'), P.mic]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear], ...(me ? [['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : [])]
+  const nav: [string, string, string][] = [['', t('Home'), P.home], ['search', t('Search'), P.search], ['channel', t('Channels'), P.hash], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['apps', t('Mini apps'), P.apps], ['spaces', t('Spaces'), P.mic], ['write', t('Articles'), P.article]] as [string, string, string][] : []), me ? ['u', t('Profile'), P.user] : ['join', t('Join'), P.user], ['settings', t('Settings'), P.gear], ...(me ? [['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : [])]
   const href = (k: string) => (k === 'u' ? userPath(me!) : `/${k}`)
   const active = (k: string) => (k === 'u' ? r0 === 'u' && !!me && userPath(me) === `/u/${r1}` : r0 === k)
   const ico = (k: string, d: string) => <span class="ico"><Icon d={d} size={22} />{unread[k as keyof typeof unread] && <i class="badge" />}</span>
@@ -2606,7 +2611,7 @@ function App() {
     // Quorum's sidebar, in its order, with Quilcast's closest page for each. Governance, Saved posts and Status have
     // none here, so they're left out; Spaces are Quilcast's audio rooms. Profile is in the user card, and Wallet opens
     // the docked panel instead of a page.
-    nav.splice(0, nav.length, ['', t('Home'), P.home], ['search', t('Explore'), P.explore], ['channel', t('Channels'), P.hash], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['spaces', t('Spaces'), P.mic], ['apps', t('Apps'), P.apps], ['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : []), ...(me ? [] : [['join', t('Join'), P.user]] as [string, string, string][]))
+    nav.splice(0, nav.length, ['', t('Home'), P.home], ['search', t('Explore'), P.explore], ['channel', t('Channels'), P.hash], ...(me ? [['notifications', t('Notifications'), P.bell], ['messages', t('Messages'), P.mail], ['spaces', t('Spaces'), P.mic], ['apps', t('Apps'), P.apps], ['write', t('Articles'), P.article], ['wallet', t('Wallet'), P.wallet]] as [string, string, string][] : []), ...(me ? [] : [['join', t('Join'), P.user]] as [string, string, string][]))
   }
   const toggleWallet = (e: Event) => (e.preventDefault(), setWalletOpen(!wallet))
   const navProps = (k: string) => (quorum && k === 'wallet' ? { href: '/wallet', onClick: toggleWallet, 'aria-expanded': wallet } : { href: href(k) })
@@ -2667,7 +2672,7 @@ function App() {
           </div>
           {more && (
             <div class="q-tab-more" id="q-more">
-              {[...nav.filter(([k]) => ['wallet', 'search', 'channel', 'apps'].includes(k) && !(!me && k === 'search')), ['settings', t('Settings'), P.gear] as [string, string, string]].map(([k, label, d]) => tab(k, label, d, true))}
+              {[...nav.filter(([k]) => ['wallet', 'search', 'channel', 'apps', 'write'].includes(k) && !(!me && k === 'search')), ['settings', t('Settings'), P.gear] as [string, string, string]].map(([k, label, d]) => tab(k, label, d, true))}
             </div>
           )}
         </nav>

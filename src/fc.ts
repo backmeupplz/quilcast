@@ -57,8 +57,10 @@ const BODY_FIELD: Record<number, number> = { 1: 5, 2: 6, 3: 7, 4: 7, 5: 14, 6: 1
 const fcNow = () => Math.floor(Date.now() / 1000) - 1609459200
 
 export type CastRef = { fid: number; hash: string }
-// parent is a cast (reply) or a channel URL; embeds are URLs or a quoted cast
-export const castBody = (c: { text: string; mentions?: number[]; positions?: number[]; embeds?: (string | CastRef)[]; parent?: CastRef | string }) =>
+// parent is a cast (reply) or a channel URL; embeds are URLs or a quoted cast. `format` and `chain` are an article's
+// (article.ts): format_version (field 9) and ChainCast (field 10; root absent at index 0). Nodes before the ChainedCasts
+// feature take them as unknown fields of data_bytes, which envelope() always sends.
+export const castBody = (c: { text: string; mentions?: number[]; positions?: number[]; embeds?: (string | CastRef)[]; parent?: CastRef | string; format?: number; chain?: { root?: CastRef; index: number; count: number } }) =>
   pb(
     [2, c.mentions],
     [3, typeof c.parent === 'object' ? castId(c.parent.fid, c.parent.hash) : undefined],
@@ -68,6 +70,9 @@ export const castBody = (c: { text: string; mentions?: number[]; positions?: num
     ...(c.embeds || []).map((e): Field => [6, typeof e === 'string' ? pb([1, e]) : pb([2, castId(e.fid, e.hash)])]),
     // over 320 bytes must be marked LONG_CAST (allowed up to 1024)
     [8, new TextEncoder().encode(c.text).length > 320 ? 1 : undefined],
+    // zeros left out, as protobuf writes them
+    [9, c.format || undefined],
+    [10, c.chain && pb([1, c.chain.root && castId(c.chain.root.fid, c.chain.root.hash)], [2, c.chain.index || undefined], [3, c.chain.count || undefined])],
   )
 export const reactionBody = (type: 1 | 2, fid: number, hash: string) => pb([1, type], [2, castId(fid, hash)])
 /** A reaction to a URL (a channel or a page) rather than a cast. */
@@ -232,7 +237,7 @@ export const keyRemoveSelf = (fid: number, signer: Ed, nonce: number) =>
 
 /** Turn "@alice hi" into mention-free text plus byte positions (and the names as typed), resolving names via `lookup`: undefined means no such
  *  user, and a rejection (the node failed) leaves the whole "@name" as text rather than mentioning a shorter name. */
-export async function mentions(text: string, lookup: (name: string) => Promise<number | undefined>) {
+export async function mentions(text: string, lookup: (name: string) => Promise<number | undefined>, max = Infinity) {
   const out = { text: '', mentions: [] as number[], positions: [] as number[], names: [] as string[] }
   // each name is asked once per cast, however many mentions try it
   const asked = new Map<string, Promise<number | undefined>>()
@@ -243,6 +248,8 @@ export async function mentions(text: string, lookup: (name: string) => Promise<n
   }
   let last = 0
   for (const m of text.matchAll(new RegExp(`(^|\\s)@(${MENTION_NAME})`, 'g'))) {
+    // past `max` mentions (a node takes 10 a cast), the rest stay as text
+    if (out.mentions.length >= max) break
     // "@adam-" is adam- when that name exists, else adam followed by a "-"; never adam when asking about adam- failed
     let fid: number | undefined, name = ''
     try {

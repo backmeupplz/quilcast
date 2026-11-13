@@ -73,6 +73,16 @@ const node = createServer(async (q, r) => {
   if (u.pathname === '/spam/scores') return r.end(JSON.stringify({ [u.searchParams.get('h')]: 0.97 }))
   if (u.pathname === '/spam/users') return r.end(JSON.stringify({ [u.searchParams.get('fid')]: null }))
   if (u.pathname === '/report-hook') return hookHits.push({ path: u.pathname + u.search, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
+  // a Farcaster Article (src/article.ts): fid 31's 0xf1… is the first of two casts, the /v2 API knowing nothing of it
+  const ARTICLE = '0x' + 'f1'.repeat(20)
+  if (u.pathname === '/v1/castById' && u.searchParams.get('hash') === ARTICLE && u.searchParams.get('fid') === '31')
+    return r.end(JSON.stringify({ hash: ARTICLE, data: { type: 'MESSAGE_TYPE_CAST_ADD', fid: 31, timestamp: 185079816, castAddBody: { text: 'Gardens <of> Mars\n\n## Soil\nIt is **red**.', embeds: [{ url: 'https://imagedelivery.net/a/cover/original' }], type: 'CAST', formatVersion: 1, chain: { index: 0, count: 2 } } } }))
+  // 0xf3… looks like one, but the node fails when asked
+  if (u.pathname === '/v1/castById' && u.searchParams.get('hash') === '0x' + 'f3'.repeat(20)) return (r.statusCode = 500), r.end('{}')
+  if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === 'f3'.repeat(20))
+    return r.end(JSON.stringify({ cast: { hash: 'f3'.repeat(20), text: 'Not sure\n\nwhat this is', timestamp: '2026-11-13T03:03:36Z', embeds: [], author: { fid: 31, username: 'mars', display_name: 'Mars' }, reactions: {}, replies: { count: 0 } } }))
+  if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === 'f1'.repeat(20))
+    return r.end(JSON.stringify({ cast: { hash: 'f1'.repeat(20), text: 'Gardens <of> Mars\n\n## Soil\nIt is **red**.', timestamp: '2026-11-13T03:03:36Z', embeds: [{ url: 'https://imagedelivery.net/a/cover/original' }], author: { fid: 31, username: 'mars', display_name: 'Mars' }, reactions: {}, replies: { count: 1 } } }))
   // pinnable casts: fid 7 wrote 0x7a…, 0x7b… and 0x7c…, and the reply 0x7d…; asking for a 0x5e… cast finds the node
   // failing, a 0x42… one rate-limited. Another FID's cast is "not found" with a 400, like Hypersnap answers.
   if (u.pathname === '/v1/castById') {
@@ -1156,4 +1166,22 @@ test('the standalone pages are served in the other languages at their own addres
   assert.equal(r.status, 200)
   assert.match(html, /<html lang="de">/)
   assert.ok(html.includes('<link rel="canonical" href="https://quilcast.com/de/privacy" />') && !html.includes('href="/legal.css"'))
+})
+
+test("an article's page shares its title, opening and cover, and says it's an Article", async () => {
+  const html = await (await fetch(`${base}/c/${'f1'.repeat(20)}`)).text()
+  assert.match(html, /<meta property="og:title" content="Gardens &#60;of&#62; Mars · Mars \(@mars\) on Quilcast"/)
+  assert.match(html, /<meta property="og:description" content="Soil It is red\."/)
+  assert.match(html, /<meta property="og:image" content="https:\/\/imagedelivery\.net\/a\/cover\/w=1200"/)
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1])
+  assert.equal(ld['@type'], 'Article')
+  assert.equal(ld.headline, 'Gardens <of> Mars')
+  assert.ok(!html.includes('Gardens <of>'), 'the title is escaped')
+  // a plain cast stays a cast
+  const plain = await (await fetch(`${base}/c/${'f2'.repeat(20)}`)).text()
+  assert.ok(!plain.includes('"@type":"Article"'))
+  // and when the node can't say, the page shares as a cast
+  const unsure = await (await fetch(`${base}/c/${'f3'.repeat(20)}`)).text()
+  assert.match(unsure, /<meta property="og:title" content="Mars \(@mars\) on Quilcast"/)
+  assert.match(unsure, new RegExp(`<meta property="og:image" content="https://quilcast\\.test/og/c/${'f3'.repeat(20)}\\.png"`))
 })

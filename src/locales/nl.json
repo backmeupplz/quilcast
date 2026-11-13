@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Je account wordt geregistreerd op Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "De node vraagt om een onverwacht grote hoeveelheid werk. Controleer de node in de instellingen.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Je account heeft het netwerk nog niet bereikt. Probeer het over een minuut opnieuw.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Je wallet vraagt om drie handtekeningen: één registreert het account en twee voegen de ondertekeningssleutel toe."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Je wallet vraagt om drie handtekeningen: één registreert het account en twee voegen de ondertekeningssleutel toe.",
+  "A part of this article is missing.": "Een deel van dit artikel ontbreekt.",
+  "An article needs a title.": "Een artikel heeft een titel nodig.",
+  "Articles": "Artikelen",
+  "Casts to publish: {n}": "Te publiceren casts: {n}",
+  "Cover image": "Omslagafbeelding",
+  "Edit": "Bewerken",
+  "New article": "Nieuw artikel",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Slechts {n} van {total} casts zijn verstuurd. Publiceer opnieuw om de rest te versturen.",
+  "Part {n} of an article": "Deel {n} van een artikel",
+  "Publish": "Publiceren",
+  "Read article": "Artikel lezen",
+  "The rest of this article couldn't be loaded.": "De rest van dit artikel kon niet worden geladen.",
+  "The title is too long.": "De titel is te lang.",
+  "This article is too long to publish.": "Dit artikel is te lang om te publiceren.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Schrijf je artikel. Markdown werkt: # koppen, **vet**, _cursief_, - lijsten, > citaten en |tabellen|.",
+  "The cover image's address is too long.": "Het adres van de omslagafbeelding is te lang.",
+  "A table in this article is too wide to publish.": "Een tabel in dit artikel is te breed om te publiceren."
 }

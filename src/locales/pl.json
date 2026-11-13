@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Rejestrowanie twojego konta w Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "Węzeł żąda nieoczekiwanej ilości pracy. Sprawdź węzeł w ustawieniach.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Twoje konto nie dotarło jeszcze do sieci. Spróbuj ponownie za minutę.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Twój portfel poprosi o trzy podpisy: jeden rejestruje konto, a dwa dodają klucz podpisujący."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Twój portfel poprosi o trzy podpisy: jeden rejestruje konto, a dwa dodają klucz podpisujący.",
+  "A part of this article is missing.": "Brakuje części tego artykułu.",
+  "An article needs a title.": "Artykuł musi mieć tytuł.",
+  "Articles": "Artykuły",
+  "Casts to publish: {n}": "Casty do opublikowania: {n}",
+  "Cover image": "Obraz okładki",
+  "Edit": "Edytuj",
+  "New article": "Nowy artykuł",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Wysłano tylko {n} z {total} castów. Opublikuj ponownie, aby wysłać resztę.",
+  "Part {n} of an article": "Część {n} artykułu",
+  "Publish": "Opublikuj",
+  "Read article": "Czytaj artykuł",
+  "The rest of this article couldn't be loaded.": "Nie udało się wczytać reszty tego artykułu.",
+  "The title is too long.": "Tytuł jest za długi.",
+  "This article is too long to publish.": "Ten artykuł jest za długi, by go opublikować.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Napisz swój artykuł. Działa Markdown: # nagłówki, **pogrubienie**, _kursywa_, - listy, > cytaty i |tabele|.",
+  "The cover image's address is too long.": "Adres obrazu okładki jest za długi.",
+  "A table in this article is too wide to publish.": "Tabela w tym artykule jest za szeroka, by ją opublikować."
 }

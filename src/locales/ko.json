@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Hypersnap에 계정 등록 중",
   "The node asks for an unexpected amount of work. Check the node in settings.": "노드가 예상치 못한 양의 작업을 요구해요. 설정에서 노드를 확인해 주세요.",
   "Your account hasn't reached the network yet. Try again in a minute.": "계정이 아직 네트워크에 도착하지 않았어요. 1분 뒤에 다시 시도해 주세요.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "지갑에서 서명을 세 번 요청해요. 한 번은 계정 등록, 나머지 두 번은 서명 키 추가예요."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "지갑에서 서명을 세 번 요청해요. 한 번은 계정 등록, 나머지 두 번은 서명 키 추가예요.",
+  "A part of this article is missing.": "이 글의 일부가 없습니다.",
+  "An article needs a title.": "글에는 제목이 필요합니다.",
+  "Articles": "아티클",
+  "Casts to publish: {n}": "게시할 캐스트: {n}",
+  "Cover image": "커버 이미지",
+  "Edit": "편집",
+  "New article": "새 아티클",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "캐스트 {total}개 중 {n}개만 전송되었습니다. 나머지를 보내려면 다시 게시하세요.",
+  "Part {n} of an article": "아티클의 {n}번째 부분",
+  "Publish": "게시",
+  "Read article": "아티클 읽기",
+  "The rest of this article couldn't be loaded.": "이 글의 나머지를 불러오지 못했습니다.",
+  "The title is too long.": "제목이 너무 깁니다.",
+  "This article is too long to publish.": "이 글은 너무 길어서 게시할 수 없습니다.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "아티클을 작성하세요. Markdown을 쓸 수 있어요: # 제목, **굵게**, _기울임_, - 목록, > 인용, |표|.",
+  "The cover image's address is too long.": "커버 이미지 주소가 너무 깁니다.",
+  "A table in this article is too wide to publish.": "이 글의 표가 너무 넓어서 게시할 수 없습니다."
 }

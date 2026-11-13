@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Hypersnap にアカウントを登録中",
   "The node asks for an unexpected amount of work. Check the node in settings.": "ノードが想定外の量の作業を求めています。設定でノードを確認してください。",
   "Your account hasn't reached the network yet. Try again in a minute.": "アカウントはまだネットワークに届いていません。1分後にもう一度お試しください。",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "ウォレットが3回署名を求めます。1回はアカウントの登録、残りの2回は署名キーの追加です。"
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "ウォレットが3回署名を求めます。1回はアカウントの登録、残りの2回は署名キーの追加です。",
+  "A part of this article is missing.": "この記事の一部が見つかりません。",
+  "An article needs a title.": "記事にはタイトルが必要です。",
+  "Articles": "記事",
+  "Casts to publish: {n}": "公開するキャスト：{n}",
+  "Cover image": "カバー画像",
+  "Edit": "編集",
+  "New article": "新しい記事",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "{total} 件のキャストのうち {n} 件しか送信されませんでした。残りを送るにはもう一度公開してください。",
+  "Part {n} of an article": "記事のパート {n}",
+  "Publish": "公開",
+  "Read article": "記事を読む",
+  "The rest of this article couldn't be loaded.": "この記事の続きを読み込めませんでした。",
+  "The title is too long.": "タイトルが長すぎます。",
+  "This article is too long to publish.": "この記事は長すぎて公開できません。",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "記事を書きましょう。Markdown が使えます：# 見出し、**太字**、_斜体_、- リスト、> 引用、|表|。",
+  "The cover image's address is too long.": "カバー画像のアドレスが長すぎます。",
+  "A table in this article is too wide to publish.": "この記事の表が広すぎて公開できません。"
 }

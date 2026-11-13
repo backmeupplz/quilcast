@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Регистрируем ваш аккаунт в Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "Узел требует неожиданный объём работы. Проверьте узел в настройках.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Ваш аккаунт ещё не дошёл до сети. Попробуйте снова через минуту.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Кошелёк запросит три подписи: одна регистрирует аккаунт, две добавляют ключ подписи."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Кошелёк запросит три подписи: одна регистрирует аккаунт, две добавляют ключ подписи.",
+  "A part of this article is missing.": "Части этой статьи не хватает.",
+  "An article needs a title.": "У статьи должен быть заголовок.",
+  "Articles": "Статьи",
+  "Casts to publish: {n}": "Кастов к публикации: {n}",
+  "Cover image": "Обложка",
+  "Edit": "Редактировать",
+  "New article": "Новая статья",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Отправлено только {n} из {total} кастов. Опубликуйте ещё раз, чтобы отправить остальные.",
+  "Part {n} of an article": "Часть {n} статьи",
+  "Publish": "Опубликовать",
+  "Read article": "Читать статью",
+  "The rest of this article couldn't be loaded.": "Не удалось загрузить остальную часть статьи.",
+  "The title is too long.": "Заголовок слишком длинный.",
+  "This article is too long to publish.": "Эта статья слишком длинная для публикации.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Напишите статью. Работает Markdown: # заголовки, **жирный**, _курсив_, - списки, > цитаты и |таблицы|.",
+  "The cover image's address is too long.": "Адрес обложки слишком длинный.",
+  "A table in this article is too wide to publish.": "Таблица в этой статье слишком широкая для публикации."
 }

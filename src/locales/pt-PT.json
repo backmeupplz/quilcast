@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "A registar a tua conta no Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "O nó pede uma quantidade de trabalho inesperada. Verifica o nó nas definições.",
   "Your account hasn't reached the network yet. Try again in a minute.": "A tua conta ainda não chegou à rede. Tenta novamente dentro de um minuto.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "A tua carteira vai pedir três assinaturas: uma regista a conta e duas adicionam a chave de assinatura."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "A tua carteira vai pedir três assinaturas: uma regista a conta e duas adicionam a chave de assinatura.",
+  "A part of this article is missing.": "Falta uma parte deste artigo.",
+  "An article needs a title.": "Um artigo precisa de um título.",
+  "Articles": "Artigos",
+  "Casts to publish: {n}": "Casts a publicar: {n}",
+  "Cover image": "Imagem de capa",
+  "Edit": "Editar",
+  "New article": "Novo artigo",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Só foram enviados {n} de {total} casts. Publique novamente para enviar o resto.",
+  "Part {n} of an article": "Parte {n} de um artigo",
+  "Publish": "Publicar",
+  "Read article": "Ler artigo",
+  "The rest of this article couldn't be loaded.": "Não foi possível carregar o resto deste artigo.",
+  "The title is too long.": "O título é demasiado longo.",
+  "This article is too long to publish.": "Este artigo é demasiado longo para ser publicado.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Escreva o seu artigo. O Markdown funciona: # títulos, **negrito**, _itálico_, - listas, > citações e |tabelas|.",
+  "The cover image's address is too long.": "O endereço da imagem de capa é demasiado longo.",
+  "A table in this article is too wide to publish.": "Uma tabela deste artigo é demasiado larga para ser publicada."
 }

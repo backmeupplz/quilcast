@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "正在 Hypersnap 上注册你的账号",
   "The node asks for an unexpected amount of work. Check the node in settings.": "节点要求的工作量异常。请在设置中检查节点。",
   "Your account hasn't reached the network yet. Try again in a minute.": "你的账号还没有到达网络。请一分钟后再试。",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "你的钱包会请求三次签名：一次用于注册账号，两次用于添加签名密钥。"
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "你的钱包会请求三次签名：一次用于注册账号，两次用于添加签名密钥。",
+  "A part of this article is missing.": "这篇文章缺少一部分。",
+  "An article needs a title.": "文章需要标题。",
+  "Articles": "文章",
+  "Casts to publish: {n}": "将发布的帖子：{n}",
+  "Cover image": "封面图片",
+  "Edit": "编辑",
+  "New article": "新文章",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "{total} 条帖子中只发出了 {n} 条。再次发布即可发送其余部分。",
+  "Part {n} of an article": "文章的第 {n} 部分",
+  "Publish": "发布",
+  "Read article": "阅读文章",
+  "The rest of this article couldn't be loaded.": "无法加载这篇文章的其余部分。",
+  "The title is too long.": "标题太长了。",
+  "This article is too long to publish.": "这篇文章太长，无法发布。",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "写下你的文章。支持 Markdown：# 标题、**粗体**、_斜体_、- 列表、> 引用和 |表格|。",
+  "The cover image's address is too long.": "封面图片的地址太长了。",
+  "A table in this article is too wide to publish.": "这篇文章里有个表格太宽，无法发布。"
 }

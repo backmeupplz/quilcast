@@ -708,6 +708,7 @@ export const P = {
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
   smile: 'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01',
   markdown: 'M3 6h18v12H3zM6 15V9l3 3 3-3v6M17 9v6M14.5 12.5 17 15l2.5-2.5',
+  article: 'M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5',
   link: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
   code: 'M16 18l6-6-6-6M8 6l-6 6 6 6',
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -846,31 +847,36 @@ const TAG_GOES_ON = /^[\p{Alphabetic}\p{N}_]/u
 /** Inline Markdown as HTML. `tags` are the cast's tags that may be linked (taggable), or null to keep mentions, channels,
  *  tags and bare links as text, inside a [label](url) that is a link already. `before` and `after` are the source characters
  *  just before and after `s` (the delimiters of the emphasis around it). */
-function inline(s: string, tags: Set<string> | null, before = '', after = ''): string {
+function inline(s: string, tags: Set<string> | null, before = '', after = '', re = INLINE): string {
   let out = ''
   let at = 0
   // matchAll works on a copy of INLINE, so the calls inside don't move this one along
-  for (const m of s.matchAll(INLINE)) {
+  for (const m of s.matchAll(re)) {
     const g = m.groups!
     out += html(s.slice(at, m.index))
     at = m.index + m[0].length
-    if (g.code !== undefined) out += `<code>${html(g.code.replace(/^ (.*[^ ].*) $/s, '$1'))}</code>`
+    // code and LaTeX are literal in article Markdown: an escape there keeps its backslash (unhide)
+    if (g.code !== undefined) out += `<code>${html(unhide(g.code.replace(/^ (.*[^ ].*) $/s, '$1'), re))}</code>`
     else if (g.src !== undefined) {
-      const u = safeUrl(bare(g.src))
+      const u = safeUrl(bare(unescaped(g.src, re)))
       out += u ? `<img class="md-img" src="${html(proxied(u))}" alt="${html(g.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : html(g.alt)
     } else if (g.label !== undefined) {
-      const u = safeUrl(bare(g.href))
+      const u = safeUrl(bare(unescaped(g.href, re)))
       // its text can say anything, so the app shows where it really goes before opening it (ui.tsx LinkSheet)
       // a link can't hold another, so a label's tags and mentions stay text
-      out += u ? ext(u, inline(g.label, null, '[', ']'), 'md-link') : inline(g.label, tags, '[', ']')
+      out += u ? ext(u, inline(g.label, null, '[', ']', re), 'md-link') : inline(g.label, tags, '[', ']', re)
     } else if (g.token !== undefined) {
       const notTag = g.token[0] === '#' && (NOT_BEFORE_TAG.test(m.index ? s.slice(Math.max(0, m.index - 2), m.index) : before) || TAG_GOES_ON.test(at < s.length ? s.slice(at, at + 2) : after))
-      out += tags && !notTag ? linkify(g.token, tags) : html(g.token)
-    } else if (g.bold !== undefined) out += `<strong>${inline(g.bold, tags, '*', '*')}</strong>`
-    else if (g.bold2 !== undefined) out += `<strong>${inline(g.bold2, tags, '_', '_')}</strong>`
-    else if (g.strike !== undefined) out += `<s>${inline(g.strike, tags, '~', '~')}</s>`
-    else if (g.em !== undefined) out += `<em>${inline(g.em, tags, '*', '*')}</em>`
-    else out += `<em>${inline(g.em2, tags, '_', '_')}</em>`
+      // an escape in a link is the character itself (its address mustn't carry the stand-in)
+      const token = unescaped(g.token, re)
+      out += tags && !notTag ? linkify(token, tags) : html(token)
+    } else if (g.bold !== undefined) out += `<strong>${inline(g.bold, tags, '*', '*', re)}</strong>`
+    else if (g.bold2 !== undefined) out += `<strong>${inline(g.bold2, tags, '_', '_', re)}</strong>`
+    else if (g.strike !== undefined) out += `<s>${inline(g.strike, tags, '~', '~', re)}</s>`
+    else if (g.under !== undefined) out += `<u>${inline(g.under, tags, '+', '+', re)}</u>`
+    else if (g.math !== undefined) out += `<code class="md-math">${html(unhide(g.math, re))}</code>`
+    else if (g.em !== undefined) out += `<em>${inline(g.em, tags, '*', '*', re)}</em>`
+    else out += `<em>${inline(g.em2, tags, '_', '_', re)}</em>`
   }
   return out + html(s.slice(at))
 }
@@ -1105,6 +1111,114 @@ export function markdown(text: string, tags = taggable(text)): string {
     }
   }
   flush()
+  return out
+}
+
+// article Markdown's inline styles add ++underline++ and $$LaTeX$$ (shown as its source: there's no TeX here)
+const ARTICLE_INLINE = new RegExp([/\$\$(?<math>[^\n]+?)\$\$/.source, INLINE.source, /\+\+(?=\S)(?<under>[\s\S]*?\S)\+\+(?!\+)/.source].join('|'), 'gu')
+// what a backslash escapes in article Markdown, each hidden as a private-use character while the line is parsed
+const ESCAPED = '\\*_~+[]'
+const hideEscapes = (s: string) => s.replace(/\\([\\*_~+[\]])/g, (_, c: string) => String.fromCharCode(0xe000 + ESCAPED.indexOf(c)))
+const unescaped = (s: string, re: RegExp) => (re === ARTICLE_INLINE ? s.replace(/[\ue000-\ue006]/g, (c) => ESCAPED[c.charCodeAt(0) - 0xe000]) : s)
+const unhide = (s: string, re: RegExp) => (re === ARTICLE_INLINE ? s.replace(/[\ue000-\ue006]/g, (c) => '\\' + ESCAPED[c.charCodeAt(0) - 0xe000]) : s)
+const showEscapes = (s: string) => s.replace(/[-]/g, (c) => `&#${ESCAPED.charCodeAt(c.charCodeAt(0) - 0xe000)};`)
+const ARTICLE_ITEM = /^((?: {2})*)(?:(-)|\d{1,9}\.) /
+const ARTICLE_DIVIDER = /^\|(?:\s*:?-+:?\s*\|)+\s*$/
+/** A table row's cells: plain text, where \| \\ and \- are escapes. */
+const articleCells = (l: string) => {
+  const out: string[] = []
+  let cur = ''
+  const s = l.trim().replace(/^\|/, '')
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\\' && '|\\-'.includes(s[i + 1] ?? 'x')) cur += s[++i]
+    else if (s[i] === '|') out.push(cur.trim()), (cur = '')
+    else cur += s[i]
+  }
+  if (cur.trim()) out.push(cur.trim())
+  return out
+}
+
+/** Article Markdown (format_version 1, FIP "Cast Format and Chained Casts" section 6) as HTML: a block per line,
+ *  # and ## headings (h2 and h3, under the article's title), > quotes, - and numbered lists (two spaces of indent a
+ *  level, numbered by the reader), --- dividers, ``` code blocks, $$ LaTeX (as its source), |tables|, and **bold**,
+ *  _italic_, ~~strike~~, ++underline++ and [links](…) inside lines. A line ending in an odd number of backslashes goes
+ *  on to the next one, a backslash escapes \ * _ ~ + [ ] (and at the start of a line, the block syntax), an empty line
+ *  is an empty paragraph. HTML shows as text and links go through safeUrl, as in markdown(). The text's mentions are
+ *  already put back (castText). Link previews and [$N] embeds are split off first (article.ts segments). */
+export function articleHtml(text: string, tags = taggable(text)): string {
+  // the private-use characters hideEscapes uses can't come from the text itself
+  const lines = text.replace(/[-]/g, '�').split('\n')
+  // Farcaster's editor can leave a space inside a closing ** ("**Embedded casts **"), which still reads as bold there
+  const tidy = (s: string) => s.replace(/\*\*(?=\S)([^*\n]*?\S)([ \t]+)\*\*(?!\*)/g, '**$1**$2')
+  const line = (s: string) => showEscapes(inline(tidy(hideEscapes(s)), tags, '', '', ARTICLE_INLINE)).replace(/\n/g, '<br>')
+  let out = ''
+  const lists: boolean[] = [] // the open lists, true for numbered ones
+  let quote = false
+  const closeLists = (depth = 0) => {
+    while (lists.length > depth) out += `</li></${lists.pop() ? 'ol' : 'ul'}>`
+  }
+  const endQuote = () => quote && ((out += '</blockquote>'), (quote = false))
+  for (let i = 0; i < lines.length; i++) {
+    let l = lines[i]
+    const fence = l.match(/^(`{3,})[^`]*$/)?.[1] || (l === '$$' ? '$$' : '')
+    if (fence) {
+      closeLists(), endQuote()
+      const end = lines.findIndex((x, j) => j > i && x === fence)
+      const stop = end < 0 ? lines.length : end
+      out += `<pre${fence === '$$' ? ' class="md-math"' : ''}><code>${html(lines.slice(i + 1, stop).join('\n'))}</code></pre>`
+      i = stop
+      continue
+    }
+    if (l.startsWith('|') && ARTICLE_DIVIDER.test(lines[i + 1] || '')) {
+      closeLists(), endQuote()
+      const head = articleCells(l)
+      const row = (cs: string[], tag: string) => `<tr>${head.map((_, k) => `<${tag}>${linkify(cs[k] || '', tags)}</${tag}>`).join('')}</tr>`
+      out += `<table><thead>${row(head, 'th')}</thead><tbody>`
+      for (i += 2; i < lines.length && lines[i].startsWith('|'); i++) out += row(articleCells(lines[i]), 'td')
+      i--
+      out += '</tbody></table>'
+      continue
+    }
+    // the lines a backslash carries on to are this block's
+    while ((l.match(/\\+$/)?.[0].length || 0) % 2 === 1) {
+      l = l.slice(0, -1)
+      if (i + 1 >= lines.length) break
+      l += '\n' + lines[++i]
+    }
+    // a backslash first: no block syntax (and it goes, unless it escapes what follows)
+    if (l[0] === '\\') {
+      closeLists(), endQuote()
+      out += `<p>${line(ESCAPED.includes(l[1] ?? 'x') ? l : l.slice(1))}</p>`
+      continue
+    }
+    const item = l.match(ARTICLE_ITEM)
+    if (item) {
+      endQuote()
+      const ordered = !item[2]
+      // a level deeper than the next one in comes in at that next one
+      const depth = Math.min(item[1].length / 2, lists.length)
+      closeLists(depth + 1)
+      if (lists.length === depth + 1 && lists[depth] !== ordered) closeLists(depth)
+      if (lists.length === depth + 1) out += '</li><li>'
+      else out += `<${ordered ? 'ol' : 'ul'}><li>`, lists.push(ordered)
+      out += line(l.slice(item[0].length))
+      continue
+    }
+    closeLists()
+    const q = l.match(/^>(?: |$)/)
+    if (q) {
+      if (!quote) (out += '<blockquote>'), (quote = true)
+      out += `<p>${line(l.slice(q[0].length))}</p>`
+      continue
+    }
+    endQuote()
+    const h = l.match(/^(#{1,2}) (.*)$/s)
+    if (h) out += `<h${h[1].length + 1}>${line(h[2])}</h${h[1].length + 1}>`
+    else if (l.trim() === '---') out += '<hr>'
+    else if (/^\$\$.+\$\$$/.test(l)) out += `<pre class="md-math"><code>${html(l.slice(2, -2))}</code></pre>`
+    else out += l ? `<p>${line(l)}</p>` : '<p class="md-gap"></p>'
+  }
+  closeLists(), endQuote()
   return out
 }
 

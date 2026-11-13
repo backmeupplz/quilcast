@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Enregistrement de votre compte sur Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "Le nœud demande une quantité de travail inattendue. Vérifiez le nœud dans les réglages.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Votre compte n’a pas encore atteint le réseau. Réessayez dans une minute.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Votre portefeuille demandera trois signatures : une enregistre le compte et deux ajoutent la clé de signature."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Votre portefeuille demandera trois signatures : une enregistre le compte et deux ajoutent la clé de signature.",
+  "A part of this article is missing.": "Une partie de cet article est manquante.",
+  "An article needs a title.": "Un article a besoin d’un titre.",
+  "Articles": "Articles",
+  "Casts to publish: {n}": "Casts à publier : {n}",
+  "Cover image": "Image de couverture",
+  "Edit": "Modifier",
+  "New article": "Nouvel article",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Seuls {n} casts sur {total} sont partis. Publiez à nouveau pour envoyer le reste.",
+  "Part {n} of an article": "Partie {n} d’un article",
+  "Publish": "Publier",
+  "Read article": "Lire l’article",
+  "The rest of this article couldn't be loaded.": "Impossible de charger la suite de cet article.",
+  "The title is too long.": "Le titre est trop long.",
+  "This article is too long to publish.": "Cet article est trop long pour être publié.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Écrivez votre article. Le Markdown fonctionne : # titres, **gras**, _italique_, - listes, > citations et |tableaux|.",
+  "The cover image's address is too long.": "L’adresse de l’image de couverture est trop longue.",
+  "A table in this article is too wide to publish.": "Un tableau de cet article est trop large pour être publié."
 }

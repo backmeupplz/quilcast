@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Registrerar ditt konto på Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "Noden ber om en oväntad mängd arbete. Kontrollera noden i inställningarna.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Ditt konto har inte nått nätverket än. Försök igen om en minut.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Din plånbok ber om tre signaturer: en registrerar kontot och två lägger till signeringsnyckeln."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Din plånbok ber om tre signaturer: en registrerar kontot och två lägger till signeringsnyckeln.",
+  "A part of this article is missing.": "En del av den här artikeln saknas.",
+  "An article needs a title.": "En artikel behöver en titel.",
+  "Articles": "Artiklar",
+  "Casts to publish: {n}": "Casts att publicera: {n}",
+  "Cover image": "Omslagsbild",
+  "Edit": "Redigera",
+  "New article": "Ny artikel",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Bara {n} av {total} casts skickades. Publicera igen för att skicka resten.",
+  "Part {n} of an article": "Del {n} av en artikel",
+  "Publish": "Publicera",
+  "Read article": "Läs artikeln",
+  "The rest of this article couldn't be loaded.": "Resten av den här artikeln gick inte att läsa in.",
+  "The title is too long.": "Titeln är för lång.",
+  "This article is too long to publish.": "Den här artikeln är för lång för att publiceras.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Skriv din artikel. Markdown fungerar: # rubriker, **fetstil**, _kursiv_, - listor, > citat och |tabeller|.",
+  "The cover image's address is too long.": "Omslagsbildens adress är för lång.",
+  "A table in this article is too wide to publish.": "En tabell i den här artikeln är för bred för att publiceras."
 }

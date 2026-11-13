@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "Mendaftarkan akunmu di Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "Node meminta jumlah kerja yang tidak wajar. Periksa node di pengaturan.",
   "Your account hasn't reached the network yet. Try again in a minute.": "Akunmu belum sampai ke jaringan. Coba lagi dalam semenit.",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Dompetmu akan meminta tiga tanda tangan: satu untuk mendaftarkan akun dan dua untuk menambahkan kunci tanda tangan."
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "Dompetmu akan meminta tiga tanda tangan: satu untuk mendaftarkan akun dan dua untuk menambahkan kunci tanda tangan.",
+  "A part of this article is missing.": "Sebagian artikel ini hilang.",
+  "An article needs a title.": "Artikel perlu judul.",
+  "Articles": "Artikel",
+  "Casts to publish: {n}": "Cast yang akan diterbitkan: {n}",
+  "Cover image": "Gambar sampul",
+  "Edit": "Edit",
+  "New article": "Artikel baru",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "Hanya {n} dari {total} cast yang terkirim. Terbitkan lagi untuk mengirim sisanya.",
+  "Part {n} of an article": "Bagian {n} dari sebuah artikel",
+  "Publish": "Terbitkan",
+  "Read article": "Baca artikel",
+  "The rest of this article couldn't be loaded.": "Sisa artikel ini tidak bisa dimuat.",
+  "The title is too long.": "Judulnya terlalu panjang.",
+  "This article is too long to publish.": "Artikel ini terlalu panjang untuk diterbitkan.",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "Tulis artikelmu. Markdown bisa dipakai: # judul, **tebal**, _miring_, - daftar, > kutipan, dan |tabel|.",
+  "The cover image's address is too long.": "Alamat gambar sampul terlalu panjang.",
+  "A table in this article is too wide to publish.": "Sebuah tabel di artikel ini terlalu lebar untuk diterbitkan."
 }

@@ -1191,5 +1191,22 @@
   "Registering your account on Hypersnap": "กำลังลงทะเบียนบัญชีของคุณบน Hypersnap",
   "The node asks for an unexpected amount of work. Check the node in settings.": "โหนดขอปริมาณงานที่ผิดปกติ ตรวจสอบโหนดในการตั้งค่า",
   "Your account hasn't reached the network yet. Try again in a minute.": "บัญชีของคุณยังไปไม่ถึงเครือข่าย ลองอีกครั้งในอีกหนึ่งนาที",
-  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "กระเป๋าเงินของคุณจะขอลายเซ็นสามครั้ง: หนึ่งครั้งลงทะเบียนบัญชี และอีกสองครั้งเพิ่มคีย์ลงนาม"
+  "Your wallet will ask for three signatures: one registers the account and two add the signing key.": "กระเป๋าเงินของคุณจะขอลายเซ็นสามครั้ง: หนึ่งครั้งลงทะเบียนบัญชี และอีกสองครั้งเพิ่มคีย์ลงนาม",
+  "A part of this article is missing.": "บทความนี้ขาดไปบางส่วน",
+  "An article needs a title.": "บทความต้องมีชื่อ",
+  "Articles": "บทความ",
+  "Casts to publish: {n}": "แคสต์ที่จะเผยแพร่: {n}",
+  "Cover image": "ภาพหน้าปก",
+  "Edit": "แก้ไข",
+  "New article": "บทความใหม่",
+  "Only {n} of {total} casts went out. Publish again to send the rest.": "ส่งไปแล้วเพียง {n} จาก {total} แคสต์ เผยแพร่อีกครั้งเพื่อส่งส่วนที่เหลือ",
+  "Part {n} of an article": "ส่วนที่ {n} ของบทความ",
+  "Publish": "เผยแพร่",
+  "Read article": "อ่านบทความ",
+  "The rest of this article couldn't be loaded.": "โหลดส่วนที่เหลือของบทความนี้ไม่ได้",
+  "The title is too long.": "ชื่อยาวเกินไป",
+  "This article is too long to publish.": "บทความนี้ยาวเกินกว่าจะเผยแพร่ได้",
+  "Write your article. Markdown works: # headings, **bold**, _italic_, - lists, > quotes and |tables|.": "เขียนบทความของคุณ ใช้ Markdown ได้: # หัวข้อ, **ตัวหนา**, _ตัวเอียง_, - รายการ, > คำพูด และ |ตาราง|",
+  "The cover image's address is too long.": "ที่อยู่ของภาพหน้าปกยาวเกินไป",
+  "A table in this article is too wide to publish.": "ตารางในบทความนี้กว้างเกินกว่าจะเผยแพร่ได้"
 }
