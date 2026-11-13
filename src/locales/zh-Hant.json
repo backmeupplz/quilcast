@@ -1235,5 +1235,10 @@
   "Relevance": "相關性",
   "The most liked and recast of the newest {n} matches": "最新 {n} 筆結果中按讚和轉發最多的",
   "Newest first": "最新優先",
-  "Best text match first": "文字最相符優先"
+  "Best text match first": "文字最相符優先",
+  "A scheduled thread can have up to {n} posts.": "排程串文最多可以有 {n} 則貼文。",
+  "{posted} of {total} posted": "已發布 {posted}/{total}",
+  "See what was posted": "查看已發布的內容",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} 則貼文中已有 {posted} 則發出。再次傳送此串文會讓它們重複發布。",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} 則貼文中已有 {posted} 則發出。其餘貼文將作為對最後一則的回覆發出。"
 }

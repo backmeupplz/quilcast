@@ -607,6 +607,8 @@ small.warn { color: var(--warn); }
 .draft-open .clamp { -webkit-line-clamp: 2; overflow-wrap: anywhere; }
 .draft.failed small { color: var(--danger, #e5484d); }
 .drafts > p.small { font-size: 13px; padding: 12px 4px; text-align: start; }
+.sent-note { margin: 4px 0 8px; padding: 8px 12px; border-radius: 12px; background: var(--soft); font-size: 14px; }
+.sent-note.warn { color: var(--danger, #e5484d); }
 .schedule-at { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 4px 0 8px; border-radius: 12px; background: var(--soft); }
 .schedule-at input { flex: 1; min-width: 0; font: inherit; color: inherit; background: transparent; border: 0; color-scheme: light dark; }
 .ctx { display: flex; gap: 10px; margin: 6px 0 2px; font-size: 14px; position: relative; }

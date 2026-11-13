@@ -1235,5 +1235,10 @@
   "Relevance": "Alaka",
   "The most liked and recast of the newest {n} matches": "En yeni {n} sonuç arasında en çok beğenilen ve recast edilenler",
   "Newest first": "Önce en yeni",
-  "Best text match first": "Önce en iyi metin eşleşmesi"
+  "Best text match first": "Önce en iyi metin eşleşmesi",
+  "A scheduled thread can have up to {n} posts.": "Zamanlanmış bir zincir en fazla {n} gönderi içerebilir.",
+  "{posted} of {total} posted": "{total} gönderiden {posted} tanesi paylaşıldı",
+  "See what was posted": "Paylaşılanları gör",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} gönderiden {posted} tanesi zaten paylaşıldı. Bu zinciri yeniden gönderirsen bunlar ikinci kez paylaşılır.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} gönderiden {posted} tanesi zaten paylaşıldı. Kalanlar sonuncusuna yanıt olarak paylaşılacak."
 }

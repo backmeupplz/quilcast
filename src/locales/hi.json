@@ -1235,5 +1235,10 @@
   "Relevance": "प्रासंगिकता",
   "The most liked and recast of the newest {n} matches": "नवीनतम {n} परिणामों में सबसे ज़्यादा पसंद और रीकास्ट किए गए",
   "Newest first": "सबसे नए पहले",
-  "Best text match first": "सबसे मिलता-जुलता टेक्स्ट पहले"
+  "Best text match first": "सबसे मिलता-जुलता टेक्स्ट पहले",
+  "A scheduled thread can have up to {n} posts.": "शेड्यूल किए गए थ्रेड में अधिकतम {n} पोस्ट हो सकती हैं।",
+  "{posted} of {total} posted": "{total} में से {posted} पोस्ट हुईं",
+  "See what was posted": "देखें क्या पोस्ट हुआ",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} में से {posted} पोस्ट पहले ही जा चुकी हैं। यह थ्रेड फिर से भेजने पर वे दूसरी बार पोस्ट होंगी।",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} में से {posted} पोस्ट पहले ही जा चुकी हैं। बाकी पोस्ट आख़िरी वाली के जवाब के रूप में जाएँगी।"
 }

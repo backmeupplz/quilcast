@@ -1235,5 +1235,10 @@
   "Relevance": "Relevans",
   "The most liked and recast of the newest {n} matches": "De mest gillade och recastade av de {n} senaste träffarna",
   "Newest first": "Nyaste först",
-  "Best text match first": "Bästa textträff först"
+  "Best text match first": "Bästa textträff först",
+  "A scheduled thread can have up to {n} posts.": "En schemalagd tråd kan ha högst {n} inlägg.",
+  "{posted} of {total} posted": "{posted} av {total} publicerade",
+  "See what was posted": "Se vad som publicerades",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} av {total} inlägg har redan publicerats. Skickar du tråden igen publiceras de en gång till.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} av {total} inlägg har redan publicerats. Resten publiceras som svar på det sista av dem."
 }

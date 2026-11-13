@@ -1235,5 +1235,10 @@
   "Relevance": "ความเกี่ยวข้อง",
   "The most liked and recast of the newest {n} matches": "ที่มีคนถูกใจและรีแคสต์มากที่สุดจาก {n} ผลลัพธ์ล่าสุด",
   "Newest first": "ใหม่สุดก่อน",
-  "Best text match first": "ข้อความตรงที่สุดก่อน"
+  "Best text match first": "ข้อความตรงที่สุดก่อน",
+  "A scheduled thread can have up to {n} posts.": "เธรดที่ตั้งเวลาไว้มีโพสต์ได้สูงสุด {n} โพสต์",
+  "{posted} of {total} posted": "โพสต์แล้ว {posted} จาก {total}",
+  "See what was posted": "ดูสิ่งที่โพสต์ไปแล้ว",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "โพสต์ไปแล้ว {posted} จาก {total} โพสต์ หากส่งเธรดนี้อีกครั้ง โพสต์เหล่านั้นจะถูกโพสต์ซ้ำ",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "โพสต์ไปแล้ว {posted} จาก {total} โพสต์ ส่วนที่เหลือจะถูกโพสต์เป็นการตอบกลับโพสต์ล่าสุด"
 }

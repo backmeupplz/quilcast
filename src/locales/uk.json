@@ -1235,5 +1235,10 @@
   "Relevance": "Релевантність",
   "The most liked and recast of the newest {n} matches": "Найбільше вподобані й рекастнуті з {n} найновіших результатів",
   "Newest first": "Спочатку нові",
-  "Best text match first": "Спочатку найкращі збіги"
+  "Best text match first": "Спочатку найкращі збіги",
+  "A scheduled thread can have up to {n} posts.": "Запланована гілка може мати щонайбільше {n} дописів.",
+  "{posted} of {total} posted": "Опубліковано {posted} з {total}",
+  "See what was posted": "Переглянути опубліковане",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Уже опубліковано {posted} з {total} дописів. Якщо надіслати гілку знову, вони вийдуть удруге.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Уже опубліковано {posted} з {total} дописів. Решта вийде відповідями на останній із них."
 }

@@ -1235,5 +1235,10 @@
   "Relevance": "Pertinenza",
   "The most liked and recast of the newest {n} matches": "I più apprezzati e ricondivisi tra i {n} risultati più recenti",
   "Newest first": "Prima i più recenti",
-  "Best text match first": "Prima la corrispondenza migliore"
+  "Best text match first": "Prima la corrispondenza migliore",
+  "A scheduled thread can have up to {n} posts.": "Un thread programmato può avere fino a {n} post.",
+  "{posted} of {total} posted": "{posted} di {total} pubblicati",
+  "See what was posted": "Vedi cosa è stato pubblicato",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} post su {total} sono già usciti. Inviare di nuovo questo thread li pubblica una seconda volta.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} post su {total} sono già usciti. Il resto uscirà come risposte all’ultimo."
 }

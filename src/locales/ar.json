@@ -1235,5 +1235,10 @@
   "Relevance": "الصلة",
   "The most liked and recast of the newest {n} matches": "الأكثر إعجابًا وإعادة نشر من أحدث {n} نتيجة",
   "Newest first": "الأحدث أولًا",
-  "Best text match first": "الأقرب للنص أولًا"
+  "Best text match first": "الأقرب للنص أولًا",
+  "A scheduled thread can have up to {n} posts.": "يمكن أن تضم السلسلة المجدولة {n} منشورًا كحد أقصى.",
+  "{posted} of {total} posted": "نُشر {posted} من {total}",
+  "See what was posted": "عرض ما نُشر",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "نُشر {posted} من {total} منشورات بالفعل. إرسال هذه السلسلة مجددًا سينشرها مرة ثانية.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "نُشر {posted} من {total} منشورات بالفعل. سيُنشر الباقي ردودًا على آخر منشور منها."
 }

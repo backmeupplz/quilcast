@@ -24,7 +24,7 @@ import { keySigned, keysOf } from './looks.mjs'
 import { pushTo, say } from './alerts.mjs'
 
 const MAX = 50
-const MAX_PARTS = 25
+export const MAX_PARTS = 25
 // a cast goes out at least a minute from now (this server's clock: the browser's may be off), at most 30 days on (a
 // key unused for longer may lapse)
 export const SOONEST = 60e3

@@ -1235,5 +1235,10 @@
   "Relevance": "Relevancia",
   "The most liked and recast of the newest {n} matches": "Los más gustados y recasteados de las {n} coincidencias más nuevas",
   "Newest first": "Más nuevos primero",
-  "Best text match first": "Mejor coincidencia de texto primero"
+  "Best text match first": "Mejor coincidencia de texto primero",
+  "A scheduled thread can have up to {n} posts.": "Un hilo programado puede tener hasta {n} publicaciones.",
+  "{posted} of {total} posted": "{posted} de {total} publicadas",
+  "See what was posted": "Ver lo publicado",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Ya se publicaron {posted} de {total} publicaciones. Si envías este hilo otra vez, se publicarán por segunda vez.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Ya se publicaron {posted} de {total} publicaciones. El resto se publicará como respuestas a la última."
 }

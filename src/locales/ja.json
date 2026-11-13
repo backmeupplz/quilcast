@@ -1235,5 +1235,10 @@
   "Relevance": "関連度",
   "The most liked and recast of the newest {n} matches": "新しい{n}件のうち、いいねとリキャストが多い順",
   "Newest first": "新しい順",
-  "Best text match first": "テキストの一致度順"
+  "Best text match first": "テキストの一致度順",
+  "A scheduled thread can have up to {n} posts.": "予約スレッドは最大{n}件の投稿までです。",
+  "{posted} of {total} posted": "{total}件中{posted}件投稿済み",
+  "See what was posted": "投稿済みのものを見る",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total}件中{posted}件はすでに投稿されています。このスレッドをもう一度送ると、それらが二重に投稿されます。",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total}件中{posted}件はすでに投稿されています。残りは最後の投稿への返信として投稿されます。"
 }

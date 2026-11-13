@@ -1235,5 +1235,10 @@
   "Relevance": "관련성",
   "The most liked and recast of the newest {n} matches": "최신 결과 {n}개 중 좋아요와 리캐스트가 많은 순",
   "Newest first": "최신순",
-  "Best text match first": "텍스트 일치순"
+  "Best text match first": "텍스트 일치순",
+  "A scheduled thread can have up to {n} posts.": "예약 스레드에는 최대 {n}개의 게시물을 담을 수 있어요.",
+  "{posted} of {total} posted": "{total}개 중 {posted}개 게시됨",
+  "See what was posted": "게시된 내용 보기",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total}개 중 {posted}개 게시물이 이미 게시되었어요. 이 스레드를 다시 보내면 두 번 게시돼요.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total}개 중 {posted}개 게시물이 이미 게시되었어요. 나머지는 마지막 게시물에 대한 답글로 게시돼요."
 }

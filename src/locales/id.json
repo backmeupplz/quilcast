@@ -1235,5 +1235,10 @@
   "Relevance": "Relevansi",
   "The most liked and recast of the newest {n} matches": "Yang paling disukai dan di-recast dari {n} hasil terbaru",
   "Newest first": "Terbaru dulu",
-  "Best text match first": "Teks paling cocok dulu"
+  "Best text match first": "Teks paling cocok dulu",
+  "A scheduled thread can have up to {n} posts.": "Utas terjadwal bisa berisi hingga {n} postingan.",
+  "{posted} of {total} posted": "{posted} dari {total} terposting",
+  "See what was posted": "Lihat yang sudah diposting",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} dari {total} postingan sudah terkirim. Mengirim utas ini lagi akan mempostingnya untuk kedua kalinya.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} dari {total} postingan sudah terkirim. Sisanya akan dikirim sebagai balasan untuk postingan terakhir."
 }

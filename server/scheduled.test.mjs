@@ -160,7 +160,11 @@ test('deleting the account drops its scheduled casts', async () => {
 test('submitTo: the node already having the message counts as sent, in any of its words; its reason otherwise', async () => {
   const answers = {
     '/hub/v1/submitMessage': [400, { errCode: 'bad_request.duplicate', presentable: false, name: 'HubError', code: 3, details: 'message has already been merged' }],
-    '/snap/v1/submitMessage': [400, { error: 'Failed to submit message', error_detail: 'status: InvalidArgument, message: "message already in the mempool"' }],
+    // Hypersnap (src/network/http_server.rs submit_message): a 400 whose error_detail is the gRPC status, its message the
+    // HubError as "<code>/<message>" (src/core/error.rs), the code bad_request.duplicate (mempool.rs) once more in the
+    // x-err-code metadata. The text alone, without the code, is matched too.
+    '/snap/v1/submitMessage': [400, { error: 'Failed to submit message', error_detail: 'status: InvalidArgument, message: "bad_request.duplicate/message has already been merged", details: [], metadata: MetadataMap { headers: {"x-err-code": "bad_request.duplicate"} }' }],
+    '/mempool/v1/submitMessage': [400, { error: 'Failed to submit message', error_detail: 'status: InvalidArgument, message: "message already in the mempool"' }],
     '/bad/v1/submitMessage': [400, { errCode: 'bad_request.validation_failure', details: 'invalid signer' }],
     '/snapbad/v1/submitMessage': [400, { error: 'Failed to submit message', error_detail: 'invalid signer' }],
     '/busy/v1/submitMessage': [503, { details: 'node is starting' }],
@@ -178,6 +182,7 @@ test('submitTo: the node already having the message counts as sent, in any of it
     assert.equal(await submitTo(at('ok'), bytes), 'ok')
     assert.equal(await submitTo(at('hub'), bytes), 'ok')
     assert.equal(await submitTo(at('snap'), bytes), 'ok')
+    assert.equal(await submitTo(at('mempool'), bytes), 'ok')
     await assert.rejects(submitTo(at('bad'), bytes), (e) => e.message === 'invalid signer' && !e.retry)
     await assert.rejects(submitTo(at('snapbad'), bytes), (e) => e.message === 'invalid signer' && !e.retry)
     await assert.rejects(submitTo(at('busy'), bytes), (e) => e.retry === true)

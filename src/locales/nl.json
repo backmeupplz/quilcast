@@ -1235,5 +1235,10 @@
   "Relevance": "Relevantie",
   "The most liked and recast of the newest {n} matches": "De meest gelikete en gerecaste van de nieuwste {n} resultaten",
   "Newest first": "Nieuwste eerst",
-  "Best text match first": "Beste tekstmatch eerst"
+  "Best text match first": "Beste tekstmatch eerst",
+  "A scheduled thread can have up to {n} posts.": "Een ingeplande thread kan maximaal {n} berichten hebben.",
+  "{posted} of {total} posted": "{posted} van {total} geplaatst",
+  "See what was posted": "Bekijk wat er geplaatst is",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} van {total} berichten zijn al geplaatst. Als je deze thread opnieuw verstuurt, worden ze een tweede keer geplaatst.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} van {total} berichten zijn al geplaatst. De rest wordt geplaatst als antwoorden op het laatste."
 }

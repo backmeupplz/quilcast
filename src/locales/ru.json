@@ -1235,5 +1235,10 @@
   "Relevance": "Релевантность",
   "The most liked and recast of the newest {n} matches": "Самые лайкаемые и рекастнутые из {n} новейших результатов",
   "Newest first": "Сначала новые",
-  "Best text match first": "Сначала лучшие совпадения"
+  "Best text match first": "Сначала лучшие совпадения",
+  "A scheduled thread can have up to {n} posts.": "В запланированном треде может быть не больше {n} постов.",
+  "{posted} of {total} posted": "Опубликовано {posted} из {total}",
+  "See what was posted": "Посмотреть опубликованное",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Уже опубликовано {posted} из {total} постов. Если отправить тред снова, они выйдут второй раз.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Уже опубликовано {posted} из {total} постов. Остальные выйдут ответами на последний из них."
 }

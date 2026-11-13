@@ -1235,5 +1235,10 @@
   "Relevance": "Liên quan",
   "The most liked and recast of the newest {n} matches": "Được thích và recast nhiều nhất trong {n} kết quả mới nhất",
   "Newest first": "Mới nhất trước",
-  "Best text match first": "Khớp văn bản nhất trước"
+  "Best text match first": "Khớp văn bản nhất trước",
+  "A scheduled thread can have up to {n} posts.": "Một chuỗi đã lên lịch có thể có tối đa {n} bài.",
+  "{posted} of {total} posted": "Đã đăng {posted}/{total}",
+  "See what was posted": "Xem những gì đã đăng",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Đã đăng {posted}/{total} bài. Gửi lại chuỗi này sẽ đăng chúng lần thứ hai.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Đã đăng {posted}/{total} bài. Phần còn lại sẽ được đăng dưới dạng trả lời bài cuối cùng."
 }

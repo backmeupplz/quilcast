@@ -736,10 +736,24 @@ export const dropDraft = (id: string) => keyFetch(`/api/drafts/${account!.fid}`,
 // post anything else. Not sealed like drafts: the server reads them to send them, and they're public once out.
 export type ScheduledPost = { text: string; media: string[] }
 export type Scheduled = { id: string; at: number; hash: string; hashes: string[]; status: 'scheduled' | 'posting' | 'posted' | 'failed'; posted: number; error?: string; draft?: Omit<Draft, 'id' | 'at'>; done?: number }
+/** The most posts one scheduled thread holds (server/scheduled.mjs MAX_PARTS). */
+export const MAX_SCHEDULED_PARTS = 25
+
+/** What's left of a failed thread whose first posts went out: its draft's posts that didn't, to go out as replies to
+ *  the last one that did (`parent`, its hash; `last`, its text). null when none went out, or when its draft doesn't line up with what was
+ *  signed (then the composer warns before it's all posted again). The composer leaves out an empty post past the
+ *  first, so the draft's posts are matched to the signed ones the same way. */
+export function unsent(s: Scheduled): { parts: Draft['parts']; parent: string; last: string } | null {
+  if (!s.draft || !(s.posted > 0) || s.posted >= s.hashes.length) return null
+  const signed = s.draft.parts.filter((p, i) => i === 0 || p.text.trim() || p.media.length)
+  if (signed.length !== s.hashes.length) return null
+  return { parts: signed.slice(s.posted), parent: s.hashes[s.posted - 1], last: signed[s.posted - 1].text }
+}
 
 /** Schedule a cast, or a thread (each next post replying to the one before, a second later), as `as` for `at` (Unix
  *  ms). `draft` is what the composer had, for the list and Edit. Returns the item, its first cast's hash included. */
 export async function schedule(posts: ScheduledPost[], o: { parent?: CastRef; channel?: string; quote?: CastRef; as?: Account; draft: Omit<Draft, 'id' | 'at'> }, at: number, id: string = crypto.randomUUID()): Promise<Scheduled> {
+  if (posts.length > MAX_SCHEDULED_PARTS) throw new Error(t('A scheduled thread can have up to {n} posts.', { n: MAX_SCHEDULED_PARTS }))
   const as = o.as || account!
   const url = `/api/scheduled/${as.fid}`
   // asked first so a key the node doesn't list yet is waited for (or replaced) before anything is signed with it

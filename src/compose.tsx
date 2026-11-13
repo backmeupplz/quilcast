@@ -242,15 +242,19 @@ function ScheduledList({ as, open, close }: { as: Account; open: (s: Scheduled) 
   if (!list) return <div class="drafts"><span class="spinner" /></div>
   const state = (s: Scheduled) =>
     s.status === 'posted' ? t('Posted') : s.status === 'failed' ? t('Failed: {reason}', { reason: s.error || '' }) : s.status === 'posting' ? t('Sending…') : s.error ? t('Trying again: {reason}', { reason: s.error }) : ''
+  // a thread whose first posts went out before it stopped (or while the node is tried again) says how far it got
+  const part = (s: Scheduled) => s.status !== 'posted' && s.posted > 0 && t('{posted} of {total} posted', { posted: s.posted, total: s.hashes.length })
   return (
     <div class="drafts">
       {!list.length && <p class="muted">{t('No scheduled casts.')}</p>}
       {list.map((s) => (
         <div class={`draft${s.status === 'failed' ? ' failed' : ''}`}>
-          <button class="draft-open" disabled={s.status === 'posting'} onClick={() => (s.status === 'posted' ? (close(), go(`/c/${s.hash}`)) : open(s))}>
+          {/* one the server is still sending, or trying again after its first posts went out, can't be changed */}
+          <button class="draft-open" disabled={s.status === 'posting' || (s.status === 'scheduled' && s.posted > 0)} onClick={() => (s.status === 'posted' ? (close(), go(`/c/${s.hash}`)) : open(s))}>
             <span class="clamp">{s.draft?.parts[0]?.text.trim() || '…'}</span>
-            <small class="muted">{[whenOf(s.at), (s.draft?.parts.length || 1) > 1 && t('Thread'), s.draft?.parent ? t('Reply') : s.draft?.quote ? t('Quote cast') : '', s.draft?.channel && `/${s.draft.channel}`, state(s)].filter(Boolean).join(' · ')}</small>
+            <small class="muted">{[whenOf(s.at), (s.draft?.parts.length || 1) > 1 && t('Thread'), s.draft?.parent ? t('Reply') : s.draft?.quote ? t('Quote cast') : '', s.draft?.channel && `/${s.draft.channel}`, part(s), state(s)].filter(Boolean).join(' · ')}</small>
           </button>
+          {part(s) && <button class="icon-btn" aria-label={t('See what was posted')} title={t('See what was posted')} onClick={() => (close(), go(`/c/${s.hash}`))}><Icon d={P.link} size={16} /></button>}
           {s.status !== 'posting' && (
             <button class="icon-btn" aria-label={s.status === 'scheduled' ? t('Cancel scheduled cast') : t('Remove from the list')} onClick={(e) => ((e.currentTarget.closest('.sheet') as HTMLElement)?.focus(), drop(s))}><Icon d={P.x} size={16} /></button>
           )}
@@ -287,6 +291,9 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   const [timing, setTiming] = useState(false)
   const [scheduledOpen, setScheduledOpen] = useState(showScheduled && canDraft)
   const [editing, setEditing] = useState<{ id: string; fid: number; status: Scheduled['status'] }>()
+  // the failed thread being edited had its first `posted` of `total` posts go out: only the rest is in the composer,
+  // or (`again`) all of it, to be posted a second time
+  const [gone, setGone] = useState<{ posted: number; total: number; again: boolean }>()
   const snap = (ps: Part[], ch?: string) => JSON.stringify([ps.map((p) => [p.text, p.files.map((f) => f.url)]), ch])
   const base = useRef<string>(undefined)
   base.current ??= snap(parts, channel)
@@ -306,10 +313,11 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
       setBusy(false)
     }
   }
-  const open = async (d: Draft) => {
+  // `stand` is the cast to reply to when the node can't find `d.parent` (yet)
+  const open = async (d: Draft, stand?: Cast) => {
     const [p, q] = await Promise.all([d.parent ? fetchCast(d.parent) : null, d.quote ? fetchCast(d.quote) : null])
     const ps = d.parts.map((x) => ({ ...newPart(), text: x.text, files: x.media.map((url) => ({ id: Math.random(), preview: url, video: isVid(url), url })) }))
-    setCtx({ parent: p || undefined, quote: q || undefined })
+    setCtx({ parent: p || stand, quote: q || undefined })
     setParts(ps)
     setChannel(d.channel)
     setAs(accounts.find((a) => a.done && a.fid === d.as) || account!)
@@ -321,7 +329,16 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   // a scheduled cast opens like a draft, with its time (a failed one too, to sign again, with a new key or time)
   const edit = async (s: Scheduled) => {
     if (!s.draft) return
-    await open({ ...s.draft, id: '', at: s.at })
+    // a failed thread whose first posts went out opens with only the rest, replying to the last one out, so they go
+    // out once; one whose posts can't be told apart opens whole, with a warning
+    const rest = s.status === 'failed' ? (await w()).unsent(s) : null
+    if (rest) {
+      const hash = `0x${rest.parent}`
+      const author = userOf(accounts.find((a) => a.done && a.fid === s.draft!.as) || as)
+      const stand = { hash, text: rest.last, timestamp: new Date(s.at).toISOString(), author, embeds: [], reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } as Cast
+      await open({ ...s.draft, parts: rest.parts, parent: hash, channel: undefined, quote: undefined, id: '', at: s.at }, stand)
+    } else await open({ ...s.draft, id: '', at: s.at })
+    setGone(s.status === 'failed' && s.posted > 0 ? { posted: s.posted, total: s.hashes.length, again: !rest } : undefined)
     setDraft(undefined)
     setEditing({ id: s.id, fid: as.fid!, status: s.status })
     setWhen(s.status === 'scheduled' ? s.at : undefined)
@@ -523,7 +540,8 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
             {canDraft && (empty || drafts) && !draft && !editing && !scheduledOpen && <button class={`link-btn${drafts ? ' on' : ''}`} aria-pressed={drafts} onClick={() => setDrafts(!drafts)}>{t('Drafts')}</button>}
             {canDraft && (empty || scheduledOpen) && !draft && !editing && !drafts && <button class={`link-btn${scheduledOpen ? ' on' : ''}`} aria-pressed={scheduledOpen} onClick={() => setScheduledOpen(!scheduledOpen)}>{t('Scheduled')}</button>}
           </span>
-          <AsPicker value={as} set={setAs} />
+          {/* a failed thread going on from its last post stays with the account that posted it */}
+          {!(gone && !gone.again) && <AsPicker value={as} set={setAs} />}
           <button class="btn" disabled={busy || !ready} onClick={send}>{busy ? t('Sending…') : when ? t('Schedule') : parts.length > 1 ? t('Post all') : parent ? t('Reply') : t('Cast')}</button>
         </div>
         {asking && (
@@ -542,6 +560,13 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
               onInput={(e) => setWhen(e.currentTarget.value ? new Date(e.currentTarget.value).getTime() || undefined : undefined)} />
             <button class="link-btn" onClick={() => (setWhen(undefined), setTiming(false))}>{editing ? t('Post now instead') : t('Clear')}</button>
           </div>
+        )}
+        {gone && !drafts && !scheduledOpen && (
+          <p class={`sent-note${gone.again ? ' warn' : ''}`} role={gone.again ? 'alert' : undefined}>
+            {gone.again
+              ? t('{posted} of {total} posts already went out. Sending this thread again posts them a second time.', { posted: gone.posted, total: gone.total })
+              : t('{posted} of {total} posts already went out. The rest goes out as replies to the last one.', { posted: gone.posted, total: gone.total })}
+          </p>
         )}
         {parent && !drafts && !scheduledOpen && (
           <div class="ctx">

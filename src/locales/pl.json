@@ -1235,5 +1235,10 @@
   "Relevance": "Trafność",
   "The most liked and recast of the newest {n} matches": "Najczęściej lubiane i recastowane spośród {n} najnowszych wyników",
   "Newest first": "Od najnowszych",
-  "Best text match first": "Od najlepiej pasujących"
+  "Best text match first": "Od najlepiej pasujących",
+  "A scheduled thread can have up to {n} posts.": "Zaplanowany wątek może mieć najwyżej {n} wpisów.",
+  "{posted} of {total} posted": "Opublikowano {posted} z {total}",
+  "See what was posted": "Zobacz, co opublikowano",
+  "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Opublikowano już {posted} z {total} wpisów. Ponowne wysłanie tego wątku opublikuje je drugi raz.",
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Opublikowano już {posted} z {total} wpisów. Reszta zostanie opublikowana jako odpowiedzi na ostatni z nich."
 }
