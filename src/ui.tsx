@@ -194,7 +194,7 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
 /** Text with Markdown (shared.ts markdown), or `plain`: only its links, mentions and channels made live. A cast's text
  *  passes `tags`, the tags Hypersnap indexed from its own text (taggable(c.text)): the text shown has its mentions put
  *  back in, or is a translation, and a tag that reads differently there would find nothing. */
-export function RichText({ text, class: cls = 'text', plain, tags, article }: { text: string; class?: string; plain?: boolean; tags?: Set<string>; article?: boolean }) {
+export function RichText({ text, class: cls = 'text', plain, tags, article }: { text: string; class?: string; plain?: boolean; tags?: Set<string>; article?: boolean | 'preview' }) {
   // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round. A link's click is
   // the link's, not the card's around it.
   // a Markdown picture opens in the image viewer, with the text's other pictures a swipe away, like a cast's embeds
@@ -215,7 +215,7 @@ export function RichText({ text, class: cls = 'text', plain, tags, article }: { 
     const label = a.classList.contains('md-link')
     if ((label || lookalike(a.href)) && a.host !== location.host && shell.link(a.href, { label })) e.preventDefault()
   }
-  return <div class={cls} dir="auto" onClick={click} onClickCapture={ask} onAuxClickCapture={ask} dangerouslySetInnerHTML={{ __html: plain ? linkify(text, tags) : article ? articleHtml(text, tags) : markdown(text, tags) }} />
+  return <div class={cls} dir="auto" onClick={click} onClickCapture={ask} onAuxClickCapture={ask} dangerouslySetInnerHTML={{ __html: plain ? linkify(text, tags) : article ? articleHtml(text, tags, article === 'preview') : markdown(text, tags) }} />
 }
 
 // long text in feeds folds at 10 lines; the button shows only when something is cut
@@ -1180,7 +1180,7 @@ function ArticleCard({ c }: { c: Cast }) {
       {cover && <Img class="fa-cover" src={sized(cover, 'w=1200')} srcset={srcsetOf(cover)} sizes={IMG_SIZES} />}
       <div class="fa-text">
         <b class="fa-title" dir="auto">{title}</b>
-        {opening && <RichText text={opening} class="text article-text fa-open" tags={taggable(c.text || '')} article />}
+        {opening && <RichText text={opening} class="text article-text fa-open" tags={taggable(c.text || '')} article="preview" />}
         <span class="fa-more">{t('Read article')}</span>
       </div>
     </div>

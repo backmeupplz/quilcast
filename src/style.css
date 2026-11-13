@@ -331,9 +331,10 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .article-text { font-size: 1.02em; line-height: 1.55; }
 .article-text p { margin: 0 0 0.45em; }
 .article-text .md-gap { min-height: 0.6em; }
-.article-text :is(h2, h3) { margin: 0.9em 0 0.35em; }
-.article-text h2 { font-size: 1.35em; }
-.article-text h3 { font-size: 1.15em; }
+.article-text :is(h2, h3, .md-head) { margin: 0.9em 0 0.35em; }
+.article-text :is(h2, .md-h2) { font-size: 1.35em; }
+.article-text :is(h3, .md-h3) { font-size: 1.15em; }
+.article-text .md-head { font-weight: 700; }
 .article-text li > p, .article-text blockquote p { margin: 0; }
 .article-text u { text-underline-offset: 2px; }
 .article-text pre.md-math code, .article-text code.md-math { font-style: italic; }

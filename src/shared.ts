@@ -1144,8 +1144,8 @@ const articleCells = (l: string) => {
  *  _italic_, ~~strike~~, ++underline++ and [links](…) inside lines. A line ending in an odd number of backslashes goes
  *  on to the next one, a backslash escapes \ * _ ~ + [ ] (and at the start of a line, the block syntax), an empty line
  *  is an empty paragraph. HTML shows as text and links go through safeUrl, as in markdown(). The text's mentions are
- *  already put back (castText). Link previews and [$N] embeds are split off first (article.ts segments). */
-export function articleHtml(text: string, tags = taggable(text)): string {
+ *  already put back (castText). With `preview` (an article's opening in the feed), headings are styled paragraphs. Link previews and [$N] embeds are split off first (article.ts segments). */
+export function articleHtml(text: string, tags = taggable(text), preview = false): string {
   // the private-use characters hideEscapes uses can't come from the text itself
   const lines = text.replace(/[-]/g, '�').split('\n')
   // Farcaster's editor can leave a space inside a closing ** ("**Embedded casts **"), which still reads as bold there
@@ -1213,7 +1213,9 @@ export function articleHtml(text: string, tags = taggable(text)): string {
     }
     endQuote()
     const h = l.match(/^(#{1,2}) (.*)$/s)
-    if (h) out += `<h${h[1].length + 1}>${line(h[2])}</h${h[1].length + 1}>`
+    // a preview in the feed has no title above it, so its headings are styled lines, not a heading level that skips one
+    if (h && preview) out += `<p class="md-head md-h${h[1].length + 1}">${line(h[2])}</p>`
+    else if (h) out += `<h${h[1].length + 1}>${line(h[2])}</h${h[1].length + 1}>`
     else if (l.trim() === '---') out += '<hr>'
     else if (/^\$\$.+\$\$$/.test(l)) out += `<pre class="md-math"><code>${html(l.slice(2, -2))}</code></pre>`
     else out += l ? `<p>${line(l)}</p>` : '<p class="md-gap"></p>'

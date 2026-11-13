@@ -158,7 +158,7 @@ export function body(d, version, now = Date.now()) {
     const cover = coverOf(c.embeds)
     const opening = cardOpening(all, c.embeds)
     return `<div class="fc-article">${cover ? img(sized(cover, 'w=1200'), 'fa-cover', srcsetOf(cover)) : ''}<div class="fa-text"><b class="fa-title" dir="auto">${esc(title)}</b>` +
-      `${opening ? `<div class="text article-text fa-open" dir="auto">${articleHtml(opening, taggable(c.text || ''))}</div>` : ''}<span class="fa-more">Read article</span></div></div>`
+      `${opening ? `<div class="text article-text fa-open" dir="auto">${articleHtml(opening, taggable(c.text || ''), true)}</div>` : ''}<span class="fa-more">Read article</span></div></div>`
   }
   const count = (x) => `<span>${x ? n(x) : ''}</span>`
   const cast = (c) => {
