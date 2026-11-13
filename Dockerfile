@@ -12,9 +12,10 @@ RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline --no-audit --no
 COPY . .
 # the server tests start the real server, which serves dist/, so build first. Then gather what the runtime
 # needs into /out, so the image gets one layer for it instead of one per COPY.
-# The server imports the helpers it shares with the app as TypeScript (Node strips the types).
+# The server imports the helpers it shares with the app as TypeScript (Node strips the types); server/image.test.mjs
+# checks that every src/ file the server imports is copied here.
 RUN npm run build && npm test \
-  && mkdir -p /out/src && cp -r dist server collect package.json /out/ && cp -r src/shared.ts src/fx.ts src/removed.json src/locales /out/src/
+  && mkdir -p /out/src && cp -r dist server collect package.json /out/ && cp -r src/shared.ts src/fx.ts src/article.ts src/removed.json src/locales /out/src/
 
 # the runtime's own install, built alongside: browser-only packages (viem, hls.js, preact…) are devDependencies, so
 # this keeps just what server/ imports. Pruning the full install instead took ~4 minutes on the Easypanel host
