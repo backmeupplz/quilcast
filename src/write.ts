@@ -4,8 +4,9 @@ import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting,
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
-import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
+import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
+import { search } from './pow.worker.ts'
 import { castEmbeds, queue } from './shared.ts'
 
 /** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
@@ -82,6 +83,45 @@ async function replaceSigner(a = account!) {
   for (let i = 0; !(await signerListed(fresh(a))); i++) {
     if (i >= 10) throw new Error("Your new key hasn't reached the network yet. Try again in a minute.")
     await sleep(3000)
+  }
+}
+
+/** The native FID (from 2^32) that `addr` is the custody of, 0 when it has none. */
+export async function nativeFid(addr: string) {
+  const r = await fetch(`${settings.node}/v1/nativeAccount?custody=${addr}`)
+  const j = await r.json().catch(() => ({}))
+  if (r.ok) return Number(j.fid)
+  if (/NotFound/.test(j.error_detail)) return 0
+  throw new Error(j.error || `HTTP ${r.status}`)
+}
+
+/** Ask Hypersnap for a free native FID: proof of work, then the custody's signature. The FID shows up in nativeFid()
+ *  once shard 0 takes it, usually within seconds. */
+export async function registerNative(c: Custody) {
+  const info = await (await fetch(`${settings.node}/v1/nativeRegistration`)).json()
+  const bits = info.minDifficultyBits
+  if (!info.active) throw new Error('Hypersnap is not taking new accounts right now. Try again later.')
+  // 22 bits takes seconds; a node asking for far more would keep the phone busy forever
+  if (!(bits >= 1 && bits <= 28)) throw new Error('The node asks for an unexpected amount of work. Check the node in settings.')
+  const nonce = await mine(powPrefix(c.address, info.anchorBlockHash), bits)
+  await submit(await nativeOnboard(c, info.anchorBlockHeight, info.anchorBlockHash, nonce, bits))
+}
+
+/** Every core searches its own share of the nonces; this thread does it alone where workers can't run (tests). */
+async function mine(prefix: Uint8Array, bits: number): Promise<Uint8Array> {
+  if (typeof Worker === 'undefined') return search(prefix, bits, 0, 1)
+  const n = Math.min(navigator.hardwareConcurrency || 4, 8)
+  const ws = Array.from({ length: n }, () => new Worker(new URL('./pow.worker.ts', import.meta.url), { type: 'module' }))
+  try {
+    return await new Promise((ok, fail) =>
+      ws.forEach((w, i) => {
+        w.onmessage = (e) => ok(e.data)
+        w.onerror = () => fail(new Error("Couldn't start the proof of work in this browser."))
+        w.postMessage([prefix, bits, i, n])
+      }),
+    )
+  } finally {
+    ws.forEach((w) => w.terminate())
   }
 }
 

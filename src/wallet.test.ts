@@ -3,12 +3,11 @@ import { test } from 'node:test'
 
 test('a wallet signs exactly what the phrase key would, switching to the chain each signature is for', async () => {
   const { privateKeyToAccount } = await import('viem/accounts')
-  const { fnameProof, hex, keyAdd, keyCustody, rawEd } = await import('./fc.ts')
+  const { hex, keyAdd, keyCustody, nativeOnboard, rawEd } = await import('./fc.ts')
   const priv = new Uint8Array(32).fill(7)
   const acct = privateKeyToAccount(`0x${hex(priv)}`)
   // a stand-in EIP-1193 wallet that, like MetaMask, refuses typed data for a chain other than the one it's on
   let chain = 10
-  let sent: any
   const asked: string[] = []
   ;(globalThis as any).window = {
     ethereum: {
@@ -23,7 +22,6 @@ test('a wallet signs exactly what the phrase key would, switching to the chain e
           return acct.signTypedData(t)
         }
         if (method === 'personal_sign') return acct.signMessage({ message: { raw: params[0] } })
-        if (method === 'eth_sendTransaction') return (sent = { ...params[0], chain }), '0x' + 'ab'.repeat(32)
         throw new Error(`unexpected ${method}`)
       },
     },
@@ -38,18 +36,13 @@ test('a wallet signs exactly what the phrase key would, switching to the chain e
   try {
     const signer = rawEd(new Uint8Array(32).fill(9))
     assert.equal(hex((await keyAdd(3, wallet, signer, 5)).msg), hex((await keyAdd(3, key, signer, 5)).msg))
-    assert.deepEqual(await fnameProof('alice', 1792500000, wallet), await fnameProof('alice', 1792500000, key))
+    // native registration is signed for Optimism (chainId 10)
+    const anchor = '0x' + 'cd'.repeat(32)
+    assert.equal(hex((await nativeOnboard(wallet, 50485360, anchor, new Uint8Array(8), 22)).msg), hex((await nativeOnboard(key, 50485360, anchor, new Uint8Array(8), 22)).msg))
     const login = new TextEncoder().encode('{"method":"generateToken","params":{"expiresAt":2,"timestamp":1}}')
     assert.equal(hex(await wallet.message(login)), hex(await key.message(login)))
   } finally {
     Date.now = now
   }
   assert.ok(asked.includes('wallet_switchEthereumChain'))
-  // registration goes to IdGateway on Optimism, paying the fee, with the wallet itself as recovery
-  const { ID_GATEWAY, registerData } = await import('./eth.ts')
-  await w.register(address, 123n)
-  assert.equal(sent.chain, 10)
-  assert.equal(sent.to.toLowerCase(), ID_GATEWAY)
-  assert.equal(sent.data, registerData(address))
-  assert.equal(BigInt(sent.value), 123n)
 })

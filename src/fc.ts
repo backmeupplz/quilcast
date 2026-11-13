@@ -4,6 +4,7 @@
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { blake3 } from '@noble/hashes/blake3.js'
+import { sha256 } from '@noble/hashes/sha2.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { HDKey } from '@scure/bip32'
 import type { Ed } from './keys.ts'
@@ -206,20 +207,28 @@ export function base58(b: Uint8Array) {
   return s
 }
 
+/** What the proof of work hashes, before its nonce. */
+export const powPrefix = (custody: string, anchor: string) => concat(utf8('hyper.onboard.pow:'), unhex(custody), unhex(anchor))
+
+/** Hypersnap native registration (NATIVE_ONBOARD, type 160): fid 0 and no signer; the custody signs a recent shard-0
+ *  block and the proof of work, and the network assigns an FID from 2^32 (hypersnap docs/native-registration.md). */
+export async function nativeOnboard(custody: Custody, height: number, anchor: string, nonce: Uint8Array, bits: number) {
+  const commitment = sha256(concat(utf8('hyper.onboard.pow.commitment:'), nonce, word(bits).slice(28)))
+  const sig = await custody.typed({
+    domain: { name: 'HypersnapNativeOnboard', version: '1', chainId: 10 },
+    primaryType: 'HyperNativeOnboard',
+    types: { HyperNativeOnboard: [n('custody', 'address'), n('anchor_block_height', 'uint64'), n('anchor_block_hash', 'bytes32'), n('gate_commitment', 'bytes32')] },
+    message: { custody: custody.address, anchor_block_height: height, anchor_block_hash: anchor, gate_commitment: '0x' + hex(commitment) },
+  })
+  const body = pb([1, unhex(custody.address)], [2, sig], [3, height], [4, unhex(anchor)], [5, pb([1, nonce], [2, bits])])
+  const data = pb([1, 160], [3, fcNow()], [4, 1], [1160, body])
+  const hash = blake3(data, { dkLen: 20 })
+  return { msg: pb([1, data], [2, hash], [3, 1], [7, data]), hash: hex(hash) }
+}
+
 /** KEY_REMOVE signed by the signer itself (Hypersnap self-revocation): no custody signature needed. */
 export const keyRemoveSelf = (fid: number, signer: Ed, nonce: number) =>
   envelope(MT.KEY_REMOVE, fid, pb([1, signer.pub], [3, 2], [4, fcNow() + 3600], [5, nonce]), signer)
-
-/** Signature the fname server wants to assign `name` to the custody address. */
-export async function fnameProof(name: string, timestamp: number, custody: Custody) {
-  const sig = await custody.typed({
-    domain: { name: 'Farcaster name verification', version: '1', chainId: 1, verifyingContract: '0xe3be01d99baa8db9905b33a3ca391238234b79d1' },
-    primaryType: 'UserNameProof',
-    types: { UserNameProof: [n('name', 'string'), n('timestamp', 'uint256'), n('owner', 'address')] },
-    message: { name, timestamp, owner: custody.address },
-  })
-  return { owner: custody.address, signature: '0x' + hex(sig) }
-}
 
 /** Turn "@alice hi" into mention-free text plus byte positions (and the names as typed), resolving names via `lookup`: undefined means no such
  *  user, and a rejection (the node failed) leaves the whole "@name" as text rather than mentioning a shorter name. */

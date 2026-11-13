@@ -268,9 +268,12 @@ export function get<T = any>(path: string, q: Record<string, string | number | u
     const r = await fetch(url)
     // the status rides along, so a caller can tell "not there" (404) from "the node is down" (5xx)
     if (!r.ok) throw Object.assign(new Error((await r.text().catch(() => '')) || `HTTP ${r.status}`), { status: r.status })
-    return r.json()
+    return JSON.parse(await r.text(), fids)
   }, fresh)
 }
+// Hypersnap writes native FIDs (2^32 and up) as strings so they survive JSON; they're exact as numbers far past that
+const fid = (v: unknown) => (typeof v === 'string' && /^\d{10,15}$/.test(v) ? Number(v) : v)
+export const fids = (k: string, v: unknown) => (/fid$/i.test(k) ? fid(v) : /(fids|mentions)$/i.test(k) && Array.isArray(v) ? v.map(fid) : v)
 
 // what the signed-in user recently liked/recast, so buttons render filled; `mineVersion` bumps when it loads
 export const mine = { likes: new Set<string>(), recasts: new Set<string>() }
