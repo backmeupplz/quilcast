@@ -3,7 +3,7 @@ import { test } from 'node:test'
 
 // fc.ts expects a browser here and there; this is just enough of one
 ;(globalThis as any).addEventListener = () => {}
-import { assemble, cardOpening, classify, plainOpening, coverOf, fromNode, headOf, isArticle, isArticlePart, loadArticle, maybeArticle, partText, segments, splitArticle, type Part } from './article.ts'
+import { assemble, cardOpening, classify, classifyPart, plainOpening, coverOf, fromNode, fromV2, headOf, isArticle, isArticlePart, loadArticle, maybeArticle, partNow, partText, segments, splitArticle, type Part } from './article.ts'
 import { castBody, hex, mentions } from './fc.ts'
 import { articleHtml } from './shared.ts'
 
@@ -63,6 +63,63 @@ test("a part without format_version 1 is an article's when its first cast is one
   assert.equal((await classify(get, again))?.hash, '0e'.repeat(20))
   assert.equal(asked.length, 2)
   await assert.rejects(classify(get, msg(H('0f'), { text: 'part', chain: { root: { fid: 1, hash: H('5a') }, index: 1, count: 2 } })))
+})
+
+// how a node with farcasterorg/hypersnap#69 answers in its /v2 API: the same casts, with format_version and chain
+const v2 = (hash: string, o: object = {}, fid = 1) => ({ hash, author: { fid, username: 'farcaster' }, text: 'gm', timestamp: '2026-11-12T23:03:36.000Z', embeds: [], mentioned_profiles: [], mentioned_profiles_ranges: [], replies: { count: 0 }, ...o })
+const V2_ROOT = v2('d5'.repeat(20), { text: 'Introducing Farcaster Articles!', embeds: [{ url: 'https://imagedelivery.net/x/cover/original', metadata: {} }], format_version: 1, chain: { index: 0, count: 2 } })
+
+test("a /v2 cast with its format fields reads like the /v1 one, and one without them isn't known", () => {
+  const root = fromV2(V2_ROOT)!
+  assert.ok(isArticle(root))
+  assert.deepEqual(root, { fid: 1, hash: 'd5'.repeat(20), at: Math.round((Date.parse('2026-11-12T23:03:36Z') - Date.UTC(2021, 0, 1)) / 1000), text: 'Introducing Farcaster Articles!', mentions: [], positions: [], embeds: [{ url: 'https://imagedelivery.net/x/cover/original' }], format: 1, chain: { index: 0, count: 2 } })
+  assert.equal(partNow(root), root)
+  // a later part: the root's hash is bare hex here (0x in /v1); mentions and cast embeds as /v1 has them
+  const part = fromV2(v2('0x' + 'db'.repeat(20), {
+    text: 'hi  and ', mentioned_profiles: [{ fid: 2, username: 'v' }, { fid: '4294967296', username: 'n' }], mentioned_profiles_ranges: [{ start: 3, end: 3 }, { start: 8, end: 8 }],
+    embeds: [{ cast_id: { fid: 533, hash: '0x' + 'fe'.repeat(20) }, cast: {} }], format_version: 1, chain: { root: { fid: 1, hash: 'd5'.repeat(20) }, index: 1, count: 2 },
+  }))!
+  assert.equal(part.hash, 'db'.repeat(20))
+  assert.deepEqual(part.chain, { root: { fid: 1, hash: 'd5'.repeat(20) }, index: 1, count: 2 })
+  assert.deepEqual([part.mentions, part.positions], [[2, 4294967296], [3, 8]])
+  assert.deepEqual(part.embeds, [{ cast_id: { fid: 533, hash: 'fe'.repeat(20) } }])
+  assert.equal(partText(part, (fid) => ({ 2: 'v', 4294967296: 'n' })[fid]), 'hi @v and @n')
+  assert.equal(partNow(part), part)
+  // a plain cast says so; a part not in article Markdown leaves it to its first cast; the chain rules still hold
+  assert.equal(partNow(fromV2(v2('04'.repeat(20), { format_version: 0 }))), null)
+  assert.equal(partNow(fromV2(v2('05'.repeat(20), { format_version: 0, chain: { root: { fid: 1, hash: 'd5'.repeat(20) }, index: 1, count: 2 } }))), undefined)
+  assert.equal(partNow(fromV2(v2('06'.repeat(20), { format_version: 1, chain: { root: { fid: 2, hash: 'd5'.repeat(20) }, index: 1, count: 2 } }))), null, "someone else's root")
+  // an older node, a search result or a cast it can't place: the node's /v1 API has to say
+  assert.equal(fromV2(v2('07'.repeat(20))), undefined)
+  assert.equal(fromV2(v2('08'.repeat(20), { format_version: 1, timestamp: undefined })), undefined)
+  assert.equal(fromV2(v2('09', { format_version: 1 })), undefined)
+})
+
+test("a /v2 part not in article Markdown asks its first cast through /v2, and through /v1 only when the node can't say", async () => {
+  const asked: string[] = []
+  const casts: Record<string, object> = { ['c1'.repeat(20)]: v2('c1'.repeat(20), { format_version: 1, chain: { index: 0, count: 2 } }), ['c2'.repeat(20)]: v2('c2'.repeat(20), { format_version: 0, chain: { index: 0, count: 2 } }), ['c3'.repeat(20)]: v2('c3'.repeat(20)), ['c4'.repeat(20)]: v2('c4'.repeat(20), { format_version: 1, chain: { index: 0, count: 2 } }, 2) }
+  const get = async (path: string) => {
+    asked.push(path.split('?')[0])
+    const q = new URLSearchParams(path.split('?')[1])
+    if (path.startsWith('/v2/')) return casts[q.get('identifier')!] ? { cast: casts[q.get('identifier')!] } : null
+    return q.get('hash') === '0x' + 'c3'.repeat(20) ? msg(H('c3'), { formatVersion: 1, chain: { index: 0, count: 2 } }) : null
+  }
+  const part = (root: string, fid = 1) => fromV2(v2('0d'.repeat(20), { format_version: 0, chain: { root: { fid, hash: root.repeat(20) }, index: 1, count: 2 } }, fid))!
+  assert.equal((await classifyPart(get, part('c1'), true))?.hash, '0d'.repeat(20))
+  assert.equal(await classifyPart(get, part('c2'), true), null, "a chain that isn't an article")
+  assert.deepEqual(asked.splice(0), ['/v2/farcaster/cast', '/v2/farcaster/cast'])
+  // a root without the fields (a node mid-upgrade) is asked about in /v1
+  assert.equal((await classifyPart(get, part('c3'), true))?.hash, '0d'.repeat(20))
+  assert.deepEqual(asked.splice(0), ['/v2/farcaster/cast', '/v1/castById'])
+  // a /v2 lookup is by hash alone, so a root by someone else isn't the author's article
+  assert.equal(await classifyPart(get, part('c4', 1), true), null)
+  // and one the node doesn't have is a failure
+  await assert.rejects(classifyPart(get, part('c5'), true))
+  // an article's cast or a plain one needs no lookup at all
+  asked.length = 0
+  assert.equal((await classifyPart(get, fromV2(V2_ROOT)!, true))?.hash, 'd5'.repeat(20))
+  assert.equal(await classifyPart(get, fromV2(v2('04'.repeat(20), { format_version: 0, text: 'A title' }))!, true), null)
+  assert.deepEqual(asked, [])
 })
 
 test('only casts that could be part of an article are looked up', () => {

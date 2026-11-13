@@ -2,7 +2,7 @@
 // loaded on demand so readers never download the crypto.
 import { drop, dropEd, hex, keep, newEd, SECRETS, secretsOf, type Secrets } from './keys.ts'
 import { isLocal } from './local.ts'
-import { classify, loadArticle, maybeArticle, partText, type Article, type Part } from './article.ts'
+import { classify, classifyPart, fromV2, loadArticle, maybeArticle, partNow, partText, type Article, type Part } from './article.ts'
 import { LINK_RE, queue, safeUrl, toUrl } from './shared.ts'
 import { checkSpam } from './spam.ts'
 
@@ -388,9 +388,10 @@ export const isMe = (id: string) => !!account?.fid && (id === String(account.fid
 export const posting = new Map<string, Cast>()
 
 // --- Farcaster Articles (article.ts) ---
-// Hypersnap's /v2 casts don't say which casts are articles, so a cast that could be one (maybeArticle) is looked up
-// once in the node's /v1 API, four at a time. `parts` has the answers: the cast as an article's first or later part,
-// or null. A failed lookup isn't kept.
+// A node with farcasterorg/hypersnap#69 says in each /v2 cast whether it's part of an article (fromV2), so only a later
+// part not in article Markdown needs its first cast asked about. On an older node a cast that could be one
+// (maybeArticle) is looked up once in the node's /v1 API, four at a time. `parts` has the answers: the cast as an
+// article's first or later part, or null. A failed lookup isn't kept.
 const parts = new Map<string, Part | null>()
 const asked = new Map<string, Promise<Part | null>>()
 const lookups = queue(4)
@@ -406,14 +407,20 @@ const keepKnown = (hash: string, p: Part | null) => {
   parts.set(hash, p)
 }
 /** What's known so far about `c` being part of an article: the Part, null when it isn't, undefined when not asked. */
-export const articleNow = (c: Cast): Part | null | undefined => (parts.has(c.hash) ? parts.get(c.hash) : c.article !== undefined ? c.article : maybeArticle(c) ? undefined : null)
+export function articleNow(c: Cast): Part | null | undefined {
+  if (parts.has(c.hash)) return parts.get(c.hash)
+  if (c.article !== undefined) return c.article
+  const x = fromV2(c)
+  return x ? partNow(x) : maybeArticle(c) ? undefined : null
+}
 /** `c` as an article's first cast or a later part, or null. */
 export function articleOf(c: Cast): Promise<Part | null> {
   const now = articleNow(c)
   if (now !== undefined) return Promise.resolve(now)
   let p = asked.get(c.hash)
   if (!p) {
-    p = lookups(async () => classify(v1, await v1(`/v1/castById?fid=${c.author.fid}&hash=0x${c.hash}`))).then((part) => {
+    const x = fromV2(c)
+    p = lookups(async () => (x ? classifyPart(v1, x, true) : classify(v1, await v1(`/v1/castById?fid=${c.author.fid}&hash=0x${c.hash}`)))).then((part) => {
       keepKnown(c.hash, part)
       return part
     }, () => null).finally(() => asked.delete(c.hash))

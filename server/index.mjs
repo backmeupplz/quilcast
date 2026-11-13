@@ -11,7 +11,7 @@ import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
 import { castText, imagesIn, queue, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
-import { classify, coverOf, headOf, isArticle, maybeArticle, plainOpening } from '../src/article.ts'
+import { classify, classifyPart, coverOf, fromV2, headOf, isArticle, maybeArticle, partNow, plainOpening } from '../src/article.ts'
 import { clientIp, fetchJson, gate, imageInfo, keep, lru, parseJson, picInfo, readJson, readText, safeGet } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
@@ -853,17 +853,22 @@ async function nodeJson(path) {
   if (!r.ok) throw new Error(`node answered ${r.status}`)
   return r.json()
 }
-// Farcaster Articles (src/article.ts): /v2 casts don't say which casts are articles, so one that could be (maybeArticle) is
-// looked up in the node's /v1 API: the cast as an article's first or later part, or null. Kept, as a cast never
-// changes; a failure is null and isn't kept. Eight at a time, so a page of casts doesn't flood the node.
+// Farcaster Articles (src/article.ts): a node with farcasterorg/hypersnap#69 says in each /v2 cast whether it's part of an
+// article (fromV2), so only a later part not in article Markdown has its first cast asked about. On an older node a cast
+// that could be one (maybeArticle) is looked up in the node's /v1 API: the cast as an article's first or later part, or
+// null. Kept, as a cast never changes; a failure is null and isn't kept. Eight at a time, so a page of casts doesn't
+// flood the node.
 const formats = new Map()
 const formatLookups = queue(8)
 function articleOf(c) {
   const hash = String(c?.hash || '').replace(/^0x/, '').toLowerCase()
-  if (!c?.author?.fid || !/^[0-9a-f]{40}$/.test(hash) || !maybeArticle(c)) return Promise.resolve(null)
+  if (!c?.author?.fid || !/^[0-9a-f]{40}$/.test(hash)) return Promise.resolve(null)
+  const x = fromV2(c)
+  const now = x ? partNow(x) : maybeArticle(c) ? undefined : null
+  if (now !== undefined) return Promise.resolve(now)
   let p = formats.get(hash)
   if (!p) {
-    p = formatLookups(async () => classify(nodeJson, await nodeJson(`/v1/castById?fid=${c.author.fid}&hash=0x${hash}`)))
+    p = formatLookups(async () => (x ? classifyPart(nodeJson, x, true) : classify(nodeJson, await nodeJson(`/v1/castById?fid=${c.author.fid}&hash=0x${hash}`))))
     keep(formats, 5000, hash, p)
     p.catch(() => formats.get(hash) === p && formats.delete(hash))
   }

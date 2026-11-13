@@ -5,7 +5,9 @@
 // opening; its one embed, if any, is the cover image. Each later cast holds whole blocks of text, then embeds of one
 // kind. Clients that don't know articles see a thread, as each cast replies to the one before it.
 //
-// Hypersnap's /v2 casts leave both fields out, so they're read from the node's /v1 messages (castById, castsByFid).
+// Hypersnap's /v2 casts carry both (`format_version`, `chain`) since farcasterorg/hypersnap#69; on a node from before,
+// or a cast not read from its message (a search result), they're left out and read from the node's /v1 messages
+// (castById, castsByFid).
 // Shared by the app (api.ts, ui.tsx, articles.tsx) and the server (index.mjs, home.mjs, profile.mjs).
 import { castText, isImg, isVid, MAX_EMBEDS, safeUrl, unmarkdown } from './shared.ts'
 
@@ -77,23 +79,57 @@ export const isArticle = (p: Part | null | undefined): p is Part & { chain: Chai
 /** A later cast of a chain (classify tells whether its chain is an article). */
 export const isArticlePart = (p: Part | null | undefined): p is Part & { chain: Chain & { root: CastId } } => !!p?.chain?.root
 
+/** A /v2 cast as a Part, from the fields a node with farcasterorg/hypersnap#69 adds (`format_version`, `chain` with a
+ *  bare hex root hash); undefined when they're left out (an older node, a search result), so the node's /v1 API has
+ *  to be asked. The text is the node's, without its mentions, which `mentioned_profiles_ranges` puts back (partText). */
+export function fromV2(c: any): Part | undefined {
+  const format = uint(c?.format_version)
+  const fid = uint(c?.author?.fid)
+  const hash = hash40(c?.hash)
+  const time = Date.parse(c?.timestamp)
+  if (format === undefined || !fid || !hash || !Number.isFinite(time)) return
+  const embeds: Embed[] = (Array.isArray(c.embeds) ? c.embeds : []).flatMap((e: any): Embed[] => {
+    if (typeof e?.url === 'string') return [{ url: e.url }]
+    const id = castId(e?.cast_id)
+    return id ? [{ cast_id: id }] : []
+  })
+  // a mention is where its range starts (its end is the same); one the node couldn't name still counts
+  const ranges: any[] = Array.isArray(c.mentioned_profiles_ranges) ? c.mentioned_profiles_ranges : []
+  const named: any[] = Array.isArray(c.mentioned_profiles) ? c.mentioned_profiles : []
+  const mentions: number[] = [], positions: number[] = []
+  ranges.forEach((r, i) => {
+    const at = uint(r?.start), who = uint(named[i]?.fid)
+    if (at !== undefined && who !== undefined) mentions.push(who), positions.push(at)
+  })
+  return { fid, hash, at: Math.round((time - FARCASTER_EPOCH) / 1000), text: typeof c.text === 'string' ? c.text : '', mentions, positions, embeds, format, chain: chainOf(c.chain, fid) }
+}
+/** Farcaster timestamps count seconds from 2021-01-01. */
+const FARCASTER_EPOCH = Date.UTC(2021, 0, 1)
+
+/** What a Part says by itself: it when it's an article's first cast or a later part in article Markdown, null when it's
+ *  neither, undefined when its chain's first cast has to say (classify). */
+export const partNow = (x: Part | null | undefined): Part | null | undefined =>
+  isArticle(x) ? x : !isArticlePart(x) ? null : x.format === ARTICLE ? x : undefined
+
 /** `m` (a /v1 message) as an article's first cast or a later part, or null. A part says it's in article Markdown;
  *  one that doesn't (the FIP only says it SHOULD) is one when its first cast is an article, which `get` asks for. */
-export async function classify(get: (path: string) => Promise<any>, m: any): Promise<Part | null> {
-  const x = fromNode(m)
-  if (isArticle(x)) return x
-  if (!isArticlePart(x)) return null
-  if (x.format === ARTICLE) return x
-  const { fid, hash } = x.chain.root
+export const classify = (get: (path: string) => Promise<any>, m: any) => classifyPart(get, fromNode(m))
+
+/** `x` as an article's first cast or a later part, or null (classify). `v2`: `x` came from a /v2 cast with its format
+ *  fields (fromV2), so its first cast is asked for the same way, and through /v1 only when the node leaves them out. */
+export async function classifyPart(get: (path: string) => Promise<any>, x: Part | null, v2 = false): Promise<Part | null> {
+  const now = partNow(x)
+  if (now !== undefined) return now
+  const { fid, hash } = (x as Part & { chain: Chain & { root: CastId } }).chain.root
   const key = `${fid}:${hash}`
   // each root is asked about once; one the node doesn't have (yet) is a failure, so nothing is kept from it
   let is = roots.get(key)
   if (!is) {
-    is = get(`/v1/castById?fid=${fid}&hash=0x${hash}`).then((r) => {
-      const root = fromNode(r)
+    const v1 = async () => fromNode(await get(`/v1/castById?fid=${fid}&hash=0x${hash}`))
+    is = (v2 ? get(`/v2/farcaster/cast?identifier=${hash}&type=hash`).then((r) => (r?.cast ? fromV2(r.cast) : null) ?? v1()) : v1()).then((root) => {
       // (never shown: a failed lookup)
       if (!root) throw new RangeError('no such cast')
-      return isArticle(root) && root.hash === hash
+      return isArticle(root) && root.fid === fid && root.hash === hash
     })
     if (roots.size >= 2000) roots.delete(roots.keys().next().value!)
     roots.set(key, is)
@@ -104,7 +140,7 @@ export async function classify(get: (path: string) => Promise<any>, m: any): Pro
 const roots = new Map<string, Promise<boolean>>()
 
 type Shown = { text?: string; parent_hash?: string | null; parent_author?: { fid: number | null }; author?: { fid: number }; embeds?: Embed[]; replies?: { count?: number } }
-/** Whether a cast from the /v2 API (which leaves format_version and chain out) could be part of an article, so it's
+/** Whether a cast from the /v2 API, without format_version and chain (fromV2), could be part of an article, so it's
  *  worth asking the node: the first cast of one is a cast that isn't a reply, whose text is one line or a line and
  *  an empty line, with at most the cover for an embed, and that the next cast replies to; a later cast replies to
  *  the author's own cast. */

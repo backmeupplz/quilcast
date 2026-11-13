@@ -20,6 +20,8 @@ import { verify } from '../scripts/verify.mjs'
 
 const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(srv.address().port)))
 let internalHits = 0
+// the casts asked for in the node's /v1 castById, as 40 hex digits
+const castByIdAsked = []
 const internal = createServer((q, r) => (internalHits++, r.end('secret')))
 const internalPort = await listen(internal)
 const evil = '$& $\' $` "><script>alert(1)</script>'
@@ -36,6 +38,7 @@ const orAsked = []
 const hookHits = []
 const node = createServer(async (q, r) => {
   const u = new URL(q.url, 'http://x')
+  if (u.pathname === '/v1/castById') castByIdAsked.push(String(u.searchParams.get('hash')).replace(/^0x/, ''))
   r.setHeader('content-type', 'application/json')
   // Base: fid 77's card (token 0x4d) is collected, nothing else is
   if (u.pathname === '/rpc') {
@@ -81,6 +84,11 @@ const node = createServer(async (q, r) => {
   if (u.pathname === '/v1/castById' && u.searchParams.get('hash') === '0x' + 'f3'.repeat(20)) return (r.statusCode = 500), r.end('{}')
   if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === 'f3'.repeat(20))
     return r.end(JSON.stringify({ cast: { hash: 'f3'.repeat(20), text: 'Not sure\n\nwhat this is', timestamp: '2026-11-13T03:03:36Z', embeds: [], author: { fid: 31, username: 'mars', display_name: 'Mars' }, reactions: {}, replies: { count: 0 } } }))
+  // the same with a node that says each cast's format (farcasterorg/hypersnap#69): 0xf5… is an article, 0xf6… a plain cast
+  if (u.pathname === '/v2/farcaster/cast' && ['f5', 'f6'].some((x) => u.searchParams.get('identifier') === x.repeat(20))) {
+    const article = u.searchParams.get('identifier') === 'f5'.repeat(20)
+    return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: 'Moons of Mars\n\nPhobos is **close**.', timestamp: '2026-11-13T03:03:36Z', embeds: [], author: { fid: 31, username: 'mars', display_name: 'Mars' }, reactions: {}, replies: { count: 1 }, format_version: article ? 1 : 0, ...(article && { chain: { index: 0, count: 2 } }) } }))
+  }
   if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === 'f1'.repeat(20))
     return r.end(JSON.stringify({ cast: { hash: 'f1'.repeat(20), text: 'Gardens <of> Mars\n\n## Soil\nIt is **red**.', timestamp: '2026-11-13T03:03:36Z', embeds: [{ url: 'https://imagedelivery.net/a/cover/original' }], author: { fid: 31, username: 'mars', display_name: 'Mars' }, reactions: {}, replies: { count: 1 } } }))
   // pinnable casts: fid 7 wrote 0x7a…, 0x7b… and 0x7c…, and the reply 0x7d…; asking for a 0x5e… cast finds the node
@@ -1180,6 +1188,13 @@ test("an article's page shares its title, opening and cover, and says it's an Ar
   // a plain cast stays a cast
   const plain = await (await fetch(`${base}/c/${'f2'.repeat(20)}`)).text()
   assert.ok(!plain.includes('"@type":"Article"'))
+  // a node that says each cast's format needs no /v1 lookup: an article shares as one, a plain cast as a cast
+  const said = await (await fetch(`${base}/c/${'f5'.repeat(20)}`)).text()
+  assert.match(said, /<meta property="og:title" content="Moons of Mars · Mars \(@mars\) on Quilcast"/)
+  assert.match(said, /<meta property="og:description" content="Phobos is close\."/)
+  const plainSaid = await (await fetch(`${base}/c/${'f6'.repeat(20)}`)).text()
+  assert.match(plainSaid, /<meta property="og:title" content="Mars \(@mars\) on Quilcast"/)
+  assert.ok(castByIdAsked.includes('f1'.repeat(20)) && !castByIdAsked.some((h) => h === 'f5'.repeat(20) || h === 'f6'.repeat(20)), 'no /v1 lookup')
   // and when the node can't say, the page shares as a cast
   const unsure = await (await fetch(`${base}/c/${'f3'.repeat(20)}`)).text()
   assert.match(unsure, /<meta property="og:title" content="Mars \(@mars\) on Quilcast"/)
