@@ -1228,5 +1228,12 @@
   "Thread": "Fio",
   "Too many scheduled casts. Cancel some first.": "Demasiados casts agendados. Cancela alguns primeiro.",
   "Trying again: {reason}": "A tentar novamente: {reason}",
-  "Your scheduled cast couldn't be posted": "Não foi possível publicar o teu cast agendado"
+  "Your scheduled cast couldn't be posted": "Não foi possível publicar o teu cast agendado",
+  "Sort by": "Ordenar por",
+  "Top": "Em destaque",
+  "Recent": "Recentes",
+  "Relevance": "Relevância",
+  "The most liked and recast of the newest {n} matches": "Os mais gostados e recastados dos {n} resultados mais recentes",
+  "Newest first": "Mais recentes primeiro",
+  "Best text match first": "Melhor correspondência primeiro"
 }

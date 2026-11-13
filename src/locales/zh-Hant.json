@@ -1228,5 +1228,12 @@
   "Thread": "串文",
   "Too many scheduled casts. Cancel some first.": "預約的 cast 太多了。請先取消一些。",
   "Trying again: {reason}": "正在重試：{reason}",
-  "Your scheduled cast couldn't be posted": "你預約的 cast 未能發布"
+  "Your scheduled cast couldn't be posted": "你預約的 cast 未能發布",
+  "Sort by": "排序",
+  "Top": "熱門",
+  "Recent": "最新",
+  "Relevance": "相關性",
+  "The most liked and recast of the newest {n} matches": "最新 {n} 筆結果中按讚和轉發最多的",
+  "Newest first": "最新優先",
+  "Best text match first": "文字最相符優先"
 }

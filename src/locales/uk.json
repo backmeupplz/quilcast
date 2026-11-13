@@ -1228,5 +1228,12 @@
   "Thread": "Тред",
   "Too many scheduled casts. Cancel some first.": "Забагато запланованих кастів. Спершу скасуйте деякі.",
   "Trying again: {reason}": "Нова спроба: {reason}",
-  "Your scheduled cast couldn't be posted": "Не вдалося опублікувати запланований каст"
+  "Your scheduled cast couldn't be posted": "Не вдалося опублікувати запланований каст",
+  "Sort by": "Сортування",
+  "Top": "Популярні",
+  "Recent": "Нові",
+  "Relevance": "Релевантність",
+  "The most liked and recast of the newest {n} matches": "Найбільше вподобані й рекастнуті з {n} найновіших результатів",
+  "Newest first": "Спочатку нові",
+  "Best text match first": "Спочатку найкращі збіги"
 }

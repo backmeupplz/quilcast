@@ -1228,5 +1228,12 @@
   "Thread": "Thread",
   "Too many scheduled casts. Cancel some first.": "Te veel ingeplande casts. Annuleer er eerst een paar.",
   "Trying again: {reason}": "Opnieuw proberen: {reason}",
-  "Your scheduled cast couldn't be posted": "Je ingeplande cast kon niet worden geplaatst"
+  "Your scheduled cast couldn't be posted": "Je ingeplande cast kon niet worden geplaatst",
+  "Sort by": "Sorteren op",
+  "Top": "Top",
+  "Recent": "Nieuwste",
+  "Relevance": "Relevantie",
+  "The most liked and recast of the newest {n} matches": "De meest gelikete en gerecaste van de nieuwste {n} resultaten",
+  "Newest first": "Nieuwste eerst",
+  "Best text match first": "Beste tekstmatch eerst"
 }

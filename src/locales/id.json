@@ -1228,5 +1228,12 @@
   "Thread": "Utas",
   "Too many scheduled casts. Cancel some first.": "Terlalu banyak cast terjadwal. Batalkan beberapa dulu.",
   "Trying again: {reason}": "Mencoba lagi: {reason}",
-  "Your scheduled cast couldn't be posted": "Cast terjadwalmu tidak dapat diposting"
+  "Your scheduled cast couldn't be posted": "Cast terjadwalmu tidak dapat diposting",
+  "Sort by": "Urutkan",
+  "Top": "Teratas",
+  "Recent": "Terbaru",
+  "Relevance": "Relevansi",
+  "The most liked and recast of the newest {n} matches": "Yang paling disukai dan di-recast dari {n} hasil terbaru",
+  "Newest first": "Terbaru dulu",
+  "Best text match first": "Teks paling cocok dulu"
 }

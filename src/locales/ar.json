@@ -1228,5 +1228,12 @@
   "Thread": "سلسلة",
   "Too many scheduled casts. Cancel some first.": "كاستات مجدولة كثيرة جدًا. ألغِ بعضها أولًا.",
   "Trying again: {reason}": "إعادة المحاولة: {reason}",
-  "Your scheduled cast couldn't be posted": "تعذّر نشر الكاست المجدول"
+  "Your scheduled cast couldn't be posted": "تعذّر نشر الكاست المجدول",
+  "Sort by": "ترتيب حسب",
+  "Top": "الأبرز",
+  "Recent": "الأحدث",
+  "Relevance": "الصلة",
+  "The most liked and recast of the newest {n} matches": "الأكثر إعجابًا وإعادة نشر من أحدث {n} نتيجة",
+  "Newest first": "الأحدث أولًا",
+  "Best text match first": "الأقرب للنص أولًا"
 }

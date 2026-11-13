@@ -1228,5 +1228,12 @@
   "Thread": "Tråd",
   "Too many scheduled casts. Cancel some first.": "För många schemalagda casts. Avbryt några först.",
   "Trying again: {reason}": "Försöker igen: {reason}",
-  "Your scheduled cast couldn't be posted": "Din schemalagda cast kunde inte publiceras"
+  "Your scheduled cast couldn't be posted": "Din schemalagda cast kunde inte publiceras",
+  "Sort by": "Sortera efter",
+  "Top": "Topp",
+  "Recent": "Senaste",
+  "Relevance": "Relevans",
+  "The most liked and recast of the newest {n} matches": "De mest gillade och recastade av de {n} senaste träffarna",
+  "Newest first": "Nyaste först",
+  "Best text match first": "Bästa textträff först"
 }

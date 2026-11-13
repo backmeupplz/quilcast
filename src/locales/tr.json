@@ -1228,5 +1228,12 @@
   "Thread": "Dizi",
   "Too many scheduled casts. Cancel some first.": "Çok fazla planlanmış cast var. Önce bazılarını iptal et.",
   "Trying again: {reason}": "Yeniden deneniyor: {reason}",
-  "Your scheduled cast couldn't be posted": "Planlanmış cast'in paylaşılamadı"
+  "Your scheduled cast couldn't be posted": "Planlanmış cast'in paylaşılamadı",
+  "Sort by": "Sırala",
+  "Top": "Öne çıkan",
+  "Recent": "En yeni",
+  "Relevance": "Alaka",
+  "The most liked and recast of the newest {n} matches": "En yeni {n} sonuç arasında en çok beğenilen ve recast edilenler",
+  "Newest first": "Önce en yeni",
+  "Best text match first": "Önce en iyi metin eşleşmesi"
 }

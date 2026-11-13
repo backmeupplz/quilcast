@@ -1228,5 +1228,12 @@
   "Thread": "스레드",
   "Too many scheduled casts. Cancel some first.": "예약한 캐스트가 너무 많습니다. 먼저 몇 개를 취소하세요.",
   "Trying again: {reason}": "다시 시도 중: {reason}",
-  "Your scheduled cast couldn't be posted": "예약한 캐스트를 게시하지 못했습니다"
+  "Your scheduled cast couldn't be posted": "예약한 캐스트를 게시하지 못했습니다",
+  "Sort by": "정렬",
+  "Top": "인기",
+  "Recent": "최신",
+  "Relevance": "관련성",
+  "The most liked and recast of the newest {n} matches": "최신 결과 {n}개 중 좋아요와 리캐스트가 많은 순",
+  "Newest first": "최신순",
+  "Best text match first": "텍스트 일치순"
 }

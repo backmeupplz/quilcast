@@ -1228,5 +1228,12 @@
   "Thread": "Wątek",
   "Too many scheduled casts. Cancel some first.": "Za dużo zaplanowanych castów. Najpierw anuluj kilka.",
   "Trying again: {reason}": "Ponowna próba: {reason}",
-  "Your scheduled cast couldn't be posted": "Nie udało się opublikować zaplanowanego castu"
+  "Your scheduled cast couldn't be posted": "Nie udało się opublikować zaplanowanego castu",
+  "Sort by": "Sortuj według",
+  "Top": "Najlepsze",
+  "Recent": "Najnowsze",
+  "Relevance": "Trafność",
+  "The most liked and recast of the newest {n} matches": "Najczęściej lubiane i recastowane spośród {n} najnowszych wyników",
+  "Newest first": "Od najnowszych",
+  "Best text match first": "Od najlepiej pasujących"
 }

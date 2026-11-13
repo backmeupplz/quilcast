@@ -1228,5 +1228,12 @@
   "Thread": "Chuỗi",
   "Too many scheduled casts. Cancel some first.": "Quá nhiều cast đã lên lịch. Hãy hủy bớt trước.",
   "Trying again: {reason}": "Đang thử lại: {reason}",
-  "Your scheduled cast couldn't be posted": "Không thể đăng cast đã lên lịch của bạn"
+  "Your scheduled cast couldn't be posted": "Không thể đăng cast đã lên lịch của bạn",
+  "Sort by": "Sắp xếp theo",
+  "Top": "Nổi bật",
+  "Recent": "Mới nhất",
+  "Relevance": "Liên quan",
+  "The most liked and recast of the newest {n} matches": "Được thích và recast nhiều nhất trong {n} kết quả mới nhất",
+  "Newest first": "Mới nhất trước",
+  "Best text match first": "Khớp văn bản nhất trước"
 }

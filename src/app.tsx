@@ -5,7 +5,7 @@ import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follo
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, hasTag, n, newOnTop, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
+import { castText, n, newOnTop, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
@@ -15,6 +15,7 @@ import { checkAccounts, spamAccountOf, spamAt } from './spam.ts'
 import { alertsOn, canPush, KINDS, refreshAlerts, setAlerts, setKinds, spamChanged, type Kind } from './alerts.ts'
 import { listSkip, pinKey, usePinnedCast } from './castpin.ts'
 import { MOST, searchCasts } from './castsearch.ts'
+import { searchPage, sortOf, sortParam, TOP } from './searchsort.ts'
 import { findChannels, getChannel, type Channel } from './channels.ts'
 import { LightDark, QuorumAside, QuorumCompose, setWalletOpen, useWalletOpen } from './quorum.tsx'
 import './style.css'
@@ -1354,8 +1355,12 @@ function Search() {
   const params = new URLSearchParams(location.search)
   const [q, setQ] = useState(params.get('q') || '')
   const [tab, setTab] = useState<'people' | 'casts' | 'channels'>(params.get('t') === 'casts' ? 'casts' : params.get('t') === 'channels' ? 'channels' : 'people')
+  // the order of the Casts tab the user picked (null: the term's default, searchsort.ts), kept in the URL as ?s= when
+  // it's not that default
+  const [picked, setPicked] = useState<string | null>(params.get('s'))
   const [people, setPeople] = useState<User[] | null>(null)
   const [term, setTerm] = useState(q.trim())
+  const sort = sortOf(picked, term)
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => input.current?.focus(), [])
   // a #hashtag tapped in a cast here, or Back to an earlier search, is still this page: it takes the search from the URL
@@ -1367,6 +1372,7 @@ function Search() {
       setQ(q)
       setTerm(q.trim())
       setTab(tb === 'casts' ? 'casts' : tb === 'channels' ? 'channels' : 'people')
+      setPicked(p.get('s'))
     }
     addEventListener('popstate', f)
     return () => removeEventListener('popstate', f)
@@ -1376,7 +1382,9 @@ function Search() {
     return () => clearTimeout(t)
   }, [q])
   useEffect(() => {
-    history.replaceState(null, '', term || tab === 'channels' ? `/search?${new URLSearchParams({ ...(term && { q: term }), ...(tab !== 'people' && { t: tab }) })}` : '/search')
+    history.replaceState(null, '', term || tab === 'channels' ? `/search?${new URLSearchParams({ ...(term && { q: term }), ...(tab !== 'people' && { t: tab }), ...(tab === 'casts' && sortParam(picked, term) && { s: sortParam(picked, term) }) })}` : '/search')
+  }, [term, tab, picked])
+  useEffect(() => {
     setPeople(null)
     if (tab === 'people' && term) findUsers(term).then((us) => setPeople(us.slice(0, 25)), () => setPeople([]))
   }, [term, tab])
@@ -1393,7 +1401,15 @@ function Search() {
       {tab === 'channels' && <ChannelList q={term} />}
       {!term && tab === 'people' && <Customized />}
       {term && tab === 'people' && (people === null ? <div class="spinner" /> : people.length ? people.map((u) => <UserRow u={u} />) : <div class="note">{t('No one matches “{term}”.', { term })}</div>)}
-      {term && tab === 'casts' && <Feed k={`s${term}`} empty={t('No casts match “{term}”.', { term })} load={(cursor) => get('/v2/farcaster/cast/search', { q: term, limit: 25, cursor, ...(hasTag(term) && { sort_type: 'desc_chronological' }) }).then((r) => r.result || r)} />}
+      {term && tab === 'casts' && (
+        <div class="search-sort">
+          <div class="seg" role="group" aria-label={t('Sort by')}>
+            {([['top', t('Top')], ['recent', t('Recent')], ['relevance', t('Relevance')]] as const).map(([k, label]) => <button type="button" class={sort === k ? 'on' : ''} aria-pressed={sort === k} onClick={() => setPicked(k)}>{label}</button>)}
+          </div>
+          <small>{sort === 'top' ? t('The most liked and recast of the newest {n} matches', { n: TOP }) : sort === 'recent' ? t('Newest first') : t('Best text match first')}</small>
+        </div>
+      )}
+      {term && tab === 'casts' && <Feed k={`s${sort}:${term}`} empty={t('No casts match “{term}”.', { term })} load={(cursor) => searchPage(get, term, sort, cursor)} />}
     </>
   )
 }

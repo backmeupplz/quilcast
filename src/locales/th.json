@@ -1228,5 +1228,12 @@
   "Thread": "เธรด",
   "Too many scheduled casts. Cancel some first.": "แคสต์ที่ตั้งเวลาไว้มากเกินไป ยกเลิกบางรายการก่อน",
   "Trying again: {reason}": "กำลังลองอีกครั้ง: {reason}",
-  "Your scheduled cast couldn't be posted": "โพสต์แคสต์ที่ตั้งเวลาไว้ไม่สำเร็จ"
+  "Your scheduled cast couldn't be posted": "โพสต์แคสต์ที่ตั้งเวลาไว้ไม่สำเร็จ",
+  "Sort by": "เรียงตาม",
+  "Top": "ยอดนิยม",
+  "Recent": "ล่าสุด",
+  "Relevance": "ความเกี่ยวข้อง",
+  "The most liked and recast of the newest {n} matches": "ที่มีคนถูกใจและรีแคสต์มากที่สุดจาก {n} ผลลัพธ์ล่าสุด",
+  "Newest first": "ใหม่สุดก่อน",
+  "Best text match first": "ข้อความตรงที่สุดก่อน"
 }

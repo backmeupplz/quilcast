@@ -1228,5 +1228,12 @@
   "Thread": "थ्रेड",
   "Too many scheduled casts. Cancel some first.": "बहुत सारे शेड्यूल किए गए कास्ट। पहले कुछ रद्द करें।",
   "Trying again: {reason}": "फिर से कोशिश: {reason}",
-  "Your scheduled cast couldn't be posted": "आपका शेड्यूल किया गया कास्ट पोस्ट नहीं हो सका"
+  "Your scheduled cast couldn't be posted": "आपका शेड्यूल किया गया कास्ट पोस्ट नहीं हो सका",
+  "Sort by": "क्रम",
+  "Top": "टॉप",
+  "Recent": "हाल के",
+  "Relevance": "प्रासंगिकता",
+  "The most liked and recast of the newest {n} matches": "नवीनतम {n} परिणामों में सबसे ज़्यादा पसंद और रीकास्ट किए गए",
+  "Newest first": "सबसे नए पहले",
+  "Best text match first": "सबसे मिलता-जुलता टेक्स्ट पहले"
 }

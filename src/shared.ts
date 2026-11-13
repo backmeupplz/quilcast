@@ -788,9 +788,9 @@ export function taggable(text: string) {
   }
   return tags
 }
-/** Search's casts tab for a hashtag: the tag's casts, newest first (app.tsx Search). */
+/** Search's casts tab for a hashtag: the tag's casts, newest first (no `s`: searchsort.ts sortOf). */
 export const tagPath = (tag: string) => `/search?${new URLSearchParams({ q: tag.toLowerCase(), t: 'casts' })}`
-/** Whether a search has a hashtag in it, so it lists the newest casts first instead of the best matches. */
+/** Whether a search has a hashtag in it, so its casts list the newest first unless an order is picked (searchsort.ts sortOf). */
 export const hasTag = (q: string) => new RegExp(HASHTAG, 'u').test(q)
 
 // links, @mentions, /channels and #hashtags inside cast text; a mention shows as the longest name it can be, without a sentence's ".".

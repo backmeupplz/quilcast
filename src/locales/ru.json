@@ -1228,5 +1228,12 @@
   "Thread": "Тред",
   "Too many scheduled casts. Cancel some first.": "Слишком много запланированных кастов. Сначала отмените некоторые.",
   "Trying again: {reason}": "Новая попытка: {reason}",
-  "Your scheduled cast couldn't be posted": "Не удалось опубликовать запланированный каст"
+  "Your scheduled cast couldn't be posted": "Не удалось опубликовать запланированный каст",
+  "Sort by": "Сортировка",
+  "Top": "Популярные",
+  "Recent": "Новые",
+  "Relevance": "Релевантность",
+  "The most liked and recast of the newest {n} matches": "Самые лайкаемые и рекастнутые из {n} новейших результатов",
+  "Newest first": "Сначала новые",
+  "Best text match first": "Сначала лучшие совпадения"
 }

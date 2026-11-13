@@ -1228,5 +1228,12 @@
   "Thread": "スレッド",
   "Too many scheduled casts. Cancel some first.": "予約したキャストが多すぎます。先にいくつか取り消してください。",
   "Trying again: {reason}": "再試行中：{reason}",
-  "Your scheduled cast couldn't be posted": "予約したキャストを投稿できませんでした"
+  "Your scheduled cast couldn't be posted": "予約したキャストを投稿できませんでした",
+  "Sort by": "並べ替え",
+  "Top": "人気",
+  "Recent": "新着",
+  "Relevance": "関連度",
+  "The most liked and recast of the newest {n} matches": "新しい{n}件のうち、いいねとリキャストが多い順",
+  "Newest first": "新しい順",
+  "Best text match first": "テキストの一致度順"
 }

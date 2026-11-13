@@ -535,6 +535,9 @@ a.searchbox { margin: 0; }
 .seg { display: inline-flex; padding: 3px; background: var(--soft); border-radius: calc(99px * var(--rs, 1)); }
 .seg button { border: 0; background: none; padding: 5px 13px; border-radius: calc(99px * var(--rs, 1)); font-weight: 600; font-size: 14px; color: var(--muted); }
 .seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
+/* Search's Casts order (#654): the switch, and what it does beside it */
+.search-sort { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 10px 16px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+.search-sort small { color: var(--muted); font-size: 13px; }
 .phrase { display: block; padding: 12px; border-radius: calc(10px * var(--rs, 1)); background: var(--soft); font: 14px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; word-spacing: 3px; margin: 8px 0; user-select: all; }
 .settings > .foot { text-align: center; margin: 4px 0 0; }
 
