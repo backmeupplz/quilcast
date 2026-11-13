@@ -53,7 +53,7 @@ export const SCOPES_VERSION = 2
 const castId = (fid: number, hash: string) => pb([1, fid], [2, unhex(hash)])
 const BODY_FIELD: Record<number, number> = { 1: 5, 2: 6, 3: 7, 4: 7, 5: 14, 6: 14, 11: 12, 16: 19, 17: 20 }
 // message timestamps and key deadlines count seconds from the Farcaster epoch (2021-01-01)
-const fcNow = () => Math.floor(Date.now() / 1000) - 1609459200
+export const fcNow = () => Math.floor(Date.now() / 1000) - 1609459200
 
 export type CastRef = { fid: number; hash: string }
 // parent is a cast (reply) or a channel URL; embeds are URLs or a quoted cast

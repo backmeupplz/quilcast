@@ -41,15 +41,24 @@ test('a wallet signs exactly what the phrase key would, switching to the chain e
     assert.deepEqual(await fnameProof('alice', 1792500000, wallet), await fnameProof('alice', 1792500000, key))
     const login = new TextEncoder().encode('{"method":"generateToken","params":{"expiresAt":2,"timestamp":1}}')
     assert.equal(hex(await wallet.message(login)), hex(await key.message(login)))
+    // Hypersnap's free registration (native.ts) is signed for chain 10, the same bytes the phrase key signs
+    const store = new Map<string, string>()
+    ;(globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) }
+    Object.assign(globalThis, { addEventListener: () => {}, dispatchEvent: () => true })
+    const { commitment, onboardTyped } = await import('./native.ts')
+    const { nonceBytes } = await import('./pow.ts')
+    const typed = onboardTyped(address, 50485360, '0x' + '11'.repeat(32), commitment(nonceBytes(0, 1), 22))
+    chain = 1
+    assert.equal(hex(await wallet.typed(typed)), hex(await key.typed(typed)))
+    assert.equal(chain, 10)
   } finally {
     Date.now = now
   }
   assert.ok(asked.includes('wallet_switchEthereumChain'))
-  // registration goes to IdGateway on Optimism, paying the fee, with the wallet itself as recovery
-  const { ID_GATEWAY, registerData } = await import('./eth.ts')
-  await w.register(address, 123n)
+  // a transaction (the mini app key) goes out on Optimism
+  await w.sendTx(address, '0x' + '22'.repeat(20), '0x1234', 123n)
   assert.equal(sent.chain, 10)
-  assert.equal(sent.to.toLowerCase(), ID_GATEWAY)
-  assert.equal(sent.data, registerData(address))
+  assert.equal(sent.to.toLowerCase(), '0x' + '22'.repeat(20))
+  assert.equal(sent.data, '0x1234')
   assert.equal(BigInt(sent.value), 123n)
 })

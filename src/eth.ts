@@ -1,8 +1,7 @@
-// Just enough Optimism to register an FID: JSON-RPC, RLP, EIP-1559 signing.
+// Just enough Optimism for the account's on-chain bits (an FID's lookup, the mini app key): JSON-RPC, RLP, EIP-1559 signing.
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { address, concat, ecSign, hex, unhex } from './fc.ts'
 
-export const ID_GATEWAY = '0x00000000fc25870c6ed6b6c7e41fb078b7656f69'
 const ID_REGISTRY = '0x00000000fc6c5f01fc30151999387bb99a9f489b'
 
 export async function rpc(url: string, method: string, params: unknown[] = []) {
@@ -15,7 +14,6 @@ const sel = (sig: string) => hex(keccak_256(new TextEncoder().encode(sig)).slice
 const arg = (a: string) => a.replace(/^0x/, '').padStart(64, '0')
 
 export const balance = async (url: string, addr: string) => BigInt(await rpc(url, 'eth_getBalance', [addr, 'latest']))
-export const registerPrice = (url: string) => call(url, ID_GATEWAY, '0x' + sel('price()'))
 export const fidOf = async (url: string, addr: string) => Number(await call(url, ID_REGISTRY, '0x' + sel('idOf(address)') + arg(addr)))
 
 // RLP: bytes or lists of bytes; integers go in as minimal big-endian bytes
@@ -29,12 +27,6 @@ export const rlp = (x: R): Uint8Array =>
   Array.isArray(x)
     ? ((p) => concat(len(p.length, 0xc0), p))(concat(...x.map(rlp)))
     : x.length === 1 && x[0] < 0x80 ? x : concat(len(x.length, 0x80), x)
-
-/** Calldata for IdGateway.register(recovery = the custody address itself). */
-export const registerData = (custody: string) => `0x${sel('register(address)')}${arg(custody)}` as const
-
-/** Call IdGateway.register from the custody key, paying `value`. Returns the tx hash. */
-export const register = (url: string, custody: Uint8Array, value: bigint) => sendTx(url, custody, ID_GATEWAY, registerData(address(custody)), value)
 
 /** Send a transaction on Optimism from the custody key. Returns the tx hash. */
 export async function sendTx(url: string, custody: Uint8Array, to: string, data: string, value = 0n) {

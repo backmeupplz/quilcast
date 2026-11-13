@@ -262,13 +262,18 @@ export function urlOf(path: string, q: Record<string, string | number | undefine
   const qs = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined) as [string, string][])
   return `${settings.node}${path}?${qs}`
 }
+// Hypersnap writes its native FIDs (2^32 and up, native.ts) as strings in JSON, so they can't lose digits; they're
+// numbers here like every other FID, exact up to 2^53. Fields: fid, fids, mentions and the *_fid / *Fid(s) ones.
+const asFid = (v: unknown) => (typeof v === 'string' && /^\d{1,16}$/.test(v) && Number.isSafeInteger(+v) ? +v : v)
+export const fids = (k: string, v: unknown) => (/fid|^mentions$/i.test(k) ? (Array.isArray(v) ? v.map(asFid) : asFid(v)) : v)
+
 export function get<T = any>(path: string, q: Record<string, string | number | undefined> = {}, fresh = false): Promise<T> {
   const url = urlOf(path, q)
   return once(url, async () => {
     const r = await fetch(url)
     // the status rides along, so a caller can tell "not there" (404) from "the node is down" (5xx)
     if (!r.ok) throw Object.assign(new Error((await r.text().catch(() => '')) || `HTTP ${r.status}`), { status: r.status })
-    return r.json()
+    return JSON.parse(await r.text(), fids)
   }, fresh)
 }
 

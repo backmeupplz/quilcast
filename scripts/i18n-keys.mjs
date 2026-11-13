@@ -40,6 +40,8 @@ const LABELS = [
   'Snow', 'Snowflakes', 'Rain', 'Thunderstorm', 'Autumn leaves', 'Cherry blossoms', 'Confetti', 'Floating hearts', 'Bubbles', 'Twinkling stars', 'Glitter', 'Fireflies', 'Embers', 'Bokeh',
   'Shooting stars', 'Fireworks', 'Matrix code', 'Make it rain', 'Pizza', 'Balloons', 'Bats', 'Ghosts', 'Spooky', 'Butterflies', 'Music notes', 'Emoji rain', 'Sparkle cursor',
   'Never', 'After a day', 'After a week', 'After 30 days', 'After a year',
+  // src/native.ts's error for a node whose sign-up work it can't do
+  "The node asked for sign-up work this app can't do. Check the node in settings.",
   'No messages yet. Start one from someone’s profile.', 'Nothing unread.', 'No message requests.', 'No muted conversations.',
 ]
 LABELS.forEach((k) => keys.add(k))

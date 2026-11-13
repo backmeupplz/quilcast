@@ -41,7 +41,7 @@ async function newKey(): Promise<[Ed, string | undefined]> {
   }
 }
 
-async function submit(m: { msg: Uint8Array; hash: string }) {
+export async function submit(m: { msg: Uint8Array; hash: string }) {
   const r = await fetch(`${settings.node}/v1/submitMessage`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: m.msg as BodyInit })
   if (!r.ok) {
     const t = await r.text()

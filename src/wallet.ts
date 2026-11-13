@@ -3,7 +3,6 @@
 // for the mini app host (inapp.ts leaves the client's provider there).
 import { bytesToHex, createPublicClient, createWalletClient, custom, encodeDeployData, erc6492SignatureValidatorAbi, erc6492SignatureValidatorByteCode, hashMessage, http, recoverMessageAddress, type EIP1193Provider } from 'viem'
 import { base, mainnet, optimism } from 'viem/chains'
-import { ID_GATEWAY, registerData } from './eth.ts'
 import { unhex, type Custody } from './fc.ts'
 
 type Injected = EIP1193Provider & { providers?: Injected[]; isRabby?: boolean; isOkxWallet?: boolean }
@@ -280,9 +279,6 @@ export const walletCustody = (address: string, rpc = 'https://mainnet.optimism.i
     message: async (m, o) => checked(address, m, await live(address, again, () => tidy(signer(o?.chain).then((c) => c.signMessage({ account, message: { raw: m } })))), o?.local ? undefined : rpc),
   }
 }
-
-/** Pay for IdGateway.register from the wallet on Optimism. Returns the tx hash. */
-export const register = (address: string, value: bigint, again?: Again) => sendTx(address, ID_GATEWAY, registerData(address), value, 10, again)
 
 /** Send a transaction from the wallet, on Optimism unless `chain` says otherwise. Returns the tx hash. `again` pairs a
  *  WalletConnect wallet whose session ended. */
