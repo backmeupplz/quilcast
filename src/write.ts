@@ -8,6 +8,7 @@ import { castAt, castBody, castRemoveBody, custodyKey, envelope, followBody, hex
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { search } from './pow.worker.ts'
 import { ARTICLE, type Outgoing, type Part } from './article.ts'
+import { waitingToPost } from './signout.ts'
 import { castEmbeds, queue } from './shared.ts'
 
 /** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
@@ -777,6 +778,12 @@ export const listScheduled = (as = account!): Promise<Scheduled[]> => keyFetch(`
 /** Cancel one still waiting, or take a posted or failed one off the list. Answers what it was (null: gone already). */
 export const cancelScheduled = (id: string, as = account!): Promise<{ id: string; was: Scheduled['status'] | null }> =>
   keyFetch(`/api/scheduled/${as.fid}`, 'quilcast-scheduled-cancel', 'DELETE', JSON.stringify({ id }), 3, as)
+/** The ids of the account's scheduled casts still waiting to go out, quietly: only with the key it has, never asking
+ *  for a new one (Settings → Sign out, which revokes that key, warns about them and cancels them first). */
+// with no key in this browser, nothing here was signed with the key signing out revokes: none waiting on it. A key
+// whose scopes are out of date is still revoked, so its list is read (and not being able to says so in the prompt).
+export const waitingScheduled = async (as = account!): Promise<string[]> =>
+  !(fresh(as).pub || fresh(as).signer) ? [] : waitingToPost(await keyFetch(`/api/scheduled/${as.fid}`, 'quilcast-scheduled-read', 'GET', '', 1, as, {}, false) as Scheduled[]).map((s) => s.id)
 /** Scheduled casts of the account that failed and this browser hasn't told about yet (once each), quietly: only with
  *  the key it has, never asking for a new one. */
 export async function failedScheduled(as = account!): Promise<Scheduled[]> {

@@ -1,6 +1,7 @@
 import { render, type ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { crashed, started } from './crash.ts'
+import { confirmSignOut, warning, type Waiting } from './signout.ts'
 import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follow, followsMe, forget, forgetFollows, get, urlOf, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
@@ -2100,6 +2101,9 @@ function Settings() {
   const [orig, setOrig] = useState<Record<number, string>>({})
   const [phrase, setPhrase] = useState(false)
   const [out, setOut] = useState<false | 'ask' | 'busy' | 'stuck'>(false)
+  // the ids of the scheduled casts still waiting, asked for when Sign out is first pressed (null: still asking,
+  // 'unknown': the list couldn't be read, which the prompt says instead of taking it for none)
+  const [waiting, setWaiting] = useState<Waiting>([])
   // what Delete account did, shown here once the account is gone, scrolled to (it starts from the Keys section)
   const { gone, busy: deleting } = useDeletion()
   const summary = useRef<HTMLElement>(null)
@@ -2159,25 +2163,63 @@ function Settings() {
       toast(e.message)
     }
   }
+  // a prompt left open while another account gets selected starts over, so it never acts on the wrong one
+  useEffect(() => {
+    setOut(false)
+    setWaiting([])
+  }, [account && idOf(account)])
+  const still = (a: Account) => !!account && idOf(account) === idOf(a)
+  // scheduled casts still waiting were signed with the key signing out revokes: they're named before it goes
+  const ask = (ids: string[] | 'unknown') => {
+    // the button just turned into "Cancel them and sign out" (or "Sign out anyway"): a click meant for "Erase keys?" doesn't count
+    if (ids === 'unknown' || ids.length) asked.current = Date.now()
+    setWaiting(ids)
+    setOut('ask')
+  }
   // the signer revokes itself first, so a copy of it (an export, a synced profile) stops working too
   const signOut = async () => {
     // the confirm button sits where Sign out was, so it ignores clicks for a moment (no double-click erase)
-    if (!out) return (asked.current = Date.now()), setOut('ask')
-    if (out === 'busy' || Date.now() - asked.current < 1000) return
+    if (!out) {
+      asked.current = Date.now()
+      setOut('ask')
+      setWaiting(null)
+      const a = account!
+      // an answer for an account that's no longer selected is dropped (the prompt started over for the new one)
+      w().then((m) => within(m.waitingScheduled(a), 10e3)).then((ids) => still(a) && ask(ids), () => still(a) && ask('unknown'))
+      return
+    }
+    if (out === 'busy' || (out === 'ask' && !waiting) || Date.now() - asked.current < 1000) return
+    // the account being signed out, whichever gets selected while its casts are cancelled and its keys revoked
+    const a = account!
     if (out === 'ask') {
       setOut('busy')
-      try {
-        const m = await w()
-        await m.removeAppKey(account!)
-        await m.revokeSigner(account!)
-      } catch (e: any) {
-        toast(t('The signing keys couldn\'t be revoked: {error}', { error: e.message }))
+      const m = await w().catch(() => null)
+      if (!m) {
+        toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.')
+        asked.current = Date.now()
+        return setOut('ask')
+      }
+      // cancelled on the server before the keys go, so they don't fail at their time and stay on the list as failed
+      const r = await confirmSignOut(waiting as string[] | 'unknown', {
+        reread: () => within(m.waitingScheduled(a), 10e3),
+        cancel: (id) => m.cancelScheduled(id, a),
+        revoke: async () => (await m.removeAppKey(a), await m.revokeSigner(a)),
+      })
+      // another account was selected meanwhile: the prompt started over for it, and `a` stays (its keys too, if revoked)
+      if (r.state !== 'done' && !still(a)) return r.state === 'stuck' && toast(t('The signing keys couldn\'t be revoked: {error}', { error: r.error }))
+      if (r.state === 'ask') {
+        if (r.error) toast(t("The scheduled casts couldn't be cancelled: {error}", { error: t(r.error) }))
+        asked.current = Date.now()
+        return ask(r.waiting)
+      }
+      if (r.state === 'stuck') {
+        toast(t('The signing keys couldn\'t be revoked: {error}', { error: r.error }))
         asked.current = Date.now()
         return setOut('stuck')
       }
     }
     // the keys are erased before leaving, so nothing is left half-deleted
-    await setAccount(null)
+    await removeAccount(a)
     location.assign('/')
   }
   // the signing key can't leave the browser (the vault won't give it out, and a new one is a sign-in away), so the
@@ -2367,7 +2409,13 @@ function Settings() {
             )}
             {account.phrase && <div class="setting"><span>{t('All keys as a file')}</span><button class="btn ghost small" onClick={exportKeys}>{t('Export')}</button></div>}
             {account.dm && <div class="setting"><span>{t('Key to your messages on farcaster.xyz')}</span><button class="btn ghost small" onClick={() => (setAccount({ ...account!, dm: undefined }), import('./dms.ts').then((m) => m.stop()))}>{t('Forget')}</button></div>}
-            <div class="setting"><span>{account.username ? t('Sign out of @{username}', { username: account.username }) : t('Sign out')}</span><button class="btn danger small" disabled={out === 'busy' || deleting} onClick={signOut}>{out === 'busy' ? t('Signing out…') : out === 'stuck' ? t('Sign out anyway') : out ? t('Erase keys?') : t('Sign out')}</button></div>
+            <div class="setting"><span>{account.username ? t('Sign out of @{username}', { username: account.username }) : t('Sign out')}</span><button class="btn danger small" disabled={out === 'busy' || (out === 'ask' && !waiting) || deleting} onClick={signOut}>{out === 'busy' ? t('Signing out…') : out === 'stuck' || (out === 'ask' && warning(waiting) === 'unchecked') ? t('Sign out anyway') : out && warning(waiting) === 'casts' ? tn(waiting!.length, 'Cancel it and sign out', 'Cancel them and sign out') : out ? t('Erase keys?') : t('Sign out')}</button></div>
+            {out === 'ask' && (warning(waiting) === 'casts' || warning(waiting) === 'unchecked') && (
+              <>
+                <p class="hint" role="alert">{waiting === 'unknown' ? t("Couldn't check for scheduled casts. Signing out revokes the key they were signed with, so any still waiting won't be posted.") : tn(waiting!.length, "You have {n} scheduled cast. Signing out revokes the key it was signed with, so it won't be posted.", "You have {n} scheduled casts. Signing out revokes the key they were signed with, so they won't be posted.")}</p>
+                <div class="sheet-btns"><button class="btn ghost small" onClick={() => setOut(false)}>{t('Keep me signed in')}</button></div>
+              </>
+            )}
             {out && <p class="hint">{account.wallet ? t('This removes the account and its signing key from this browser. Your wallet is not affected.') : t('This erases the recovery phrase from this browser. Export your keys first if it\'s your only copy.')}</p>}
             {account.done && <DeleteAccount key={idOf(account)} />}
           </section>
