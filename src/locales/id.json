@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "{posted} dari {total} terposting",
   "See what was posted": "Lihat yang sudah diposting",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} dari {total} postingan sudah terkirim. Mengirim utas ini lagi akan mempostingnya untuk kedua kalinya.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} dari {total} postingan sudah terkirim. Sisanya akan dikirim sebagai balasan untuk postingan terakhir."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} dari {total} postingan sudah terkirim. Sisanya akan dikirim sebagai balasan untuk postingan terakhir.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Cast yang dibalas tidak dapat dimuat sekarang, jadi balasan ini belum bisa dikirim. Simpan sebagai draf dan coba lagi nanti."
 }

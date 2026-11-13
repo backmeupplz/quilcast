@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "نُشر {posted} من {total}",
   "See what was posted": "عرض ما نُشر",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "نُشر {posted} من {total} منشورات بالفعل. إرسال هذه السلسلة مجددًا سينشرها مرة ثانية.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "نُشر {posted} من {total} منشورات بالفعل. سيُنشر الباقي ردودًا على آخر منشور منها."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "نُشر {posted} من {total} منشورات بالفعل. سيُنشر الباقي ردودًا على آخر منشور منها.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "تعذّر تحميل الـ cast الذي يُردّ عليه الآن، لذا لا يمكن إرسال هذا الرد بعد. احفظه كمسودة وحاول مرة أخرى لاحقًا."
 }

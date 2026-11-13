@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "{total} में से {posted} पोस्ट हुईं",
   "See what was posted": "देखें क्या पोस्ट हुआ",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} में से {posted} पोस्ट पहले ही जा चुकी हैं। यह थ्रेड फिर से भेजने पर वे दूसरी बार पोस्ट होंगी।",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} में से {posted} पोस्ट पहले ही जा चुकी हैं। बाकी पोस्ट आख़िरी वाली के जवाब के रूप में जाएँगी।"
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} में से {posted} पोस्ट पहले ही जा चुकी हैं। बाकी पोस्ट आख़िरी वाली के जवाब के रूप में जाएँगी।",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "जिस cast का यह जवाब है, वह अभी लोड नहीं हो पा रहा, इसलिए यह जवाब अभी भेजा नहीं जा सकता। इसे ड्राफ़्ट के रूप में सहेजें और बाद में फिर कोशिश करें।"
 }

@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "Opublikowano {posted} z {total}",
   "See what was posted": "Zobacz, co opublikowano",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Opublikowano już {posted} z {total} wpisów. Ponowne wysłanie tego wątku opublikuje je drugi raz.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Opublikowano już {posted} z {total} wpisów. Reszta zostanie opublikowana jako odpowiedzi na ostatni z nich."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Opublikowano już {posted} z {total} wpisów. Reszta zostanie opublikowana jako odpowiedzi na ostatni z nich.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Nie można teraz wczytać casta, na który to odpowiedź, więc tej odpowiedzi nie da się jeszcze wysłać. Zapisz ją jako szkic i spróbuj ponownie później."
 }

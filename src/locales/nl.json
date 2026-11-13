@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "{posted} van {total} geplaatst",
   "See what was posted": "Bekijk wat er geplaatst is",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} van {total} berichten zijn al geplaatst. Als je deze thread opnieuw verstuurt, worden ze een tweede keer geplaatst.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} van {total} berichten zijn al geplaatst. De rest wordt geplaatst als antwoorden op het laatste."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} van {total} berichten zijn al geplaatst. De rest wordt geplaatst als antwoorden op het laatste.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "De cast waarop dit antwoordt kan nu niet worden geladen, dus dit antwoord kan nog niet worden verzonden. Sla het op als concept en probeer het later opnieuw."
 }

@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "{total}개 중 {posted}개 게시됨",
   "See what was posted": "게시된 내용 보기",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total}개 중 {posted}개 게시물이 이미 게시되었어요. 이 스레드를 다시 보내면 두 번 게시돼요.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total}개 중 {posted}개 게시물이 이미 게시되었어요. 나머지는 마지막 게시물에 대한 답글로 게시돼요."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total}개 중 {posted}개 게시물이 이미 게시되었어요. 나머지는 마지막 게시물에 대한 답글로 게시돼요.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "답글 대상 캐스트를 지금 불러올 수 없어 이 답글을 아직 보낼 수 없습니다. 임시 저장한 뒤 나중에 다시 시도하세요."
 }

@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "Опубликовано {posted} из {total}",
   "See what was posted": "Посмотреть опубликованное",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Уже опубликовано {posted} из {total} постов. Если отправить тред снова, они выйдут второй раз.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Уже опубликовано {posted} из {total} постов. Остальные выйдут ответами на последний из них."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Уже опубликовано {posted} из {total} постов. Остальные выйдут ответами на последний из них.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Каст, на который это ответ, сейчас не загружается, поэтому ответ пока нельзя отправить. Сохраните его как черновик и попробуйте позже."
 }

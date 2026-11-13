@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "Опубліковано {posted} з {total}",
   "See what was posted": "Переглянути опубліковане",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Уже опубліковано {posted} з {total} дописів. Якщо надіслати гілку знову, вони вийдуть удруге.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Уже опубліковано {posted} з {total} дописів. Решта вийде відповідями на останній із них."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Уже опубліковано {posted} з {total} дописів. Решта вийде відповідями на останній із них.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Каст, на який це відповідь, зараз не завантажується, тож відповідь поки не можна надіслати. Збережіть її як чернетку й спробуйте пізніше."
 }

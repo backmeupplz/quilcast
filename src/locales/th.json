@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "โพสต์แล้ว {posted} จาก {total}",
   "See what was posted": "ดูสิ่งที่โพสต์ไปแล้ว",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "โพสต์ไปแล้ว {posted} จาก {total} โพสต์ หากส่งเธรดนี้อีกครั้ง โพสต์เหล่านั้นจะถูกโพสต์ซ้ำ",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "โพสต์ไปแล้ว {posted} จาก {total} โพสต์ ส่วนที่เหลือจะถูกโพสต์เป็นการตอบกลับโพสต์ล่าสุด"
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "โพสต์ไปแล้ว {posted} จาก {total} โพสต์ ส่วนที่เหลือจะถูกโพสต์เป็นการตอบกลับโพสต์ล่าสุด",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "ตอนนี้โหลด cast ที่ตอบกลับไม่ได้ จึงยังส่งคำตอบนี้ไม่ได้ บันทึกเป็นฉบับร่างแล้วลองใหม่ภายหลัง"
 }

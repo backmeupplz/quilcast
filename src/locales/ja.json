@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "{total}件中{posted}件投稿済み",
   "See what was posted": "投稿済みのものを見る",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total}件中{posted}件はすでに投稿されています。このスレッドをもう一度送ると、それらが二重に投稿されます。",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total}件中{posted}件はすでに投稿されています。残りは最後の投稿への返信として投稿されます。"
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total}件中{posted}件はすでに投稿されています。残りは最後の投稿への返信として投稿されます。",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "返信先のキャストを今は読み込めないため、この返信はまだ送信できません。下書きとして保存し、後でもう一度お試しください。"
 }

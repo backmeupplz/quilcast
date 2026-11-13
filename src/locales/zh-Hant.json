@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "已發布 {posted}/{total}",
   "See what was posted": "查看已發布的內容",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} 則貼文中已有 {posted} 則發出。再次傳送此串文會讓它們重複發布。",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} 則貼文中已有 {posted} 則發出。其餘貼文將作為對最後一則的回覆發出。"
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} 則貼文中已有 {posted} 則發出。其餘貼文將作為對最後一則的回覆發出。",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "暫時無法載入所回覆的 cast，因此這則回覆還不能傳送。請先存為草稿，稍後再試。"
 }

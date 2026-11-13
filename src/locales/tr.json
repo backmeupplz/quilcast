@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "{total} gönderiden {posted} tanesi paylaşıldı",
   "See what was posted": "Paylaşılanları gör",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} gönderiden {posted} tanesi zaten paylaşıldı. Bu zinciri yeniden gönderirsen bunlar ikinci kez paylaşılır.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} gönderiden {posted} tanesi zaten paylaşıldı. Kalanlar sonuncusuna yanıt olarak paylaşılacak."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} gönderiden {posted} tanesi zaten paylaşıldı. Kalanlar sonuncusuna yanıt olarak paylaşılacak.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Yanıtlanan cast şu anda yüklenemiyor, bu yüzden bu yanıt henüz gönderilemez. Taslak olarak kaydedip daha sonra yeniden deneyin."
 }

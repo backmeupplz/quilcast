@@ -1245,5 +1245,6 @@
   "{posted} of {total} posted": "Đã đăng {posted}/{total}",
   "See what was posted": "Xem những gì đã đăng",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Đã đăng {posted}/{total} bài. Gửi lại chuỗi này sẽ đăng chúng lần thứ hai.",
-  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Đã đăng {posted}/{total} bài. Phần còn lại sẽ được đăng dưới dạng trả lời bài cuối cùng."
+  "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Đã đăng {posted}/{total} bài. Phần còn lại sẽ được đăng dưới dạng trả lời bài cuối cùng.",
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Không thể tải cast được trả lời lúc này, nên chưa thể gửi câu trả lời này. Hãy lưu thành bản nháp và thử lại sau."
 }

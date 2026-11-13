@@ -710,7 +710,37 @@ export const savePrefs = (p: object) => keyFetch(`/api/prefs/${account!.fid}`, '
 // makes the same key and the server only ever holds ciphertext. A browser keeps the key in the vault (non-extractable),
 // so the custody signs once per browser.
 // ponytail: a smart-contract wallet may sign differently each time; its drafts then open only in the browser that saved them
-export type Draft = { id: string; at: number; parts: { text: string; media: string[] }[]; channel?: string; parent?: string; quote?: string; as?: number }
+// `pfid` is the fid of the author of the cast it replies to, so the draft can still go out as that reply when the node
+// can't serve the cast (draftParent)
+export type Draft = { id: string; at: number; parts: { text: string; media: string[] }[]; channel?: string; parent?: string; pfid?: number; quote?: string; as?: number }
+
+/** Where a draft goes: a reply to `parent` (or, with `lost`, to a cast that couldn't be loaded), else into `channel`. */
+export const draftTarget = (parent: Cast | undefined, lost: string | undefined, channel: string | undefined): Pick<Draft, 'channel' | 'parent' | 'pfid'> =>
+  parent ? { parent: parent.hash, pfid: parent.author.fid || undefined } : lost ? { parent: lost } : { channel }
+
+// a cast asked for by its hash (as ui.tsx fetchCast asks) and author, not from the cache; null when the node doesn't
+// serve it within a few seconds, so a dead network doesn't hold up opening a draft
+const castBy = (hash: string, fid: number) =>
+  Promise.race([
+    get('/v2/farcaster/cast', { identifier: hash.replace(/^0x/, '').toLowerCase(), type: 'hash', fid }, true).then((r) => (r.cast as Cast) || null, () => null),
+    new Promise<null>((ok) => setTimeout(ok, 5000, null)),
+  ])
+
+/** The cast a reply draft goes on replying to when the node didn't serve `d.parent` (it may not have it yet, or the
+ *  network failed). It's asked for again by author: the one the draft kept (`pfid`), then the draft's own account (a
+ *  thread of ours that failed partway, still landing). Not found, a known `pfid` makes a stand-in by that author, which
+ *  is all a reply needs. null when its author isn't known: the composer then warns and won't send it, rather than post
+ *  it as a new cast. */
+export async function draftParent(d: Pick<Draft, 'parent' | 'pfid' | 'as'>, ask = castBy): Promise<Cast | null> {
+  if (!d.parent) return null
+  for (const fid of new Set([d.pfid, d.as].filter((f): f is number => !!f))) {
+    const c = await ask(d.parent, fid)
+    if (c) return c
+  }
+  if (!d.pfid) return null
+  const author = users.get(d.pfid) || { fid: d.pfid }
+  return { hash: d.parent, text: '', timestamp: new Date().toISOString(), author, embeds: [], reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } }
+}
 const draftKeys = new Map<number, Promise<CryptoKey>>()
 const draftKey = (a = account!) => {
   const fid = a.fid!

@@ -281,6 +281,9 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   const onClose = (hash: string | null = cont?.root ?? null) => (onDone?.(hash), close())
   // a draft picked up again brings its own cast to reply to or quote
   const [{ parent, quote }, setCtx] = useState({ parent: props.parent, quote: props.quote })
+  // the hash a draft replies to when that cast couldn't be loaded and its author isn't known: it can't be sent (as a new
+  // cast it would lose the reply), only kept as a draft
+  const [lost, setLost] = useState<string>()
   // the first post's fixed embeds (a quote, a mini app's links) leave less room for attachments
   const fixed = (i: number) => (i === 0 ? +!!quote + embeds.length : 0)
   const [active, setActive] = useState(0)
@@ -315,7 +318,8 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
     setBusy(true)
     try {
       const media = (p: Part) => p.files.flatMap((f) => (f.url ? [f.url] : []))
-      await (await w()).saveDraft({ id: draft || crypto.randomUUID(), at: Date.now(), parts: parts.map((p) => ({ text: p.text, media: media(p) })), channel: parent ? undefined : channel, parent: parent?.hash, quote: quote?.hash, as: as.fid })
+      const m = await w()
+      await m.saveDraft({ id: draft || crypto.randomUUID(), at: Date.now(), parts: parts.map((p) => ({ text: p.text, media: media(p) })), ...m.draftTarget(parent, lost, channel), quote: quote?.hash, as: as.fid })
       toast('Draft saved')
       onClose()
     } catch (e: any) {
@@ -323,11 +327,14 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
       setBusy(false)
     }
   }
-  // `stand` is the cast to reply to when the node can't find `d.parent` (yet)
+  // `stand` is the cast to reply to when the node can't find `d.parent` (yet); without one it's asked for again by its
+  // author (write.ts draftParent), and a reply whose author isn't known stays one that can't be sent
   const open = async (d: Draft, stand?: Cast) => {
     const [p, q] = await Promise.all([d.parent ? fetchCast(d.parent) : null, d.quote ? fetchCast(d.quote) : null])
+    const to = p || stand || (d.parent ? await (await w()).draftParent(d) : null)
     const ps = d.parts.map((x) => ({ ...newPart(), text: x.text, files: x.media.map((url) => ({ id: Math.random(), preview: url, video: isVid(url), url })) }))
-    setCtx({ parent: p || stand, quote: q || undefined })
+    setCtx({ parent: to || undefined, quote: q || undefined })
+    setLost(d.parent && !to ? d.parent : undefined)
     setCont(undefined)
     setGone(undefined)
     setParts(ps)
@@ -481,6 +488,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   const room = busy ? 0 : embedRoom(cur.files.length, fixed(at))
   const add = () => (setParts((ps) => [...ps, newPart()]), setActive(parts.length))
   const send = async () => {
+    if (lost) return toast("The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.")
     if (when) return later(when)
     setBusy(true)
     const m = await w()
@@ -541,7 +549,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
         channel: !parent && channel ? await urlOf(channel) : undefined,
         quote: quote && { fid: quote.author.fid, hash: quote.hash },
         as,
-        draft: { parts: parts.map((p) => ({ text: p.text, media: media(p) })), channel: parent ? undefined : channel, parent: parent?.hash, quote: quote?.hash, as: as.fid },
+        draft: { parts: parts.map((p) => ({ text: p.text, media: media(p) })), ...m.draftTarget(parent, lost, channel), quote: quote?.hash, as: as.fid },
       }, at, same ? editing!.id : undefined)
       if (editing && !same) await unschedule(m, editing)
       if (draft) m.dropDraft(draft).catch(() => {})
@@ -554,7 +562,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   }
   return (
     <div class="modal" onClick={leave}>
-      <div class="sheet" tabIndex={-1} role="dialog" aria-label={parent ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
+      <div class="sheet" tabIndex={-1} role="dialog" aria-label={parent || lost ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : scheduledOpen ? setScheduledOpen(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send(), shortcut(e))}>
         <div class="sheet-top">
           <span class="sheet-left">
@@ -564,7 +572,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           </span>
           {/* a failed thread going on from its last post stays with the account that posted it */}
           {!(gone && !gone.again) && <AsPicker value={as} set={setAs} />}
-          <button class="btn" disabled={busy || !ready} onClick={send}>{busy ? t('Sending…') : when ? t('Schedule') : parts.length > 1 ? t('Post all') : parent ? t('Reply') : t('Cast')}</button>
+          <button class="btn" disabled={busy || !ready || !!lost} onClick={send}>{busy ? t('Sending…') : when ? t('Schedule') : parts.length > 1 ? t('Post all') : parent || lost ? t('Reply') : t('Cast')}</button>
         </div>
         {asking && (
           <div class="draft-ask" role="alertdialog" aria-label={t('Save this as a draft?')}>
@@ -590,6 +598,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
               : t('{posted} of {total} posts already went out. The rest goes out as replies to the last one.', { posted: gone.posted, total: gone.total })}
           </p>
         )}
+        {lost && !drafts && !scheduledOpen && <p class="sent-note warn" role="alert">{t("The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.")}</p>}
         {parent && !drafts && !scheduledOpen && (
           <div class="ctx">
             <Avatar u={parent.author} size={28} link={false} />
@@ -603,7 +612,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
             <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs && !drafts && !scheduledOpen && !emoji}
               onFocus={() => setActive(i)} attach={attach} md={md}
               remove={i > 0 ? () => (setParts((ps) => ps.filter((x) => x.id !== p.id)), setActive(i - 1)) : undefined}
-              placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : quote ? t('Add a comment') : t("What's happening?")} />
+              placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : lost ? t('Reply') : quote ? t('Add a comment') : t("What's happening?")} />
           ))}
         </div>
         {md && (
@@ -628,7 +637,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
           <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
           {canDraft && <button class={`icon-btn${timing ? ' on' : ''}`} aria-label={t('Schedule')} title={t('Schedule')} aria-pressed={timing} disabled={busy} onClick={() => (timing ? (setTiming(false), setWhen(undefined)) : (setTiming(true), setWhen((x) => x || Math.ceil((Date.now() + 3600e3) / 300e3) * 300e3)))}><Icon d={P.clock} /></button>}
-          {!parent && <ChannelPicker value={channel} set={setChannel} fid={as.fid} />}
+          {!parent && !lost && <ChannelPicker value={channel} set={setChannel} fid={as.fid} />}
           <span class={`count${left < 50 ? ' warn' : ''}`} title={used(cur) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
             {used(cur) > 280 ? left : ''}
           </span>
