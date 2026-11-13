@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, users, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, posting, users, type Account, type Cast, type User } from './api.ts'
 import { lang, t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
 import { castText, embedRoom, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
 import { ago, Avatar, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
-import type { Draft, Scheduled } from './write.ts'
+import type { Draft, Scheduled, ThreadStart } from './write.ts'
 import { findChannels, getChannel, isMember, urlOf, type Channel } from './channels.ts'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
 const bytes = (s: string) => new TextEncoder().encode(s).length
 
 const userOf = (a: Account): User => (a.fid && users.get(a.fid)) || { fid: a.fid || 0, username: a.username }
+// a cast of ours to reply to that the node may not have yet: what the composer shows and replies to
+const standIn = (hash: string, text: string, author: User, at: number) =>
+  ({ hash, text, timestamp: new Date(at).toISOString(), author, embeds: [], reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } }) as Cast
 
 /** Which signed-in account a cast or reply goes out as; another one is used for this cast only, without switching. */
 function AsPicker({ value, set }: { value: Account; set: (a: Account) => void }) {
@@ -266,9 +269,16 @@ function ScheduledList({ as, open, close }: { as: Account; open: (s: Scheduled) 
 }
 
 /** `text` and `embeds` prefill the first post (a mini app's composeCast); `onDone` hears the new hash, or null. */
-export function Composer({ channel: initial, text = '', embeds = [], onDone, onClose: close, scheduled: showScheduled = false, ...props }: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void; onClose: () => void; scheduled?: boolean }) {
+export function Composer({ channel: initial, text = '', embeds: given = [], onDone, onClose: close, scheduled: showScheduled = false, ...props }: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void; onClose: () => void; scheduled?: boolean }) {
   const [parts, setParts] = useState<Part[]>(() => [{ ...newPart(), text }])
-  const onClose = (hash: string | null = null) => (onDone?.(hash), close())
+  // where a send that failed partway left the thread (write.ts postThread): a retry goes on from the last cast that went
+  // out instead of forking from the start again, and `root` is the thread's first cast. Opening a draft or a scheduled
+  // cast starts over.
+  const [cont, setCont] = useState<{ next: ThreadStart; root: string }>()
+  // a mini app's links went out with the first post
+  const embeds = cont ? [] : given
+  // a mini app hears of its cast once that went out, even when the rest of the thread didn't
+  const onClose = (hash: string | null = cont?.root ?? null) => (onDone?.(hash), close())
   // a draft picked up again brings its own cast to reply to or quote
   const [{ parent, quote }, setCtx] = useState({ parent: props.parent, quote: props.quote })
   // the first post's fixed embeds (a quote, a mini app's links) leave less room for attachments
@@ -281,7 +291,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   const pick = useRef<HTMLInputElement>(null)
   // drafts: the one being edited, its list on screen, and the "keep it?" question on closing. A mini app's composeCast
   // has none: its embeds are the app's, and the app hears what happened.
-  const canDraft = !onDone && !embeds.length
+  const canDraft = !onDone && !given.length
   const [draft, setDraft] = useState<string>()
   const [drafts, setDrafts] = useState(false)
   const [asking, setAsking] = useState(false)
@@ -318,6 +328,8 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
     const [p, q] = await Promise.all([d.parent ? fetchCast(d.parent) : null, d.quote ? fetchCast(d.quote) : null])
     const ps = d.parts.map((x) => ({ ...newPart(), text: x.text, files: x.media.map((url) => ({ id: Math.random(), preview: url, video: isVid(url), url })) }))
     setCtx({ parent: p || stand, quote: q || undefined })
+    setCont(undefined)
+    setGone(undefined)
     setParts(ps)
     setChannel(d.channel)
     setAs(accounts.find((a) => a.done && a.fid === d.as) || account!)
@@ -335,8 +347,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
     if (rest) {
       const hash = `0x${rest.parent}`
       const author = userOf(accounts.find((a) => a.done && a.fid === s.draft!.as) || as)
-      const stand = { hash, text: rest.last, timestamp: new Date(s.at).toISOString(), author, embeds: [], reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 } } as Cast
-      await open({ ...s.draft, parts: rest.parts, parent: hash, channel: undefined, quote: undefined, id: '', at: s.at }, stand)
+      await open({ ...s.draft, parts: rest.parts, parent: hash, channel: undefined, quote: undefined, id: '', at: s.at }, standIn(hash, rest.last, author, s.at))
     } else await open({ ...s.draft, id: '', at: s.at })
     setGone(s.status === 'failed' && s.posted > 0 ? { posted: s.posted, total: s.hashes.length, again: !rest } : undefined)
     setDraft(undefined)
@@ -473,35 +484,46 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
     if (when) return later(when)
     setBusy(true)
     const m = await w()
-    let prev: { fid: number; hash: string } | undefined = parent && { fid: parent.author.fid, hash: parent.hash }
-    let first = ''
+    const out = parts.flatMap((p, i) => (filled(p, i) ? [{ id: p.id, text: p.text.trim(), media: postMedia(i === 0 ? embeds : [], p.files, p.text) }] : []))
+    // posts of this thread that went out before this send: a failed scheduled thread opened with only the rest, or an
+    // earlier try here
+    const before = gone && !gone.again ? gone.posted : 0
+    let done = 0, root = cont?.root, next = cont?.next
     try {
-      // a thread is the first cast plus each next one replying to the one before it
-      for (const [i, p] of parts.entries()) {
-        if (!filled(p, i)) continue
-        const hash = await m.post(p.text.trim(), {
-          parent: prev,
-          channel: i === 0 && !parent && channel ? await urlOf(channel) : undefined,
-          quote: i === 0 && quote ? { fid: quote.author.fid, hash: quote.hash } : undefined,
-          media: postMedia(i === 0 ? embeds : [], p.files, p.text),
-          as,
-        })
-        first ||= hash
-        prev = { fid: as.fid!, hash }
-        setParts((ps) => ps.filter((x) => x.id !== p.id))
-      }
-      onClose(first)
-      if (draft) w().then((m) => m.dropDraft(draft)).catch(() => {})
-      if (editing) unschedule(m, editing)
-      toast(parts.length > 1 ? 'Thread posted' : parent ? 'Reply sent' : 'Cast sent')
-      // a mini app that asked for the cast stays on screen
-      onDone || (go(`/c/${first}`), sent())
+      // a thread is the first cast plus each next one replying to the one before it; a retry goes on from the last cast out
+      const start = next || { parent: parent && { fid: parent.author.fid, hash: parent.hash }, channel: !parent && channel ? await urlOf(channel) : undefined, quote: quote && { fid: quote.author.fid, hash: quote.hash }, as }
+      await m.postThread(out, start, (hash, at, i) => {
+        root ||= hash
+        next = at
+        done = i + 1
+        setParts((ps) => ps.filter((x) => x.id !== out[i].id))
+      })
     } catch (e: any) {
-      // whatever already went out is removed from the composer, so a retry continues the thread
       failed = true
       toast(e.message)
       setBusy(false)
     }
+    // once anything went out, the draft or scheduled cast this was opened from would send it again: it goes, and what is
+    // left stays here (closing asks to keep it as a draft)
+    if (done && draft) m.dropDraft(draft).catch(() => {})
+    if (done && editing) unschedule(m, editing)
+    if (done === out.length) {
+      onClose(root!)
+      toast(before + out.length > 1 ? 'Thread posted' : parent ? 'Reply sent' : 'Cast sent')
+      // a mini app that asked for the cast stays on screen
+      return onDone || (go(`/c/${root}`), sent())
+    }
+    if (!done) return
+    // whatever went out was removed from the composer above; the rest replies to the last of it
+    const last = (next as ThreadStart).parent!
+    setCont({ next: next!, root: root! })
+    setCtx({ parent: posting.get(last.hash) || standIn(last.hash, out[done - 1].text, userOf(as), Date.now()), quote: undefined })
+    setChannel(undefined)
+    // an empty post the send skipped would now be the first one, which can't be empty
+    setParts((ps) => (ps.some((p) => p.text.trim() || p.files.length) ? ps.filter((p) => p.text.trim() || p.files.length) : ps))
+    setGone({ posted: before + done, total: before + out.length, again: false })
+    setDraft(undefined)
+    setEditing(undefined)
   }
   // signed now for its time, then held by our server until then (write.ts schedule)
   const later = async (at: number) => {

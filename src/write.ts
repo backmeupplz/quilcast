@@ -252,6 +252,26 @@ export async function post(text: string, o: { parent?: CastRef; channel?: string
   return hash
 }
 
+/** Where a thread goes out: its first post replies to `parent` (or goes into `channel`) and quotes `quote`. */
+export type ThreadStart = { parent?: CastRef; channel?: string; quote?: CastRef; as?: Account }
+
+/** Post a thread as `o.as`: the first post from `o`, each next one replying to the one before it. `onSent` hears each
+ *  cast as it goes out, with where the rest of the thread goes on from: a reply to that cast, by the same account, its
+ *  channel and quote already out with the first post. A send that fails partway throws; sending the posts left from the
+ *  last `next` heard goes on with the same thread instead of starting a fork from `o.parent` (compose.tsx send). */
+export async function postThread(posts: { text: string; media: string[] }[], o: ThreadStart, onSent: (hash: string, next: ThreadStart, i: number) => void = () => {}) {
+  const as = o.as || account!
+  const hashes: string[] = []
+  let at: ThreadStart = o
+  for (const [i, p] of posts.entries()) {
+    const hash = await post(p.text, { ...at, media: p.media, as })
+    hashes.push(hash)
+    at = { parent: { fid: as.fid!, hash }, as }
+    onSent(hash, at, i)
+  }
+  return hashes
+}
+
 /** Publish an article (article.ts splitArticle) as its chain of casts: the first with the title and cover, then each part
  *  replying to the one before it, all in article Markdown and placed in the chain. `sent` are the hashes of the casts an
  *  earlier try already sent (it stopped partway): those aren't sent again. `onSent` hears each cast's hash as it goes,
