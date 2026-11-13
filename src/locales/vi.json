@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "Hiện có quá nhiều tài khoản nhận thông báo. Hãy thử lại sau.",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Trả lời, lượt nhắc đến, trích dẫn, lượt thích, recast và lượt theo dõi đến thiết bị này ngay cả khi Quilcast đã đóng. Máy chủ của chúng tôi kiểm tra mỗi phút một lần. Máy chủ lưu ID Farcaster của bạn cùng đăng ký nhận thông báo đẩy của trình duyệt này và các cài đặt này, và trong vài phút là những thông báo đã gửi; đăng xuất sẽ xóa chúng. Những người bạn tắt tiếng hoặc chặn, từ đã tắt tiếng và spam bạn ẩn sẽ không được gửi đến.",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "Tài khoản này nhận thông báo trên quá nhiều thiết bị. Hãy tắt trên một thiết bị trước.",
-  "This browser gets notifications for too many accounts.": "Trình duyệt này nhận thông báo cho quá nhiều tài khoản."
+  "This browser gets notifications for too many accounts.": "Trình duyệt này nhận thông báo cho quá nhiều tài khoản.",
+  "{n} new post|{n} new posts": "{n} bài đăng mới"
 }

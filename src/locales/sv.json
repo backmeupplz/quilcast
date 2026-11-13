@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "Just nu får för många konton notiser. Försök igen senare.",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Svar, omnämnanden, citat, gillanden, recasts och nya följare når den här enheten även när Quilcast är stängt. Vår server letar efter dem en gång i minuten. Den sparar ditt Farcaster-ID med den här webbläsarens push-prenumeration och de här inställningarna, och i några minuter vilka notiser den redan skickat; när du loggar ut tas de bort. Personer du tystar eller blockerar, tystade ord och spam du döljer hålls utanför.",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "Det här kontot får notiser på för många enheter. Stäng av dem på någon av dem först.",
-  "This browser gets notifications for too many accounts.": "Den här webbläsaren får notiser för för många konton."
+  "This browser gets notifications for too many accounts.": "Den här webbläsaren får notiser för för många konton.",
+  "{n} new post|{n} new posts": "{n} nytt inlägg|{n} nya inlägg"
 }

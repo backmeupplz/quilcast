@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "現在、通知を受け取るアカウントが多すぎます。しばらくしてからもう一度お試しください。",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "返信、メンション、引用、いいね、リキャスト、フォローが、Quilcast を閉じていてもこのデバイスに届きます。サーバーが 1 分に 1 回確認します。保存するのは、あなたの Farcaster ID とこのブラウザのプッシュ購読およびこれらの設定、そして数分間だけ送信済みの通知です。サインアウトすると消去されます。ミュートやブロックした人、ミュートしたワード、非表示にしたスパムは届きません。",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "このアカウントは通知を受け取るデバイスが多すぎます。先にどれかでオフにしてください。",
-  "This browser gets notifications for too many accounts.": "このブラウザは通知を受け取るアカウントが多すぎます。"
+  "This browser gets notifications for too many accounts.": "このブラウザは通知を受け取るアカウントが多すぎます。",
+  "{n} new post|{n} new posts": "{n} 件の新しい投稿"
 }

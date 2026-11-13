@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "Зараз сповіщення отримує забагато акаунтів. Спробуйте пізніше.",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Відповіді, згадки, цитати, вподобання, рекасти й підписки надходять на цей пристрій, навіть коли Quilcast закритий. Наш сервер перевіряє їх раз на хвилину. Він зберігає ваш Farcaster ID разом із push-підпискою цього браузера й цими налаштуваннями, а кілька хвилин — ще й те, які сповіщення вже надіслав; вихід з акаунта все це стирає. Люди, яких ви приховали чи заблокували, приховані слова та спам, який ви ховаєте, не надходять.",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "Цей акаунт отримує сповіщення на забагатьох пристроях. Спершу вимкніть їх на одному з них.",
-  "This browser gets notifications for too many accounts.": "Цей браузер отримує сповіщення для забагатьох акаунтів."
+  "This browser gets notifications for too many accounts.": "Цей браузер отримує сповіщення для забагатьох акаунтів.",
+  "{n} new post|{n} new posts": "{n} новий допис|{n} нові дописи|{n} нових дописів"
 }

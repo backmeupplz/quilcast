@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "Contas demais estão recebendo notificações agora. Tente de novo mais tarde.",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Respostas, menções, citações, curtidas, recasts e novos seguidores chegam a este aparelho mesmo com o Quilcast fechado. Nosso servidor procura por eles uma vez por minuto. Ele guarda seu ID do Farcaster com a assinatura de push deste navegador e estas configurações e, por alguns minutos, quais notificações já enviou; sair da conta apaga tudo isso. Pessoas que você silencia ou bloqueia, palavras silenciadas e o spam que você oculta ficam de fora.",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "Esta conta recebe notificações em aparelhos demais. Desative-as primeiro em um deles.",
-  "This browser gets notifications for too many accounts.": "Este navegador recebe notificações de contas demais."
+  "This browser gets notifications for too many accounts.": "Este navegador recebe notificações de contas demais.",
+  "{n} new post|{n} new posts": "{n} nova publicação|{n} novas publicações"
 }

@@ -712,6 +712,11 @@ small.warn { color: var(--warn); }
 }
 
 .toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 40; background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: calc(99px * var(--rs, 1)); font-size: 14px; font-weight: 550; max-width: calc(100vw - 32px); box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); animation: fade 0.2s; }
+/* "↑ 3 new posts" over a feed scrolled down (#640); NewPosts in app.tsx sets where */
+.new-posts { position: fixed; z-index: 6; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 5px 14px 5px 10px; border: 0; border-radius: calc(99px * var(--rs, 1)); background: var(--accent); color: var(--on-accent, #fff); font-size: 14px; font-weight: 650; white-space: nowrap; box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); cursor: pointer; animation: fade 0.2s; }
+.new-posts .faces { display: flex; }
+.new-posts .faces .avatar { flex: none; box-shadow: 0 0 0 2px var(--accent); }
+.new-posts .faces .avatar + .avatar { margin-inline-start: -7px; }
 .skel { display: flex; gap: 12px; padding: 14px 16px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
 .skel i { width: 40px; height: 40px; border-radius: calc(99px * var(--rs, 1)); background: var(--soft); flex: none; }
 .skel span { flex: 1; display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }

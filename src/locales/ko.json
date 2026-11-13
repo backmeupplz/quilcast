@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "지금은 알림을 받는 계정이 너무 많아요. 나중에 다시 시도하세요.",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "답글, 멘션, 인용, 좋아요, 리캐스트, 팔로우가 Quilcast를 닫아 두어도 이 기기로 와요. 서버가 1분에 한 번 확인해요. 서버는 Farcaster ID와 이 브라우저의 푸시 구독, 이 설정을 함께 보관하고, 몇 분 동안은 이미 보낸 알림도 기억해요. 로그아웃하면 지워져요. 뮤트하거나 차단한 사람, 뮤트한 단어, 숨긴 스팸은 오지 않아요.",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "이 계정은 너무 많은 기기에서 알림을 받고 있어요. 먼저 그중 한 곳에서 끄세요.",
-  "This browser gets notifications for too many accounts.": "이 브라우저는 너무 많은 계정의 알림을 받고 있어요."
+  "This browser gets notifications for too many accounts.": "이 브라우저는 너무 많은 계정의 알림을 받고 있어요.",
+  "{n} new post|{n} new posts": "새 게시물 {n}개"
 }

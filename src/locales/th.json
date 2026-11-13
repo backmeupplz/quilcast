@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "ขณะนี้มีบัญชีรับการแจ้งเตือนมากเกินไป โปรดลองอีกครั้งภายหลัง",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "การตอบกลับ การกล่าวถึง การอ้างอิง ไลก์ รีแคสต์ และการติดตามจะส่งมาที่อุปกรณ์นี้แม้ Quilcast จะปิดอยู่ เซิร์ฟเวอร์ของเราตรวจหาทุกหนึ่งนาที โดยเก็บ Farcaster ID ของคุณไว้กับการสมัครรับพุชของเบราว์เซอร์นี้และการตั้งค่าเหล่านี้ และเก็บไว้ไม่กี่นาทีว่าส่งการแจ้งเตือนใดไปแล้ว เมื่อออกจากระบบข้อมูลเหล่านี้จะถูกลบ คนที่คุณปิดเสียงหรือบล็อก คำที่ปิดเสียง และสแปมที่คุณซ่อนจะไม่ถูกส่งมา",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "บัญชีนี้รับการแจ้งเตือนบนอุปกรณ์มากเกินไป โปรดปิดบนอุปกรณ์เครื่องใดเครื่องหนึ่งก่อน",
-  "This browser gets notifications for too many accounts.": "เบราว์เซอร์นี้รับการแจ้งเตือนของบัญชีมากเกินไป"
+  "This browser gets notifications for too many accounts.": "เบราว์เซอร์นี้รับการแจ้งเตือนของบัญชีมากเกินไป",
+  "{n} new post|{n} new posts": "{n} โพสต์ใหม่"
 }

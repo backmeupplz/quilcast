@@ -1,11 +1,11 @@
 import { render, type ComponentChildren } from 'preact'
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { crashed, started } from './crash.ts'
 import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follow, followsMe, forget, forgetFollows, get, urlOf, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, hasTag, n, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
+import { castText, hasTag, n, newOnTop, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, thumbOf, untilText, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
@@ -228,10 +228,20 @@ function AccountMenu({ me, quorum }: { me: User; quorum?: boolean }) {
 
 type Page = { casts: Cast[]; next?: { cursor?: string | null } }
 type Chunk<T> = { items: T[]; cursor: string | null }
+/** What a feed found above its list (#640): `items` go on top, or take the list's place with `cursor` after them when
+ *  it's set; `news` are the ones the pill counts (not the viewer's own, nor the hidden ones). */
+type News<T> = { items: T[]; news: T[]; cursor?: string | null }
+// how often a feed on screen looks for new posts, while the page is visible
+const EVERY = 60e3
+// at the top of the page, and not on its way back to a spot (scrollBack): new posts go straight on top there
+const atTop = () => scrollY < 4 && !pending
 
 /** Cursor pagination with infinite scroll. `id` dedupes items across pages. `fresh`: loads again on Back too.
- *  `restored`: told of a list Back brought back for `k`, before its next page loads. */
-function Pager<T>({ load, k, empty, id, row, initial, fresh, restored }: { load: (cursor?: string) => Promise<Chunk<T>>; k: string; empty?: string; id: (t: T) => string; row: (items: T[]) => ComponentChildren; initial?: () => T[]; fresh?: boolean; restored?: (k: string, items: T[]) => void }) {
+ *  `restored`: told of a list Back brought back for `k`, or one new posts went on top of (`added`: those), before its
+ *  next page loads.
+ *  `poll`: asked every minute what's new above the list (#640), which `pill` offers while the page is scrolled down
+ *  and which goes straight on top at the top of the page. */
+function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pill }: { load: (cursor?: string) => Promise<Chunk<T>>; k: string; empty?: string; id: (t: T) => string; row: (items: T[]) => ComponentChildren; initial?: () => T[]; fresh?: boolean; restored?: (k: string, items: T[], added?: T[]) => void; poll?: (have: T[]) => Promise<News<T> | null>; pill?: (news: T[], show: () => void) => ComponentChildren }) {
   // Back or Forward onto this page shows the pages loaded before, and goes on from there (restore.ts)
   const [kept] = useState(() => (fresh ? null : takeList<T>(k)))
   const [items, setItems] = useState<T[]>(() => kept?.items || initial?.() || [])
@@ -244,6 +254,40 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored }: { load:
   const state = useRef({ busy: false, run: {}, mounted: false })
   // the list loaded for `k` so far, which Back finds on this entry when it's left (restore.ts)
   const got = useRef<{ k: string; items: T[]; cursor: string | null } | null>(kept && { k, ...kept })
+  // new posts found above the list, held until they're shown: by a tap on the pill, or by the page being at the top
+  const held = useRef<(News<T> & { k: string }) | null>(null)
+  const [, redraw] = useState(0)
+  const asks = useRef(poll)
+  asks.current = poll
+  const show = (to: boolean) => {
+    const h = held.current
+    held.current = null
+    redraw((x) => x + 1)
+    if (!h || h.k !== k || got.current?.k !== k) return
+    const whole = h.cursor !== undefined
+    const ids = new Set(h.items.map(id))
+    const next = whole ? h.items : [...h.items, ...got.current.items.filter((x) => !ids.has(id(x)))]
+    if (whole) {
+      // a page still loading for the list before is dropped
+      state.current.run = {}
+      state.current.busy = false
+      setBusy(false)
+      setCursor(h.cursor)
+    }
+    got.current = { k, items: next, cursor: whole ? h.cursor ?? null : got.current.cursor }
+    // what went on top joins what the list showed; a page that takes the list's place starts it over
+    restored?.(k, next, whole ? undefined : h.items)
+    up.current = to
+    setItems(next)
+  }
+  // a tap on the pill goes up once the new posts are in the page, so that keeping the reader's place as they go in
+  // (scroll anchoring) doesn't stop it half way
+  const up = useRef(false)
+  useLayoutEffect(() => {
+    if (!up.current) return
+    up.current = false
+    scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }, [items])
   const more = async (reset = false) => {
     if ((state.current.busy && !reset) || (!reset && cursor === null)) return
     const run = state.current.run
@@ -291,13 +335,56 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored }: { load:
     more(true)
   }, [k])
   useEffect(() => {
+    if (!asks.current) return
+    held.current = null
+    let on = true
+    let asking = false
+    let last = Date.now()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const hidden = () => document.visibilityState === 'hidden'
+    const wait = (ms: number) => (clearTimeout(timer), (timer = setTimeout(tick, ms)))
+    // not while the page is hidden: coming back asks at once if a minute has gone by
+    const tick = async () => {
+      if (!on || asking || hidden()) return
+      asking = true
+      last = Date.now()
+      const run = state.current.run
+      // only once the list's first page is in, and not while another page loads
+      const list = got.current?.k === k && !state.current.busy ? got.current.items : null
+      const h = held.current?.k === k ? held.current : null
+      try {
+        const r = list && (await asks.current?.([...(h?.items || []), ...list]))
+        if (on && r?.items.length && state.current.run === run && got.current?.k === k) {
+          held.current = r.cursor !== undefined || !h ? { k, ...r } : { k, items: [...r.items, ...h.items], news: [...r.news, ...h.news], cursor: h.cursor }
+          atTop() ? show(false) : redraw((x) => x + 1)
+        }
+      } catch {}
+      asking = false
+      if (on && !hidden()) wait(EVERY)
+    }
+    const seen = () => (hidden() ? clearTimeout(timer) : wait(Math.max(0, last + EVERY - Date.now())))
+    // scrolled up to the top on their own: what's held goes on top
+    const scrolled = () => held.current?.k === k && atTop() && show(false)
+    wait(EVERY)
+    document.addEventListener('visibilitychange', seen)
+    addEventListener('scroll', scrolled, { passive: true })
+    return () => {
+      on = false
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', seen)
+      removeEventListener('scroll', scrolled)
+    }
+  }, [k])
+  useEffect(() => {
     // re-armed after every render, so pages that filter down to nothing keep loading
     const o = new IntersectionObserver((e) => e[0].isIntersecting && cursor && more(), { rootMargin: '800px' })
     sentinel.current && o.observe(sentinel.current)
     return () => o.disconnect()
   })
+  const news = held.current?.k === k ? held.current.news : []
   return (
     <>
+      {news.length > 0 && pill?.(news, () => show(true))}
       {row(items)}
       {err && <div class="note">{t('Couldn\'t load: {error}', { error: err })} <button class="link-btn" onClick={() => more()}>{t('Retry')}</button></div>}
       {busy && (items.length ? <div class="spinner" aria-label={t('Loading')} /> : <div aria-label={t('Loading')}>{[0, 1, 2, 3].map(() => <div class="skel"><i /><span><b /><b /><b /></span></div>)}</div>)}
@@ -371,6 +458,31 @@ function Unit({ c, owner }: { c: Cast; owner?: number }) {
   )
 }
 
+/** "↑ 3 new posts" over a feed scrolled down (#640), with the faces of up to 3 of who posted them; a tap shows them.
+ *  It floats under the page's header, in the middle of the column. */
+function NewPosts({ cs, show }: { cs: Cast[]; show: () => void }) {
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null)
+  useLayoutEffect(() => {
+    const place = () => {
+      const col = document.querySelector('main.col')
+      const head = col?.querySelector('.phead')?.getBoundingClientRect()
+      const box = col?.getBoundingClientRect()
+      setAt({ top: Math.max(0, head?.bottom ?? 0) + 10, left: box ? box.left + box.width / 2 : innerWidth / 2 })
+    }
+    place()
+    addEventListener('resize', place)
+    return () => removeEventListener('resize', place)
+  }, [])
+  const faces = [...new Map(cs.map((c) => [(c.recaster || c.author).fid, c.recaster || c.author])).values()].slice(0, 3)
+  return (
+    <button class="new-posts" style={at ? { top: `${at.top}px`, left: `${at.left}px` } : { visibility: 'hidden' }} onClick={show}>
+      <Icon d={P.up} size={16} />
+      <span class="faces" aria-hidden="true">{faces.map((u) => <Avatar key={u.fid} u={u} size={22} link={false} />)}</span>
+      {tn(cs.length, '{n} new post', '{n} new posts')}
+    </button>
+  )
+}
+
 // the signed-out home feed the server's page shows (server/home.mjs), until the feed loads its first page
 let boot: Cast[] | null = null
 // `cacheKey` keeps a feed's first page in this browser, so a reload paints it immediately; `owner` is the profile
@@ -378,13 +490,33 @@ let boot: Cast[] | null = null
 // `skip`: a cast shown above the feed already (a profile's pinned cast), left out of it
 // `viewer`: a threaded feed's owner when it isn't the signed-in user's (threads()); `local`: Home's Following from the
 // device's list (anonymous mode, local.ts)
-function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer, local }: { load: (cursor?: string) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number; skip?: string | null; viewer?: number; local?: boolean }) {
+// `live`: the feed looks for new posts above it every minute (#640), reading its first page again past the cache
+// (`load`'s `fresh`): the ones above its top casts ('top', a feed newest first), or the ones posted after its newest
+// cast ('time', Trending)
+function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer, local, live }: { load: (cursor?: string, fresh?: boolean) => Promise<Page>; k: string; empty?: string; keep?: (c: Cast) => boolean; cacheKey?: string; thread?: boolean; owner?: number; skip?: string | null; viewer?: number; local?: boolean; live?: 'top' | 'time' }) {
   // the posts this feed shows so far, for threads(), and the key they're for; a first page starts over (shownFor)
   const shown = useRef({ k, set: new Set<string>() })
-  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter((c) => !silenced(c.recaster?.fid) && (!skip || pinKey(c.hash) !== skip) && ![c, ...(c.up || [])].some((x) => hides(x, owner))).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
+  const shows = (c: Cast) => !silenced(c.recaster?.fid) && (!skip || pinKey(c.hash) !== skip) && ![c, ...(c.up || [])].some((x) => hides(x, owner))
+  const hashes = (cs: Cast[]) => cs.flatMap((c) => [c.hash, ...(c.up || []).map((p) => p.hash)])
+  const poll = live && (async (have: Cast[]): Promise<News<Cast> | null> => {
+    const r = await load(undefined, true)
+    const top = newOnTop(have, r.casts, live === 'time')
+    if (!top.items.length || shown.current.k !== k) return null
+    // with a gap, the page takes the list's place, so it's made like a first page
+    const page = top.gap ? r.casts : top.items
+    const casts = thread ? await threads(page, new Set(top.gap ? [] : [...shown.current.set, ...hashes(have)]), viewer ?? account?.fid, local) : keep ? page.filter(keep) : page
+    await hydrateParents(casts)
+    const had = new Set(have.map((c) => c.hash))
+    const news = casts.filter((c) => !had.has(c.hash) && shows(c) && (c.recaster || c.author).fid !== account?.fid)
+    return top.gap ? { items: casts, news, cursor: r.casts.length ? r.next?.cursor || null : null } : { items: casts, news }
+  })
+  return <Pager<Cast> k={k} empty={empty} id={(c) => c.hash} row={(cs) => cs.filter(shows).map((c) => <Unit key={c.hash} c={c} owner={owner} />)}
+    poll={poll || undefined} pill={(cs, show) => <NewPosts cs={cs} show={show} />}
     initial={() => (cacheKey === '0:trending' && boot) || (cacheKey ? read<Cast[]>(`quilcast:feed:${cacheKey}`, []) : [])}
-    // a list Back brought back (restore.ts) goes on without repeats: what it showed is what's in it (oncePerFeed)
-    restored={thread ? (k, cs) => void (shown.current = { k, set: new Set(cs.flatMap((c) => [c.hash, ...(c.up || []).map((p) => p.hash)])) }) : undefined}
+    // a list Back brought back (restore.ts) goes on without repeats: what it showed is what's in it (oncePerFeed). New
+    // posts put on top join the same set, which a page still loading adds its own to; and a feed that's not threaded
+    // keeps its key too, which its poll checks
+    restored={(k, cs, added) => void (added && shown.current.k === k ? hashes(added).forEach((x) => shown.current.set.add(x)) : (shown.current = { k, set: new Set(hashes(cs)) }))}
     load={async (cursor) => {
       // taken now, not after the request: one Feed is reused when `k` changes, and an older key's load can end later
       const seen = shownFor(shown.current, k, !cursor)
@@ -606,9 +738,9 @@ function Home() {
         <Feed k={`local:${round}:${fids}`} cacheKey="local:following" local empty={t('Follow people from their profiles and their casts will show up here.')} thread load={loadLocal} />
       ) : (
         // someone else's Following isn't kept in this browser: only your own feeds paint from the cache
-        <Feed k={`${target ? `as${target.fid}:` : ''}${following ? 'following' : 'trending'}:${round}`} cacheKey={target && following ? undefined : `${account?.fid || 0}:${following ? 'following' : 'trending'}`} keep={trendy} thread={following} viewer={target?.fid}
+        <Feed k={`${target ? `as${target.fid}:` : ''}${following ? 'following' : 'trending'}:${round}`} cacheKey={target && following ? undefined : `${account?.fid || 0}:${following ? 'following' : 'trending'}`} keep={trendy} thread={following} viewer={target?.fid} live={following ? 'top' : 'time'}
           empty={target && following ? t('Nothing yet from the people @{name} follows.', { name: name! }) : t('Follow a few people and their casts will show up here.')}
-          load={(cursor) => (following ? get('/v2/farcaster/feed/following', { fid: target?.fid ?? account!.fid, limit: 50, cursor, with_recasts: 'true' }) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }))} />
+          load={(cursor, fresh) => (following ? get('/v2/farcaster/feed/following', { fid: target?.fid ?? account!.fid, limit: 50, cursor, with_recasts: 'true' }, fresh) : get('/v2/farcaster/feed/trending', { limit: 50, cursor }, fresh))} />
       )}
     </>
   )
@@ -1310,7 +1442,7 @@ function ChannelPage({ id }: { id: string }) {
   const [round, reload] = useReload()
   // when the directory can't be had, the casts under the usual URL still show
   useEffect(() => void getChannel(id).then((x) => setC(x || { id, url: `https://warpcast.com/~/channel/${id}`, name: id, followers: 0, members: 0, open: true })), [id])
-  const load = useMemo(() => c && ((cursor?: string) => get('/v2/farcaster/feed/parent_urls', { parent_urls: c.url, limit: 25, cursor })), [c, round])
+  const load = useMemo(() => c && ((cursor?: string, fresh?: boolean) => get('/v2/farcaster/feed/parent_urls', { parent_urls: c.url, limit: 25, cursor }, fresh)), [c, round])
   return (
     <>
       <Header title={c?.name || `/${id}`} action={<button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={reload}><Icon d={P.refresh} /></button>} />
@@ -1327,7 +1459,7 @@ function ChannelPage({ id }: { id: string }) {
             {c.desc && <RichText text={c.desc} plain />}
             {c.followers > 0 && <div class="counts"><span><b>{n(c.followers)}</b> {tn(c.followers, 'follower', 'followers')}</span><span><b>{n(c.members)}</b> {tn(c.members, 'member', 'members')}</span></div>}
           </section>
-          <Feed k={`channel:${c.url}:${round}`} empty={t('No casts in this channel yet.')} load={load} />
+          <Feed k={`channel:${c.url}:${round}`} empty={t('No casts in this channel yet.')} load={load} live="top" />
         </>
       )}
     </>

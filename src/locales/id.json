@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "Terlalu banyak akun yang menerima notifikasi saat ini. Coba lagi nanti.",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Balasan, sebutan, kutipan, suka, recast, dan pengikut baru sampai ke perangkat ini meski Quilcast ditutup. Server kami memeriksanya sekali semenit. Server menyimpan ID Farcaster-mu bersama langganan push browser ini dan pengaturan ini, dan selama beberapa menit notifikasi mana yang sudah dikirim; keluar dari akun menghapusnya. Orang yang kamu bisukan atau blokir, kata yang dibisukan, dan spam yang kamu sembunyikan tidak ikut.",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "Akun ini menerima notifikasi di terlalu banyak perangkat. Matikan dulu di salah satunya.",
-  "This browser gets notifications for too many accounts.": "Browser ini menerima notifikasi untuk terlalu banyak akun."
+  "This browser gets notifications for too many accounts.": "Browser ini menerima notifikasi untuk terlalu banyak akun.",
+  "{n} new post|{n} new posts": "{n} postingan baru"
 }

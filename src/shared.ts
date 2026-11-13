@@ -115,6 +115,27 @@ export function oncePerFeed<T extends Unit>(units: (T | null)[], shown: Set<stri
   return out
 }
 
+type Dated = { hash: string; timestamp?: string; up?: { hash: string }[]; recaster?: { fid?: number } | null }
+const timeOf = (c: { timestamp?: string }) => Date.parse(c.timestamp || '') || 0
+/** What a feed's first page, read again, has that's newer than the list on screen (#640): the casts above the list's
+ *  top ones that it doesn't show yet, or with `byTime` (Trending, whose order isn't by time) the ones posted after the
+ *  newest it shows. `gap`: none of the list's top casts is on the page, so it can't tell what's between them (the list
+ *  is empty, or there's more that's new than a page holds); then the page takes the list's place. */
+export function newOnTop<T extends Dated>(have: Dated[], page: T[], byTime = false): { items: T[]; gap: boolean } {
+  const known = new Set(have.flatMap((c) => [c.hash, ...(c.up || []).map((p) => p.hash)]))
+  if (byTime) {
+    const newest = Math.max(0, ...have.map(timeOf))
+    return { items: page.filter((c) => !known.has(c.hash) && timeOf(c) > newest), gap: false }
+  }
+  // a few, in case the top one was deleted; a recast of something further down doesn't count, as it's shown already.
+  // An entry is its cast and who recast it, so a fresh recast of one of the top casts isn't taken for that cast
+  // itself, which would hide whatever's new below it
+  const entry = (c: Dated) => `${c.hash}:${c.recaster?.fid ?? ''}`
+  const top = new Set(have.slice(0, 5).map(entry))
+  const i = page.findIndex((c) => top.has(entry(c)))
+  return { items: (i < 0 ? page : page.slice(0, i)).filter((c) => !known.has(c.hash)), gap: i < 0 }
+}
+
 export const LOGO = 'M23.5 6.5c-6 .5-10.5 4.8-12 11.5l-1.6 7.5 1.4.4 2-5.2c4.6-.4 8.4-3.4 9.6-8.2-1.3.6-2.7.9-4 .9 1.9-1.2 3.6-3.6 4.6-6.9z'
 export const X_LOGO = 'M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.19L2 3h6.33l4.37 5.77zm-1.08 16.17h1.7L7.4 4.74H5.58z'
 

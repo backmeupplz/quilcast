@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "目前接收通知的账号太多，请稍后再试。",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "即使关闭 Quilcast，回复、提及、引用、点赞、转发和关注也会推送到这台设备。我们的服务器每分钟查看一次。它会保存你的 Farcaster ID、这个浏览器的推送订阅和这些设置，并在几分钟内记住已经发送过哪些通知；退出登录会清除这些信息。你静音或屏蔽的人、静音的词以及你隐藏的垃圾内容不会推送。",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "这个账号在太多设备上接收通知。请先在其中一台设备上关闭。",
-  "This browser gets notifications for too many accounts.": "这个浏览器接收太多账号的通知。"
+  "This browser gets notifications for too many accounts.": "这个浏览器接收太多账号的通知。",
+  "{n} new post|{n} new posts": "{n} 条新帖子"
 }

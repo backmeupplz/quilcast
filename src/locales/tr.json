@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "Şu anda çok fazla hesap bildirim alıyor. Daha sonra yeniden deneyin.",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Yanıtlar, bahsetmeler, alıntılar, beğeniler, recast’ler ve takipler Quilcast kapalıyken bile bu cihaza gelir. Sunucumuz dakikada bir bunlara bakar. Farcaster kimliğinizi bu tarayıcının anlık bildirim aboneliği ve bu ayarlarla birlikte, birkaç dakika boyunca da hangi bildirimleri gönderdiğini saklar; oturumu kapatınca silinir. Sessize aldığınız ya da engellediğiniz kişiler, sessize alınan kelimeler ve gizlediğiniz spam dışarıda kalır.",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "Bu hesap çok fazla cihazda bildirim alıyor. Önce birinde kapatın.",
-  "This browser gets notifications for too many accounts.": "Bu tarayıcı çok fazla hesap için bildirim alıyor."
+  "This browser gets notifications for too many accounts.": "Bu tarayıcı çok fazla hesap için bildirim alıyor.",
+  "{n} new post|{n} new posts": "{n} yeni gönderi|{n} yeni gönderi"
 }

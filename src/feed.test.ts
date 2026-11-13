@@ -1,7 +1,7 @@
 // Home shows each post once, across pages too (issue #9: a post came back when a second friend replied).
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { oncePerFeed, shownFor } from './shared.ts'
+import { newOnTop, oncePerFeed, shownFor } from './shared.ts'
 
 test('a post shows once per feed, across pages', () => {
   const shown = new Set<string>()
@@ -34,4 +34,39 @@ test("a slow load for the feed's previous key never resets or fills the current 
   assert.deepEqual(oncePerFeed([{ hash: 'x' }, { hash: 'y' }, { hash: 'w' }], b2).map((c) => c.hash), ['y', 'w'])
   // a reload of the same key starts over
   assert.notEqual(shownFor(held, 'b', true), b1)
+})
+
+// #640: a feed read again in the background says what's new on top of it
+const c = (hash: string, timestamp = '2026-11-12T00:00:00Z', up?: { hash: string }[]) => ({ hash, timestamp, up })
+test('the casts above the top of the list are new, without the ones it shows already', () => {
+  const have = [c('d'), c('e', undefined, [c('root')]), c('g'), c('h'), c('i'), c('f')]
+  // a new cast, a recast of one shown further down and a reply's root from the list, then the list's top
+  const r = newOnTop(have, [c('a'), c('f'), c('root'), c('b'), c('d'), c('e')])
+  assert.deepEqual(r, { items: [c('a'), c('b')], gap: false })
+  // nothing new
+  assert.deepEqual(newOnTop(have, [c('d'), c('e'), c('f')]), { items: [], gap: false })
+  // the top cast was deleted: the next one still marks where the new ones end
+  assert.deepEqual(newOnTop(have, [c('x'), c('e'), c('f')]).items.map((x) => x.hash), ['x'])
+})
+
+test('a fresh recast of one of the top casts does not hide the new casts below it', () => {
+  const have = [c('a'), c('b'), c('d')]
+  const r = newOnTop(have, [{ ...c('b'), recaster: { fid: 9 } }, c('c'), c('a'), c('b'), c('d')])
+  assert.deepEqual(r.items.map((x) => x.hash), ['c'])
+  assert.equal(r.gap, false)
+  // a recast already at the top of the list still marks where the new ones end
+  const rt = { ...c('b'), recaster: { fid: 9 } }
+  assert.deepEqual(newOnTop([rt, c('a')], [c('x'), rt, c('a')]), { items: [c('x')], gap: false })
+})
+
+test("a page that has none of the list's top casts takes its place", () => {
+  assert.deepEqual(newOnTop([c('d')], [c('a'), c('b')]), { items: [c('a'), c('b')], gap: true })
+  assert.deepEqual(newOnTop([], [c('a')]), { items: [c('a')], gap: true })
+  assert.deepEqual(newOnTop([c('d')], []), { items: [], gap: true })
+})
+
+test("Trending's new casts are the ones posted after the newest it shows, wherever they rank", () => {
+  const have = [c('old', '2026-11-12T10:00:00Z'), c('newest', '2026-11-12T11:00:00Z')]
+  const page = [c('old', '2026-11-12T10:00:00Z'), c('risen', '2026-11-12T09:00:00Z'), c('fresh', '2026-11-12T12:00:00Z'), c('newest', '2026-11-12T11:00:00Z')]
+  assert.deepEqual(newOnTop(have, page, true), { items: [c('fresh', '2026-11-12T12:00:00Z')], gap: false })
 })

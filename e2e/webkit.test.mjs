@@ -33,6 +33,10 @@ const looky = { fid: 12, username: 'looky', display_name: 'Looky', follower_coun
 const LOOK = { mood: 'in a mood', about: Array.from({ length: 8 }, (_, i) => `About line ${i + 1}`).join('\n\n') }
 // the [fid, viewer_fid] of every Following feed asked for
 const followingAsked = []
+// how many new casts /channel/live… has on top of its long feed by now (#640), by @newbie and @other; a channel each
+// for the tests that run at once
+const liveNews = {}
+const newCast = (i) => cast(30 + i, { hash: '0x' + i.toString(16).padStart(40, 'e'), text: `brand new cast ${i}`, author: i % 2 ? { fid: 21, username: 'newbie' } : { fid: 22, username: 'other' } })
 const node = createServer((q, r) => {
   r.setHeader('content-type', 'application/json')
   r.setHeader('access-control-allow-origin', '*')
@@ -48,6 +52,11 @@ const node = createServer((q, r) => {
     return r.end(JSON.stringify({ casts: u.get('fid') === '7' ? [cast(5), cast(6)] : [busy, cast(2)] }))
   }
   const at = new URL(q.url, 'http://x')
+  const live = at.pathname === '/v2/farcaster/feed/parent_urls' && !at.searchParams.get('cursor') && at.searchParams.get('parent_urls').match(/\/(live\w*)$/)?.[1]
+  if (live) {
+    const page = JSON.parse(longFeed(at.searchParams, 'long feed cast')), n = liveNews[live] || 0
+    return r.end(JSON.stringify({ ...page, casts: [...Array.from({ length: n }, (_, i) => newCast(n - i)), ...page.casts] }))
+  }
   // a long channel feed, and @looky's casts (#502)
   if (at.pathname === '/v2/farcaster/feed/parent_urls') return r.end(longFeed(at.searchParams, 'long feed cast'))
   if (at.pathname === '/v2/farcaster/feed/user/casts' && at.searchParams.get('fid') === '12') return r.end(longFeed(at.searchParams, 'looky cast'))
@@ -322,6 +331,66 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await page.evaluate(() => (history.pushState(null, '', '/channel/longfeed'), dispatchEvent(new PopStateEvent('popstate'))))
     await page.waitForFunction(() => location.pathname === '/channel/longfeed' && document.querySelector('#app article.cast') && document.querySelectorAll('#app article.cast').length <= 25, null, { polling: 100, timeout: 10e3 })
     assert.equal(await page.evaluate(() => scrollY), 0)
+    assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test('a feed scrolled down offers its new posts in a pill that puts them on top; at the top they just come in (#640)', async () => {
+    const { page, errors, ctx, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/channel/livefeed', clock: true })
+    const first = () => page.evaluate(() => document.querySelector('#app article.cast')?.innerText || '')
+    await page.locator('#app article.cast', { hasText: 'long feed cast 1' }).first().waitFor({ timeout: 30e3 })
+    await page.evaluate(() => scrollTo(0, 1500))
+    const pill = page.locator('#app .new-posts')
+    // the page's clock goes on a minute at a time until `until` holds (a look still on its way when the clock jumps
+    // waits for the next minute)
+    const minutes = async (until) => {
+      for (let i = 0; i < 8; i++) {
+        await ctx.clock.fastForward(61e3)
+        if (await page.waitForFunction(until, null, { timeout: 2000 }).then(() => true, () => false)) return
+      }
+      assert.fail(`never: ${until}`)
+    }
+    // a few minutes go by with nothing new: no pill
+    for (let i = 0; i < 2; i++) await ctx.clock.fastForward(61e3), await page.waitForTimeout(1000)
+    assert.equal(await pill.count(), 0)
+    // two new casts by two people: the pill says so with both faces, and the list stays where it was
+    liveNews.livefeed = 2
+    await minutes(() => document.querySelector('#app .new-posts'))
+    assert.match(await pill.innerText(), /2 new posts\s*$/)
+    assert.equal(await pill.locator('.avatar').count(), 2)
+    assert.ok(Math.abs(await page.evaluate(() => scrollY) - 1500) < 2)
+    assert.match(await first(), /long feed cast 1\b/)
+    // a tap puts them on top and goes up to them
+    await pill.click()
+    await page.waitForFunction(() => scrollY === 0 && document.querySelector('#app article.cast')?.innerText.includes('brand new cast 2'), null, { timeout: 10e3 })
+    assert.equal(await pill.count(), 0)
+    // at the top, a new one just comes in, without a pill
+    liveNews.livefeed = 3
+    await minutes(() => document.querySelector('#app article.cast')?.innerText.includes('brand new cast 3'))
+    assert.equal(await pill.count(), 0)
+    assert.equal(await page.evaluate(() => scrollY), 0)
+    const shown = await page.$$eval('#app article.cast', (as) => as.map((a) => a.innerText.match(/(brand new|long feed) cast \d+/)?.[0]).filter(Boolean))
+    assert.deepEqual(shown.slice(0, 4), ['brand new cast 3', 'brand new cast 2', 'brand new cast 1', 'long feed cast 1'])
+    assert.equal(new Set(shown).size, shown.length, `repeated: ${shown}`)
+    assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test('a channel Back brings back still looks for new posts (#640)', async () => {
+    const { page, errors, ctx, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/channel/liveback', clock: true })
+    const card = (text) => page.locator('#app article.cast', { hasText: text }).first().waitFor({ timeout: 30e3 })
+    await card('long feed cast 1')
+    // on to another channel in the same page, and Back
+    await link(page, '/channel/longfeed')
+    await page.waitForFunction(() => location.pathname === '/channel/longfeed')
+    await card('long feed cast 1')
+    await page.evaluate(() => history.back())
+    await page.waitForFunction(() => location.pathname === '/channel/liveback')
+    await card('long feed cast 1')
+    await page.evaluate(() => scrollTo(0, 1500))
+    liveNews.liveback = 1
+    for (let i = 0; i < 8 && !(await page.locator('#app .new-posts').count()); i++) await ctx.clock.fastForward(61e3), await page.waitForTimeout(1000)
+    assert.match(await page.locator('#app .new-posts').innerText(), /1 new post\s*$/)
     assert.deepEqual(errors, [])
     await close()
   })

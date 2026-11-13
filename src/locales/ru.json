@@ -1208,5 +1208,6 @@
   "Too many accounts get notifications right now. Try again later.": "Сейчас уведомления получают слишком много аккаунтов. Попробуйте позже.",
   "Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Our server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.": "Ответы, упоминания, цитаты, лайки, рекасты и подписки приходят на это устройство, даже когда Quilcast закрыт. Наш сервер проверяет их раз в минуту. Он хранит ваш Farcaster ID вместе с push-подпиской этого браузера и этими настройками, а несколько минут — ещё и то, какие уведомления уже отправил; выход из аккаунта всё это стирает. Люди, которых вы скрыли или заблокировали, скрытые слова и спам, который вы прячете, не приходят.",
   "This account gets notifications on too many devices. Turn them off on one of them first.": "Этот аккаунт получает уведомления на слишком многих устройствах. Сначала выключите их на одном из них.",
-  "This browser gets notifications for too many accounts.": "Этот браузер получает уведомления для слишком многих аккаунтов."
+  "This browser gets notifications for too many accounts.": "Этот браузер получает уведомления для слишком многих аккаунтов.",
+  "{n} new post|{n} new posts": "{n} новый пост|{n} новых поста|{n} новых постов"
 }
