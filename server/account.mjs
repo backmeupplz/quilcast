@@ -3,11 +3,12 @@
 // A big account has many casts to read, and no request may outlive the proxy's 60 s, so the work runs in the background:
 // the first call starts it, and each call (signed again) waits up to 20 s and answers { state: 'running' } until it can
 // answer { state: 'done', … }. Running it again later is safe: what's gone stays gone.
-// What goes: the profile look and pinned cast, mutes, synced theme settings, drafts, translations kept of its casts (read from the node, never from the
+// What goes: the profile look and pinned cast, mutes, synced theme settings, drafts, scheduled casts, translations kept of its casts (read from the node, never from the
 // browser), and the photos and videos only this account put on our volume (upload.mjs keeps who). A file someone else
 // uploaded too, a theme's picture, or one from before uploads were recorded stays: `kept` counts those among the files
 // the account uploaded or its casts and profile link to, so the app can say so (and point to email).
 import { dropDrafts } from './drafts.mjs'
+import { dropScheduled } from './scheduled.mjs'
 import { dropLook, keySigned } from './looks.mjs'
 import { dropMutes } from './mutes.mjs'
 import { dropAlerts } from './alerts.mjs'
@@ -48,6 +49,9 @@ export async function deleteAccount(req, fid, run_, { node, site }) {
 }
 
 async function run(fid, node, site) {
+  // scheduled casts still waiting are cancelled first, so none comes due while the casts are read (not counted:
+  // none of them was posted)
+  await dropScheduled(fid)
   // the /m/ files this account's casts and profile link to, and its casts' hashes (for their translations)
   const re = new RegExp(`${esc(site)}/m/([0-9a-f]{24}\\.(?:${Object.values(EXT).join('|')}))(?![\\w.])`, 'g')
   const linked = new Set()

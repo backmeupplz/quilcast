@@ -66,7 +66,7 @@ export const getLook = (fid) => looks.get(fid) || keep(looks, 5000, fid, readFil
 // a key counts while the node lists it for the FID and it hasn't expired; asked again after a minute, or after
 // a few seconds when the key isn't there (a browser that just added one)
 const signers = new Map()
-const keysOf = (node, fid, fresh = 60e3) => {
+export const keysOf = (node, fid, fresh = 60e3) => {
   const hit = signers.get(fid)
   if (hit && hit.at > Date.now() - fresh) return hit.keys
   const keys = fetchJson(`${node}/v1/signersByFid?fid=${fid}`).then((r) => {

@@ -93,12 +93,18 @@ export async function envelope(type: number, fid: number, body: Uint8Array, key:
   const now = fcNow()
   let at = Math.min(Math.max(now, after + 1), now + 590)
   if (type >= MT.REACTION_ADD && type <= MT.LINK_REMOVE) at = lastToggle = Math.min(Math.max(at, lastToggle + 1), now + 590)
+  return seal(type, fid, at, body, key)
+}
+async function seal(type: number, fid: number, at: number, body: Uint8Array, key: Ed) {
   const data = pb([1, type], [2, fid], [3, at], [4, 1], [BODY_FIELD[type], body])
   const hash = blake3(data, { dkLen: 20 })
   // hypersnap merges read `data` while hashing uses `data_bytes`: send both
   const msg = pb([1, data], [2, hash], [3, 1], [4, await key.sign(hash)], [5, 1], [6, key.pub], [7, data])
   return { msg, hash: hex(hash) }
 }
+/** A CastAdd signed with `at` (Unix ms, whole seconds) as its own timestamp, however far ahead: a scheduled cast, which
+ *  our server submits once that time comes (server/scheduled.mjs). A node takes it from ten minutes before. */
+export const castAt = (fid: number, body: Uint8Array, key: Ed, at: number) => seal(MT.CAST_ADD, fid, Math.floor(at / 1000) - 1609459200, body, key)
 
 // --- Ethereum-style signing ---
 

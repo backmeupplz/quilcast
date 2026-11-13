@@ -24,7 +24,7 @@ const wm = () => import('./walletmove.tsx')
 export const shell = {
   toast: (_: string) => {},
   // text, embeds and onDone come from mini apps; onDone gets the new cast's hash, or null if nothing was posted
-  compose: (_: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void } = {}) => {},
+  compose: (_: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void; scheduled?: boolean } = {}) => {},
   // opens the image viewer (Viewer)
   view: (urls: string[], index: number) => openViewer(urls, index),
   // a Markdown link's (`label`) or look-alike link's real address, asked about before it opens (LinkSheet);

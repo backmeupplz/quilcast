@@ -602,6 +602,10 @@ small.warn { color: var(--warn); }
 .draft { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); }
 .draft-open { flex: 1; min-width: 0; display: grid; gap: 2px; text-align: start; border: 0; background: none; color: inherit; padding: 10px 2px; }
 .draft-open .clamp { -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.draft.failed small { color: var(--danger, #e5484d); }
+.drafts > p.small { font-size: 13px; padding: 12px 4px; text-align: start; }
+.schedule-at { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin: 4px 0 8px; border-radius: 12px; background: var(--soft); }
+.schedule-at input { flex: 1; min-width: 0; font: inherit; color: inherit; background: transparent; border: 0; color-scheme: light dark; }
 .ctx { display: flex; gap: 10px; margin: 6px 0 2px; font-size: 14px; position: relative; }
 .ctx::after { content: ''; position: absolute; inset-inline-start: 13px; top: 32px; bottom: -14px; width: 2px; background: var(--line); }
 .ctx p { margin: 2px 0 0; color: var(--muted); -webkit-line-clamp: 3; }

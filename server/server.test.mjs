@@ -15,7 +15,7 @@ import { after, before, test } from 'node:test'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { address, ecSign } from '../src/fc.ts'
+import { address, castAt, castBody, ecSign, rawEd } from '../src/fc.ts'
 import { verify } from '../scripts/verify.mjs'
 
 const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(srv.address().port)))
@@ -35,6 +35,8 @@ const signer9 = ed25519.utils.randomSecretKey()
 const signer11 = ed25519.utils.randomSecretKey()
 const fid7 = { casts: [], profile: [] }
 const orAsked = []
+const submitted = []
+let refuse = ''
 const hookHits = []
 const node = createServer(async (q, r) => {
   const u = new URL(q.url, 'http://x')
@@ -100,6 +102,14 @@ const node = createServer(async (q, r) => {
     const parentCastId = hash === '0x' + '7d'.repeat(20) ? { fid: 9, hash: '0x' + '9a'.repeat(20) } : null
     if (u.searchParams.get('fid') === '7' && ['7a', '7b', '7c', '7d'].some((x) => hash === '0x' + x.repeat(20))) return r.end(JSON.stringify({ hash, data: { fid: 7, castAddBody: { text: 'mine', parentCastId } } }))
     return (r.statusCode = 400), r.end(JSON.stringify({ errCode: 'not_found', details: 'cast not found' }))
+  }
+  // scheduled casts arriving at their time (server/scheduled.mjs): kept as sent, or refused while `refuse` says why
+  if (u.pathname === '/v1/submitMessage') {
+    const chunks = []
+    for await (const c of q) chunks.push(c)
+    if (refuse) return (r.statusCode = 400), r.end(JSON.stringify({ errCode: 'bad_request.validation_failure', details: refuse }))
+    submitted.push(Buffer.concat(chunks))
+    return r.end('{}')
   }
   if (u.pathname === '/v1/signersByFid') return r.end(JSON.stringify({ signers: u.searchParams.get('fid') === '7' ? [{ key: signerHex, expiresAt: 4e9 }, { key: '0x' + '11'.repeat(32), expiresAt: 1 }] : u.searchParams.get('fid') === '9' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer9)).toString('hex') }] : u.searchParams.get('fid') === '11' ? [{ key: '0x' + Buffer.from(ed25519.getPublicKey(signer11)).toString('hex') }] : [] }))
   // @eight's casts, two pages, for finding a cast from a farcaster.xyz link's first digits (the Collect mini app)
@@ -187,7 +197,7 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam` }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SCHEDULED_EVERY_MS: '200' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -1199,4 +1209,76 @@ test("an article's page shares its title, opening and cover, and says it's an Ar
   const unsure = await (await fetch(`${base}/c/${'f3'.repeat(20)}`)).text()
   assert.match(unsure, /<meta property="og:title" content="Mars \(@mars\) on Quilcast"/)
   assert.match(unsure, new RegExp(`<meta property="og:image" content="https://quilcast\\.test/og/c/${'f3'.repeat(20)}\\.png"`))
+})
+
+test('scheduled casts: signed in the browser for later, held as they are, sent at their time; cancelled ones never', async () => {
+  // the server's clock (testclock.mjs) may run ahead of this one: requests are signed, and casts timed, by it
+  let ahead = await later(0)
+  const now = () => Date.now() + ahead
+  const call = (method, fid, body = '', { key = signer, what = { GET: 'quilcast-scheduled-read', PUT: 'quilcast-scheduled', DELETE: 'quilcast-scheduled-cancel' }[method] } = {}) => {
+    const ts = now()
+    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex')
+    return fetch(`${base}/api/scheduled/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
+  }
+  const thread = async (texts, at, { fid = 7, k = signer } = {}) => {
+    const out = []
+    let prev
+    for (const [i, text] of texts.entries()) {
+      const m = await castAt(fid, castBody({ text, parent: prev }), rawEd(k), at + i * 1000)
+      out.push(m)
+      prev = { fid, hash: m.hash }
+    }
+    return out
+  }
+  const b64 = (m) => Buffer.from(m.msg).toString('base64')
+  const at = Math.ceil((now() + 90e3) / 1000) * 1000
+  const ms = await thread(['in ninety seconds', 'and its reply'], at)
+  const id = crypto.randomUUID()
+  const body = JSON.stringify({ id, msgs: ms.map(b64), draft: { parts: [{ text: 'in ninety seconds', media: [] }, { text: 'and its reply', media: [] }], as: 7 } })
+  assert.equal((await fetch(`${base}/api/scheduled/7`)).status, 401)
+  assert.deepEqual(await (await call('GET', 7)).json(), [])
+  // a body signed for reading, another account's casts, a key the node doesn't list, bytes changed on the way
+  assert.equal((await call('PUT', 7, body, { what: 'quilcast-scheduled-read' })).status, 401)
+  assert.equal((await call('PUT', 9, body, { key: signer9 })).status, 400)
+  const stranger = await thread(['x'], at, { k: ed25519.utils.randomSecretKey() })
+  assert.equal((await call('PUT', 7, JSON.stringify({ id, msgs: stranger.map(b64) }))).status, 403)
+  const tampered = Buffer.from(ms[0].msg)
+  tampered[tampered.lastIndexOf(Buffer.from('ninety'))] ^= 1
+  assert.equal((await call('PUT', 7, JSON.stringify({ id, msgs: [tampered.toString('base64')] }))).status, 400)
+  const soon = await thread(['too soon'], now() + 20e3)
+  assert.match((await (await call('PUT', 7, JSON.stringify({ id, msgs: soon.map(b64) }))).json()).error, /at least a minute/)
+  // scheduled
+  const saved = await (await call('PUT', 7, body)).json()
+  assert.deepEqual([saved.id, saved.at, saved.hash, saved.status], [id, at, ms[0].hash, 'scheduled'])
+  // another one, cancelled before its time
+  const gone = crypto.randomUUID()
+  assert.equal((await call('PUT', 7, JSON.stringify({ id: gone, msgs: (await thread(['never'], at)).map(b64) }))).status, 200)
+  assert.deepEqual(await (await call('DELETE', 7, JSON.stringify({ id: gone }))).json(), { id: gone, was: 'scheduled' })
+  const list = await (await call('GET', 7)).json()
+  assert.deepEqual(list.map((s) => [s.id, s.status, s.draft.parts.length]), [[id, 'scheduled', 2]])
+  assert.equal(list[0].msgs, undefined)
+  // nothing goes out early
+  await new Promise((ok) => setTimeout(ok, 600))
+  assert.equal(submitted.length, 0)
+  // its time comes: the very bytes the browser signed, the thread in order
+  ahead = await later(95e3)
+  for (let i = 0; i < 50 && submitted.length < 2; i++) await new Promise((ok) => setTimeout(ok, 100))
+  assert.deepEqual(submitted.map((b) => b.toString('hex')), ms.map((m) => Buffer.from(m.msg).toString('hex')))
+  const posted = (await (await call('GET', 7)).json()).find((s) => s.id === id)
+  assert.deepEqual([posted.status, posted.posted], ['posted', 2])
+  // a signer revoked before its time: the node refuses, and the list says why
+  refuse = 'invalid signer'
+  const doomed = crypto.randomUUID()
+  assert.equal((await call('PUT', 7, JSON.stringify({ id: doomed, msgs: (await thread(['doomed'], Math.ceil((now() + 61e3) / 1000) * 1000)).map(b64) }))).status, 200)
+  ahead = await later(65e3)
+  let failed
+  for (let i = 0; i < 50 && failed?.status !== 'failed'; i++) {
+    await new Promise((ok) => setTimeout(ok, 100))
+    failed = (await (await call('GET', 7)).json()).find((s) => s.id === doomed)
+  }
+  refuse = ''
+  assert.deepEqual([failed.status, failed.error], ['failed', 'invalid signer'])
+  assert.equal(submitted.length, 2)
+  // taken off the list
+  assert.deepEqual(await (await call('DELETE', 7, JSON.stringify({ id: doomed }))).json(), { id: doomed, was: 'failed' })
 })

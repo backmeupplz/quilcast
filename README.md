@@ -37,6 +37,7 @@ Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App 
 - Translations: casts in another language get a Translate button (the language is guessed in the browser; translations come from free models through OpenRouter and are kept per cast)
 - Mute or block people for a day, a week, a month or for good, and mute words. Farcaster has neither, so they're Quilcast's own, kept private on our server (signed with your key) so every device gets them. Report a cast or a person from the same ⋯ menu; casts and accounts taken down after a report go in `src/removed.json`
 - Drafts: closing a cast with something new in it asks whether to save it as a draft, and the composer's Drafts list picks one up again (a reply reopens as a reply) on any device. Each draft is sealed with AES-GCM in the browser under a key made from the account's custody signature of a fixed message, so our server keeps files it can't read; a wallet account's wallet signs that message once per browser
+- Scheduled casts: the composer's clock button picks a time (a minute to 30 days ahead, in your timezone), and Scheduled lists them to edit, cancel or see how they went. The browser signs each cast with that time as its own timestamp and hands the finished messages to our server, which submits them to the node when the time comes. The server holds no key, so it can't change a cast or post anything else as you; it can only send it (a node takes it from ten minutes before its time) or not. Unlike drafts they aren't sealed: the server reads them to send them, and they're public once posted. Anyone who got the bytes could only post that same cast at its time, and Delete removes it like any cast. A cast the node refuses (a revoked key, say) shows as failed in the list, with a push notification to browsers that turned notifications on; a node that's down is retried for an hour. A thread is scheduled whole (each post replying to the one before, a second apart); Articles can't be scheduled yet
 - Quilcast is a Farcaster mini app itself: open quilcast.com links inside farcaster.xyz, the Base app or Quilcast
 - Settings: profile (with photo upload), theme, light or dark, profile looks on or off, recovery phrase and key export, removing the recovery phrase from this browser, node and Optimism RPC URLs, version
 
@@ -88,6 +89,7 @@ Quilcast is a small project by one developer, and it depends on the Hypersnap no
 | `src/amp.tsx`, `src/skin.ts` | The profile Winamp and its skin reader |
 | `src/mutes.ts`, `server/mutes.mjs` | Mutes and blocks |
 | `src/compose.tsx`, `src/write.ts`, `server/drafts.mjs` | Drafts: the composer's Drafts list and save/discard prompt, sealing them in the browser, and keeping the sealed files (one per draft, per FID) |
+| `src/compose.tsx`, `src/write.ts`, `server/scheduled.mjs` | Scheduled casts: the composer's time picker and Scheduled list, signing casts for later in the browser, and checking, keeping and sending them at their time |
 | `android/`, `ios/` | The apps (see Apps) |
 
 The message encoders are checked byte for byte against `@farcaster/core`, `viem` and Quilibrium's `quorum-shared`.

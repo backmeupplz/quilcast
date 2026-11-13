@@ -2573,6 +2573,23 @@ function App() {
     navigator.serviceWorker?.addEventListener('message', f)
     return () => navigator.serviceWorker?.removeEventListener('message', f)
   }, [])
+  // a failed scheduled cast's push (server/scheduled.mjs) opens /?scheduled: the composer with the account's list
+  useEffect(() => {
+    const f = () => {
+      if (!account?.done || !new URLSearchParams(location.search).has('scheduled')) return
+      history.replaceState(null, '', location.pathname)
+      setCompose({ scheduled: true })
+    }
+    f()
+    addEventListener('popstate', f)
+    return () => removeEventListener('popstate', f)
+  }, [account?.fid])
+  // a scheduled cast that failed since this browser last looked is told about once, also without push notifications
+  useEffect(() => {
+    if (!account?.done) return
+    const timer = setTimeout(() => w().then((m) => m.failedScheduled()).then((l) => l.length && toast("A scheduled cast couldn't be posted. Open the composer's Scheduled list to see why."), () => {}), 4000)
+    return () => clearTimeout(timer)
+  }, [account?.fid])
   // accounts that opened messages listen for them from the start (dms.ts loads only for them)
   useEffect(() => void (account?.dm && import('./dms.ts').then((m) => m.start())), [account?.dm])
   useEffect(() => {

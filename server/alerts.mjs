@@ -182,7 +182,7 @@ const dict = (lang) => {
 }
 const fill = (s, vars) => s.replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(vars, k) ? String(vars[k]) : m))
 // the app's strings (src/i18n.ts), in the language the browser signed up with
-const say = (lang, s, vars = {}) => fill(dict(lang)[s] || s, vars)
+export const say = (lang, s, vars = {}) => fill(dict(lang)[s] || s, vars)
 const sayN = (lang, n, one, other, vars = {}) => {
   const got = dict(lang)[`${one}|${other}`]
   const forms = (got || `${one}|${other}`).split('|')
@@ -256,6 +256,17 @@ export function dropAlerts(fid) {
   const had = readSubs(fid).length > 0
   edit(fid, () => [])
   return had
+}
+
+/** One push to each browser that gets the account's notifications, whatever kinds it picked: `make(lang)` words it
+ *  (a scheduled cast that failed, server/scheduled.mjs). A tap opens it as the account. */
+export async function pushTo(fid, make, send = (sub, data) => push(dir, sub, data)) {
+  if (!dir) return
+  await Promise.all(readSubs(fid).map(async (sub) => {
+    const m = make(sub.lang)
+    const status = await send(sub, { ...m, fid, ...(m.tag && { tag: `${fid}:${m.tag}` }) }).catch(() => 0)
+    if (status === 404 || status === 410) forget(fid, sub.endpoint)
+  }))
 }
 
 // --- watching ---

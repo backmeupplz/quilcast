@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { Readable } from 'node:stream'
 import { join } from 'node:path'
 import { after, before, test } from 'node:test'
-import { _db, _write, alertState, check, dropAlerts, flushAlerts, group, loadAlerts, message, offAlerts } from './alerts.mjs'
+import { _db, _write, alertState, check, dropAlerts, flushAlerts, group, loadAlerts, message, offAlerts, pushTo, say } from './alerts.mjs'
 import { loadMutes } from './mutes.mjs'
 
 // a fake node (its notifications for each fid, and usernames) and spam service
@@ -272,4 +272,16 @@ test('groups and words', () => {
   assert.equal(long.icon, undefined)
   // a cast with only a picture
   assert.equal(message({ type: 'likes', key: 'likes:x', cast: { hash: 'cd'.repeat(20), text: '' }, users: [user(6)] }, 'de').body, 'Dein Cast')
+})
+
+test('pushTo: one push to every browser of the account, in its language, whatever kinds it picked; a gone one is forgotten', async () => {
+  _db({ fids: { 7: { since: 0, seen: {}, subs: [sub('https://push.example/a', ['likes']), sub('https://push.example/b', [], { lang: 'de' })] } } })
+  const sent = []
+  await pushTo(7, (lang) => ({ title: say(lang, "Your scheduled cast couldn't be posted"), body: 'x', url: '/?scheduled', tag: 'scheduled:1' }), async (s, m) => (sent.push([s.endpoint, m]), s.endpoint.endsWith('/b') ? 410 : 201))
+  assert.deepEqual(sent, [
+    ['https://push.example/a', { title: "Your scheduled cast couldn't be posted", body: 'x', url: '/?scheduled', tag: '7:scheduled:1', fid: 7 }],
+    ['https://push.example/b', { title: 'Dein geplanter Cast konnte nicht gepostet werden', body: 'x', url: '/?scheduled', tag: '7:scheduled:1', fid: 7 }],
+  ])
+  assert.deepEqual(_db().fids[7].subs.map((s) => s.endpoint), ['https://push.example/a'])
+  await pushTo(8, () => ({ title: 'nobody' }), async () => assert.fail('fid 8 has no browsers'))
 })

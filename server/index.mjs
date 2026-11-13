@@ -28,6 +28,7 @@ import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { alertState, flushAlerts, loadAlerts, offAlerts, putAlerts, watchAlerts } from './alerts.mjs'
 import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
+import { cancelScheduled, getScheduled, loadScheduled, putScheduled, watchScheduled } from './scheduled.mjs'
 import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
 import { getPin, loadPins, putPin } from './pins.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
@@ -71,6 +72,8 @@ process.once('SIGTERM', async () => {
 })
 loadReports(DATA)
 loadDrafts(DATA)
+// scheduled casts, signed in the browser and sent from here at their time (server/scheduled.mjs)
+loadScheduled(DATA).then(() => watchScheduled({ node: NODE, every: Number(process.env.SCHEDULED_EVERY_MS) || 15e3 }))
 loadPrefs(DATA)
 loadPins(DATA)
 loadThemes(DATA)
@@ -1230,6 +1233,18 @@ const server = createServer(async (req, res) => {
       const r = await (req.method === 'GET' ? getDrafts : putDraft)(req, fid, NODE).catch((e) => e)
       const err = r instanceof Error
       if (err && !r.status) console.error('drafts', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+    // scheduled casts, signed in the browser (server/scheduled.mjs)
+    const scheduled = path.match(/^\/api\/scheduled\/([1-9]\d{0,9})$/)
+    if (scheduled) {
+      const fid = Number(scheduled[1])
+      const f = { GET: getScheduled, PUT: putScheduled, DELETE: cancelScheduled }[req.method]
+      if (!f) return json(405, { error: 'use GET, PUT or DELETE' })
+      if (limited(`scheduled:${ip}`, 300, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      const r = await f(req, fid, NODE).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('scheduled', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
     }
     // counts only (server/stats.mjs): accounts a day, and the sign-ups each campaign link brought

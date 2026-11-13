@@ -4,7 +4,7 @@ import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting,
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, sendTx } from './eth.ts'
-import { castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
+import { castAt, castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { search } from './pow.worker.ts'
 import { ARTICLE, type Outgoing, type Part } from './article.ts'
@@ -729,3 +729,46 @@ export async function saveDraft(d: Draft) {
   await keyFetch(`/api/drafts/${account!.fid}`, 'quilcast-drafts', 'PUT', JSON.stringify({ id: d.id, box: `${b64(iv)}.${b64(data)}` }))
 }
 export const dropDraft = (id: string) => keyFetch(`/api/drafts/${account!.fid}`, 'quilcast-drafts', 'PUT', JSON.stringify({ id, box: null }))
+
+// --- scheduled casts ---
+// Signed here, each with the time it should go out as its own timestamp, and handed to our server, which holds the
+// finished messages and submits them then (server/scheduled.mjs). The server holds no key: it can't change them or
+// post anything else. Not sealed like drafts: the server reads them to send them, and they're public once out.
+export type ScheduledPost = { text: string; media: string[] }
+export type Scheduled = { id: string; at: number; hash: string; hashes: string[]; status: 'scheduled' | 'posting' | 'posted' | 'failed'; posted: number; error?: string; draft?: Omit<Draft, 'id' | 'at'>; done?: number }
+
+/** Schedule a cast, or a thread (each next post replying to the one before, a second later), as `as` for `at` (Unix
+ *  ms). `draft` is what the composer had, for the list and Edit. Returns the item, its first cast's hash included. */
+export async function schedule(posts: ScheduledPost[], o: { parent?: CastRef; channel?: string; quote?: CastRef; as?: Account; draft: Omit<Draft, 'id' | 'at'> }, at: number, id: string = crypto.randomUUID()): Promise<Scheduled> {
+  const as = o.as || account!
+  const url = `/api/scheduled/${as.fid}`
+  // asked first so a key the node doesn't list yet is waited for (or replaced) before anything is signed with it
+  await keyFetch(url, 'quilcast-scheduled-read', 'GET', '', 3, as)
+  const key = await signerOf(fresh(as))
+  const fid = as.fid!
+  const msgs: string[] = []
+  let prev: CastRef | undefined
+  for (const [i, p] of posts.entries()) {
+    const m = await mentions(p.text, fidByName)
+    const embeds = castEmbeds(m.text, p.media, i === 0 ? o.quote : undefined)
+    const body = castBody({ ...m, parent: i === 0 ? o.parent || o.channel : prev, embeds })
+    const signed = await castAt(fid, body, key, Math.floor(at / 1000) * 1000 + i * 1000)
+    msgs.push(b64(signed.msg))
+    prev = { fid, hash: signed.hash }
+  }
+  return keyFetch(url, 'quilcast-scheduled', 'PUT', JSON.stringify({ id, msgs, draft: o.draft }), 1, as)
+}
+/** The account's scheduled casts, soonest first: waiting, being sent, posted (for a few days) and failed. */
+export const listScheduled = (as = account!): Promise<Scheduled[]> => keyFetch(`/api/scheduled/${as.fid}`, 'quilcast-scheduled-read', 'GET', '', 3, as)
+/** Cancel one still waiting, or take a posted or failed one off the list. Answers what it was (null: gone already). */
+export const cancelScheduled = (id: string, as = account!): Promise<{ id: string; was: Scheduled['status'] | null }> =>
+  keyFetch(`/api/scheduled/${as.fid}`, 'quilcast-scheduled-cancel', 'DELETE', JSON.stringify({ id }), 3, as)
+/** Scheduled casts of the account that failed and this browser hasn't told about yet (once each), quietly: only with
+ *  the key it has, never asking for a new one. */
+export async function failedScheduled(as = account!): Promise<Scheduled[]> {
+  const list: Scheduled[] = await keyFetch(`/api/scheduled/${as.fid}`, 'quilcast-scheduled-read', 'GET', '', 1, as, {}, false)
+  const told = new Set<string>(JSON.parse(localStorage.getItem('quilcast:scheduled-told') || '[]'))
+  const news = list.filter((s) => s.status === 'failed' && !told.has(s.id))
+  if (news.length) localStorage.setItem('quilcast:scheduled-told', JSON.stringify([...told, ...news.map((s) => s.id)].slice(-200)))
+  return news
+}

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, users, type Account, type Cast, type User } from './api.ts'
-import { t } from './i18n.ts'
+import { lang, t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
 import { castText, embedRoom, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
 import { ago, Avatar, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
-import type { Draft } from './write.ts'
+import type { Draft, Scheduled } from './write.ts'
 import { findChannels, getChannel, isMember, urlOf, type Channel } from './channels.ts'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
@@ -225,8 +225,44 @@ function DraftList({ open, close }: { open: (d: Draft) => void; close: () => voi
   )
 }
 
+/** When a scheduled cast goes out, in the reader's language and timezone. */
+const whenOf = (at: number) => new Date(at).toLocaleString(lang, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+/** "2026-11-13T14:05" in this timezone, as a datetime-local input takes it. */
+const localInput = (at: number) => new Date(at - new Date(at).getTimezoneOffset() * 60e3).toISOString().slice(0, 16)
+
+/** The account's scheduled casts (server/scheduled.mjs): waiting ones to edit or cancel, posted and failed ones to see. */
+function ScheduledList({ as, open, close }: { as: Account; open: (s: Scheduled) => void; close: () => void }) {
+  const [list, setList] = useState<Scheduled[] | null>(null)
+  useEffect(() => void w().then((m) => m.listScheduled(as)).then(setList, (e) => (toast(e.message), close())), [as.fid])
+  const drop = (s: Scheduled) =>
+    w().then((m) => m.cancelScheduled(s.id, as)).then(
+      (r) => (setList((l) => l!.filter((x) => x.id !== s.id)), r.was === 'posted' && s.status === 'scheduled' && toast('That cast was already sent.')),
+      (e) => toast(e.message),
+    )
+  if (!list) return <div class="drafts"><span class="spinner" /></div>
+  const state = (s: Scheduled) =>
+    s.status === 'posted' ? t('Posted') : s.status === 'failed' ? t('Failed: {reason}', { reason: s.error || '' }) : s.status === 'posting' ? t('Sending…') : s.error ? t('Trying again: {reason}', { reason: s.error }) : ''
+  return (
+    <div class="drafts">
+      {!list.length && <p class="muted">{t('No scheduled casts.')}</p>}
+      {list.map((s) => (
+        <div class={`draft${s.status === 'failed' ? ' failed' : ''}`}>
+          <button class="draft-open" disabled={s.status === 'posting'} onClick={() => (s.status === 'posted' ? (close(), go(`/c/${s.hash}`)) : open(s))}>
+            <span class="clamp">{s.draft?.parts[0]?.text.trim() || '…'}</span>
+            <small class="muted">{[whenOf(s.at), (s.draft?.parts.length || 1) > 1 && t('Thread'), s.draft?.parent ? t('Reply') : s.draft?.quote ? t('Quote cast') : '', s.draft?.channel && `/${s.draft.channel}`, state(s)].filter(Boolean).join(' · ')}</small>
+          </button>
+          {s.status !== 'posting' && (
+            <button class="icon-btn" aria-label={s.status === 'scheduled' ? t('Cancel scheduled cast') : t('Remove from the list')} onClick={(e) => ((e.currentTarget.closest('.sheet') as HTMLElement)?.focus(), drop(s))}><Icon d={P.x} size={16} /></button>
+          )}
+        </div>
+      ))}
+      <p class="muted small">{t('Scheduled casts are signed on this device and wait on Quilcast’s server until their time. The server can read them but can’t change them or post anything else as you.')}</p>
+    </div>
+  )
+}
+
 /** `text` and `embeds` prefill the first post (a mini app's composeCast); `onDone` hears the new hash, or null. */
-export function Composer({ channel: initial, text = '', embeds = [], onDone, onClose: close, ...props }: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void; onClose: () => void }) {
+export function Composer({ channel: initial, text = '', embeds = [], onDone, onClose: close, scheduled: showScheduled = false, ...props }: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void; onClose: () => void; scheduled?: boolean }) {
   const [parts, setParts] = useState<Part[]>(() => [{ ...newPart(), text }])
   const onClose = (hash: string | null = null) => (onDone?.(hash), close())
   // a draft picked up again brings its own cast to reply to or quote
@@ -245,6 +281,12 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   const [draft, setDraft] = useState<string>()
   const [drafts, setDrafts] = useState(false)
   const [asking, setAsking] = useState(false)
+  // scheduling: the time picked (Unix ms), whether the picker shows, the list of scheduled casts, and the one being
+  // edited (cancelled when this one is scheduled or posted instead)
+  const [when, setWhen] = useState<number>()
+  const [timing, setTiming] = useState(false)
+  const [scheduledOpen, setScheduledOpen] = useState(showScheduled && canDraft)
+  const [editing, setEditing] = useState<{ id: string; fid: number; status: Scheduled['status'] }>()
   const snap = (ps: Part[], ch?: string) => JSON.stringify([ps.map((p) => [p.text, p.files.map((f) => f.url)]), ch])
   const base = useRef<string>(undefined)
   base.current ??= snap(parts, channel)
@@ -275,6 +317,22 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
     setActive(0)
     setDrafts(false)
     base.current = snap(ps, d.channel)
+  }
+  // a scheduled cast opens like a draft, with its time (a failed one too, to sign again, with a new key or time)
+  const edit = async (s: Scheduled) => {
+    if (!s.draft) return
+    await open({ ...s.draft, id: '', at: s.at })
+    setDraft(undefined)
+    setEditing({ id: s.id, fid: as.fid!, status: s.status })
+    setWhen(s.status === 'scheduled' ? s.at : undefined)
+    setTiming(true)
+    setScheduledOpen(false)
+  }
+  /** Once what replaces it went out or was scheduled, the edited one is cancelled (a failed one taken off the list).
+   *  Only then: a replacement that fails leaves the original as it was. */
+  const unschedule = async (m: typeof import('./write.ts'), e: NonNullable<typeof editing>) => {
+    const r = await m.cancelScheduled(e.id, accounts.find((a) => a.done && a.fid === e.fid) || as).catch((err) => (toast(err.message), null))
+    if (r?.was === 'posted' && e.status === 'scheduled') toast('That cast was already sent.')
   }
   const update = (id: number, p: Partial<Part> | ((x: Part) => Partial<Part>)) =>
     setParts((ps) => ps.map((x) => (x.id === id ? { ...x, ...(typeof p === 'function' ? p(x) : p) } : x)))
@@ -395,6 +453,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
   const room = busy ? 0 : embedRoom(cur.files.length, fixed(at))
   const add = () => (setParts((ps) => [...ps, newPart()]), setActive(parts.length))
   const send = async () => {
+    if (when) return later(when)
     setBusy(true)
     const m = await w()
     let prev: { fid: number; hash: string } | undefined = parent && { fid: parent.author.fid, hash: parent.hash }
@@ -416,6 +475,7 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
       }
       onClose(first)
       if (draft) w().then((m) => m.dropDraft(draft)).catch(() => {})
+      if (editing) unschedule(m, editing)
       toast(parts.length > 1 ? 'Thread posted' : parent ? 'Reply sent' : 'Cast sent')
       // a mini app that asked for the cast stays on screen
       onDone || (go(`/c/${first}`), sent())
@@ -426,17 +486,45 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
       setBusy(false)
     }
   }
+  // signed now for its time, then held by our server until then (write.ts schedule)
+  const later = async (at: number) => {
+    if (at < Date.now() + 60e3) return toast('Pick a time at least a minute from now.')
+    setBusy(true)
+    const m = await w()
+    try {
+      const posts = parts.flatMap((p, i) => (filled(p, i) ? [{ text: p.text.trim(), media: postMedia(i === 0 ? embeds : [], p.files, p.text) }] : []))
+      const media = (p: Part) => p.files.flatMap((f) => (f.url ? [f.url] : []))
+      // the same one again, edited, replaces it on the server at once (refused once it went out); another account's
+      // is a new one, and the old one goes after
+      const same = editing?.status === 'scheduled' && editing.fid === as.fid
+      await m.schedule(posts, {
+        parent: parent && { fid: parent.author.fid, hash: parent.hash },
+        channel: !parent && channel ? await urlOf(channel) : undefined,
+        quote: quote && { fid: quote.author.fid, hash: quote.hash },
+        as,
+        draft: { parts: parts.map((p) => ({ text: p.text, media: media(p) })), channel: parent ? undefined : channel, parent: parent?.hash, quote: quote?.hash, as: as.fid },
+      }, at, same ? editing!.id : undefined)
+      if (editing && !same) await unschedule(m, editing)
+      if (draft) m.dropDraft(draft).catch(() => {})
+      toast(t('Scheduled for {time}', { time: whenOf(at) }))
+      onClose()
+    } catch (e: any) {
+      toast(e.message)
+      setBusy(false)
+    }
+  }
   return (
     <div class="modal" onClick={leave}>
       <div class="sheet" tabIndex={-1} role="dialog" aria-label={parent ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send(), shortcut(e))}>
+        onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : scheduledOpen ? setScheduledOpen(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send(), shortcut(e))}>
         <div class="sheet-top">
           <span class="sheet-left">
             <button class="link-btn" onClick={leave}>{t('Cancel')}</button>
-            {canDraft && (empty || drafts) && !draft && <button class={`link-btn${drafts ? ' on' : ''}`} aria-pressed={drafts} onClick={() => setDrafts(!drafts)}>{t('Drafts')}</button>}
+            {canDraft && (empty || drafts) && !draft && !editing && !scheduledOpen && <button class={`link-btn${drafts ? ' on' : ''}`} aria-pressed={drafts} onClick={() => setDrafts(!drafts)}>{t('Drafts')}</button>}
+            {canDraft && (empty || scheduledOpen) && !draft && !editing && !drafts && <button class={`link-btn${scheduledOpen ? ' on' : ''}`} aria-pressed={scheduledOpen} onClick={() => setScheduledOpen(!scheduledOpen)}>{t('Scheduled')}</button>}
           </span>
           <AsPicker value={as} set={setAs} />
-          <button class="btn" disabled={busy || !ready} onClick={send}>{busy ? t('Sending…') : parts.length > 1 ? t('Post all') : parent ? t('Reply') : t('Cast')}</button>
+          <button class="btn" disabled={busy || !ready} onClick={send}>{busy ? t('Sending…') : when ? t('Schedule') : parts.length > 1 ? t('Post all') : parent ? t('Reply') : t('Cast')}</button>
         </div>
         {asking && (
           <div class="draft-ask" role="alertdialog" aria-label={t('Save this as a draft?')}>
@@ -446,7 +534,16 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
           </div>
         )}
         {drafts && <DraftList open={open} close={() => setDrafts(false)} />}
-        {parent && !drafts && (
+        {scheduledOpen && <ScheduledList as={as} open={edit} close={() => setScheduledOpen(false)} />}
+        {timing && !drafts && !scheduledOpen && (
+          <div class="schedule-at">
+            <Icon d={P.clock} size={18} />
+            <input type="datetime-local" aria-label={t('Post at')} min={localInput(Date.now() + 120e3)} max={localInput(Date.now() + 30 * 86400e3)} value={when ? localInput(when) : ''}
+              onInput={(e) => setWhen(e.currentTarget.value ? new Date(e.currentTarget.value).getTime() || undefined : undefined)} />
+            <button class="link-btn" onClick={() => (setWhen(undefined), setTiming(false))}>{editing ? t('Post now instead') : t('Clear')}</button>
+          </div>
+        )}
+        {parent && !drafts && !scheduledOpen && (
           <div class="ctx">
             <Avatar u={parent.author} size={28} link={false} />
             <div><b>{nameOf(parent.author)}</b> <span class="handle">@{handle(parent.author)}</span><p>{castText(parent).slice(0, 200)}</p></div>
@@ -454,16 +551,16 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
         )}
         {gifs && <GifPicker cast start="trending" pick={gif} close={() => setGifs(false)} />}
         {emoji && <emoji.EmojiPicker pick={insert} close={() => setEmoji(null)} />}
-        <div class="parts" hidden={gifs || drafts || !!emoji}>
+        <div class="parts" hidden={gifs || drafts || scheduledOpen || !!emoji}>
           {parts.map((p, i) => (
-            <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs && !drafts && !emoji}
+            <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs && !drafts && !scheduledOpen && !emoji}
               onFocus={() => setActive(i)} attach={attach} md={md}
               remove={i > 0 ? () => (setParts((ps) => ps.filter((x) => x.id !== p.id)), setActive(i - 1)) : undefined}
               placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : quote ? t('Add a comment') : t("What's happening?")} />
           ))}
         </div>
         {md && (
-          <div class="md-tools" hidden={gifs || drafts || !!emoji} onMouseDown={(e) => e.preventDefault()}>
+          <div class="md-tools" hidden={gifs || drafts || scheduledOpen || !!emoji} onMouseDown={(e) => e.preventDefault()}>
             {([
               [t('Bold'), <b>B</b>, { mark: '**' }, 'B'], [t('Italic'), <i>I</i>, { mark: '*' }, 'I'], [t('Strikethrough'), <s>S</s>, { mark: '~~' }],
               [t('Code'), <Icon d={P.code} size={18} />, { mark: '`' }], [t('Link'), <Icon d={P.link} size={18} />, { link: t('link') }],
@@ -477,12 +574,13 @@ export function Composer({ channel: initial, text = '', embeds = [], onDone, onC
             <button class="icon-btn" aria-label={t('Image')} title={t('Image')} disabled={busy} onClick={pickPicture}><Icon d={P.image} size={18} /></button>
           </div>
         )}
-        <div class="toolbar" hidden={gifs || drafts || !!emoji}>
+        <div class="toolbar" hidden={gifs || drafts || scheduledOpen || !!emoji}>
           <input ref={pick} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
           <button class="icon-btn" aria-label={t('Add photo or video')} disabled={!room} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
           <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs(true)}><Icon d={P.gif} /></button>
           <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
           <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
+          {canDraft && <button class={`icon-btn${timing ? ' on' : ''}`} aria-label={t('Schedule')} title={t('Schedule')} aria-pressed={timing} disabled={busy} onClick={() => (timing ? (setTiming(false), setWhen(undefined)) : (setTiming(true), setWhen((x) => x || Math.ceil((Date.now() + 3600e3) / 300e3) * 300e3)))}><Icon d={P.clock} /></button>}
           {!parent && <ChannelPicker value={channel} set={setChannel} fid={as.fid} />}
           <span class={`count${left < 50 ? ' warn' : ''}`} title={used(cur) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
             {used(cur) > 280 ? left : ''}
