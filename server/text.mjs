@@ -175,9 +175,14 @@ const EMOJI = 1.22, SIZE = 1.08, TOP = 0.9
 // box's width (a narrow letter gets wider, a wide one doesn't), each one after that adds a box; and the boxes' ink ends
 // half a box past the base, a box further for each one after the first, which can be past the end of the run.
 const BOX = 0.66
-// marks newer than the Unicode data resvg shapes with (Unicode 16 and 17): it lays them out as letters
-const NEWER = /[\u{897}\u{1acf}-\u{1add}\u{1ae0}-\u{1aeb}\u{10d69}-\u{10d6d}\u{10efa}-\u{10efc}\u{113b8}-\u{113c0}\u{113c2}\u{113c5}\u{113c7}-\u{113ca}\u{113cc}-\u{113d0}\u{113d2}\u{113e1}\u{113e2}\u{11b60}-\u{11b67}\u{11f5a}\u{1611e}-\u{1612f}\u{1e5ee}\u{1e5ef}\u{1e6e3}\u{1e6e6}\u{1e6ee}\u{1e6ef}\u{1e6f5}]/u
-const MARK = new RegExp(`(?!${NEWER.source})\\p{M}`, 'u')
+// A mark is what both Node and resvg take for one. resvg's Unicode data is older than Node's (Unicode 16, 17, 18…): a
+// mark newer than it is laid out as a letter, its own box. So a mark no card font has is asked about once, of resvg
+// itself: between two letters a mark takes no room, a letter a box. (Not a list of the newer marks: that went short each
+// time Node's Unicode moved ahead.)
+const letters = new Map()
+let ww
+const letter = (c) => letters.get(c) ?? (letters.set(c, ink(`W${c}W`).width - (ww ??= ink('WW').width) > BOX * 50), letters.get(c))
+const MARK = { test: (c) => /\p{M}/u.test(c) && (REGULAR.glyph(c.codePointAt(0)) || NOTO.glyph(c.codePointAt(0)) || !letter(c)) }
 const boxed = (c, font) => MARK.test(c) && !font.glyph(c.codePointAt(0)) && !NOTO.glyph(c.codePointAt(0))
 // a letter and a mark of one script (the scripts with marks people write; any other pair counts as two scripts, which
 // only makes a guess wider)

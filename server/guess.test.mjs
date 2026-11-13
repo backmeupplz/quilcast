@@ -40,7 +40,9 @@ test('past the budget, a random sweep of hard runs is never guessed short: marks
   let seed = 7
   const rnd = (n) => Math.floor(((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648) * n)
   const runs = ['fi' + cp(0x2066, 0x2069, 0x303) + 'T', 'a' + cp(0x652, 0x308, 0x308), '1Ɨƚ', 'ɥjɥj', cp(0x11f03, 0xe33), 'a' + cp(0x2068, 0x7f2, 0x7f2), `O${cp(0x303)}1${cp(0x5a3)}©${cp(0x344)}`,
-    `l${cp(0x30c)} ${cp(0x5a3, 0x378, 0x344)}`, cp(0x64b, 0x6e1) + 'ď' + cp(0x301), cp(0x202e) + 's̶t̶r̶i̶k̶e̶', cp(0x3000) + '↮⇎', 'ϒ' + cp(0x200b, 0x316, 0x301), 'ї' + cp(0x113bf, 0x2009, 0xec6)]
+    `l${cp(0x30c)} ${cp(0x5a3, 0x378, 0x344)}`, cp(0x64b, 0x6e1) + 'ď' + cp(0x301), cp(0x202e) + 's̶t̶r̶i̶k̶e̶', cp(0x3000) + '↮⇎', 'ϒ' + cp(0x200b, 0x316, 0x301), 'ї' + cp(0x113bf, 0x2009, 0xec6),
+    // a mark newer than resvg's Unicode on a letter of its script (U+10EF5 is Unicode 18, a box to resvg)
+    cp(0x634, 0x10ef5, 0x767), cp(0x915, 0x897, 0x915)]
   for (let i = 0; i < 1500; i++) runs.push(Array.from({ length: 1 + rnd(7) }, () => { const p = pools[rnd(pools.length)]; return p[rnd(p.length)] }).join(''))
   for (const [i, run] of runs.entries()) {
     if (i % 50 === 0) await tick()
