@@ -199,12 +199,23 @@ final class FoldTests: XCTestCase {
         // on a simulator whose screen something covers (an iPhone Duo's cover display, from iOS 27.1), as the app runs
         guard #available(iOS 27.1, *) else { throw XCTSkip("Reserved regions are iOS 27.1's") }
         page.view.layoutIfNeeded()
-        let covered = page.view.reservedRegions(kind: .occlusion).map(\.frame)
-        guard !covered.isEmpty else { throw XCTSkip("Nothing covers this simulator's screen") }
+        let reserved = page.view.reservedRegions(kind: .occlusion).map(\.frame)
+        guard !reserved.isEmpty else { throw XCTSkip("Nothing covers this simulator's screen") }
         let web = page.web.convert(page.web.bounds, to: page.view)
         XCTAssertGreaterThan(web.width, 0)
-        for r in covered { XCTAssertFalse(r.intersects(web), "\(r) covers the page at \(web)") }
+        for r in reserved { XCTAssertFalse(Self.covers(r, web, in: page.view.bounds), "\(r) covers the page at \(web)") }
         snapshot("covered")
+    }
+
+    func testOnlyWhatIsntABarCoversThePage() {
+        let screen = CGRect(x: 0, y: 0, width: 402, height: 874), web = CGRect(x: 0, y: 0, width: 318, height: 874)
+        XCTAssertFalse(Self.covers(CGRect(x: 0, y: 0, width: 402, height: 54), web, in: screen), "the status bar")
+        XCTAssertFalse(Self.covers(CGRect(x: 0, y: 840, width: 402, height: 34), web, in: screen), "the home indicator")
+        XCTAssertFalse(Self.covers(CGRect(x: 318, y: 0, width: 84, height: 874), web, in: screen), "a strip beside the page")
+        XCTAssertTrue(Self.covers(CGRect(x: 300, y: 0, width: 102, height: 874), web, in: screen), "a strip over the page's edge")
+        XCTAssertTrue(Self.covers(CGRect(x: 0, y: 0, width: 200, height: 54), web, in: screen), "something in the status bar's place, but not across it")
+        XCTAssertTrue(Self.covers(CGRect(x: 0, y: 300, width: 402, height: 100), web, in: screen), "a band across the middle")
+        XCTAssertTrue(Self.covers(screen, web, in: screen), "the whole screen")
     }
 
     func testTheRulesFitEveryScreenAndTextSize() async throws {
@@ -245,6 +256,17 @@ final class FoldTests: XCTestCase {
             try await Task.sleep(for: .seconds(5)) // its feed and images
             snapshot("site-\(size == .regular ? "regular" : "compact")")
         }
+    }
+
+    /**
+     Whether a reserved region covers the page. Any iPhone reports its status bar and home indicator as bars across the
+     whole width at the top and the bottom, which the page draws under on purpose (it pads itself with
+     env(safe-area-inset-*)); anything else, like an iPhone Duo cover display's strip, has to be beside the page.
+     */
+    static func covers(_ region: CGRect, _ page: CGRect, in screen: CGRect) -> Bool {
+        let bar = region.minX <= screen.minX && region.maxX >= screen.maxX && region.height < screen.height / 2
+            && (region.minY <= screen.minY || region.maxY >= screen.maxY)
+        return !bar && region.intersects(page)
     }
 
     /** Resizes the window to a phone's, or an unfolded Duo's, with that size class; and waits until the page has the new width. */
