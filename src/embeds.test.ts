@@ -53,6 +53,17 @@ test("a compact link card's picture is a thumbnail that can't stretch the card o
   assert.match(rule('.cards .linkcard.big .lc-text, .cards .linkcard.big .lc-btn'), /grid-column: 2;/)
 })
 
+// #670: a wide article cover lost its sides (and the text drawn on them) to a fixed box with object-fit: cover
+test('covers and big link pictures are shown whole, compact thumbnails stay cropped', () => {
+  const css = readFileSync(new URL('./style.css', import.meta.url), 'utf8').replace(/\/\*[^]*?\*\//g, '')
+  const rule = (sel: string) => css.match(new RegExp(`^${sel.replace(/[.*]/g, '\\$&')} \\{([^}]*)\\}`, 'm'))?.[1] ?? ''
+  for (const sel of ['.lc-img', '.fc-article .fa-cover', '.ae-cover img']) assert.match(rule(sel), /object-fit: contain;/, sel)
+  for (const sel of ['.cards .linkcard.big .lc-img', '.embed-preview .linkcard.big .lc-img']) assert.match(rule(sel), /object-fit: cover;/, sel)
+  // nothing else puts a cover's or a big link picture's crop back
+  const fits = [...css.matchAll(/([^{}]+)\{([^}]*object-fit:[^}]*)\}/g)].filter(([, s]) => /lc-img|fa-cover|ae-cover/.test(s))
+  for (const [, s, body] of fits) if (/object-fit: cover/.test(body)) assert.match(s.trim(), /\.linkcard\.big \.lc-img$/, s.trim())
+})
+
 // #275: a video's box takes its shape (a 1080×1920 cast showed in a 16:9 box with wide black bars)
 test("a video's shape: its own once played, else its poster's, else none (the 16:9 box)", () => {
   assert.deepEqual(vidShape([1080, 1920], [404, 720]), [1080, 1920])
