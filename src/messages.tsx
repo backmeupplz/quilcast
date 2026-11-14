@@ -1,12 +1,12 @@
 // Messages: farcaster.xyz's direct casts, drawn from the state in dms.ts, which the websocket keeps current.
 import { Fragment } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, myUser, safeUrl, settings, type User } from './api.ts'
+import { account, findUsers, myUser, safeUrl, settings, type User } from './api.ts'
 import { GifPicker } from './gifs.tsx'
 import { autoDelete, compact, details, load, loadChat, lookup, mute, read, sameDay, send, store, subscribe, unread, type Box, type Convo, type Msg, type Person } from './dms.ts'
 import { lang, t, tn } from './i18n.ts'
 import { isImg, sized } from './shared.ts'
-import { ago, Avatar, handle, Header, Icon, Img, Menu, nameOf, P, RichText, shell, Tabs, toast, userPath, w } from './ui.tsx'
+import { ago, Avatar, handle, Header, Icon, Img, Menu, nameOf, P, RichText, shell, Tabs, toast, UserRow, userPath, w } from './ui.tsx'
 
 const person = (p?: Person): User => ({ fid: p?.fid || 0, username: p?.username, display_name: p?.displayName, pfp_url: p?.pfp?.url })
 const who = (p?: Person) => (p?.fid && p.fid === account!.fid ? t('You') : p?.username ? `@${p.username}` : p?.displayName || t('Someone'))
@@ -113,6 +113,10 @@ function Inbox() {
   const [tab, setTab] = useState<Tab>('inbox')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  // New message: the handle being typed, null while the search is closed
+  const [who, setWho] = useState<string | null>(null)
+  const whoBox = useRef<HTMLInputElement>(null)
+  useEffect(() => whoBox.current?.focus(), [who === null])
   const box = BOX[tab]
   const list = store.lists[box]
   // the unread list is small and gives the tab its count, so it comes along
@@ -136,18 +140,39 @@ function Inbox() {
   return (
     <>
       {/* (in Quorum mode the list is a pane beside the conversation, with nowhere to go back to) */}
-      <Header title={t('Messages')} back={!settings.quorum}>
-        <Tabs tabs={[['inbox', t('Inbox')], ['unread', unreadN ? t('Unread · {n}', { n: unreadN }) : t('Unread')], ['requests', store.requestsCount ? t('Requests · {n}', { n: store.requestsCount }) : t('Requests')], ['muted', t('Muted')]]} value={tab} set={setTab} />
+      <Header title={t('Messages')} back={!settings.quorum} action={<button class="icon-btn" aria-label={t('New message')} title={t('New message')} aria-expanded={who !== null} onClick={() => setWho(who === null ? '' : null)}><Icon d={who === null ? P.plus : P.x} /></button>}>
+        {who !== null && (
+          <div class="searchbox">
+            <Icon d={P.search} size={16} />
+            <input ref={whoBox} type="search" value={who} onInput={(e) => setWho(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Escape' && setWho(null)} placeholder={t('Search people')} aria-label={t('New message')} />
+          </div>
+        )}
+        {!who?.trim() && <Tabs tabs={[['inbox', t('Inbox')], ['unread', unreadN ? t('Unread · {n}', { n: unreadN }) : t('Unread')], ['requests', store.requestsCount ? t('Requests · {n}', { n: store.requestsCount }) : t('Requests')], ['muted', t('Muted')]]} value={tab} set={setTab} />}
       </Header>
-      {err && <div class="note">{t("Couldn't load messages: {error}", { error: t(err) })} <button class="link-btn" onClick={() => (setErr(''), list.items || load(box).catch((e) => setErr(e.message)))}>{t('Retry')}</button></div>}
+      {who?.trim() ? <Pick q={who.trim()} /> : <>
+      {err &&<div class="note">{t("Couldn't load messages: {error}", { error: t(err) })} <button class="link-btn" onClick={() => (setErr(''), list.items || load(box).catch((e) => setErr(e.message)))}>{t('Retry')}</button></div>}
       {!shown && !err && <div class="spinner" />}
       {shown?.length === 0 && !list.more && <div class="note">{t(EMPTY[tab])}</div>}
       {shown?.map((c) => <Row key={c.conversationId} c={c} />)}
       {/* Muted can only be found by looking through the whole inbox, which can take a while */}
       {busy && (tab === 'muted' ? <div class="note">{t('Looking through your conversations for muted ones… {n} checked', { n: list.items?.length || 0 })}</div> : <div class="spinner" />)}
       <div ref={end} />
+      </>}
     </>
   )
+}
+
+/** New message: people matching `q`, each opening the 1:1 with them (its id is both FIDs, sorted as strings, as on profiles). */
+function Pick({ q }: { q: string }) {
+  const [found, setFound] = useState<User[] | null>(null)
+  useEffect(() => {
+    let live = true
+    const t = setTimeout(() => findUsers(q).then((r) => live && setFound(r.filter((u) => u.fid !== account!.fid).slice(0, 20)), () => live && setFound([])), 250)
+    return () => ((live = false), clearTimeout(t))
+  }, [q])
+  if (!found) return <div class="spinner" />
+  if (!found.length) return <div class="note">{t('No one matches “{term}”.', { term: q })}</div>
+  return <>{found.map((u) => <UserRow key={u.fid} u={u} href={`/messages/${[account!.fid, u.fid].sort().join('-')}`} />)}</>
 }
 
 function Row({ c }: { c: Convo }) {

@@ -1384,9 +1384,9 @@ const rowInner = (u: User) => (
   </>
 )
 /** `action`: a button at the row's end (Follow on this device, in anonymous mode), beside the link rather than in it */
-export const UserRow = ({ u, action }: { u: User; action?: ComponentChildren }) =>
+export const UserRow = ({ u, action, href = userPath(u) }: { u: User; action?: ComponentChildren; href?: string }) =>
   action ? (
-    <div class="row has-action"><a class="row-link" href={userPath(u)}>{rowInner(u)}</a>{action}</div>
+    <div class="row has-action"><a class="row-link" href={href}>{rowInner(u)}</a>{action}</div>
   ) : (
-    <a class="row" href={userPath(u)}>{rowInner(u)}</a>
+    <a class="row" href={href}>{rowInner(u)}</a>
   )
