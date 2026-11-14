@@ -6,8 +6,8 @@ import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follo
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, n, newOnTop, peekOf, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
+import { castText, n, newOnTop, peekOf, quotedOf, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
+import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
@@ -788,11 +788,12 @@ function NoteRow({ g }: { g: Group }) {
   )
 }
 
-// a cast that is only media shows a thumbnail (a video without a poster, a play button); one that is only a link shows the link
+// a cast that is only media shows a thumbnail (a video without a poster, a play button); one that is only a link shows
+// the link, one that only quotes another cast says so
 function NotePeek({ c }: { c: Cast }) {
   const text = castText(c).trim()
-  const { img, video, link } = peekOf(text ? [] : urlsOf(c))
-  return img ? <Img class="qimg" src={sized(img, 'w=240')} /> : video ? <VidPeek small /> : <span class="note-cast">{text || link || t('Your cast')}</span>
+  const { img, video, link, quote } = peekOf(text ? [] : urlsOf(c), text ? undefined : quotedOf(c))
+  return img ? <Img class="qimg" src={sized(img, 'w=240')} /> : video ? <VidPeek small /> : <span class="note-cast">{text || link || (quote && quotedLine(quote)) || t('Your cast')}</span>
 }
 
 // group likes/recasts per cast and follows per day; replies and mentions stay one per cast

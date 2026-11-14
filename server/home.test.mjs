@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { body } from './home.mjs'
+import removed from '../src/removed.json' with { type: 'json' }
 
 const author = { fid: 3, username: 'ada', display_name: 'Ada', pfp_url: '' }
 const cast = (hash, urls) => ({ hash, author, text: 'look', timestamp: '2026-10-28T10:00:00Z', embeds: urls.map((url) => ({ url })), reactions: {}, replies: {} })
@@ -117,4 +118,37 @@ test('a quoted cast with no words shows its video or its link, never an empty ca
   assert.match(vid, /^<a class="quote" href="\/c\/d{40}">[^]*<div class="qbody bare"><span class="qvid" role="img" aria-label="Play video"><svg [^]*<\/svg><\/span><\/div><\/a>/)
   const lnk = drawn(quoted('e'.repeat(40), 'https://example.com/post'))
   assert.match(lnk, /<div class="qbody bare"><span class="qlink"><svg [^]*<\/svg><span>example\.com\/post<\/span><\/span><\/div><\/a>/)
+})
+
+// #664: a quoted cast with no words whose only embed is another cast (a quote of a quote) drew as an empty card
+test('a quoted cast that only quotes another cast says so, and by whom when that cast is known', () => {
+  const inner = '1'.repeat(40)
+  const quoted = (hash, embeds) => ({ hash, author, text: '', timestamp: '2026-10-28T10:00:00Z', embeds, reactions: {}, replies: {} })
+  const drawn = (q, more = {}) => {
+    const c = { ...cast('c'.repeat(40), []), embeds: [{ cast_id: { fid: 3, hash: `0x${q.hash}` } }] }
+    const html = body({ casts: [c], got: { ...got, [`c:${q.hash}`]: q, ...more }, shapes: {} }, '0.0.0', Date.parse('2026-10-28T12:00:00Z')).html
+    return html.slice(html.indexOf('<a class="quote"'))
+  }
+  const q = quoted('d'.repeat(40), [{ cast_id: { fid: 77, hash: `0x${inner.toUpperCase()}` } }])
+  // nothing known of fid 77: a plain line, and the card still opens the quoted cast
+  assert.match(drawn(q), /^<a class="quote" href="\/c\/d{40}">[^]*<div class="qbody bare"><span class="qlink"><svg [^]*<\/svg><span>Quoted a cast<\/span><\/span><\/div><\/a>/)
+  // the inner cast is loaded: its author's handle
+  const bob = { fid: 77, username: 'bob<', display_name: 'Bob', pfp_url: '' }
+  assert.match(drawn(q, { [`c:${inner}`]: { ...quoted(inner, []), author: bob, text: 'hi' } }), /<span>Quoted a cast by @bob&#60;<\/span><\/span><\/div><\/a>/)
+  // a cast on the page by that author tells who it is too
+  const page2 = body({ casts: [{ ...cast('c'.repeat(40), []), embeds: [{ cast_id: { fid: 3, hash: q.hash } }] }, { ...cast('f'.repeat(40), []), author: { ...bob, username: 'bob' } }], got: { ...got, [`c:${q.hash}`]: q }, shapes: {} }, '0.0.0', Date.parse('2026-10-28T12:00:00Z')).html
+  assert.ok(page2.includes('<span>Quoted a cast by @bob</span>'))
+  // an account or a cast taken down for everyone is never named (the list home.mjs reads, filled for this check)
+  const gone = '2'.repeat(40)
+  removed.fids.push(66), removed.casts.push(gone)
+  try {
+    assert.match(drawn(q, { [`c:${inner}`]: { ...quoted(inner, []), author: { ...bob, fid: 66 } } }), /<span>Quoted a cast<\/span>/)
+    const q2 = quoted('d'.repeat(40), [{ cast_id: { fid: 77, hash: gone } }])
+    assert.match(drawn(q2, { [`c:${gone}`]: { ...quoted(gone, []), author: bob } }), /<span>Quoted a cast<\/span>/)
+  } finally {
+    removed.fids.pop(), removed.casts.pop()
+  }
+  // words or a link still win over the line
+  assert.ok(!drawn({ ...q, text: 'words' }).includes('Quoted a cast'))
+  assert.ok(!drawn({ ...q, embeds: [...q.embeds, { url: 'https://example.com/post' }] }).includes('Quoted a cast'))
 })

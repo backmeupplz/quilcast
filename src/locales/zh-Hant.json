@@ -318,6 +318,8 @@
   "Quilcast talks straight to the Hypersnap network, and your keys never leave this device.": "Quilcast 直接與 Hypersnap 網路連線，你的金鑰永遠不會離開這台裝置。",
   "Quote": "引用",
   "Quote cast": "引用貼文",
+  "Quoted a cast": "引用了一則 cast",
+  "Quoted a cast by @{name}": "引用了 @{name} 的一則 cast",
   "Quotes": "引用",
   "Rain": "雨",
   "Rainbow": "彩虹",

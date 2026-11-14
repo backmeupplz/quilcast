@@ -318,6 +318,8 @@
   "Quilcast talks straight to the Hypersnap network, and your keys never leave this device.": "Quilcast se conecta directamente a la red Hypersnap y tus claves nunca salen de este dispositivo.",
   "Quote": "Citar",
   "Quote cast": "Citar cast",
+  "Quoted a cast": "Citó un cast",
+  "Quoted a cast by @{name}": "Citó un cast de @{name}",
   "Quotes": "Citas",
   "Rain": "Lluvia",
   "Rainbow": "Arcoíris",

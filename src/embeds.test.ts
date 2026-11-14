@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { embedLayout, peekOf, playedOf, vidBoxOf, vidShape } from './shared.ts'
+import { embedLayout, peekOf, playedOf, quotedOf, vidBoxOf, vidShape } from './shared.ts'
 
 const img = (i: number) => `https://imagedelivery.net/a/b${i}/original`
 const vid = (i: number) => `https://stream.farcaster.xyz/v${i}/manifest.m3u8`
@@ -99,4 +99,20 @@ test("a quote or a notification always has something to show of a cast's embeds"
   assert.deepEqual(peekOf(['https://www.example.com/post']), { link: 'example.com/post' })
   assert.deepEqual(peekOf([`https://example.com/${'a'.repeat(60)}`]), { link: `example.com/${'a'.repeat(28)}…` })
   assert.deepEqual(peekOf([]), {})
+})
+
+// #664: a quoted cast with no words whose only embed is another cast (urlsOf skips those) drew as an empty card
+test('a quote of a quote has something to show: the cast it quotes', () => {
+  const hash = 'AB'.repeat(20)
+  const c = { text: '', embeds: [{ url: undefined }, { cast_id: { fid: 3, hash: 'nope' } }, { cast_id: { fid: 7, hash: `0x${hash}` } }, { cast_id: { fid: 8, hash: '1'.repeat(40) } }] }
+  assert.deepEqual(quotedOf(c), { fid: 7, hash: hash.toLowerCase() })
+  assert.deepEqual(peekOf([], quotedOf(c)), { quote: { fid: 7, hash: hash.toLowerCase() } })
+  // a fid that isn't one is left out; the hash still says which cast
+  assert.deepEqual(quotedOf({ embeds: [{ cast_id: { fid: 0, hash } }] }), { hash: hash.toLowerCase() })
+  assert.equal(quotedOf({ embeds: [{ url: 'https://example.com/' }] }), undefined)
+  assert.equal(quotedOf({}), undefined)
+  // a picture, a video or a link still comes first
+  assert.deepEqual(peekOf(['https://example.com/post'], quotedOf(c)), { link: 'example.com/post' })
+  assert.deepEqual(peekOf([img(1)], quotedOf(c)), { img: img(1) })
+  assert.deepEqual(peekOf([], undefined), {})
 })

@@ -318,6 +318,8 @@
   "Quilcast talks straight to the Hypersnap network, and your keys never leave this device.": "Quilcast は Hypersnap ネットワークと直接やり取りし、鍵がこのデバイスの外に出ることはありません。",
   "Quote": "引用",
   "Quote cast": "引用キャスト",
+  "Quoted a cast": "キャストを引用しました",
+  "Quoted a cast by @{name}": "@{name} のキャストを引用しました",
   "Quotes": "引用",
   "Rain": "雨",
   "Rainbow": "レインボー",

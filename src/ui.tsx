@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, articleNow, articleOf, back, follow, get, go, LINK_RE, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
-import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -951,6 +951,14 @@ export const fetchCast = (hash: string) => {
   return castCache.get(hash)!
 }
 
+/** A quote of a quote with no words of its own (#664): "Quoted a cast", by whom when we already have that cast or its
+ *  author, and they're not someone this reader mutes or blocks, nor taken down (server/home.mjs says it the same way). */
+export const quotedLine = (q: CastRef) => {
+  const inner = got.get(`c:${q.hash}`) as Cast | null | undefined
+  const by = inner?.author ?? (q.fid ? users.get(q.fid) : undefined)
+  return by && !hides(inner ?? ({ hash: q.hash, text: '', author: by } as Cast)) ? t('Quoted a cast by @{name}', { name: handle(by) }) : t('Quoted a cast')
+}
+
 export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   // like LinkCard, read by hash on every render so a reused card never keeps the cast it showed before
   const c = given ?? (hash ? (got.get(`c:${hash.replace(/^0x/, '').toLowerCase()}`) as Cast | null | undefined) : undefined)
@@ -959,7 +967,7 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   if (c === null) return <div class="quote muted">{t('This cast is unavailable.')}</div>
   if (!c) return <div class="quote skeleton" />
   if (hides(c)) return <div class="quote muted">{t('Hidden by your mutes.')}</div>
-  const { img, video, link } = peekOf(urlsOf(c))
+  const { img, video, link, quote } = peekOf(urlsOf(c), quotedOf(c))
   const text = castText(c, true).trim()
   return (
     <a class="quote" href={`/c/${c.hash}`} onClick={stop}>
@@ -970,6 +978,7 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
         {img && <Img class="qimg" src={sized(img, 'w=1200')} />}
         {video && <VidPeek />}
         {!text && link && <span class="qlink"><Icon d={P.link} size={14} /><span>{link}</span></span>}
+        {!text && quote && <span class="qlink"><Icon d={P.quote} size={14} /><span>{quotedLine(quote)}</span></span>}
       </div>
     </a>
   )

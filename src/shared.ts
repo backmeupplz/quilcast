@@ -57,12 +57,19 @@ export const poster = (src?: string) => (src && /^https:\/\/stream\.farcaster\.x
 /** What a quoted cast (ui.tsx QuoteCard, server/home.mjs) or a notification (app.tsx NotePeek) shows of its embeds
  *  beside its words: its first picture, else a video's poster, else, for a video with none (only Farcaster's streams
  *  have one; Firefly's HLS or an mp4 from anywhere else don't), a stand-in with a play button, else its first link's
- *  address. A cast with no words of its own never shows as an empty card (#663). */
-export function peekOf(urls: string[]): { img?: string; video?: boolean; link?: string } {
+ *  address, else, for one that only quotes another cast (`quoted`, quotedOf), that cast, for a "Quoted a cast" line.
+ *  A cast with no words of its own never shows as an empty card (#663, #664). */
+export function peekOf(urls: string[], quoted?: CastRef): { img?: string; video?: boolean; link?: string; quote?: CastRef } {
   const img = urls.find(isImg) || poster(urls.find(isVid))
   if (img) return { img }
   if (urls.some(isVid)) return { video: true }
-  return urls[0] ? { link: shortUrl(urls[0]) } : {}
+  return urls[0] ? { link: shortUrl(urls[0]) } : quoted ? { quote: quoted } : {}
+}
+export type CastRef = { fid?: number; hash: string }
+/** The first cast a cast quotes (a `cast_id` embed; urlsOf skips those), its hash bare and lowercase. */
+export const quotedOf = (c: { embeds?: { cast_id?: { fid?: number; hash?: string } }[] }): CastRef | undefined => {
+  const id = c.embeds?.find((e) => /^(0x)?[0-9a-f]{40}$/i.test(e?.cast_id?.hash || ''))?.cast_id
+  return id && { ...(Number.isSafeInteger(id.fid) && id.fid! > 0 ? { fid: id.fid } : {}), hash: id.hash!.replace(/^0x/, '').toLowerCase() }
 }
 type Shape = [number, number] | null | undefined
 const real = (s: Shape): s is [number, number] => !!s && s[0] > 0 && s[1] > 0 && Number.isFinite(s[0] / s[1])
