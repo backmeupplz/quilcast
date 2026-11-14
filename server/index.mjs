@@ -31,6 +31,7 @@ import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { cancelScheduled, getScheduled, loadScheduled, putScheduled, watchScheduled } from './scheduled.mjs'
 import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
 import { getPin, loadPins, putPin } from './pins.mjs'
+import { getJob, getPack, isSticker, listPacks, loadStickers, postStickers, stickerFile, stickerStill } from './stickers.mjs'
 import { gallery, getTheme, importSkin, loadThemes, putTheme, quorumSkin } from './themes.mjs'
 import { body as profileBody, clip, describe, fname, hidden, ld, nameOf, pathOf } from './profile.mjs'
 import { rss, shown } from './feed.mjs'
@@ -76,6 +77,7 @@ loadDrafts(DATA)
 loadScheduled(DATA).then(() => watchScheduled({ node: NODE, every: Number(process.env.SCHEDULED_EVERY_MS) || 15e3 }))
 loadPrefs(DATA)
 loadPins(DATA)
+loadStickers(DATA)
 loadThemes(DATA)
 loadStats(DATA)
 loadOwners()
@@ -339,6 +341,20 @@ async function designCard(d) {
   <text x="122" y="${426 + bw / 2}" font-family="Inter" font-size="32" fill="${ink}">Colors, background and fonts for your profile.</text>
   <rect x="122" y="${462 + bw / 2}" width="330" height="64" rx="32" fill="${link}"/>
   <text x="287" y="${505 + bw / 2}" font-family="Inter" font-weight="700" font-size="28" fill="${d.box || '#fff'}" text-anchor="middle">Use this design</text>
+</svg>`
+}
+
+/** A sticker pack's share card: its name and its first five stickers (their first frames). */
+async function packCard(p) {
+  const stills = (await Promise.all(p.stickers.slice(0, 12).map((s) => stickerStill(s.h)))).filter(Boolean).slice(0, 5)
+  const size = 200
+  const x0 = (1200 - stills.length * size - (stills.length - 1) * 24) / 2
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0d0c11"/>
+  <g transform="translate(80 72) scale(3)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
+  <text x="206" y="126" font-family="Inter" font-weight="800" font-size="60" fill="#edebf3">${esc(cut(p.title, 30))}</text>
+  <text x="208" y="174" font-family="Inter" font-size="30" fill="#9893a5">${p.stickers.length === 1 ? '1 sticker' : `${p.stickers.length} stickers`} · Quilcast</text>
+  ${stills.map((b, i) => `<image href="data:image/png;base64,${b.toString('base64')}" x="${x0 + i * (size + 24)}" y="300" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/>`).join('')}
 </svg>`
 }
 
@@ -667,6 +683,7 @@ async function keptCast(hash) {
 
 // --- collect.quilcast.com: the Collect mini app (collect/), each cast's page with share tags and pictures ---
 const COLLECT_HOST = process.env.COLLECT_HOST || 'collect.quilcast.com'
+const STICKERS_HOST = process.env.STICKERS_HOST || 'stickers.quilcast.com'
 const COLLECT = `https://${COLLECT_HOST}`
 const CONTRACT = '0x5961d6a95f140b40cb993190e9dc5076f0830d3e'
 const BASE_RPC = process.env.BASE_RPC || 'https://mainnet.base.org'
@@ -1121,6 +1138,12 @@ const server = createServer(async (req, res) => {
       return send(req, res, 200, { 'content-type': TYPES[extname(path)] || 'application/octet-stream', 'cache-control': 'public, max-age=300', ...(path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' }) }, body, 'collect:' + path)
     }
 
+    // stickers.quilcast.com/<pack> is a sticker pack's short link; the packs live in the app (src/stickers.tsx)
+    if (String(req.headers.host || '').split(':')[0] === STICKERS_HOST) {
+      const id = path.match(/^\/([\w-]{8})$/)?.[1]
+      return res.writeHead(301, { location: `${SITE}/stickers${id ? `/${id}` : ''}`, 'cache-control': 'public, max-age=86400' }).end()
+    }
+
     // ogre mode's GIFs: a random one each time (server/shrek.mjs)
     if (/^\/shrek\/(dance|card|roar)$/.test(path)) return res.writeHead(302, { location: pick(), 'cache-control': 'no-store' }).end()
     if (path === '/shrek/credits.html') return html(credits())
@@ -1182,6 +1205,23 @@ const server = createServer(async (req, res) => {
       if (err && !r.status) console.error('pin', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
     }
+    // sticker packs (server/stickers.mjs)
+    if (path.startsWith('/api/stickers/')) {
+      const job = path.match(/^\/api\/stickers\/job\/([0-9a-f]{16})$/)
+      if (job) return json(200, getJob(job[1]))
+      const pack = path.match(/^\/api\/stickers\/pack\/([\w-]{8})$/)
+      if (pack) return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await getPack(pack[1]))
+      const fid = Number(path.match(/^\/api\/stickers\/([1-9]\d{0,9})$/)?.[1])
+      if (!fid) return json(404, { error: 'not found' })
+      if (req.method === 'GET') return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await listPacks(fid))
+      if (req.method !== 'POST') return json(405, { error: 'GET or POST' })
+      if (limited(`stickip:${ip}`, 300, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      const r = await postStickers(req, fid, NODE, () => limited(`stickfid:${fid}`, 300, 600e3)).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('stickers', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    }
+
     // the ⋯ menu's Report (server/report.mjs)
     if (path === '/api/report') {
       if (req.method !== 'POST') return json(405, { error: 'only POST' })
@@ -1430,6 +1470,15 @@ const server = createServer(async (req, res) => {
       return p ? res.writeHead(302, { location: p, 'cache-control': 'public, max-age=3600' }).end() : res.writeHead(404).end()
     }
 
+    // a sticker; the pack in its address is where Quilcast opens it from
+    const st = path.match(/^\/st\/([\w-]{8})\/([0-9a-f]{24})\.webp$/)
+    if (st) {
+      const body = isSticker(st[1], st[2]) && (await readFile(stickerFile(st[2])).catch(() => null))
+      if (!body) return res.writeHead(404).end()
+      res.setHeader('content-security-policy', "default-src 'none'; sandbox")
+      return res.writeHead(200, { 'content-type': 'image/webp', 'content-length': body.length, 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*' }).end(req.method === 'HEAD' ? undefined : body)
+    }
+
     const media = path.match(/^\/m\/([0-9a-f]{24})\.([a-z0-9]{3,4})$/)
     if (media) {
       // fonts get here only from Quorum themes (server/themes.mjs)
@@ -1585,6 +1634,25 @@ const server = createServer(async (req, res) => {
       if (!d) return res.writeHead(404).end()
       const png = await (pngs.get(k) || renders(() => designPng(ogDesign[1], d)))
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
+    }
+
+    const packPage = path.match(/^\/stickers\/([\w-]{8})$/)
+    if (packPage) {
+      const p = await getPack(packPage[1])
+      if (!p) return app()
+      const desc = `${p.stickers.length} stickers. Open the pack in Quilcast to add it and send them in casts and messages.`
+      return html(page({ title: `${p.title}: a sticker pack on Quilcast`, desc, path, image: `${SITE}/og/stickers/${p.id}.png`, alt: `Stickers from ${p.title}` }))
+    }
+    const ogPack = path.match(/^\/og\/stickers\/([\w-]{8})\.png$/)
+    if (ogPack) {
+      const k = `stickers:${ogPack[1]}`
+      if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
+      const p = await getPack(ogPack[1])
+      if (!p) return res.writeHead(404).end()
+      // a pack changes, so its card is kept a short while only
+      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => packCard(p).then(render))))
+      setTimeout(() => pngs.delete(k), 600e3).unref()
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=600' }).end(png)
     }
 
     const themePage = path.match(/^\/theme\/([\w-]{10})$/)

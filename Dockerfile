@@ -5,7 +5,14 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN node -e 'const fs = require("fs"); for (const f of ["package.json", "package-lock.json"]) { const j = JSON.parse(fs.readFileSync(f)); j.version = "0.0.0"; if (j.packages) j.packages[""].version = "0.0.0"; fs.writeFileSync(f, JSON.stringify(j)) }'
 
-FROM node:24.22.1-slim AS build
+# stickers (server/stickers.mjs) are made with ffmpeg (a static build: it has libvpx, which Telegram's video stickers
+# need for their alpha) and libwebp's img2webp; the tests make some too, so the build has them as well
+FROM mwader/static-ffmpeg:7.1.1 AS ffmpeg
+FROM node:24.22.1-slim AS media
+RUN apt-get update && apt-get install -y --no-install-recommends webp && rm -rf /var/lib/apt/lists/*
+COPY --from=ffmpeg /ffmpeg /usr/local/bin/
+
+FROM media AS build
 WORKDIR /app
 COPY --from=manifests /app ./
 RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline --no-audit --no-fund
@@ -25,7 +32,7 @@ WORKDIR /app
 COPY --from=manifests /app ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --prefer-offline --no-audit --no-fund
 
-FROM node:24.22.1-slim
+FROM media
 WORKDIR /app
 COPY --from=deps /app/node_modules node_modules
 COPY --from=build /out ./

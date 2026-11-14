@@ -700,6 +700,9 @@ export async function eraseFarcaster(progress: (step: EraseStep | 'find', done: 
   return out
 }
 
+/** A change to the account's sticker packs (server/stickers.mjs postStickers), signed with its Farcaster key. */
+export const stickerOp = (body: object) => keyFetch(`/api/stickers/${account!.fid}`, 'quilcast-stickers', 'POST', JSON.stringify(body))
+
 /** Save the account's profile look on our server (null goes back to plain), signed with its Farcaster key. */
 export const saveLook = (look: object | null) => keyFetch(`/api/look/${account!.fid}`, 'quilcast-look', 'PUT', JSON.stringify(look))
 

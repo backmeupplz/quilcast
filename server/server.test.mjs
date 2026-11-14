@@ -10,7 +10,8 @@ import { createServer, request } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { inflateSync } from 'node:zlib'
+import { gzipSync, inflateSync } from 'node:zlib'
+import { renderAsync } from '@resvg/resvg-js'
 import { after, before, test } from 'node:test'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
@@ -38,6 +39,9 @@ const orAsked = []
 const submitted = []
 let refuse = ''
 const hookHits = []
+// a sticker of each kind: a Lottie square spinning for a second (.tgs is it gzipped), and a still PNG
+const TGS = gzipSync(JSON.stringify({ v: '5.5.2', fr: 60, ip: 0, op: 60, w: 512, h: 512, layers: [{ ty: 4, ip: 0, op: 60, st: 0, ks: { o: { a: 0, k: 100 }, r: { a: 1, k: [{ t: 0, s: [0], i: { x: [0.5], y: [0.5] }, o: { x: [0.5], y: [0.5] } }, { t: 60, s: [90] }] }, p: { a: 0, k: [256, 256] }, a: { a: 0, k: [0, 0] }, s: { a: 0, k: [100, 100] } }, shapes: [{ ty: 'rc', p: { a: 0, k: [0, 0] }, s: { a: 0, k: [300, 300] }, r: { a: 0, k: 40 } }, { ty: 'fl', c: { a: 0, k: [1, 0.3, 0.2, 1] }, o: { a: 0, k: 100 } }] }] }))
+const STILL = renderAsync('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><circle cx="300" cy="200" r="150" fill="#5b3df5"/></svg>').then((i) => i.asPng())
 const node = createServer(async (q, r) => {
   const u = new URL(q.url, 'http://x')
   if (u.pathname === '/v1/castById') castByIdAsked.push(String(u.searchParams.get('hash')).replace(/^0x/, ''))
@@ -75,6 +79,11 @@ const node = createServer(async (q, r) => {
   if (u.pathname === '/skins') return r.end(JSON.stringify({ has_more: true, total: 2, entries: [{ id: SKIN_ID, name: 'Coffee', base: 'light', installs: 5, author_address: 'Qmx', manifest: 'big' }, { id: '../etc', name: 'bad' }] }))
   if (u.pathname === `/skins/${SKIN_ID}`) return r.end(JSON.stringify({ id: SKIN_ID, manifest: JSON.stringify(SKIN) }))
   if (u.pathname === '/tg/bottg-token/sendMessage') return hookHits.push({ path: u.pathname, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
+  // Telegram's sticker packs: "demo" has an animated sticker (Lottie) and a still one
+  if (u.pathname === '/tg/bottg-token/getStickerSet') return r.end(JSON.stringify(u.searchParams.get('name') === 'demo' ? { ok: true, result: { name: 'demo', title: 'Demo pack', stickers: [{ file_id: 'a', is_animated: true, emoji: '🙂' }, { file_id: 'b', emoji: '🔥' }] } } : { ok: false, description: 'Bad Request: STICKERSET_INVALID' }))
+  if (u.pathname === '/tg/bottg-token/getFile') return r.end(JSON.stringify({ ok: true, result: { file_path: `stickers/${u.searchParams.get('file_id')}` } }))
+  if (u.pathname === '/tg/file/bottg-token/stickers/a') return r.end(TGS)
+  if (u.pathname === '/tg/file/bottg-token/stickers/b') return r.end((await renderAsync('<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect x="100" y="100" width="300" height="300" fill="#f50"/></svg>')).asPng())
   if (u.pathname === '/spam/scores') return r.end(JSON.stringify({ [u.searchParams.get('h')]: 0.97 }))
   if (u.pathname === '/spam/users') return r.end(JSON.stringify({ [u.searchParams.get('fid')]: null }))
   if (u.pathname === '/report-hook') return hookHits.push({ path: u.pathname + u.search, body: JSON.parse(await new Promise((ok) => { let b = ''; q.on('data', (c) => (b += c)).on('end', () => ok(b)) })) }), r.end('{"ok":true}')
@@ -752,6 +761,56 @@ test('alerts: an account signs up a browser with its own key; the browser alone 
   assert.equal((await post(7, 'state', {})).status, 400)
   assert.deepEqual(await (await post(7, 'off', { endpoint })).json(), { ok: true })
   assert.deepEqual(await (await post(7, 'state', { endpoint })).json(), null)
+})
+
+test('sticker packs: made, filled from a picture and from Telegram, shared, added and changed only by their owner', async () => {
+  const call = (fid, body, key = fid === 9 ? signer9 : signer) => {
+    const ts = Date.now()
+    const b = JSON.stringify(body)
+    const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-stickers:${fid}:${ts}:${b}`), key)).toString('hex')
+    return fetch(`${base}/api/stickers/${fid}`, { method: 'POST', body: b, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
+  }
+  assert.equal((await call(7, { op: 'create', title: 'x' }, ed25519.utils.randomSecretKey())).status, 403)
+  const { pack } = await (await call(7, { op: 'create', title: '  My   pack ' })).json()
+  assert.deepEqual([pack.title, pack.fid, pack.stickers], ['My pack', 7, []])
+  // a picture becomes a 320 px WebP
+  const added = await (await call(7, { op: 'add', pack: pack.id, image: (await STILL).toString('base64'), emoji: '🟣' })).json()
+  assert.equal(added.pack.stickers.length, 1)
+  const one = await fetch(`${base}/st/${pack.id}/${added.pack.stickers[0].h}.webp`)
+  assert.equal(one.headers.get('content-type'), 'image/webp')
+  const webp = Buffer.from(await one.arrayBuffer())
+  assert.equal(webp.toString('latin1', 8, 12), 'WEBP')
+  assert.equal(1 + webp.readUIntLE(24, 3), 320)
+  // a Telegram pack into the same pack: the Lottie one comes out animated
+  assert.equal((await call(7, { op: 'import', url: 't.me/addstickers/nope' })).status, 404)
+  const { job } = await (await call(7, { op: 'import', pack: pack.id, url: 'https://t.me/addstickers/demo' })).json()
+  let j = job
+  for (let i = 0; i < 100 && !j.finished; i++) await new Promise((ok) => setTimeout(ok, 100)), (j = await (await fetch(`${base}/api/stickers/job/${job.id}`)).json())
+  assert.deepEqual([j.done, j.failed], [2, 0])
+  const full = await (await fetch(`${base}/api/stickers/pack/${pack.id}`)).json()
+  assert.deepEqual(full.stickers.map((s) => s.e), ['🟣', '🙂', '🔥'])
+  const anim = Buffer.from(await (await fetch(`${base}/st/${pack.id}/${full.stickers[1].h}.webp`)).arrayBuffer())
+  assert.ok(anim.includes('ANIM'))
+  // or into a new pack named after Telegram's
+  const { pack: fresh, job: job2 } = await (await call(7, { op: 'import', url: 'tg://addstickers?set=demo' })).json()
+  assert.equal(fresh.title, 'Demo pack')
+  for (let i = 0; i < 100 && !(await (await fetch(`${base}/api/stickers/job/${job2.id}`)).json()).finished; i++) await new Promise((ok) => setTimeout(ok, 100))
+  // the link and its card; the short host sends it to the app
+  assert.match(await (await fetch(`${base}/stickers/${pack.id}`)).text(), /My pack: a sticker pack on Quilcast/)
+  assert.equal((await fetch(`${base}/og/stickers/${pack.id}.png`)).headers.get('content-type'), 'image/png')
+  const short = await new Promise((ok) => request(`${base}/${pack.id}`, { headers: { host: 'stickers.quilcast.com' } }, (r) => ok(r.resume().headers.location)).end())
+  assert.equal(short, `https://quilcast.test/stickers/${pack.id}`)
+  // someone else adds it, but can't change it
+  assert.equal((await call(9, { op: 'save', pack: pack.id })).status, 200)
+  assert.deepEqual((await (await fetch(`${base}/api/stickers/9`)).json()).map((p) => p.id), [pack.id])
+  assert.equal((await call(9, { op: 'edit', pack: pack.id, title: 'mine now' })).status, 400)
+  // its owner reorders and drops one, then deletes it: it leaves everyone's list
+  const [a, b] = full.stickers.map((s) => s.h)
+  assert.deepEqual((await (await call(7, { op: 'edit', pack: pack.id, stickers: [b, a, 'f'.repeat(24)] })).json()).pack.stickers.map((s) => s.h), [b, a])
+  assert.deepEqual((await (await fetch(`${base}/api/stickers/7`)).json()).map((p) => p.id), [fresh.id, pack.id])
+  assert.equal((await call(7, { op: 'delete', pack: pack.id })).status, 200)
+  assert.deepEqual(await (await fetch(`${base}/api/stickers/9`)).json(), [])
+  assert.equal((await fetch(`${base}/api/stickers/pack/${pack.id}`).then((r) => r.json())), null)
 })
 
 test('stats: accounts a day and campaign sign-ups, counts only', async () => {

@@ -13,6 +13,7 @@ import { dropLook, keySigned } from './looks.mjs'
 import { dropMutes } from './mutes.mjs'
 import { dropAlerts } from './alerts.mjs'
 import { dropPin } from './pins.mjs'
+import { dropStickers } from './stickers.mjs'
 import { dropPrefs } from './prefs.mjs'
 import { fail, fetchJson, gate } from './net.mjs'
 import { dropTranslations } from './translate.mjs'
@@ -87,6 +88,7 @@ async function run(fid, node, site) {
   const [look, mutes, drafts, translations] = [await dropLook(fid), await dropMutes(fid), await dropDrafts(fid), await dropTranslations(hashes)]
   await dropPrefs(fid)
   await dropPin(fid)
+  await dropStickers(fid)
   dropAlerts(fid)
   return { media, kept, look, mutes, drafts, translations }
 }

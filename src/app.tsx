@@ -39,6 +39,7 @@ const WalletPage = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletP
 const WalletSettings = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletSettings))
 const WalletPanel = lazy<{ close: () => void }>(() => import('./walletui.tsx').then((m) => m.WalletPanel))
 const SpaceRoom = lazy<{ id: string }>(() => import('./spaces.tsx').then((m) => m.SpaceRoom))
+const StickersPage = lazy<{ id?: string }>(() => import('./stickers.tsx').then((m) => m.StickersPage))
 const ArticleEditor = lazy<{}>(() => import('./articles.tsx').then((m) => m.ArticleEditor))
 const ThemeSettings = lazy<{}>(() => import('./themes.tsx').then((m) => m.ThemeSettings))
 const ThemeEditor = lazy<{ start: Theme | null; close: () => void }>(() => import('./themes.tsx').then((m) => m.Editor))
@@ -2684,6 +2685,7 @@ function App() {
           : r0 === 'write' ? (me ? <ArticleEditor /> : <Join />)
           : r0 === 'apps' ? <Apps />
           : r0 === 'wallet' ? (me ? <WalletPage /> : <Join />)
+          : r0 === 'stickers' ? <StickersPage key={r1} id={r1 || undefined} />
           : r0 === 'spaces' ? (r1 && me ? <SpaceRoom id={decode(r1)} /> : me ? <Spaces /> : <Join />)
           : r0 === 'design' ? <><Header title={t('Profile design')} /><div class="design-page"><DesignCard id={r1} /></div></>
           : r0 === 'theme' ? <><Header title={t('Theme')} /><div class="design-page"><ThemeCard id={r1} big /></div></>

@@ -53,6 +53,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      # sticker conversion (server/stickers.mjs) runs ffmpeg and img2webp; the Mac runner has both from Homebrew
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg webp
       # A Mac runner links in its cached install, Linux installs (scripts/ci-install.sh)
       - name: npm ci
         run: sh scripts/ci-install.sh

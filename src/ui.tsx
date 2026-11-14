@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, articleNow, articleOf, back, follow, get, go, LINK_RE, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
-import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -377,14 +377,22 @@ export function Video({ src }: { src: string }) {
 
 /** Images (up to four in a grid, opening the viewer) and videos from a list of URLs. */
 // `images`: every url is an image, whatever it looks like (an unfurl found the type)
+/** A sticker (src/stickers.tsx) as it is, with no frame, opening its pack; served by whichever server this app is on. */
+export const Sticker = ({ u }: { u: string }) => (
+  <a class="sticker" href={`/stickers/${stickerPack(u)}`} onClick={stop} aria-label={t('Sticker')}><img src={new URL(u).pathname} alt="" /></a>
+)
+
 export function Media({ urls: given, images }: { urls: string[]; images?: boolean }) {
-  const urls = given.flatMap((u) => safeUrl(u) ?? [])
+  const all = given.flatMap((u) => safeUrl(u) ?? [])
+  const stickers = all.filter(stickerPack)
+  const urls = all.filter((u) => !stickerPack(u))
   const imgs = images ? urls : urls.filter(isImg)
   const shown = imgs.slice(0, 4)
   // a lone image keeps its own shape; when warm() learned its size, its box has that shape before it loads
   const box = boxOf(shown.length === 1 ? shapes.get(sized(shown[0], 'w=1200')) : null)
   return (
     <>
+      {stickers.map((u) => <Sticker u={u} />)}
       {imgs.length > 0 && (
         <div class={`imgs n${shown.length}`} onClick={stop}>
           {shown.map((u, i) => (

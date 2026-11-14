@@ -5,8 +5,8 @@ import { account, findUsers, myUser, safeUrl, settings, type User } from './api.
 import { GifPicker } from './gifs.tsx'
 import { autoDelete, compact, details, load, loadChat, lookup, mute, read, sameDay, send, store, subscribe, unread, type Box, type Convo, type Msg, type Person } from './dms.ts'
 import { lang, t, tn } from './i18n.ts'
-import { isImg, sized } from './shared.ts'
-import { ago, Avatar, handle, Header, Icon, Img, Menu, nameOf, P, RichText, shell, Tabs, toast, UserRow, userPath, w } from './ui.tsx'
+import { isImg, sized, stickerPack } from './shared.ts'
+import { ago, Avatar, handle, Header, Icon, Img, Menu, nameOf, P, RichText, shell, Sticker, Tabs, toast, UserRow, userPath, w } from './ui.tsx'
 
 const person = (p?: Person): User => ({ fid: p?.fid || 0, username: p?.username, display_name: p?.displayName, pfp_url: p?.pfp?.url })
 const who = (p?: Person) => (p?.fid && p.fid === account!.fid ? t('You') : p?.username ? `@${p.username}` : p?.displayName || t('Someone'))
@@ -44,7 +44,8 @@ function describe(m: Msg) {
 const preview = (m: Msg, group: boolean) => {
   if (m.type !== 'text') return describe(m)
   if (m.isDeleted) return t('Message deleted')
-  const text = partsOf(m).text || t('Image')
+  const { pics, text: words } = partsOf(m)
+  const text = words || (pics.some(stickerPack) ? t('Sticker') : t('Image'))
   return m.senderFid === account!.fid ? t('You: {text}', { text }) : group ? t('{name}: {text}', { name: who(m.senderContext), text }) : text
 }
 
@@ -206,7 +207,7 @@ function QRow({ m, head, mine }: { m: Msg; head: boolean; mine: boolean }) {
       {head ? <Avatar u={u} size={44} /> : <time class="q-msg-side" dateTime={new Date(m.serverTimestamp).toISOString()}>{clock(m.serverTimestamp)}</time>}
       <div class="q-msg-body">
         {head && <div class="q-msg-top"><a class="q-msg-name" href={userPath(u)}>{nameOf(u)}</a><time title={when(m.serverTimestamp)}>{clock(m.serverTimestamp)}</time></div>}
-        {pics.map((p, i) => <button class={`dm-img ${m.state || ''}`} onClick={() => shell.view(pics, i)}><Img src={sized(p, 'w=600')} /></button>)}
+        {pics.map((p, i) => (stickerPack(p) ? <Sticker u={p} /> : <button class={`dm-img ${m.state || ''}`} onClick={() => shell.view(pics, i)}><Img src={sized(p, 'w=600')} /></button>))}
         {(text || !pics.length) && <div class={`q-msg-text ${m.state || ''}`}>{m.isDeleted ? <i>{t('Message deleted')}</i> : <RichText text={text} />}</div>}
         {m.state && <small class={m.state === 'failed' ? 'warn' : 'msg-state'}>{m.state === 'failed' ? t('Not sent') : t('Sending…')}</small>}
       </div>
@@ -230,7 +231,7 @@ function Bubble({ m, mine, group, name, face }: { m: Msg; mine: boolean; group: 
       {group && !mine && <span class="msg-face">{face && <Avatar u={person(face)} size={28} />}</span>}
       <div class="msg-col">
         {name && <span class="msg-who">{nameOf(person(name))}</span>}
-        {pics.map((u, i) => <button class={`dm-img ${m.state || ''}`} onClick={() => shell.view(pics, i)}><Img src={sized(u, 'w=600')} /></button>)}
+        {pics.map((u, i) => (stickerPack(u) ? <Sticker u={u} /> : <button class={`dm-img ${m.state || ''}`} onClick={() => shell.view(pics, i)}><Img src={sized(u, 'w=600')} /></button>))}
         {(text || !pics.length) && <div class={`bubble ${m.state || ''}`}>{m.isDeleted ? <i>{t('Message deleted')}</i> : <RichText text={text} />}</div>}
         {m.state && <small class={m.state === 'failed' ? 'warn' : 'msg-state'}>{m.state === 'failed' ? t('Not sent') : t('Sending…')}</small>}
       </div>
@@ -276,12 +277,17 @@ function Chat({ id }: { id: string }) {
   }
   const takeEmoji = (e: string) => (insert(e), setEmoji(null))
   const takeGif = (url: string) => (setGif(url), setGifs(false), requestAnimationFrame(() => box.current?.focus()))
-  const openEmoji = () => (setGifs(false), import('./emoji.tsx').then(setEmoji, () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.')))
-  const shut = () => (setGifs(false), setEmoji(null))
-  const picker = gifs ? <GifPicker cast start="trending" pick={takeGif} close={shut} /> : emoji ? <emoji.EmojiPicker pick={takeEmoji} close={shut} /> : null
+  const openEmoji = () => (setGifs(false), setStickers(null), import('./emoji.tsx').then(setEmoji, () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.')))
+  // the sticker picker loads like the emoji one; a sticker goes out at once, a message of its own, as on Telegram
+  const [stickers, setStickers] = useState<typeof import('./stickers.tsx') | null>(null)
+  const shut = () => (setGifs(false), setEmoji(null), setStickers(null))
+  const openStickers = () => (shut(), import('./stickers.tsx').then(setStickers, () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.')))
+  const takeSticker = (url: string) => (shut(), c && ((atBottom.current = true), send(c, url).catch((e) => toast(t("Couldn't send: {error}", { error: t(e.message) })))))
+  const picker = gifs ? <GifPicker cast start="trending" pick={takeGif} close={shut} /> : emoji ? <emoji.EmojiPicker pick={takeEmoji} close={shut} /> : stickers ? <stickers.StickerPicker pick={takeSticker} close={shut} /> : null
   const tools = (
     <>
-      <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} onMouseDown={grabCaret} onClick={() => (setEmoji(null), setGifs(!gifs))}><Icon d={P.gif} /></button>
+      <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} onMouseDown={grabCaret} onClick={() => (setEmoji(null), setStickers(null), setGifs(!gifs))}><Icon d={P.gif} /></button>
+      <button class="icon-btn" aria-label={t('Send a sticker')} title={t('Send a sticker')} onClick={() => (stickers ? shut() : openStickers())}><Icon d={P.sticker} /></button>
       <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={() => (emoji ? setEmoji(null) : openEmoji())}><Icon d={P.smile} /></button>
     </>
   )

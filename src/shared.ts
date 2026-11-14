@@ -1,6 +1,10 @@
 // Pure helpers that the app and the server (which imports this file as TypeScript) both use.
 
 export const isImg = (u: string) => /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u) || /imagedelivery\.net|i\.imgur\.com/.test(u)
+/** The pack a sticker's address names (server/stickers.mjs), or null for any other picture. A sticker is always at
+ *  quilcast.com, as other Farcaster clients show it from there. */
+export const stickerPack = (u: string) => u.match(/^https:\/\/quilcast\.com\/st\/([\w-]{8})\/[0-9a-f]{24}\.webp$/)?.[1] || null
+export const stickerUrl = (pack: string, h: string) => `https://quilcast.com/st/${pack}/${h}.webp`
 // Hypersnap V20 (Aug 2026) raised the cap from 2 to 4 for every fid
 export const MAX_EMBEDS = 4
 /** How many more attachments a composer post takes: MAX_EMBEDS less the ones it has and its fixed embeds (the first
@@ -724,6 +728,8 @@ export const P = {
   pen: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
   smile: 'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01',
+  // a sticker with its corner peeling up
+  sticker: 'M21 12V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7zM21 12h-5a4 4 0 0 0-4 4v5M8 13.5s1.2 1.5 3 1.5M9 9h.01M15 9h.01',
   markdown: 'M3 6h18v12H3zM6 15V9l3 3 3-3v6M17 9v6M14.5 12.5 17 15l2.5-2.5',
   article: 'M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5',
   link: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',

@@ -290,7 +290,10 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   const [channel, setChannel] = useState(initial)
   const [busy, setBusy] = useState(false)
   const [as, setAs] = useState<Account>(account!)
-  const [gifs, setGifs] = useState(false)
+  // the GIF or the sticker picker (src/stickers.tsx, loaded when first opened); a picked one is attached like a GIF
+  const [gifs, setGifs] = useState<false | 'gif' | 'sticker'>(false)
+  const [stk, setStk] = useState<typeof import('./stickers.tsx') | null>(null)
+  const openStickers = () => import('./stickers.tsx').then((m) => (setStk(m), setGifs('sticker')), () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.'))
   const pick = useRef<HTMLInputElement>(null)
   // drafts: the one being edited, its list on screen, and the "keep it?" question on closing. A mini app's composeCast
   // has none: its embeds are the app's, and the app hears what happened.
@@ -605,9 +608,10 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
             <div><b>{nameOf(parent.author)}</b> <span class="handle">@{handle(parent.author)}</span><p>{castText(parent).slice(0, 200)}</p></div>
           </div>
         )}
-        {gifs && <GifPicker cast start="trending" pick={gif} close={() => setGifs(false)} />}
+        {gifs === 'gif' && <GifPicker cast start="trending" pick={gif} close={() => setGifs(false)} />}
+        {gifs === 'sticker' && stk && <stk.StickerPicker pick={gif} close={() => setGifs(false)} />}
         {emoji && <emoji.EmojiPicker pick={insert} close={() => setEmoji(null)} />}
-        <div class="parts" hidden={gifs || drafts || scheduledOpen || !!emoji}>
+        <div class="parts" hidden={!!gifs || drafts || scheduledOpen || !!emoji}>
           {parts.map((p, i) => (
             <PartEditor key={p.id} part={p} set={(x) => update(p.id, x)} first={i === 0} last={i === parts.length - 1} quote={quote} embeds={embeds} focus={i === at && !gifs && !drafts && !scheduledOpen && !emoji}
               onFocus={() => setActive(i)} attach={attach} md={md}
@@ -616,7 +620,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           ))}
         </div>
         {md && (
-          <div class="md-tools" hidden={gifs || drafts || scheduledOpen || !!emoji} onMouseDown={(e) => e.preventDefault()}>
+          <div class="md-tools" hidden={!!gifs || drafts || scheduledOpen || !!emoji} onMouseDown={(e) => e.preventDefault()}>
             {([
               [t('Bold'), <b>B</b>, { mark: '**' }, 'B'], [t('Italic'), <i>I</i>, { mark: '*' }, 'I'], [t('Strikethrough'), <s>S</s>, { mark: '~~' }],
               [t('Code'), <Icon d={P.code} size={18} />, { mark: '`' }], [t('Link'), <Icon d={P.link} size={18} />, { link: t('link') }],
@@ -630,10 +634,11 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
             <button class="icon-btn" aria-label={t('Image')} title={t('Image')} disabled={busy} onClick={pickPicture}><Icon d={P.image} size={18} /></button>
           </div>
         )}
-        <div class="toolbar" hidden={gifs || drafts || scheduledOpen || !!emoji}>
+        <div class="toolbar" hidden={!!gifs || drafts || scheduledOpen || !!emoji}>
           <input ref={pick} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
           <button class="icon-btn" aria-label={t('Add photo or video')} disabled={!room} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
-          <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs(true)}><Icon d={P.gif} /></button>
+          <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs('gif')}><Icon d={P.gif} /></button>
+          <button class="icon-btn" aria-label={t('Add a sticker')} title={t('Add a sticker')} disabled={!room} onClick={openStickers}><Icon d={P.sticker} /></button>
           <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
           <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
           {canDraft && <button class={`icon-btn${timing ? ' on' : ''}`} aria-label={t('Schedule')} title={t('Schedule')} aria-pressed={timing} disabled={busy} onClick={() => (timing ? (setTiming(false), setWhen(undefined)) : (setTiming(true), setWhen((x) => x || Math.ceil((Date.now() + 3600e3) / 300e3) * 300e3)))}><Icon d={P.clock} /></button>}
