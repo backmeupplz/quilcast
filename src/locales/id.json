@@ -1247,5 +1247,15 @@
   "See what was posted": "Lihat yang sudah diposting",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} dari {total} postingan sudah terkirim. Mengirim utas ini lagi akan mempostingnya untuk kedua kalinya.",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} dari {total} postingan sudah terkirim. Sisanya akan dikirim sebagai balasan untuk postingan terakhir.",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Cast yang dibalas tidak dapat dimuat sekarang, jadi balasan ini belum bisa dikirim. Simpan sebagai draf dan coba lagi nanti."
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Cast yang dibalas tidak dapat dimuat sekarang, jadi balasan ini belum bisa dikirim. Simpan sebagai draf dan coba lagi nanti.",
+  "Continue as @{name}": "Lanjut sebagai @{name}",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "Feed Mengikuti milikmu langsung, dibaca dari data publik. Tidak ada yang ditandatangani, dan tidak ada yang bertindak atas namamu.",
+  "Post as @{name}": "Posting sebagai @{name}",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "Cast, suka, dan ikuti butuh frasa pemulihan akunmu, yang menambahkan kunci tanda tangan untuk browser ini. Aplikasi Farcaster menampilkannya di pengaturannya; dompetnya tidak bisa menambahkan kunci itu.",
+  "Create a separate account": "Buat akun terpisah",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "Gratis. Akun Hypersnap baru yang kosong dengan nama pilihanmu, bukan @{name}.",
+  "This wallet has no Farcaster account": "Dompet ini tidak punya akun Farcaster",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "Tidak ada akun Farcaster milik {address}. Dompet bawaan aplikasi tempat kamu membuka Quilcast terpisah dari akun Farcaster-mu, yang hanya dikendalikan oleh frasa pemulihannya.",
+  "Sign in with your recovery phrase": "Masuk dengan frasa pemulihanmu",
+  "Create a new account with this wallet": "Buat akun baru dengan dompet ini"
 }

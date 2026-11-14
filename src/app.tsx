@@ -23,6 +23,7 @@ import './style.css'
 import { keepCampaign } from './campaign.ts'
 import { addLocal, answered, exportLocal, IMPORT_MAX, localFollows, localSources, merger, ofAccount, parseImport, pool, removeLocal, room, setLocal, stillFollowed, toOffer, within, type Local } from './local.ts'
 import { asOf, browsePath, recentsOf, remember, repliesFit } from './browse.ts'
+import { useHost } from './host.ts'
 import { allSpots, entry, holding, keepSpot, keepState, navigated, placeKept, showing, spotOf, start, stateOf, takeList } from './restore.ts'
 
 // views most visits never open load when first needed
@@ -649,6 +650,7 @@ function Home() {
   const [tries, setTries] = useState(0)
   // without an account, the accounts followed on this device (anonymous mode, local.ts)
   const anon = !account?.done
+  const host = useHost()
   const local = useLocalFollows()
   type Tab = 'following' | 'trending'
   // Back comes back to the tab it was on (restore.ts)
@@ -722,7 +724,11 @@ function Home() {
           <div><b>{t('Farcaster without the middlemen')}</b><p>{app ? t('Quilcast talks straight to the Hypersnap network, and your keys never leave this device.') : t('Quilcast talks straight to the Hypersnap network, and your keys never leave this browser.')}</p>
             <Recents />
             {android && <PlayBadge />}</div>
-          <a class="btn small" href="/join">{t('Join')}</a>
+          <span class="btns stack">
+            {/* in a Farcaster client: the account it's signed in to, read-only (host.ts) */}
+            {host && <a class="btn ghost small" href={browsePath(host)}>{t('Continue as @{name}', { name: handle(host) })}</a>}
+            <a class="btn small" href="/join">{t('Join')}</a>
+          </span>
         </div>
       )}
       {account?.done && !as && <PlayBanner />}

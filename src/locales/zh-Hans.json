@@ -1247,5 +1247,15 @@
   "See what was posted": "查看已发布的内容",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} 条帖子中已有 {posted} 条发出。再次发送此串文会让它们重复发布。",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} 条帖子中已有 {posted} 条发出。其余帖子将作为对最后一条的回复发出。",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "暂时无法加载所回复的 cast，因此这条回复还不能发送。请先存为草稿，稍后再试。"
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "暂时无法加载所回复的 cast，因此这条回复还不能发送。请先存为草稿，稍后再试。",
+  "Continue as @{name}": "以 @{name} 继续",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "立即查看你的关注动态，从公开数据读取。不签署任何内容，也不会以你的身份做任何事。",
+  "Post as @{name}": "以 @{name} 发布",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "发帖、点赞和关注需要你账号的助记词，它会为此浏览器添加签名密钥。Farcaster 应用在设置中显示助记词；它的钱包无法添加这个密钥。",
+  "Create a separate account": "创建另一个账号",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "免费。一个使用你所选名字的全新空 Hypersnap 账号，不是 @{name}。",
+  "This wallet has no Farcaster account": "这个钱包没有 Farcaster 账号",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "{address} 没有 Farcaster 账号。你打开 Quilcast 所用应用自带的钱包与你的 Farcaster 账号是分开的，账号只由它的助记词控制。",
+  "Sign in with your recovery phrase": "用助记词登录",
+  "Create a new account with this wallet": "用这个钱包创建新账号"
 }

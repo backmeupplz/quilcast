@@ -1247,5 +1247,15 @@
   "See what was posted": "Paylaşılanları gör",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} gönderiden {posted} tanesi zaten paylaşıldı. Bu zinciri yeniden gönderirsen bunlar ikinci kez paylaşılır.",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} gönderiden {posted} tanesi zaten paylaşıldı. Kalanlar sonuncusuna yanıt olarak paylaşılacak.",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Yanıtlanan cast şu anda yüklenemiyor, bu yüzden bu yanıt henüz gönderilemez. Taslak olarak kaydedip daha sonra yeniden deneyin."
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Yanıtlanan cast şu anda yüklenemiyor, bu yüzden bu yanıt henüz gönderilemez. Taslak olarak kaydedip daha sonra yeniden deneyin.",
+  "Continue as @{name}": "@{name} olarak devam et",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "Takip ettiklerin akışı hemen, herkese açık verilerden okunur. Hiçbir şey imzalanmaz ve hiçbir şey senin adına yapılmaz.",
+  "Post as @{name}": "@{name} olarak paylaş",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "Cast atmak, beğenmek ve takip etmek hesabının kurtarma ifadesini gerektirir; bu ifade bu tarayıcı için bir imzalama anahtarı ekler. Farcaster uygulaması onu ayarlarında gösterir; uygulamanın cüzdanı anahtarı ekleyemez.",
+  "Create a separate account": "Ayrı bir hesap oluştur",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "Ücretsiz. Seçtiğin adla yeni, boş bir Hypersnap hesabı, @{name} değil.",
+  "This wallet has no Farcaster account": "Bu cüzdanın Farcaster hesabı yok",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "{address} adresine ait bir Farcaster hesabı yok. Quilcast'i açtığın uygulamanın cüzdanı Farcaster hesabından ayrıdır; hesabını yalnızca kurtarma ifadesi yönetir.",
+  "Sign in with your recovery phrase": "Kurtarma ifadenle giriş yap",
+  "Create a new account with this wallet": "Bu cüzdanla yeni hesap oluştur"
 }

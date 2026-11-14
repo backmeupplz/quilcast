@@ -1247,5 +1247,15 @@
   "See what was posted": "Xem những gì đã đăng",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Đã đăng {posted}/{total} bài. Gửi lại chuỗi này sẽ đăng chúng lần thứ hai.",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Đã đăng {posted}/{total} bài. Phần còn lại sẽ được đăng dưới dạng trả lời bài cuối cùng.",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Không thể tải cast được trả lời lúc này, nên chưa thể gửi câu trả lời này. Hãy lưu thành bản nháp và thử lại sau."
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Không thể tải cast được trả lời lúc này, nên chưa thể gửi câu trả lời này. Hãy lưu thành bản nháp và thử lại sau.",
+  "Continue as @{name}": "Tiếp tục với tư cách @{name}",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "Bảng tin Đang theo dõi của bạn ngay lập tức, đọc từ dữ liệu công khai. Không có gì được ký, và không có gì hành động thay bạn.",
+  "Post as @{name}": "Đăng với tư cách @{name}",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "Đăng cast, thích và theo dõi cần cụm từ khôi phục của tài khoản bạn, cụm từ này thêm một khóa ký cho trình duyệt này. Ứng dụng Farcaster hiển thị nó trong phần cài đặt; ví của ứng dụng không thể thêm khóa.",
+  "Create a separate account": "Tạo tài khoản riêng",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "Miễn phí. Một tài khoản Hypersnap mới, trống, với tên bạn chọn, không phải @{name}.",
+  "This wallet has no Farcaster account": "Ví này không có tài khoản Farcaster",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "Không có tài khoản Farcaster nào thuộc về {address}. Ví đi kèm ứng dụng bạn dùng để mở Quilcast tách biệt với tài khoản Farcaster của bạn, thứ chỉ cụm từ khôi phục của nó mới kiểm soát được.",
+  "Sign in with your recovery phrase": "Đăng nhập bằng cụm từ khôi phục",
+  "Create a new account with this wallet": "Tạo tài khoản mới với ví này"
 }

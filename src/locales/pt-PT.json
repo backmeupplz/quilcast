@@ -1247,5 +1247,15 @@
   "See what was posted": "Ver o que foi publicado",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} de {total} publicações já foram publicadas. Enviar esta thread de novo vai publicá-las uma segunda vez.",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} de {total} publicações já foram publicadas. O resto será publicado como respostas à última.",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "O cast a que esta resposta responde não pode ser carregado agora, por isso ainda não pode ser enviada. Guarde-a como rascunho e tente novamente mais tarde."
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "O cast a que esta resposta responde não pode ser carregado agora, por isso ainda não pode ser enviada. Guarde-a como rascunho e tente novamente mais tarde.",
+  "Continue as @{name}": "Continuar como @{name}",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "O teu feed A seguir de imediato, lido a partir de dados públicos. Nada é assinado e nada age em teu nome.",
+  "Post as @{name}": "Publicar como @{name}",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "Publicar, gostar e seguir precisam da frase de recuperação da tua conta, que adiciona uma chave de assinatura para este navegador. A app do Farcaster mostra-a nas definições; a carteira dela não consegue adicionar a chave.",
+  "Create a separate account": "Criar uma conta separada",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "Grátis. Uma conta Hypersnap nova e vazia com o nome que escolheres, não @{name}.",
+  "This wallet has no Farcaster account": "Esta carteira não tem conta Farcaster",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "Nenhuma conta Farcaster pertence a {address}. A carteira da app em que abriste o Quilcast é separada da tua conta Farcaster, que só a frase de recuperação dela controla.",
+  "Sign in with your recovery phrase": "Iniciar sessão com a tua frase de recuperação",
+  "Create a new account with this wallet": "Criar uma conta nova com esta carteira"
 }

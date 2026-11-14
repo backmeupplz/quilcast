@@ -1,11 +1,13 @@
 import { generateMnemonic, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, accounts, get, getUser, go, idOf, setAccount, settings, USER_DATA, type Account } from './api.ts'
+import { account, accounts, get, getUser, go, idOf, setAccount, settings, USER_DATA, type Account, type User } from './api.ts'
+import { browsePath } from './browse.ts'
 import { fidOf } from './eth.ts'
 import { address, custodyKey } from './fc.ts'
 import { t } from './i18n.ts'
-import { Choose } from './ui.tsx'
+import { inHost, offered, useHost } from './host.ts'
+import { Avatar, Choose, handle } from './ui.tsx'
 import type { Choice } from './wallet.ts'
 import { custodyOf, ensureSigner, nativeFid, registerNative, sendSignup, setUserData } from './write.ts'
 import { firstSignIn } from './campaign.ts'
@@ -31,29 +33,63 @@ const Steps = ({ steps, at }: { steps: string[]; at: number }) => (
 
 // each step is its own path, so the header's back arrow and the browser's both return to the choices
 export function Join({ step }: { step?: string }) {
+  // in a Farcaster client (a mini app): the account it's signed in to, which the choices are about (host.ts)
+  const host = offered(useHost(), accounts)
   if (account && !account.done) return <Setup />
   if (step === 'create') return <Create />
   if (step === 'signin') return <SignIn />
-  if (step === 'wallet') return <WalletIn />
+  if (step === 'wallet') return <WalletIn host={host} />
+  const wallet = (
+    <button class="choice" onClick={() => go('/join/wallet')}>
+      <b>{t('Use a wallet')}</b>
+      <span>{t('Connect MetaMask, Rabby or another wallet that owns a Farcaster account, or create one paid from it. The wallet keeps its keys and you approve each signature.')}</span>
+    </button>
+  )
   return (
     <div class="join">
       <h1>{account ? t('Add an account') : t('Join Farcaster on Hypersnap')}</h1>
       <p class="lede">{t('Quilcast is a small, open client that reads from and posts to the Hypersnap network that Quilibrium runs. There is no server in between, and your keys stay in this browser.')}</p>
-      <button class="choice" onClick={() => go('/join/create')}>
-        <b>{t('Create a new account')}</b>
-        <span>{t('Free. Pick a name and Quilcast registers a Hypersnap account for you in this browser.')}</span>
-      </button>
-      <button class="choice" onClick={() => go('/join/signin')}>
-        <b>{t('I already have an account')}</b>
-        <span>{t('Sign in with the recovery phrase from Warpcast, Quorum or any other Farcaster app.')}</span>
-      </button>
-      <button class="choice" onClick={() => go('/join/wallet')}>
-        <b>{t('Use a wallet')}</b>
-        <span>{t('Connect MetaMask, Rabby or another wallet that owns a Farcaster account, or create one paid from it. The wallet keeps its keys and you approve each signature.')}</span>
-      </button>
+      {host ? (
+        // the person already has an account: theirs first, and a new one only as a separate account
+        <>
+          <ContinueAs u={host} />
+          <button class="choice" onClick={() => go('/join/signin')}>
+            <b>{t('Post as @{name}', { name: handle(host) })}</b>
+            <span>{t("Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.")}</span>
+          </button>
+          {wallet}
+          <button class="choice" onClick={() => go('/join/create')}>
+            <b>{t('Create a separate account')}</b>
+            <span>{t('Free. A new, empty Hypersnap account with a name you pick, not @{name}.', { name: handle(host) })}</span>
+          </button>
+        </>
+      ) : (
+        <>
+          <button class="choice" onClick={() => go('/join/create')}>
+            <b>{t('Create a new account')}</b>
+            <span>{t('Free. Pick a name and Quilcast registers a Hypersnap account for you in this browser.')}</span>
+          </button>
+          <button class="choice" onClick={() => go('/join/signin')}>
+            <b>{t('I already have an account')}</b>
+            <span>{t('Sign in with the recovery phrase from Warpcast, Quorum or any other Farcaster app.')}</span>
+          </button>
+          {wallet}
+        </>
+      )}
     </div>
   )
 }
+
+/** The mini app's own account, read-only: its Following feed from public data (browse.ts), nothing signed. */
+const ContinueAs = ({ u }: { u: User }) => (
+  <button class="choice host" onClick={() => go(browsePath(u))}>
+    <Avatar u={u} size={40} link={false} />
+    <div>
+      <b>{t('Continue as @{name}', { name: handle(u) })}</b>
+      <span>{t('Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.')}</span>
+    </div>
+  </button>
+)
 
 // Hypersnap registers accounts natively and for free since its fork from Snapchain (2026-11-12). Usernames come from
 // the fname server, which only knows Optimism FIDs, so a new account has a display name and no @username.
@@ -114,16 +150,29 @@ const Progress = ({ err, at, steps }: { err: string; at: number; steps: string[]
 )
 
 const WALLET_IN = () => [t('Connecting your wallet'), t('Finding your Farcaster account'), t('Two signatures in your wallet add a signing key for this browser'), t('Loading your profile')]
-function WalletIn() {
+function WalletIn({ host }: { host: User | null }) {
   const f = useFlow()
   const [none, setNone] = useState('')
+  // in a Farcaster client, a wallet without an account is its wallet, not the account's custody: a new account only
+  // when asked for
+  const [create, setCreate] = useState(!inHost())
   const [wallets, setWallets] = useState<Choice[]>([])
   const [pick, setPick] = useState<Choice>()
   const [pair, setPair] = useState<{ uri: string; img: string }>()
   // the wallets announce themselves while wallet.ts loads, so the list has to be in before the first click
   useEffect(() => void import('./wallet.ts').then((m) => (setWallets(m.choices()), setPick(m.choices()[0]))), [])
   // a wallet without a Farcaster account can register one
-  if (none) return <Create wallet={none} />
+  if (none && create) return <Create wallet={none} />
+  if (none)
+    return (
+      <div class="join">
+        <h1>{t('This wallet has no Farcaster account')}</h1>
+        <p class="lede">{t('No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.', { address: short(none) })}</p>
+        <button class="btn wide" onClick={() => go('/join/signin')}>{t('Sign in with your recovery phrase')}</button>
+        {host && <ContinueAs u={host} />}
+        <button class="link-btn" onClick={() => setCreate(true)}>{t('Create a new account with this wallet')}</button>
+      </div>
+    )
   const connect = f.run(async (step) => {
     step(0)
     const w = await import('./wallet.ts')

@@ -1247,5 +1247,15 @@
   "See what was posted": "عرض ما نُشر",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "نُشر {posted} من {total} منشورات بالفعل. إرسال هذه السلسلة مجددًا سينشرها مرة ثانية.",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "نُشر {posted} من {total} منشورات بالفعل. سيُنشر الباقي ردودًا على آخر منشور منها.",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "تعذّر تحميل الـ cast الذي يُردّ عليه الآن، لذا لا يمكن إرسال هذا الرد بعد. احفظه كمسودة وحاول مرة أخرى لاحقًا."
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "تعذّر تحميل الـ cast الذي يُردّ عليه الآن، لذا لا يمكن إرسال هذا الرد بعد. احفظه كمسودة وحاول مرة أخرى لاحقًا.",
+  "Continue as @{name}": "المتابعة باسم @{name}",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "خلاصة من تتابعهم فورًا، تُقرأ من البيانات العامة. لا يُوقَّع شيء، ولا شيء يتصرّف باسمك.",
+  "Post as @{name}": "النشر باسم @{name}",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "النشر والإعجاب والمتابعة تحتاج إلى عبارة الاسترداد لحسابك، فهي تضيف مفتاح توقيع لهذا المتصفح. يعرضها تطبيق Farcaster في إعداداته؛ أما محفظته فلا تستطيع إضافة المفتاح.",
+  "Create a separate account": "إنشاء حساب منفصل",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "مجاني. حساب Hypersnap جديد وفارغ باسم تختاره، وليس @{name}.",
+  "This wallet has no Farcaster account": "لا يوجد حساب Farcaster لهذه المحفظة",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "لا يوجد حساب Farcaster يخص {address}. المحفظة المدمجة في التطبيق الذي فتحت فيه Quilcast منفصلة عن حسابك في Farcaster، الذي لا تتحكم فيه إلا عبارة الاسترداد الخاصة به.",
+  "Sign in with your recovery phrase": "تسجيل الدخول بعبارة الاسترداد",
+  "Create a new account with this wallet": "إنشاء حساب جديد بهذه المحفظة"
 }

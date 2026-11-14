@@ -1247,5 +1247,15 @@
   "See what was posted": "देखें क्या पोस्ट हुआ",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} में से {posted} पोस्ट पहले ही जा चुकी हैं। यह थ्रेड फिर से भेजने पर वे दूसरी बार पोस्ट होंगी।",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} में से {posted} पोस्ट पहले ही जा चुकी हैं। बाकी पोस्ट आख़िरी वाली के जवाब के रूप में जाएँगी।",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "जिस cast का यह जवाब है, वह अभी लोड नहीं हो पा रहा, इसलिए यह जवाब अभी भेजा नहीं जा सकता। इसे ड्राफ़्ट के रूप में सहेजें और बाद में फिर कोशिश करें।"
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "जिस cast का यह जवाब है, वह अभी लोड नहीं हो पा रहा, इसलिए यह जवाब अभी भेजा नहीं जा सकता। इसे ड्राफ़्ट के रूप में सहेजें और बाद में फिर कोशिश करें।",
+  "Continue as @{name}": "@{name} के रूप में जारी रखें",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "आपकी Following फ़ीड तुरंत, सार्वजनिक डेटा से पढ़ी गई। कुछ भी साइन नहीं होता, और कुछ भी आपकी ओर से नहीं होता।",
+  "Post as @{name}": "@{name} के रूप में पोस्ट करें",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "कास्ट करने, लाइक करने और फ़ॉलो करने के लिए आपके अकाउंट की रिकवरी फ़्रेज़ चाहिए, जो इस ब्राउज़र के लिए साइनिंग की जोड़ती है। Farcaster ऐप इसे अपनी सेटिंग्स में दिखाता है; उसका वॉलेट यह की नहीं जोड़ सकता।",
+  "Create a separate account": "अलग अकाउंट बनाएँ",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "मुफ़्त। आपके चुने नाम वाला एक नया, खाली Hypersnap अकाउंट, @{name} नहीं।",
+  "This wallet has no Farcaster account": "इस वॉलेट का कोई Farcaster अकाउंट नहीं है",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "{address} का कोई Farcaster अकाउंट नहीं है। जिस ऐप में आपने Quilcast खोला है, उसका वॉलेट आपके Farcaster अकाउंट से अलग है, जिसे सिर्फ़ उसकी रिकवरी फ़्रेज़ नियंत्रित करती है।",
+  "Sign in with your recovery phrase": "अपनी रिकवरी फ़्रेज़ से साइन इन करें",
+  "Create a new account with this wallet": "इस वॉलेट से नया अकाउंट बनाएँ"
 }

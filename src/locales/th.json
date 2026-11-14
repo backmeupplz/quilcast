@@ -1247,5 +1247,15 @@
   "See what was posted": "ดูสิ่งที่โพสต์ไปแล้ว",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "โพสต์ไปแล้ว {posted} จาก {total} โพสต์ หากส่งเธรดนี้อีกครั้ง โพสต์เหล่านั้นจะถูกโพสต์ซ้ำ",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "โพสต์ไปแล้ว {posted} จาก {total} โพสต์ ส่วนที่เหลือจะถูกโพสต์เป็นการตอบกลับโพสต์ล่าสุด",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "ตอนนี้โหลด cast ที่ตอบกลับไม่ได้ จึงยังส่งคำตอบนี้ไม่ได้ บันทึกเป็นฉบับร่างแล้วลองใหม่ภายหลัง"
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "ตอนนี้โหลด cast ที่ตอบกลับไม่ได้ จึงยังส่งคำตอบนี้ไม่ได้ บันทึกเป็นฉบับร่างแล้วลองใหม่ภายหลัง",
+  "Continue as @{name}": "ดำเนินการต่อในฐานะ @{name}",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "ฟีดที่คุณติดตามทันที อ่านจากข้อมูลสาธารณะ ไม่มีการลงนามใด ๆ และไม่มีอะไรทำในนามของคุณ",
+  "Post as @{name}": "โพสต์ในฐานะ @{name}",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "การแคสต์ กดถูกใจ และติดตามต้องใช้วลีกู้คืนของบัญชีคุณ ซึ่งจะเพิ่มคีย์ลงนามสำหรับเบราว์เซอร์นี้ แอป Farcaster แสดงวลีนี้ในการตั้งค่า กระเป๋าเงินของแอปเพิ่มคีย์นี้ไม่ได้",
+  "Create a separate account": "สร้างบัญชีแยก",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "ฟรี บัญชี Hypersnap ใหม่ที่ว่างเปล่าในชื่อที่คุณเลือก ไม่ใช่ @{name}",
+  "This wallet has no Farcaster account": "กระเป๋าเงินนี้ไม่มีบัญชี Farcaster",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "ไม่มีบัญชี Farcaster ที่เป็นของ {address} กระเป๋าเงินที่มากับแอปที่คุณเปิด Quilcast แยกจากบัญชี Farcaster ของคุณ ซึ่งควบคุมได้ด้วยวลีกู้คืนของบัญชีเท่านั้น",
+  "Sign in with your recovery phrase": "ลงชื่อเข้าใช้ด้วยวลีกู้คืน",
+  "Create a new account with this wallet": "สร้างบัญชีใหม่ด้วยกระเป๋าเงินนี้"
 }

@@ -1247,5 +1247,15 @@
   "See what was posted": "查看已發布的內容",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total} 則貼文中已有 {posted} 則發出。再次傳送此串文會讓它們重複發布。",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total} 則貼文中已有 {posted} 則發出。其餘貼文將作為對最後一則的回覆發出。",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "暫時無法載入所回覆的 cast，因此這則回覆還不能傳送。請先存為草稿，稍後再試。"
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "暫時無法載入所回覆的 cast，因此這則回覆還不能傳送。請先存為草稿，稍後再試。",
+  "Continue as @{name}": "以 @{name} 繼續",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "立即查看你的追蹤動態，從公開資料讀取。不簽署任何內容，也不會以你的身分做任何事。",
+  "Post as @{name}": "以 @{name} 發布",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "發文、按讚和追蹤需要你帳號的復原詞組，它會為這個瀏覽器新增簽署金鑰。Farcaster App 在設定中顯示復原詞組；它的錢包無法新增這個金鑰。",
+  "Create a separate account": "建立另一個帳號",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "免費。一個使用你所選名字的全新空 Hypersnap 帳號，不是 @{name}。",
+  "This wallet has no Farcaster account": "這個錢包沒有 Farcaster 帳號",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "{address} 沒有 Farcaster 帳號。你開啟 Quilcast 所用 App 內建的錢包與你的 Farcaster 帳號是分開的，帳號只由它的復原詞組控制。",
+  "Sign in with your recovery phrase": "用復原詞組登入",
+  "Create a new account with this wallet": "用這個錢包建立新帳號"
 }

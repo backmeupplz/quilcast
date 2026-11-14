@@ -1247,5 +1247,15 @@
   "See what was posted": "게시된 내용 보기",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{total}개 중 {posted}개 게시물이 이미 게시되었어요. 이 스레드를 다시 보내면 두 번 게시돼요.",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{total}개 중 {posted}개 게시물이 이미 게시되었어요. 나머지는 마지막 게시물에 대한 답글로 게시돼요.",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "답글 대상 캐스트를 지금 불러올 수 없어 이 답글을 아직 보낼 수 없습니다. 임시 저장한 뒤 나중에 다시 시도하세요."
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "답글 대상 캐스트를 지금 불러올 수 없어 이 답글을 아직 보낼 수 없습니다. 임시 저장한 뒤 나중에 다시 시도하세요.",
+  "Continue as @{name}": "@{name}(으)로 계속하기",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "팔로잉 피드를 바로, 공개 데이터에서 읽어 와요. 아무것도 서명하지 않고, 아무것도 나 대신 행동하지 않아요.",
+  "Post as @{name}": "@{name}(으)로 게시하기",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "캐스트, 좋아요, 팔로우에는 계정의 복구 문구가 필요해요. 이 문구로 이 브라우저용 서명 키를 추가해요. Farcaster 앱의 설정에서 볼 수 있고, 앱의 지갑으로는 키를 추가할 수 없어요.",
+  "Create a separate account": "별도 계정 만들기",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "무료. 직접 고른 이름의 새 빈 Hypersnap 계정이에요. @{name}이(가) 아니에요.",
+  "This wallet has no Farcaster account": "이 지갑에는 Farcaster 계정이 없어요",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "{address}에 연결된 Farcaster 계정이 없어요. Quilcast를 연 앱에 들어 있는 지갑은 Farcaster 계정과 별개이고, 계정은 복구 문구로만 관리할 수 있어요.",
+  "Sign in with your recovery phrase": "복구 문구로 로그인",
+  "Create a new account with this wallet": "이 지갑으로 새 계정 만들기"
 }

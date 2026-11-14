@@ -146,7 +146,13 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .banner p { margin: 2px 0 0; color: var(--muted); }
 /* browsing as someone (browse.ts): whose feed it is, the other accounts browsed lately, and the way out */
 .browsing > div { flex: 1; min-width: 0; }
-.browsing .btns { display: flex; gap: 8px; flex: none; }
+.banner .btns { display: flex; gap: 8px; flex: none; }
+/* signed out in a Farcaster client: Continue as @name over Join (app.tsx). On a phone the buttons go below the
+   words rather than squeeze them, and a long name is cut short */
+.banner:has(> .btns.stack) { flex-wrap: wrap; }
+.banner:has(> .btns.stack) > div { flex: 1 1 220px; min-width: 0; }
+.banner .btns.stack { flex-direction: column; align-items: stretch; text-align: center; max-width: 100%; margin-inline-start: auto; }
+.banner .btns.stack .btn { overflow: hidden; text-overflow: ellipsis; }
 .banner .recents { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
 /* Google's badge has its own clear space built in, so it sits a little outside the text's edge */
 .play-badge { display: block; width: max-content; margin: 2px 0 -6px -10px; }
@@ -572,6 +578,10 @@ small.warn { color: var(--warn); }
 .choice { display: block; width: 100%; text-align: start; margin-top: 10px; padding: 16px 18px; border-radius: calc(14px * var(--rs, 1)); border: var(--bw, 1px) var(--bs, solid) var(--line); background: var(--card); }
 .choice b { display: block; font-size: 16px; }
 .choice span { color: var(--muted); font-size: 14px; }
+/* the mini app's own account (join.tsx), its avatar beside the words */
+.choice.host { display: flex; align-items: center; gap: 14px; }
+/* the avatar's fallback letter keeps the avatar's own size, not the description's */
+.choice.host .avatar span { font-size: inherit; }
 .join .card { margin-top: 14px; padding: 16px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); }
 .join .card h2 { font-size: 15px; margin-bottom: 6px; }
 .card p { margin: 0 0 6px; }

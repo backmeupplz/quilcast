@@ -1247,5 +1247,15 @@
   "See what was posted": "Bekijk wat er geplaatst is",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "{posted} van {total} berichten zijn al geplaatst. Als je deze thread opnieuw verstuurt, worden ze een tweede keer geplaatst.",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "{posted} van {total} berichten zijn al geplaatst. De rest wordt geplaatst als antwoorden op het laatste.",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "De cast waarop dit antwoordt kan nu niet worden geladen, dus dit antwoord kan nog niet worden verzonden. Sla het op als concept en probeer het later opnieuw."
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "De cast waarop dit antwoordt kan nu niet worden geladen, dus dit antwoord kan nog niet worden verzonden. Sla het op als concept en probeer het later opnieuw.",
+  "Continue as @{name}": "Doorgaan als @{name}",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "Meteen je Volgend-feed, gelezen uit openbare gegevens. Er wordt niets ondertekend en niets handelt namens jou.",
+  "Post as @{name}": "Posten als @{name}",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "Casten, liken en volgen hebben de herstelzin van je account nodig, die een ondertekeningssleutel voor deze browser toevoegt. De Farcaster-app toont hem in zijn instellingen; zijn wallet kan de sleutel niet toevoegen.",
+  "Create a separate account": "Een apart account maken",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "Gratis. Een nieuw, leeg Hypersnap-account met een naam die je kiest, niet @{name}.",
+  "This wallet has no Farcaster account": "Deze wallet heeft geen Farcaster-account",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "Er hoort geen Farcaster-account bij {address}. De wallet van de app waarin je Quilcast opende staat los van je Farcaster-account, dat alleen de herstelzin beheert.",
+  "Sign in with your recovery phrase": "Inloggen met je herstelzin",
+  "Create a new account with this wallet": "Nieuw account maken met deze wallet"
 }

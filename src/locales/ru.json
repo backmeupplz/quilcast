@@ -1247,5 +1247,15 @@
   "See what was posted": "Посмотреть опубликованное",
   "{posted} of {total} posts already went out. Sending this thread again posts them a second time.": "Уже опубликовано {posted} из {total} постов. Если отправить тред снова, они выйдут второй раз.",
   "{posted} of {total} posts already went out. The rest goes out as replies to the last one.": "Уже опубликовано {posted} из {total} постов. Остальные выйдут ответами на последний из них.",
-  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Каст, на который это ответ, сейчас не загружается, поэтому ответ пока нельзя отправить. Сохраните его как черновик и попробуйте позже."
+  "The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.": "Каст, на который это ответ, сейчас не загружается, поэтому ответ пока нельзя отправить. Сохраните его как черновик и попробуйте позже.",
+  "Continue as @{name}": "Продолжить как @{name}",
+  "Your Following feed right away, read from public data. Nothing is signed, and nothing acts as you.": "Ваша лента подписок сразу, из публичных данных. Ничего не подписывается, и ничего не делается от вашего имени.",
+  "Post as @{name}": "Публиковать как @{name}",
+  "Casting, liking and following need your account's recovery phrase, which adds a signing key for this browser. The Farcaster app shows it in its settings; its wallet can't add the key.": "Для публикаций, лайков и подписок нужна фраза восстановления вашего аккаунта: она добавляет ключ подписи для этого браузера. Приложение Farcaster показывает её в настройках; его кошелёк добавить ключ не может.",
+  "Create a separate account": "Создать отдельный аккаунт",
+  "Free. A new, empty Hypersnap account with a name you pick, not @{name}.": "Бесплатно. Новый пустой аккаунт Hypersnap с выбранным вами именем, не @{name}.",
+  "This wallet has no Farcaster account": "У этого кошелька нет аккаунта Farcaster",
+  "No Farcaster account belongs to {address}. The wallet that comes with the app you opened Quilcast in is separate from your Farcaster account, which only its recovery phrase controls.": "За {address} не закреплён аккаунт Farcaster. Кошелёк приложения, в котором вы открыли Quilcast, отделён от вашего аккаунта Farcaster, которым управляет только его фраза восстановления.",
+  "Sign in with your recovery phrase": "Войти с фразой восстановления",
+  "Create a new account with this wallet": "Создать новый аккаунт с этим кошельком"
 }
