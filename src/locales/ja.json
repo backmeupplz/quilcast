@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Telegramからインポート中: {done}/{total}…",
   "Importing…": "インポート中…",
   "Join to add these stickers": "参加してこれらのステッカーを追加",
-  "Manage": "管理",
   "New sticker pack": "新しいステッカーパック",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "ステッカーパックはまだありません。作成するか、Telegramからインポートするか、誰かが共有したものを追加しましょう。",
   "One Telegram import at a time. Wait for this one to finish.": "Telegramのインポートは一度に1つだけです。このインポートが終わるまでお待ちください。",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "あなたのステッカーパック",
   "added": "追加済み",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "{n}枚のステッカーをインポートできませんでした。",
-  "{n} sticker|{n} stickers": "{n}枚のステッカー"
+  "{n} sticker|{n} stickers": "{n}枚のステッカー",
+  "Add pictures or import a Telegram pack to fill it.": "画像を追加するか、Telegramのパックをインポートして中身を増やしましょう。",
+  "Add your own pictures, GIFs and videos to it.": "自分の画像、GIF、動画を追加できます。",
+  "Choose files": "ファイルを選択",
+  "Its maker hasn't added any stickers yet.": "作成者はまだステッカーを追加していません。",
+  "Manage stickers": "ステッカーを管理",
+  "No stickers yet": "ステッカーはまだありません",
+  "Paste its link. Animated and video stickers stay animated.": "リンクを貼り付けてください。アニメーションステッカーや動画ステッカーはそのまま動きます。",
+  "Sticker pack": "ステッカーパック",
+  "Telegram sticker pack link": "Telegramステッカーパックのリンク",
+  "What the pack is called everywhere it shows.": "パックが表示されるすべての場所で使われる名前です。",
+  "by {name}": "作成: {name}"
 }

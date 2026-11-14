@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "正在從 Telegram 匯入：{done}/{total}…",
   "Importing…": "正在匯入…",
   "Join to add these stickers": "加入後即可新增這些貼圖",
-  "Manage": "管理",
   "New sticker pack": "新增貼圖包",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "還沒有貼圖包。你可以建立一個、從 Telegram 匯入一個，或加入別人分享的。",
   "One Telegram import at a time. Wait for this one to finish.": "一次只能進行一個 Telegram 匯入，請等目前的匯入完成。",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "你的貼圖包",
   "added": "已加入",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "有 {n} 張貼圖無法匯入。",
-  "{n} sticker|{n} stickers": "{n} 張貼圖"
+  "{n} sticker|{n} stickers": "{n} 張貼圖",
+  "Add pictures or import a Telegram pack to fill it.": "新增圖片或匯入 Telegram 貼圖包來充實它。",
+  "Add your own pictures, GIFs and videos to it.": "在其中加入你自己的圖片、GIF 和影片。",
+  "Choose files": "選擇檔案",
+  "Its maker hasn't added any stickers yet.": "製作者還沒有新增任何貼圖。",
+  "Manage stickers": "管理貼圖",
+  "No stickers yet": "還沒有貼圖",
+  "Paste its link. Animated and video stickers stay animated.": "貼上它的連結。動態貼圖和影片貼圖仍會保持動態。",
+  "Sticker pack": "貼圖包",
+  "Telegram sticker pack link": "Telegram 貼圖包連結",
+  "What the pack is called everywhere it shows.": "貼圖包在所有顯示位置使用的名稱。",
+  "by {name}": "作者 {name}"
 }

@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Telegram से इंपोर्ट हो रहा है: {total} में से {done}…",
   "Importing…": "इंपोर्ट हो रहा है…",
   "Join to add these stickers": "ये स्टिकर जोड़ने के लिए जुड़ें",
-  "Manage": "मैनेज करें",
   "New sticker pack": "नया स्टिकर पैक",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "अभी कोई स्टिकर पैक नहीं है। एक बनाएँ, Telegram से इंपोर्ट करें, या किसी का शेयर किया हुआ जोड़ें।",
   "One Telegram import at a time. Wait for this one to finish.": "एक बार में एक ही Telegram इंपोर्ट हो सकता है। इसके पूरा होने का इंतज़ार करें।",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "आपके स्टिकर पैक",
   "added": "जोड़ा गया",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "{n} स्टिकर इंपोर्ट नहीं हो सका।|{n} स्टिकर इंपोर्ट नहीं हो सके।",
-  "{n} sticker|{n} stickers": "{n} स्टिकर|{n} स्टिकर"
+  "{n} sticker|{n} stickers": "{n} स्टिकर|{n} स्टिकर",
+  "Add pictures or import a Telegram pack to fill it.": "इसे भरने के लिए तस्वीरें जोड़ें या Telegram पैक इंपोर्ट करें।",
+  "Add your own pictures, GIFs and videos to it.": "इसमें अपनी तस्वीरें, GIF और वीडियो जोड़ें।",
+  "Choose files": "फ़ाइलें चुनें",
+  "Its maker hasn't added any stickers yet.": "इसके बनाने वाले ने अभी तक कोई स्टिकर नहीं जोड़ा है।",
+  "Manage stickers": "स्टिकर मैनेज करें",
+  "No stickers yet": "अभी कोई स्टिकर नहीं",
+  "Paste its link. Animated and video stickers stay animated.": "इसका लिंक पेस्ट करें। एनिमेटेड और वीडियो स्टिकर एनिमेटेड ही रहते हैं।",
+  "Sticker pack": "स्टिकर पैक",
+  "Telegram sticker pack link": "Telegram स्टिकर पैक का लिंक",
+  "What the pack is called everywhere it shows.": "पैक का वह नाम जो हर जगह दिखता है।",
+  "by {name}": "{name} द्वारा"
 }

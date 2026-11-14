@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Importazione da Telegram: {done} di {total}…",
   "Importing…": "Importazione in corso…",
   "Join to add these stickers": "Iscriviti per aggiungere questi sticker",
-  "Manage": "Gestisci",
   "New sticker pack": "Nuovo pack di sticker",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Ancora nessun pack di sticker. Creane uno, importane uno da Telegram o aggiungi uno condiviso da qualcuno.",
   "One Telegram import at a time. Wait for this one to finish.": "Una sola importazione da Telegram alla volta. Aspetta che questa finisca.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "I tuoi pack di sticker",
   "added": "aggiunto",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "Impossibile importare {n} sticker.|Impossibile importare {n} sticker.",
-  "{n} sticker|{n} stickers": "{n} sticker|{n} sticker"
+  "{n} sticker|{n} stickers": "{n} sticker|{n} sticker",
+  "Add pictures or import a Telegram pack to fill it.": "Aggiungi immagini o importa un pack di Telegram per riempirlo.",
+  "Add your own pictures, GIFs and videos to it.": "Aggiungi le tue immagini, GIF e video.",
+  "Choose files": "Scegli file",
+  "Its maker hasn't added any stickers yet.": "Chi l'ha creato non ha ancora aggiunto sticker.",
+  "Manage stickers": "Gestisci sticker",
+  "No stickers yet": "Ancora nessuno sticker",
+  "Paste its link. Animated and video stickers stay animated.": "Incolla il suo link. Gli sticker animati e video restano animati.",
+  "Sticker pack": "Pack di sticker",
+  "Telegram sticker pack link": "Link del pack di sticker di Telegram",
+  "What the pack is called everywhere it shows.": "Il nome del pack ovunque venga mostrato.",
+  "by {name}": "di {name}"
 }

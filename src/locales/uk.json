@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Імпорт із Telegram: {done} із {total}…",
   "Importing…": "Імпортуємо…",
   "Join to add these stickers": "Приєднайтеся, щоб додати ці стікери",
-  "Manage": "Керувати",
   "New sticker pack": "Новий набір стікерів",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Наборів стікерів поки немає. Створіть свій, імпортуйте набір із Telegram або додайте той, яким поділилися.",
   "One Telegram import at a time. Wait for this one to finish.": "Одночасно можна імпортувати лише один набір із Telegram. Дочекайтеся завершення.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "Ваші набори стікерів",
   "added": "додано",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "Не вдалося імпортувати {n} стікер.|Не вдалося імпортувати {n} стікери.|Не вдалося імпортувати {n} стікерів.",
-  "{n} sticker|{n} stickers": "{n} стікер|{n} стікери|{n} стікерів"
+  "{n} sticker|{n} stickers": "{n} стікер|{n} стікери|{n} стікерів",
+  "Add pictures or import a Telegram pack to fill it.": "Додайте зображення або імпортуйте набір із Telegram, щоб наповнити його.",
+  "Add your own pictures, GIFs and videos to it.": "Додайте до нього власні зображення, GIF і відео.",
+  "Choose files": "Вибрати файли",
+  "Its maker hasn't added any stickers yet.": "Автор ще не додав жодного стікера.",
+  "Manage stickers": "Керування стікерами",
+  "No stickers yet": "Поки що немає стікерів",
+  "Paste its link. Animated and video stickers stay animated.": "Вставте посилання на нього. Анімовані та відеостікери залишаються анімованими.",
+  "Sticker pack": "Набір стікерів",
+  "Telegram sticker pack link": "Посилання на набір стікерів Telegram",
+  "What the pack is called everywhere it shows.": "Назва набору скрізь, де він показується.",
+  "by {name}": "від {name}"
 }

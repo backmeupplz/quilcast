@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Импорт из Telegram: {done} из {total}…",
   "Importing…": "Импортируем…",
   "Join to add these stickers": "Присоединитесь, чтобы добавить эти стикеры",
-  "Manage": "Управлять",
   "New sticker pack": "Новый набор стикеров",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Наборов стикеров пока нет. Создайте свой, импортируйте набор из Telegram или добавьте тот, которым поделились.",
   "One Telegram import at a time. Wait for this one to finish.": "Одновременно можно импортировать только один набор из Telegram. Дождитесь окончания.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "Ваши наборы стикеров",
   "added": "добавлен",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "Не удалось импортировать {n} стикер.|Не удалось импортировать {n} стикера.|Не удалось импортировать {n} стикеров.",
-  "{n} sticker|{n} stickers": "{n} стикер|{n} стикера|{n} стикеров"
+  "{n} sticker|{n} stickers": "{n} стикер|{n} стикера|{n} стикеров",
+  "Add pictures or import a Telegram pack to fill it.": "Добавьте картинки или импортируйте набор из Telegram, чтобы наполнить его.",
+  "Add your own pictures, GIFs and videos to it.": "Добавьте в него свои картинки, GIF и видео.",
+  "Choose files": "Выбрать файлы",
+  "Its maker hasn't added any stickers yet.": "Автор ещё не добавил ни одного стикера.",
+  "Manage stickers": "Управление стикерами",
+  "No stickers yet": "Пока нет стикеров",
+  "Paste its link. Animated and video stickers stay animated.": "Вставьте ссылку на него. Анимированные и видеостикеры остаются анимированными.",
+  "Sticker pack": "Набор стикеров",
+  "Telegram sticker pack link": "Ссылка на набор стикеров Telegram",
+  "What the pack is called everywhere it shows.": "Название набора везде, где он показывается.",
+  "by {name}": "от {name}"
 }

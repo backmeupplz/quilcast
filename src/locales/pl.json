@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Import z Telegrama: {done} z {total}…",
   "Importing…": "Importowanie…",
   "Join to add these stickers": "Dołącz, aby dodać te naklejki",
-  "Manage": "Zarządzaj",
   "New sticker pack": "Nowy zestaw naklejek",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Nie ma jeszcze zestawów naklejek. Utwórz własny, zaimportuj z Telegrama albo dodaj ten, którym ktoś się podzielił.",
   "One Telegram import at a time. Wait for this one to finish.": "Naraz można importować tylko jeden zestaw z Telegrama. Poczekaj, aż ten się zakończy.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "Twoje zestawy naklejek",
   "added": "dodany",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "Nie udało się zaimportować {n} naklejki.|Nie udało się zaimportować {n} naklejek.|Nie udało się zaimportować {n} naklejek.",
-  "{n} sticker|{n} stickers": "{n} naklejka|{n} naklejki|{n} naklejek"
+  "{n} sticker|{n} stickers": "{n} naklejka|{n} naklejki|{n} naklejek",
+  "Add pictures or import a Telegram pack to fill it.": "Dodaj obrazy lub zaimportuj zestaw z Telegrama, żeby go wypełnić.",
+  "Add your own pictures, GIFs and videos to it.": "Dodaj do niego własne obrazy, GIF-y i filmy.",
+  "Choose files": "Wybierz pliki",
+  "Its maker hasn't added any stickers yet.": "Jego twórca nie dodał jeszcze żadnych naklejek.",
+  "Manage stickers": "Zarządzaj naklejkami",
+  "No stickers yet": "Na razie brak naklejek",
+  "Paste its link. Animated and video stickers stay animated.": "Wklej jego link. Animowane naklejki i naklejki wideo pozostają animowane.",
+  "Sticker pack": "Zestaw naklejek",
+  "Telegram sticker pack link": "Link do zestawu naklejek Telegrama",
+  "What the pack is called everywhere it shows.": "Nazwa zestawu wszędzie tam, gdzie jest widoczny.",
+  "by {name}": "od {name}"
 }

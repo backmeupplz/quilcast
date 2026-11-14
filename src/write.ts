@@ -44,15 +44,23 @@ async function newKey(): Promise<[Ed, string | undefined]> {
   }
 }
 
-async function submit(m: { msg: Uint8Array; hash: string }) {
+// a node turning messages away for a moment ("unavailable/mempool channel is full" when its queue is full): the same
+// signed bytes go again after 1, 2 and 4 s (a message is its hash, so it can't land twice)
+const BUSY = /unavailable|mempool/i
+async function submit(m: { msg: Uint8Array; hash: string }, wait = [1000, 2000, 4000]): Promise<string> {
   const r = await fetch(`${settings.node}/v1/submitMessage`, { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: m.msg as BodyInit })
   if (!r.ok) {
     const t = await r.text()
-    let j: { details?: string; message?: string } = {}
+    let j: { details?: string; message?: string; error_detail?: string } = {}
     try {
       j = JSON.parse(t)
     } catch {}
-    throw new Error(j.details || j.message || t || `HTTP ${r.status}`)
+    const said = j.details || j.message || j.error_detail || t || `HTTP ${r.status}`
+    if (BUSY.test(said)) {
+      if (wait.length) return sleep(wait[0]).then(() => submit(m, wait.slice(1)))
+      throw new Error("Couldn't reach the Farcaster node. Try again.")
+    }
+    throw new Error(said)
   }
   forget()
   return m.hash

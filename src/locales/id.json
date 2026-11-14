@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Mengimpor dari Telegram: {done} dari {total}…",
   "Importing…": "Mengimpor…",
   "Join to add these stickers": "Gabung untuk menambahkan stiker ini",
-  "Manage": "Kelola",
   "New sticker pack": "Paket stiker baru",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Belum ada paket stiker. Buat satu, impor dari Telegram, atau tambahkan yang dibagikan orang lain.",
   "One Telegram import at a time. Wait for this one to finish.": "Impor Telegram hanya bisa satu per satu. Tunggu yang ini selesai.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "Paket stikermu",
   "added": "ditambahkan",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "{n} stiker tidak bisa diimpor.",
-  "{n} sticker|{n} stickers": "{n} stiker"
+  "{n} sticker|{n} stickers": "{n} stiker",
+  "Add pictures or import a Telegram pack to fill it.": "Tambahkan gambar atau impor paket Telegram untuk mengisinya.",
+  "Add your own pictures, GIFs and videos to it.": "Tambahkan gambar, GIF, dan video milikmu ke dalamnya.",
+  "Choose files": "Pilih file",
+  "Its maker hasn't added any stickers yet.": "Pembuatnya belum menambahkan stiker apa pun.",
+  "Manage stickers": "Kelola stiker",
+  "No stickers yet": "Belum ada stiker",
+  "Paste its link. Animated and video stickers stay animated.": "Tempel tautannya. Stiker animasi dan stiker video tetap beranimasi.",
+  "Sticker pack": "Paket stiker",
+  "Telegram sticker pack link": "Tautan paket stiker Telegram",
+  "What the pack is called everywhere it shows.": "Nama paket yang tampil di mana pun paket ini muncul.",
+  "by {name}": "oleh {name}"
 }

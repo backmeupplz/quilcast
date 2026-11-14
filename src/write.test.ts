@@ -63,3 +63,29 @@ test('an account whose phrase this browser doesn\'t keep asks for it once per ac
   api.askUser.phrase = async () => null
   await assert.rejects(ensureSigner(api.account!, true), /recovery phrase/)
 })
+
+test('a node whose queue is full is asked again with the same message; still full, it says so plainly', async () => {
+  // fid 7 is still selected from the first test, with its new key
+  const { follow } = await import('./write.ts')
+  const bodies: string[] = []
+  let full = 2
+  ;(globalThis as any).fetch = async (url: string, o: any = {}) => {
+    if (!String(url).endsWith('/v1/submitMessage')) throw new Error(`unexpected ${url}`)
+    bodies.push(Buffer.from(o.body).toString('hex'))
+    return full-- > 0
+      ? new Response(JSON.stringify({ error: 'Failed to submit message', error_detail: 'status: Unavailable, message: "unavailable/mempool channel is full"' }), { status: 400 })
+      : new Response('{}', { status: 200 })
+  }
+  // the waits between tries pass at once here
+  const later = globalThis.setTimeout
+  ;(globalThis as any).setTimeout = (f: () => void) => later(f, 0)
+  try {
+    await follow(3, true)
+    assert.equal(bodies.length, 3)
+    assert.equal(new Set(bodies).size, 1)
+    full = 99
+    await assert.rejects(follow(3, true), /Couldn't reach the Farcaster node/)
+  } finally {
+    globalThis.setTimeout = later
+  }
+})

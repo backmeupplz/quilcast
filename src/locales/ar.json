@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "الاستيراد من Telegram: {done} من {total}…",
   "Importing…": "جارٍ الاستيراد…",
   "Join to add these stickers": "انضم لإضافة هذه الملصقات",
-  "Manage": "إدارة",
   "New sticker pack": "حزمة ملصقات جديدة",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "لا توجد حزم ملصقات بعد. أنشئ حزمة، أو استورد واحدة من Telegram، أو أضف حزمة شاركها أحدهم.",
   "One Telegram import at a time. Wait for this one to finish.": "يمكن إجراء استيراد واحد فقط من Telegram في كل مرة. انتظر حتى ينتهي هذا.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "حزم ملصقاتك",
   "added": "مضافة",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "تعذّر استيراد {n} ملصق.|تعذّر استيراد {n} ملصق.|تعذّر استيراد {n} ملصقين.|تعذّر استيراد {n} ملصقات.|تعذّر استيراد {n} ملصقًا.|تعذّر استيراد {n} ملصق.",
-  "{n} sticker|{n} stickers": "{n} ملصق|{n} ملصق|{n} ملصقان|{n} ملصقات|{n} ملصقًا|{n} ملصق"
+  "{n} sticker|{n} stickers": "{n} ملصق|{n} ملصق|{n} ملصقان|{n} ملصقات|{n} ملصقًا|{n} ملصق",
+  "Add pictures or import a Telegram pack to fill it.": "أضف صورًا أو استورد حزمة من Telegram لتمتلئ.",
+  "Add your own pictures, GIFs and videos to it.": "أضف صورك وملفات GIF ومقاطع الفيديو الخاصة بك إليها.",
+  "Choose files": "اختيار الملفات",
+  "Its maker hasn't added any stickers yet.": "لم يضف صاحبها أي ملصقات بعد.",
+  "Manage stickers": "إدارة الملصقات",
+  "No stickers yet": "لا توجد ملصقات بعد",
+  "Paste its link. Animated and video stickers stay animated.": "الصق رابطها. تبقى الملصقات المتحركة وملصقات الفيديو متحركة.",
+  "Sticker pack": "حزمة ملصقات",
+  "Telegram sticker pack link": "رابط حزمة ملصقات Telegram",
+  "What the pack is called everywhere it shows.": "الاسم الذي تظهر به الحزمة في كل مكان.",
+  "by {name}": "بواسطة {name}"
 }

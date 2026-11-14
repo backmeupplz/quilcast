@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Telegram'dan içe aktarılıyor: {done} / {total}…",
   "Importing…": "İçe aktarılıyor…",
   "Join to add these stickers": "Bu çıkartmaları eklemek için katıl",
-  "Manage": "Yönet",
   "New sticker pack": "Yeni çıkartma paketi",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Henüz çıkartma paketi yok. Bir tane oluştur, Telegram'dan içe aktar ya da birinin paylaştığını ekle.",
   "One Telegram import at a time. Wait for this one to finish.": "Aynı anda yalnızca bir Telegram içe aktarma yapılabilir. Bunun bitmesini bekle.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "Çıkartma paketlerin",
   "added": "eklendi",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "{n} çıkartma içe aktarılamadı.|{n} çıkartma içe aktarılamadı.",
-  "{n} sticker|{n} stickers": "{n} çıkartma|{n} çıkartma"
+  "{n} sticker|{n} stickers": "{n} çıkartma|{n} çıkartma",
+  "Add pictures or import a Telegram pack to fill it.": "Doldurmak için resim ekle veya bir Telegram paketi içe aktar.",
+  "Add your own pictures, GIFs and videos to it.": "Kendi resimlerini, GIF'lerini ve videolarını ekle.",
+  "Choose files": "Dosya seç",
+  "Its maker hasn't added any stickers yet.": "Yapımcısı henüz çıkartma eklememiş.",
+  "Manage stickers": "Çıkartmaları yönet",
+  "No stickers yet": "Henüz çıkartma yok",
+  "Paste its link. Animated and video stickers stay animated.": "Bağlantısını yapıştır. Hareketli ve video çıkartmalar hareketli kalır.",
+  "Sticker pack": "Çıkartma paketi",
+  "Telegram sticker pack link": "Telegram çıkartma paketi bağlantısı",
+  "What the pack is called everywhere it shows.": "Paketin göründüğü her yerde kullanılan ad.",
+  "by {name}": "{name} tarafından"
 }

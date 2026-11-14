@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Telegram에서 가져오는 중: {total}개 중 {done}개…",
   "Importing…": "가져오는 중…",
   "Join to add these stickers": "참여하고 이 스티커 추가하기",
-  "Manage": "관리",
   "New sticker pack": "새 스티커 팩",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "아직 스티커 팩이 없어요. 하나 만들거나, Telegram에서 가져오거나, 다른 사람이 공유한 팩을 추가해 보세요.",
   "One Telegram import at a time. Wait for this one to finish.": "Telegram 가져오기는 한 번에 하나만 할 수 있어요. 이 작업이 끝날 때까지 기다려 주세요.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "내 스티커 팩",
   "added": "추가됨",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "스티커 {n}개를 가져오지 못했어요.",
-  "{n} sticker|{n} stickers": "스티커 {n}개"
+  "{n} sticker|{n} stickers": "스티커 {n}개",
+  "Add pictures or import a Telegram pack to fill it.": "사진을 추가하거나 Telegram 팩을 가져와 채워 보세요.",
+  "Add your own pictures, GIFs and videos to it.": "내 사진, GIF, 동영상을 추가해 보세요.",
+  "Choose files": "파일 선택",
+  "Its maker hasn't added any stickers yet.": "만든 사람이 아직 스티커를 추가하지 않았습니다.",
+  "Manage stickers": "스티커 관리",
+  "No stickers yet": "아직 스티커가 없습니다",
+  "Paste its link. Animated and video stickers stay animated.": "링크를 붙여넣으세요. 움직이는 스티커와 동영상 스티커는 그대로 움직입니다.",
+  "Sticker pack": "스티커 팩",
+  "Telegram sticker pack link": "Telegram 스티커 팩 링크",
+  "What the pack is called everywhere it shows.": "팩이 표시되는 모든 곳에서 쓰이는 이름입니다.",
+  "by {name}": "{name} 제작"
 }

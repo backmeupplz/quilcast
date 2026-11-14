@@ -278,7 +278,9 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   // a mini app's links went out with the first post
   const embeds = cont ? [] : given
   // a mini app hears of its cast once that went out, even when the rest of the thread didn't
-  const onClose = (hash: string | null = cont?.root ?? null) => (onDone?.(hash), close())
+  // a page to open once the composer is closed (the sticker picker's "Manage"; the composer sits over the page)
+  const then = useRef('')
+  const onClose = (hash: string | null = cont?.root ?? null) => (onDone?.(hash), close(), then.current && go(then.current))
   // a draft picked up again brings its own cast to reply to or quote
   const [{ parent, quote }, setCtx] = useState({ parent: props.parent, quote: props.quote })
   // the hash a draft replies to when that cast couldn't be loaded and its author isn't known: it can't be sent (as a new
@@ -316,7 +318,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   const empty = parts.every((p) => !p.text.trim() && !p.files.length)
   const uploading = parts.some((p) => p.pics.length || holdsPicture(p.text) || p.files.some((f) => !f.url && !f.err))
   // closing with something new in it asks first; asked twice, it goes back to editing
-  const leave = () => (asking ? setAsking(false) : canDraft && !busy && !empty && snap(parts, channel) !== base.current ? setAsking(true) : onClose())
+  const leave = () => (asking ? (setAsking(false), (then.current = '')) : canDraft && !busy && !empty && snap(parts, channel) !== base.current ? setAsking(true) : onClose())
   const keep = async () => {
     setBusy(true)
     try {
@@ -609,7 +611,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           </div>
         )}
         {gifs === 'gif' && <GifPicker cast start="trending" pick={gif} close={() => setGifs(false)} />}
-        {gifs === 'sticker' && stk && <stk.StickerPicker pick={gif} close={() => setGifs(false)} />}
+        {gifs === 'sticker' && stk && <stk.StickerPicker pick={gif} close={() => setGifs(false)} manage={() => (setGifs(false), (then.current = '/stickers'), leave())} />}
         {emoji && <emoji.EmojiPicker pick={insert} close={() => setEmoji(null)} />}
         <div class="parts" hidden={!!gifs || drafts || scheduledOpen || !!emoji}>
           {parts.map((p, i) => (

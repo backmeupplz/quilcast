@@ -344,17 +344,44 @@ async function designCard(d) {
 </svg>`
 }
 
-/** A sticker pack's share card: its name and its first five stickers (their first frames). */
-async function packCard(p) {
-  const stills = (await Promise.all(p.stickers.slice(0, 12).map((s) => stickerStill(s.h)))).filter(Boolean).slice(0, 5)
-  const size = 200
-  const x0 = (1200 - stills.length * size - (stills.length - 1) * 24) / 2
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <rect width="1200" height="630" fill="#0d0c11"/>
-  <g transform="translate(80 72) scale(3)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
-  <text x="206" y="126" font-family="Inter" font-weight="800" font-size="60" fill="#edebf3">${esc(cut(p.title, 30))}</text>
-  <text x="208" y="174" font-family="Inter" font-size="30" fill="#9893a5">${p.stickers.length === 1 ? '1 sticker' : `${p.stickers.length} stickers`} · Quilcast</text>
-  ${stills.map((b, i) => `<image href="data:image/png;base64,${b.toString('base64')}" x="${x0 + i * (size + 24)}" y="300" width="${size}" height="${size}" preserveAspectRatio="xMidYMid meet"/>`).join('')}
+/** What a pack's card shows, as a short hash: its name and first stickers. */
+const packVersion = (p) => createHash('sha256').update(p.title + p.stickers.slice(0, 12).map((s) => s.h).join()).digest('hex').slice(0, 8)
+
+/** A sticker pack's share card, 1200×630 (or 1200×800, `tall`, for mini app embeds, which Farcaster shows at 3:2): its
+ *  name, count and maker on the left, a sheet of its first stickers (their first frames) on soft tiles on the right. */
+async function packCard(p, tall = false) {
+  const H = tall ? 800 : 630
+  const rows = tall ? 4 : 3
+  const cell = 172, gap = 14
+  const stills = (await Promise.all(p.stickers.slice(0, 24).map((s) => stickerStill(s.h)))).filter(Boolean).slice(0, rows * 3)
+  const owner = await lookup(`fid:${p.fid}`, `/v2/farcaster/user?fid=${p.fid}`, (r) => (r?.user?.custody_address ? r.user : null)).catch(() => null)
+  const gx = 1200 - 64 - 3 * cell - 2 * gap
+  const gy = (H - rows * cell - (rows - 1) * gap) / 2
+  const tiles = Array.from({ length: rows * 3 }, (_, i) => {
+    const x = gx + (i % 3) * (cell + gap), y = gy + Math.floor(i / 3) * (cell + gap)
+    const b = stills[i]
+    return `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="26" fill="#fff" fill-opacity="${b ? 0.06 : 0.03}"/>` +
+      (b ? `<image href="data:image/png;base64,${b.toString('base64')}" x="${x + 12}" y="${y + 12}" width="${cell - 24}" height="${cell - 24}" preserveAspectRatio="xMidYMid meet"/>` : '')
+  }).join('')
+  const title = wrap(p.title, 58, gx - 64 - 48, 3, { bold: true })
+  const ty = H / 2 - ((title.length - 1) * 66) / 2 + 6
+  const count = p.stickers.length === 1 ? '1 sticker' : `${p.stickers.length} stickers`
+  const meta = owner?.username ? `${count} · by @${owner.username}` : count
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${H}" viewBox="0 0 1200 ${H}">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d1540"/><stop offset="0.6" stop-color="#110e1f"/><stop offset="1" stop-color="#0d0c11"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#6447f5" stop-opacity="0.35"/><stop offset="1" stop-color="#6447f5" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1200" height="${H}" fill="url(#bg)"/>
+  <circle cx="${gx + 1.5 * cell + gap}" cy="${H / 2}" r="${H * 0.62}" fill="url(#glow)"/>
+  <g transform="translate(64 60) scale(1.5)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
+  <text x="124" y="95" font-family="Inter" font-weight="800" font-size="30" fill="#edebf3">Quilcast</text>
+  <text x="64" y="${ty - 74}" font-family="Inter" font-weight="800" font-size="22" letter-spacing="3" fill="#a594ff">STICKER PACK</text>
+  ${textSvg(title, { x: 64, y: ty, lh: 66, size: 58, bold: true, weight: 800, fill: '#f4f2fa' })}
+  ${textSvg([meta], { x: 64, y: ty + (title.length - 1) * 66 + 54, size: 26, fill: '#a7a2b8' })}
+  <rect x="64" y="${H - 124}" width="272" height="60" rx="30" fill="#6447f5"/>
+  <text x="200" y="${H - 85}" font-family="Inter" font-weight="700" font-size="24" fill="#fff" text-anchor="middle">Add in Quilcast</text>
+  ${tiles}
 </svg>`
 }
 
@@ -1641,17 +1668,18 @@ const server = createServer(async (req, res) => {
       const p = await getPack(packPage[1])
       if (!p) return app()
       const desc = `${p.stickers.length} stickers. Open the pack in Quilcast to add it and send them in casts and messages.`
-      return html(page({ title: `${p.title}: a sticker pack on Quilcast`, desc, path, image: `${SITE}/og/stickers/${p.id}.png`, alt: `Stickers from ${p.title}` }))
+      const v = packVersion(p)
+      return html(page({ title: `${p.title}: a sticker pack on Quilcast`, desc, path, image: `${SITE}/og/stickers/${p.id}.png?v=${v}`, embed: `${SITE}/og/stickers/${p.id}.3x2.png?v=${v}`, alt: `Stickers from ${p.title}` }))
     }
-    const ogPack = path.match(/^\/og\/stickers\/([\w-]{8})\.png$/)
+    // .3x2.png is the mini app embed's; pages link them with ?v=<the pack's version>, so a changed pack gets a new
+    // address (Farcaster clients keep an embed's picture for good)
+    const ogPack = path.match(/^\/og\/stickers\/([\w-]{8})(\.3x2)?\.png$/)
     if (ogPack) {
-      const k = `stickers:${ogPack[1]}`
-      if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
       const p = await getPack(ogPack[1])
       if (!p) return res.writeHead(404).end()
-      // a pack changes, so its card is kept a short while only
-      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => packCard(p).then(render))))
-      setTimeout(() => pngs.delete(k), 600e3).unref()
+      const k = `stickers:${ogPack[1]}${ogPack[2] || ''}:${packVersion(p)}`
+      if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
+      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => packCard(p, !!ogPack[2]).then(render))))
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=600' }).end(png)
     }
 

@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Importeren uit Telegram: {done} van {total}…",
   "Importing…": "Importeren…",
   "Join to add these stickers": "Word lid om deze stickers toe te voegen",
-  "Manage": "Beheren",
   "New sticker pack": "Nieuw stickerpack",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Nog geen stickerpacks. Maak er een, importeer er een uit Telegram of voeg er een toe die iemand heeft gedeeld.",
   "One Telegram import at a time. Wait for this one to finish.": "Je kunt maar één Telegram-import tegelijk doen. Wacht tot deze klaar is.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "Jouw stickerpacks",
   "added": "toegevoegd",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "{n} sticker kon niet worden geïmporteerd.|{n} stickers konden niet worden geïmporteerd.",
-  "{n} sticker|{n} stickers": "{n} sticker|{n} stickers"
+  "{n} sticker|{n} stickers": "{n} sticker|{n} stickers",
+  "Add pictures or import a Telegram pack to fill it.": "Voeg afbeeldingen toe of importeer een Telegram-pack om hem te vullen.",
+  "Add your own pictures, GIFs and videos to it.": "Voeg je eigen afbeeldingen, gifs en video's toe.",
+  "Choose files": "Bestanden kiezen",
+  "Its maker hasn't added any stickers yet.": "De maker heeft nog geen stickers toegevoegd.",
+  "Manage stickers": "Stickers beheren",
+  "No stickers yet": "Nog geen stickers",
+  "Paste its link. Animated and video stickers stay animated.": "Plak de link. Geanimeerde stickers en videostickers blijven geanimeerd.",
+  "Sticker pack": "Stickerpack",
+  "Telegram sticker pack link": "Link naar Telegram-stickerpack",
+  "What the pack is called everywhere it shows.": "Hoe het pack heet overal waar het te zien is.",
+  "by {name}": "door {name}"
 }

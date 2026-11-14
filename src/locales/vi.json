@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Đang nhập từ Telegram: {done}/{total}…",
   "Importing…": "Đang nhập…",
   "Join to add these stickers": "Tham gia để thêm các nhãn dán này",
-  "Manage": "Quản lý",
   "New sticker pack": "Gói nhãn dán mới",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Chưa có gói nhãn dán nào. Hãy tạo một gói, nhập một gói từ Telegram hoặc thêm gói ai đó đã chia sẻ.",
   "One Telegram import at a time. Wait for this one to finish.": "Mỗi lần chỉ nhập được một gói từ Telegram. Hãy đợi lần này xong.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "Các gói nhãn dán của bạn",
   "added": "đã thêm",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "Không nhập được {n} nhãn dán.",
-  "{n} sticker|{n} stickers": "{n} nhãn dán"
+  "{n} sticker|{n} stickers": "{n} nhãn dán",
+  "Add pictures or import a Telegram pack to fill it.": "Thêm hình ảnh hoặc nhập một gói từ Telegram để lấp đầy.",
+  "Add your own pictures, GIFs and videos to it.": "Thêm hình ảnh, GIF và video của riêng bạn vào đó.",
+  "Choose files": "Chọn tệp",
+  "Its maker hasn't added any stickers yet.": "Người tạo chưa thêm nhãn dán nào.",
+  "Manage stickers": "Quản lý nhãn dán",
+  "No stickers yet": "Chưa có nhãn dán",
+  "Paste its link. Animated and video stickers stay animated.": "Dán liên kết của gói. Nhãn dán động và nhãn dán video vẫn giữ nguyên chuyển động.",
+  "Sticker pack": "Gói nhãn dán",
+  "Telegram sticker pack link": "Liên kết gói nhãn dán Telegram",
+  "What the pack is called everywhere it shows.": "Tên của gói ở mọi nơi nó hiển thị.",
+  "by {name}": "bởi {name}"
 }

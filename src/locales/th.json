@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "กำลังนำเข้าจาก Telegram: {done} จาก {total}…",
   "Importing…": "กำลังนำเข้า…",
   "Join to add these stickers": "เข้าร่วมเพื่อเพิ่มสติกเกอร์เหล่านี้",
-  "Manage": "จัดการ",
   "New sticker pack": "แพ็กสติกเกอร์ใหม่",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "ยังไม่มีแพ็กสติกเกอร์ สร้างแพ็กขึ้นมา นำเข้าจาก Telegram หรือเพิ่มแพ็กที่มีคนแชร์ไว้ได้เลย",
   "One Telegram import at a time. Wait for this one to finish.": "นำเข้าจาก Telegram ได้ครั้งละหนึ่งแพ็กเท่านั้น รอให้อันนี้เสร็จก่อน",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "แพ็กสติกเกอร์ของคุณ",
   "added": "เพิ่มแล้ว",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "นำเข้าสติกเกอร์ {n} ชิ้นไม่ได้",
-  "{n} sticker|{n} stickers": "สติกเกอร์ {n} ชิ้น"
+  "{n} sticker|{n} stickers": "สติกเกอร์ {n} ชิ้น",
+  "Add pictures or import a Telegram pack to fill it.": "เพิ่มรูปภาพหรือนำเข้าแพ็กจาก Telegram เพื่อเติมให้เต็ม",
+  "Add your own pictures, GIFs and videos to it.": "เพิ่มรูปภาพ GIF และวิดีโอของคุณเองลงไป",
+  "Choose files": "เลือกไฟล์",
+  "Its maker hasn't added any stickers yet.": "ผู้สร้างยังไม่ได้เพิ่มสติกเกอร์",
+  "Manage stickers": "จัดการสติกเกอร์",
+  "No stickers yet": "ยังไม่มีสติกเกอร์",
+  "Paste its link. Animated and video stickers stay animated.": "วางลิงก์ของแพ็ก สติกเกอร์เคลื่อนไหวและสติกเกอร์วิดีโอจะยังคงเคลื่อนไหว",
+  "Sticker pack": "แพ็กสติกเกอร์",
+  "Telegram sticker pack link": "ลิงก์แพ็กสติกเกอร์ Telegram",
+  "What the pack is called everywhere it shows.": "ชื่อของแพ็กในทุกที่ที่แสดง",
+  "by {name}": "โดย {name}"
 }

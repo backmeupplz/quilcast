@@ -1278,7 +1278,6 @@
   "Importing from Telegram: {done} of {total}…": "Importerar från Telegram: {done} av {total}…",
   "Importing…": "Importerar…",
   "Join to add these stickers": "Gå med för att lägga till de här klistermärkena",
-  "Manage": "Hantera",
   "New sticker pack": "Nytt klistermärkespaket",
   "No sticker packs yet. Make one, import one from Telegram, or add one someone shared.": "Inga klistermärkespaket än. Skapa ett, importera ett från Telegram eller lägg till ett som någon delat.",
   "One Telegram import at a time. Wait for this one to finish.": "Bara en Telegram-import åt gången. Vänta tills den här är klar.",
@@ -1301,5 +1300,16 @@
   "Your sticker packs": "Dina klistermärkespaket",
   "added": "tillagt",
   "{n} sticker couldn't be imported.|{n} stickers couldn't be imported.": "{n} klistermärke kunde inte importeras.|{n} klistermärken kunde inte importeras.",
-  "{n} sticker|{n} stickers": "{n} klistermärke|{n} klistermärken"
+  "{n} sticker|{n} stickers": "{n} klistermärke|{n} klistermärken",
+  "Add pictures or import a Telegram pack to fill it.": "Lägg till bilder eller importera ett Telegram-paket för att fylla det.",
+  "Add your own pictures, GIFs and videos to it.": "Lägg till dina egna bilder, GIF:ar och videor.",
+  "Choose files": "Välj filer",
+  "Its maker hasn't added any stickers yet.": "Skaparen har inte lagt till några klistermärken än.",
+  "Manage stickers": "Hantera klistermärken",
+  "No stickers yet": "Inga klistermärken än",
+  "Paste its link. Animated and video stickers stay animated.": "Klistra in länken. Animerade klistermärken och videoklistermärken förblir animerade.",
+  "Sticker pack": "Klistermärkespaket",
+  "Telegram sticker pack link": "Länk till Telegram-klistermärkespaket",
+  "What the pack is called everywhere it shows.": "Vad paketet heter överallt där det visas.",
+  "by {name}": "av {name}"
 }
