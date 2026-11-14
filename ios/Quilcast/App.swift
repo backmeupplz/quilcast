@@ -46,8 +46,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         if let url = activity.webpageURL, ours(url) { web.open(url) }
     }
 
+    // back from the background (a link opened in Safari), not from Control Center or a system alert over the app
+    var wasAway = false
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        wasAway = true
+    }
+
     func sceneDidBecomeActive(_ scene: UIScene) {
         RatingPrompt.used()
+        if wasAway { web.settle() }
+        wasAway = false
     }
 }
 
@@ -132,6 +140,19 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
     func open(_ url: URL) {
         loadViewIfNeeded()
         web.load(URLRequest(url: url))
+    }
+
+    /** Gives WebKit the web view's size again as the app comes back from the background. After a link opened in Safari,
+     *  the bars that stay put on the screen (the tab bar, the compose button, the mini app dock) have been seen partway
+     *  up it, scrolling with the page, as if WebKit laid the page out for another size (#666; not reproduced). The web
+     *  view only sends its size when that changes, so it's made a point shorter and given its size back at once, before
+     *  anything is drawn; shorter first, so a page scrolled to its end keeps its place. */
+    func settle() {
+        view.layoutIfNeeded()
+        guard let web, web.window != nil, web.bounds.height > 1 else { return }
+        let frame = web.frame
+        web.frame = CGRect(origin: frame.origin, size: CGSize(width: frame.width, height: frame.height - 1))
+        web.frame = frame
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle { dark ? .lightContent : .darkContent }

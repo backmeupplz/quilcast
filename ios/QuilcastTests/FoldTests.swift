@@ -137,6 +137,40 @@ final class FoldTests: XCTestCase {
         try await js("document.documentElement.dir = ''")
     }
 
+    func testComingBackLeavesThePageWhereItWasWithItsBarsAtTheBottom() async throws {
+        // the app's bars that stay put on the screen, with this checkout's styles (as above), over a long feed
+        let styles = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../src/style.css")
+        guard let css = try? String(contentsOf: styles, encoding: .utf8) else { throw XCTSkip("Needs the repository's src/style.css") }
+        try await load("""
+            <style>\(css)</style>
+            <div class="app">
+              <main class="col">\(String(repeating: "<div style='height: 400px; border-bottom: 1px solid'></div>", count: 12))</main>
+              <nav class="tabbar"><a>1</a><a>2</a><a>3</a></nav>
+              <button class="fab">+</button>
+              <div class="dock"><button>1</button></div>
+            </div>
+            <script>window.kept = 'still here'</script>
+            """)
+        try await fold(.compact)
+        let web = page.web!, frame = web.frame
+        let bars = "return JSON.stringify([innerHeight, scrollY, ...['.tabbar', '.fab', '.dock'].map((s) => document.querySelector(s).getBoundingClientRect().bottom)])"
+        // partway down the feed, and at its very end (where a taller view would have less to scroll)
+        for place in ["1600", "document.documentElement.scrollHeight"] {
+            try await js("scrollTo(0, \(place))")
+            try await Task.sleep(for: .milliseconds(300))
+            let before = try await js(bars)
+            page.settle()
+            XCTAssertEqual(web.frame, frame, "the web view has its size back")
+            try await Task.sleep(for: .milliseconds(500))
+            let after = try await js(bars), b = try JSONDecoder().decode([Double].self, from: Data(after.utf8))
+            XCTAssertEqual(after, before, "the page kept its place and its bars")
+            XCTAssertEqual(b[2], b[0], "the tab bar is at the bottom of the screen")
+            XCTAssertLessThan(b[3], b[2], "the compose button is above the tab bar")
+            let kept = try await js("return kept")
+            XCTAssertEqual(kept, "still here", "the page reloaded")
+        }
+    }
+
     func testThePageKeepsClearOfTheSidesAndFillsUnderTheBars() async throws {
         try await load("<style>body { background: #123456 } .phead { background: #fedcba } #top { padding-top: env(safe-area-inset-top) }</style><div class='phead' id='top'></div>")
         try await fold(.compact)
