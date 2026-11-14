@@ -54,6 +54,16 @@ export const boxOf = (one?: [number, number] | null) =>
 
 /** Farcaster's streams get a first-frame poster from our server (server/index.mjs /api/poster), in the video's shape. */
 export const poster = (src?: string) => (src && /^https:\/\/stream\.farcaster\.xyz\//.test(src) ? `/api/poster?url=${encodeURIComponent(src)}` : undefined)
+/** What a quoted cast (ui.tsx QuoteCard, server/home.mjs) or a notification (app.tsx NotePeek) shows of its embeds
+ *  beside its words: its first picture, else a video's poster, else, for a video with none (only Farcaster's streams
+ *  have one; Firefly's HLS or an mp4 from anywhere else don't), a stand-in with a play button, else its first link's
+ *  address. A cast with no words of its own never shows as an empty card (#663). */
+export function peekOf(urls: string[]): { img?: string; video?: boolean; link?: string } {
+  const img = urls.find(isImg) || poster(urls.find(isVid))
+  if (img) return { img }
+  if (urls.some(isVid)) return { video: true }
+  return urls[0] ? { link: shortUrl(urls[0]) } : {}
+}
 type Shape = [number, number] | null | undefined
 const real = (s: Shape): s is [number, number] => !!s && s[0] > 0 && s[1] > 0 && Number.isFinite(s[0] / s[1])
 /** A video's shape: its own once it has played, else its poster's (Hypersnap's embeds carry no size; the server reads

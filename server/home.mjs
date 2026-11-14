@@ -3,7 +3,7 @@
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
 import { cardOpening, coverOf, headOf, isArticle } from '../src/article.ts'
-import { articleHtml, boxOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, poster, proxied, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
+import { articleHtml, boxOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, peekOf, poster, proxied, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { channelOf } from './channels.mjs'
 
@@ -111,11 +111,12 @@ export function body(d, version, now = Date.now()) {
     const c = d.got[`c:${hash}`]
     if (!c) return '<div class="quote skeleton"></div>'
     if (gone(c)) return '<div class="quote muted">Hidden by your mutes.</div>'
-    const urls = urlsOf(c)
-    const thumb = urls.find(isImg) || poster(urls.find(isVid))
+    const { img: thumb, video, link } = peekOf(urlsOf(c))
     const text = castText(c, true).trim()
     return `<a class="quote" href="/c/${esc(c.hash)}"><div class="meta">${avatar(c.author, 18, false)}<b>${esc(nameOf(c.author))}</b><span>@${esc(handle(c.author))} · ${ago(c.timestamp)}</span></div>` +
-      `<div class="qbody${text ? '' : ' bare'}">${text ? rich(text, 'text clamp', false, taggable(c.text || '')) : ''}${thumb ? img(sized(thumb, 'w=1200'), 'qimg') : ''}</div></a>`
+      `<div class="qbody${text ? '' : ' bare'}">${text ? rich(text, 'text clamp', false, taggable(c.text || '')) : ''}${thumb ? img(sized(thumb, 'w=1200'), 'qimg') : ''}` +
+      `${video ? `<span class="qvid" role="img" aria-label="Play video">${icon(P.play, 28, true)}</span>` : ''}` +
+      `${!text && link ? `<span class="qlink">${icon(P.link, 14)}<span>${esc(link)}</span></span>` : ''}</div></a>`
   }
   const tweet = (t) => {
     const video = safeUrl(t.video)

@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { embedLayout, playedOf, vidBoxOf, vidShape } from './shared.ts'
+import { embedLayout, peekOf, playedOf, vidBoxOf, vidShape } from './shared.ts'
 
 const img = (i: number) => `https://imagedelivery.net/a/b${i}/original`
 const vid = (i: number) => `https://stream.farcaster.xyz/v${i}/manifest.m3u8`
@@ -83,4 +83,20 @@ test("a video's box is at most 510px tall alone and 300px in a strip", () => {
   const css = readFileSync(new URL('./style.css', import.meta.url), 'utf8')
   assert.ok(css.includes('.vid.shaped { width: min(100%, var(--alone)); aspect-ratio: var(--ar); }'))
   assert.ok(css.includes('.strip > .vid.shaped { width: min(260px, 80%, var(--tile)); }'))
+})
+
+// #663: a quoted cast with no words and a video from outside Farcaster (Firefly's HLS) drew as an empty card, as only
+// stream.farcaster.xyz videos get a poster
+test("a quote or a notification always has something to show of a cast's embeds", () => {
+  const firefly = 'https://media.firefly.land/post_m3u8/abc/def.m3u8'
+  assert.deepEqual(peekOf([firefly]), { video: true })
+  assert.deepEqual(peekOf(['https://example.com/clip.mp4']), { video: true })
+  // Farcaster's own streams still show their poster, and a picture comes first
+  const fc = 'https://stream.farcaster.xyz/v1/video/01a18616-1a75-a56e-1a34-d5e740f5898c.m3u8'
+  assert.deepEqual(peekOf([fc]), { img: `/api/poster?url=${encodeURIComponent(fc)}` })
+  assert.deepEqual(peekOf([firefly, img(1)]), { img: img(1) })
+  // only a link: its address, short
+  assert.deepEqual(peekOf(['https://www.example.com/post']), { link: 'example.com/post' })
+  assert.deepEqual(peekOf([`https://example.com/${'a'.repeat(60)}`]), { link: `example.com/${'a'.repeat(28)}…` })
+  assert.deepEqual(peekOf([]), {})
 })

@@ -104,3 +104,17 @@ test('a Farcaster Article shows its cover, title and opening', () => {
   const plain = body({ casts: [{ ...c, article: null }], got, shapes: {} }, '0.0.0', Date.parse('2026-10-28T12:00:00Z')).html
   assert.ok(!plain.includes('fc-article') && plain.includes('class="text fold"'))
 })
+
+// #663: a quoted cast with no words and a video from outside Farcaster drew as an empty card (only its author line)
+test('a quoted cast with no words shows its video or its link, never an empty card', () => {
+  const quoted = (hash, url) => ({ hash, author, text: '', timestamp: '2026-10-28T10:00:00Z', embeds: [{ url }], reactions: {}, replies: {} })
+  const drawn = (q) => {
+    const c = { ...cast('c'.repeat(40), []), embeds: [{ cast_id: { fid: 3, hash: `0x${q.hash}` } }] }
+    const html = body({ casts: [c], got: { ...got, [`c:${q.hash}`]: q }, shapes: {} }, '0.0.0', Date.parse('2026-10-28T12:00:00Z')).html
+    return html.slice(html.indexOf('<a class="quote"'))
+  }
+  const vid = drawn(quoted('d'.repeat(40), 'https://media.firefly.land/post_m3u8/abc/def.m3u8'))
+  assert.match(vid, /^<a class="quote" href="\/c\/d{40}">[^]*<div class="qbody bare"><span class="qvid" role="img" aria-label="Play video"><svg [^]*<\/svg><\/span><\/div><\/a>/)
+  const lnk = drawn(quoted('e'.repeat(40), 'https://example.com/post'))
+  assert.match(lnk, /<div class="qbody bare"><span class="qlink"><svg [^]*<\/svg><span>example\.com\/post<\/span><\/span><\/div><\/a>/)
+})

@@ -370,6 +370,15 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .show-more { border: 0; background: none; padding: 2px 0; color: var(--accent); font-size: 15px; }
 .show-more:hover { text-decoration: underline; }
 .qimg { display: block; width: auto; height: auto; max-width: 100%; max-height: 300px; border-radius: calc(10px * var(--rs, 1)); margin-top: 4px; align-self: flex-start; }
+/* a quoted video with no poster to show (Firefly's HLS, an mp4 from anywhere but Farcaster): a dark 16:9 box with a play
+   button; a quoted cast that is only a link: its address */
+.qvid { display: grid; place-items: center; width: min(100%, 320px); aspect-ratio: 16 / 9; margin-top: 4px; align-self: flex-start; border-radius: calc(10px * var(--rs, 1)); background: #000; color: #fff; }
+.qvid svg { box-sizing: content-box; padding: 12px; border-radius: 50%; background: rgb(255 255 255 / 0.16); }
+.qvid.small { width: 96px; margin-top: 0; }
+.qvid.small svg { padding: 6px; }
+.qlink { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); }
+.qlink svg { flex: none; }
+.qlink span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .skeleton { height: 64px; background: var(--soft); border-color: transparent; }
 /* a cast's pictures (one tile) and videos, when it has several, sit side by side and scroll (shared.ts embedLayout); the
    scrollbar keeps its room but shows only while the pointer is over the strip */
@@ -1875,7 +1884,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   & .lc-desc { font-size: 13px; line-height: 18px; color: var(--q-subtle); }
   & .lc-btn { border-radius: var(--q-r); background: var(--soft); }
   & .quote, & .tweet { border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: var(--q-rl); background: var(--q-s2); }
-  & .imgs, & .vid, & .tw-video, & .qimg { border-radius: var(--q-r); }
+  & .imgs, & .vid, & .tw-video, & .qimg, & .qvid { border-radius: var(--q-r); }
   & .imgs.n1, & .vid { border: 0; }
   & .stats, & .when { border-bottom-color: var(--line); }
 
@@ -1883,7 +1892,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   & .note-row { gap: 12px; padding: 16px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
   & .note-icon { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border-radius: 99px; background: color-mix(in srgb, var(--accent) 16%, transparent); }
   & .note-icon svg { width: 18px; height: 18px; }
-  & .note-cast { color: var(--q-subtle); }
+  & .note-cast, & .qlink { color: var(--q-subtle); }
 
   /* lists (people, tokens, Spaces, conversations): Quorum's sidebar rows, no lines between them */
   & .row { gap: 10px; padding: 12px 16px; border-bottom: 0; }

@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, articleNow, articleOf, back, follow, get, go, LINK_RE, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
-import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, poster, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -325,11 +325,10 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
 }
 
 export { urlsOf }
-/** the cast's first image, or its video's poster */
-export const thumbOf = (c: Cast) => {
-  const urls = urlsOf(c)
-  return urls.find(isImg) || poster(urls.find(isVid))
-}
+/** A video in a quote or a notification that has no poster to show: a dark box with a play button. */
+export const VidPeek = ({ small }: { small?: boolean }) => (
+  <span class={`qvid${small ? ' small' : ''}`} role="img" aria-label={t('Play video')}><Icon d={P.play} fill size={small ? 16 : 28} /></span>
+)
 
 // HLS goes through hls.js (loaded on first play) wherever MediaSource exists. canPlayType can't decide it: Chrome
 // answers "maybe" and plays nothing. iPhone Safari has no MediaSource and plays HLS natively
@@ -960,15 +959,17 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   if (c === null) return <div class="quote muted">{t('This cast is unavailable.')}</div>
   if (!c) return <div class="quote skeleton" />
   if (hides(c)) return <div class="quote muted">{t('Hidden by your mutes.')}</div>
-  const img = thumbOf(c)
+  const { img, video, link } = peekOf(urlsOf(c))
   const text = castText(c, true).trim()
   return (
     <a class="quote" href={`/c/${c.hash}`} onClick={stop}>
       <div class="meta"><Avatar u={c.author} size={18} link={false} /><b>{nameOf(c.author)}</b><span>@{handle(c.author)} · {ago(c.timestamp)}</span></div>
-      {/* text gets a thumbnail beside it; a cast that is only media shows it at size */}
+      {/* text gets a thumbnail beside it; a cast that is only media shows it at size, one that is only a link its address */}
       <div class={`qbody${text ? '' : ' bare'}`}>
         {text && <RichText text={text} class="text clamp" tags={taggable(c.text || '')} />}
         {img && <Img class="qimg" src={sized(img, 'w=1200')} />}
+        {video && <VidPeek />}
+        {!text && link && <span class="qlink"><Icon d={P.link} size={14} /><span>{link}</span></span>}
       </div>
     </a>
   )
