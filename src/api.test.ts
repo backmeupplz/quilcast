@@ -52,3 +52,22 @@ test('a node that is down is not a user who is missing', async () => {
     forget()
   }
 })
+
+test('"Add account" sets a stuck setup aside: the join pages show their choices until it is resumed (#669)', async () => {
+  Object.assign(globalThis, { addEventListener: () => {}, dispatchEvent: () => true })
+  ;(globalThis as any).localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+  const { resumesSetup, setAside } = await import('./api.ts')
+  const stuck = { phrase: '', wallet: '0xaa', display: 'Stuck' }
+  const other = { phrase: '', custody: '0xbb' }
+  const done = { phrase: '', custody: '0xcc', fid: 9, done: true }
+  assert.equal(resumesSetup(stuck), true, 'an unfinished account resumes')
+  assert.equal(resumesSetup(done), false)
+  assert.equal(resumesSetup(null), false)
+  setAside(stuck)
+  assert.equal(resumesSetup(stuck), false, 'set aside, it shows the choices')
+  assert.equal(resumesSetup(other), true, 'a new account started meanwhile still sets up')
+  setAside(null)
+  assert.equal(resumesSetup(stuck), true, 'back to it')
+  setAside(done)
+  assert.equal(resumesSetup(stuck), true, 'a finished account sets nothing aside')
+})

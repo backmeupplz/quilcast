@@ -398,6 +398,7 @@
   "Sparkle cursor": "キラキラカーソル",
   "Spooky": "ホラー",
   "Start over": "最初からやり直す",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "最初からやり直しますか？このブラウザはこのアカウントを忘れます。すでに登録済みの場合、再びサインインできるのはリカバリーフレーズだけです。",
   "Start over (plain profile)": "最初からやり直す（シンプルなプロフィール）",
   "Sticker": "ステッカー",
   "Stickers ({n}/{max})": "ステッカー ({n}/{max})",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Telegramステッカーパックのリンク",
   "What the pack is called everywhere it shows.": "パックが表示されるすべての場所で使われる名前です。",
   "by {name}": "作成: {name}",
-  "Added": "追加済み"
+  "Added": "追加済み",
+  "Finish setting up {name}": "{name} の設定を完了する"
 }

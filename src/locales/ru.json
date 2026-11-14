@@ -398,6 +398,7 @@
   "Sparkle cursor": "Искрящийся курсор",
   "Spooky": "Жуть",
   "Start over": "Начать заново",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "Начать заново? Этот браузер забудет этот аккаунт. Если он уже зарегистрирован, войти в него снова можно будет только по фразе восстановления.",
   "Start over (plain profile)": "Начать заново (простой профиль)",
   "Sticker": "Стикер",
   "Stickers ({n}/{max})": "Стикеры ({n}/{max})",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Ссылка на набор стикеров Telegram",
   "What the pack is called everywhere it shows.": "Название набора везде, где он показывается.",
   "by {name}": "от {name}",
-  "Added": "Добавлено"
+  "Added": "Добавлено",
+  "Finish setting up {name}": "Завершить настройку {name}"
 }

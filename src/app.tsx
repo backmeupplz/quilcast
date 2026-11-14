@@ -2,7 +2,7 @@ import { render, type ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { crashed, started } from './crash.ts'
 import { confirmSignOut, warning, type Waiting } from './signout.ts'
-import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follow, followsMe, forget, forgetFollows, get, urlOf, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follow, followsMe, forget, forgetFollows, get, urlOf, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, setAside, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
@@ -184,14 +184,16 @@ function AccountList({ onDone }: { onDone?: () => void }) {
         const u = (a.fid && users.get(a.fid)) || { fid: a.fid || 0, username: a.username }
         const on = !!account && idOf(a) === idOf(account)
         return (
-          <button class={`acct${on ? ' on' : ''}`} onClick={() => (on ? onDone?.() : switchAccount(a))}>
+          // the selected account, when it's still being set up, goes back to its setup (it may have been set aside)
+          <button class={`acct${on ? ' on' : ''}`} onClick={() => (on ? (onDone?.(), a.done || (setAside(null), go('/join'))) : switchAccount(a))}>
             <Avatar u={u} size={32} link={false} />
             <span><b>{u.display_name || a.display || (a.username ? `@${a.username}` : t('New account'))}</b><small>{a.done ? `@${handle(u)}` : t('Setting up')}</small></span>
             {on && <Icon d={P.check} />}
           </button>
         )
       })}
-      <button class="acct add" onClick={() => (onDone?.(), go('/join'))}><span class="plus"><Icon d={P.plus} /></span><span><b>{t('Add account')}</b></span></button>
+      {/* an account still being set up (stuck, say) is set aside, so the join pages show their choices */}
+      <button class="acct add" onClick={() => (onDone?.(), setAside(account), go('/join'))}><span class="plus"><Icon d={P.plus} /></span><span><b>{t('Add account')}</b></span></button>
     </div>
   )
 }

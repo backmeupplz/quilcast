@@ -213,6 +213,14 @@ export const askUser = {
   },
 }
 
+/** "Add account" while the selected account is still being set up sets that one aside: the join pages show their
+ *  choices instead of resuming its setup (join.tsx) until the page reloads or the person goes back to it. It stays
+ *  selected and in the account list. `null`, or an account that's done, sets nothing aside. */
+export let aside: string | null = null
+export const setAside = (a: Account | null) => ((aside = a && !a.done ? idOf(a) : null), dispatchEvent(new Event('account')))
+/** Whether the join pages resume the selected account's setup: one that isn't done, unless it's set aside. */
+export const resumesSetup = (a = account) => !!a && !a.done && idOf(a) !== aside
+
 // a full reload drops the previous account's feeds and likes; it stays on this page (a conversation is the account's
 // own, so that one goes back to the inbox)
 export const switchAccount = (a: Account) => (localStorage.setItem('quilcast:current', idOf(a)), location.assign(location.pathname.startsWith('/messages/') ? '/messages' : location.pathname + location.search))

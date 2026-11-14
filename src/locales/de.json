@@ -691,6 +691,7 @@
   "Start a Space": "Space starten",
   "Start from": "Basis",
   "Start over": "Neu anfangen",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "Neu anfangen? Dieser Browser vergisst dieses Konto. Ist es schon registriert, meldet dich nur seine Wiederherstellungsphrase wieder an.",
   "Start over (plain profile)": "Neu anfangen (schlichtes Profil)",
   "Start time": "Startzeit",
   "Started {when}": "Läuft seit {when}",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Link zum Telegram-Sticker-Pack",
   "What the pack is called everywhere it shows.": "Wie das Pack überall heißt, wo es angezeigt wird.",
   "by {name}": "von {name}",
-  "Added": "Hinzugefügt"
+  "Added": "Hinzugefügt",
+  "Finish setting up {name}": "Einrichtung von {name} abschließen"
 }

@@ -398,6 +398,7 @@
   "Sparkle cursor": "閃光游標",
   "Spooky": "萬聖節",
   "Start over": "重新開始",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "要重新開始嗎？此瀏覽器會忘記這個帳號。如果它已經註冊，只有它的復原短語才能再次登入。",
   "Start over (plain profile)": "重新開始（簡單個人檔案）",
   "Sticker": "貼紙",
   "Stickers ({n}/{max})": "貼紙（{n}/{max}）",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Telegram 貼圖包連結",
   "What the pack is called everywhere it shows.": "貼圖包在所有顯示位置使用的名稱。",
   "by {name}": "作者 {name}",
-  "Added": "已新增"
+  "Added": "已新增",
+  "Finish setting up {name}": "完成 {name} 的設定"
 }

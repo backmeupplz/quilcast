@@ -70,14 +70,15 @@ async function submit(m: { msg: Uint8Array; hash: string }, wait = [1000, 2000, 
  *  alive as long as it's used (90 days idle), so there's no renewing: a key the network stops taking is replaced when
  *  send() or saveLook() notice. Older signers are re-issued once with the narrower permissions (same key); `fresh`
  *  swaps in a new key. */
-export async function ensureSigner(a = account!, fresh = false) {
+/** `save` keeps the account with its new key (updateAccount); false from it means the account is gone, and so is the key. */
+export async function ensureSigner(a = account!, fresh = false, save: (a: Account) => unknown = updateAccount) {
   const now = Math.floor(Date.now() / 1000)
   if (!fresh && (a.pub || a.signer) && a.scopes === SCOPES_VERSION) return
   const old = !fresh && (await signerOf(a).catch(() => undefined))
   const [key, raw] = old ? [old, a.signer] : await newKey()
   const nonce = Math.max((a.nonce || 0) + 1, now)
   await submit(await keyAdd(a.fid!, await custodyOf(a), key, nonce))
-  updateAccount({ ...a, pub: hex(key.pub), signer: raw, signerAt: now, nonce, scopes: SCOPES_VERSION })
+  if (save({ ...a, pub: hex(key.pub), signer: raw, signerAt: now, nonce, scopes: SCOPES_VERSION }) === false) return void (old || dropEd(hex(key.pub)).catch(() => {}))
   // a key that was replaced is no use to anyone
   if (a.pub && a.pub !== hex(key.pub)) dropEd(a.pub).catch(() => {})
 }
@@ -579,7 +580,7 @@ export const deleteCast = (hash: string) => send(MT.CAST_REMOVE, castRemoveBody(
 export const react = (type: 1 | 2, on: boolean, c: { author: { fid: number }; hash: string }) =>
   send(on ? MT.REACTION_ADD : MT.REACTION_REMOVE, reactionBody(type, c.author.fid, c.hash))
 export const follow = (fid: number, on: boolean) => send(on ? MT.LINK_ADD : MT.LINK_REMOVE, followBody(fid))
-export const setUserData = (type: number, value: string) => send(MT.USER_DATA_ADD, userDataBody(type, value))
+export const setUserData = (type: number, value: string, as = account!) => send(MT.USER_DATA_ADD, userDataBody(type, value), as)
 
 
 /** A request to our server signed with the account's Farcaster key. A key ensureSigner just added takes the node a

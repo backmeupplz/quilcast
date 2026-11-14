@@ -691,6 +691,7 @@
   "Start a Space": "Starta ett ljudrum",
   "Start from": "Utgå från",
   "Start over": "Börja om",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "Börja om? Den här webbläsaren glömmer kontot. Om det redan är registrerat loggar bara dess återställningsfras in på det igen.",
   "Start over (plain profile)": "Börja om (enkel profil)",
   "Start time": "Starttid",
   "Started {when}": "Startade {when}",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Länk till Telegram-klistermärkespaket",
   "What the pack is called everywhere it shows.": "Vad paketet heter överallt där det visas.",
   "by {name}": "av {name}",
-  "Added": "Tillagt"
+  "Added": "Tillagt",
+  "Finish setting up {name}": "Slutför konfigurationen av {name}"
 }

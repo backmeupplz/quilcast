@@ -488,6 +488,31 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await close()
   })
 
+  // #669: a wallet account whose setup is stuck (the registration failed, and only its wallet's Try again would go on)
+  // has a way out, and Add account opens the join choices instead of that setup
+  test('a stuck account setup can be set aside from Add account, resumed, and started over', async () => {
+    const mine = '0x' + '0'.repeat(39) + '1', wallet = '0x' + '0'.repeat(39) + '2'
+    const accounts = JSON.stringify([{ phrase: '', custody: mine, fid: 9, username: 'me', done: true }, { phrase: '', wallet, display: 'Stuck' }])
+    const { page, close } = await open({ 'quilcast:accounts': accounts, 'quilcast:current': wallet, 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/join' })
+    const h1 = page.locator('#app .join h1')
+    const stuck = () => page.getByRole('button', { name: 'Try again' }).waitFor({ timeout: 30e3 })
+    await h1.filter({ hasText: 'Setting up your account' }).waitFor({ timeout: 30e3 })
+    await stuck()
+    // Add account, from Settings' list: the choices, with a way back to the unfinished one
+    await link(page, '/settings')
+    await page.locator('#app .acct.add').click()
+    await h1.filter({ hasText: 'Add an account' }).waitFor()
+    await page.getByRole('button', { name: 'Finish setting up Stuck' }).click()
+    await h1.filter({ hasText: 'Setting up your account' }).waitFor()
+    await stuck()
+    // Start over: the unfinished account leaves this browser, and the choices come back as the other account
+    await page.getByRole('button', { name: 'Start over' }).click()
+    await h1.filter({ hasText: 'Add an account' }).waitFor()
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('quilcast:accounts')).map((a) => a.wallet || a.custody)), [mine])
+    assert.equal(await page.evaluate(() => localStorage.getItem('quilcast:current')), mine)
+    await close()
+  })
+
   test('a reload stays where the page was', async () => {
     const { page, errors, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/channel/longfeed' })
     await page.locator('#app article.cast', { hasText: 'long feed cast 20' }).first().waitFor({ timeout: 30e3 })

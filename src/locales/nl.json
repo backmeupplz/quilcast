@@ -691,6 +691,7 @@
   "Start a Space": "Space starten",
   "Start from": "Basis",
   "Start over": "Opnieuw beginnen",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "Opnieuw beginnen? Deze browser vergeet dit account. Als het al geregistreerd is, log je er alleen met de herstelzin weer op in.",
   "Start over (plain profile)": "Opnieuw beginnen (standaardprofiel)",
   "Start time": "Starttijd",
   "Started {when}": "Gestart {when}",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Link naar Telegram-stickerpack",
   "What the pack is called everywhere it shows.": "Hoe het pack heet overal waar het te zien is.",
   "by {name}": "door {name}",
-  "Added": "Toegevoegd"
+  "Added": "Toegevoegd",
+  "Finish setting up {name}": "{name} verder instellen"
 }

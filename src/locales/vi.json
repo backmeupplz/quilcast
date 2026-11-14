@@ -691,6 +691,7 @@
   "Start a Space": "Mở phòng âm thanh",
   "Start from": "Bắt đầu từ",
   "Start over": "Làm lại từ đầu",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "Bắt đầu lại? Trình duyệt này sẽ quên tài khoản này. Nếu tài khoản đã được đăng ký, chỉ cụm từ khôi phục của nó mới đăng nhập lại được.",
   "Start over (plain profile)": "Làm lại từ đầu (hồ sơ trơn)",
   "Start time": "Giờ bắt đầu",
   "Started {when}": "Đã bắt đầu {when}",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Liên kết gói nhãn dán Telegram",
   "What the pack is called everywhere it shows.": "Tên của gói ở mọi nơi nó hiển thị.",
   "by {name}": "bởi {name}",
-  "Added": "Đã thêm"
+  "Added": "Đã thêm",
+  "Finish setting up {name}": "Hoàn tất thiết lập {name}"
 }

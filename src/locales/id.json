@@ -691,6 +691,7 @@
   "Start a Space": "Mulai Ruang Audio",
   "Start from": "Mulai dari",
   "Start over": "Mulai ulang",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "Mulai ulang? Browser ini melupakan akun ini. Jika sudah terdaftar, hanya frasa pemulihannya yang bisa masuk ke akun itu lagi.",
   "Start over (plain profile)": "Mulai ulang (profil polos)",
   "Start time": "Waktu mulai",
   "Started {when}": "Dimulai {when}",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Tautan paket stiker Telegram",
   "What the pack is called everywhere it shows.": "Nama paket yang tampil di mana pun paket ini muncul.",
   "by {name}": "oleh {name}",
-  "Added": "Ditambahkan"
+  "Added": "Ditambahkan",
+  "Finish setting up {name}": "Selesaikan penyiapan {name}"
 }

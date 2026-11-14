@@ -691,6 +691,7 @@
   "Start a Space": "स्पेस शुरू करें",
   "Start from": "यहाँ से शुरू करें",
   "Start over": "फिर से शुरू करें",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "फिर से शुरू करें? यह ब्राउज़र इस खाते को भूल जाएगा। अगर यह पहले से रजिस्टर है, तो सिर्फ़ इसका रिकवरी फ़्रेज़ ही इसमें फिर से साइन इन कर सकता है।",
   "Start over (plain profile)": "फिर से शुरू करें (सादी प्रोफ़ाइल)",
   "Start time": "शुरू होने का समय",
   "Started {when}": "{when} शुरू हुआ",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Telegram स्टिकर पैक का लिंक",
   "What the pack is called everywhere it shows.": "पैक का वह नाम जो हर जगह दिखता है।",
   "by {name}": "{name} द्वारा",
-  "Added": "जोड़ा गया"
+  "Added": "जोड़ा गया",
+  "Finish setting up {name}": "{name} का सेटअप पूरा करें"
 }

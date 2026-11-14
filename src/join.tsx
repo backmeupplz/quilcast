@@ -1,10 +1,11 @@
 import { generateMnemonic, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, accounts, get, getUser, go, idOf, setAccount, settings, USER_DATA, type Account, type User } from './api.ts'
+import { account, accounts, get, getUser, go, idOf, removeAccount, resumesSetup, setAccount, setAside, settings, updateAccount, USER_DATA, type Account, type User } from './api.ts'
 import { browsePath } from './browse.ts'
 import { fidOf } from './eth.ts'
 import { address, custodyKey } from './fc.ts'
+import { dropEd } from './keys.ts'
 import { t } from './i18n.ts'
 import { inHost, offered, useHost } from './host.ts'
 import { Avatar, Choose, handle } from './ui.tsx'
@@ -15,8 +16,10 @@ import { firstSignIn } from './campaign.ts'
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 // likes and recasts load in the background once the account is set; the feed doesn't wait for them
-const finish = async (a: Account) => {
+// `still` says the setup is still wanted: one started over meanwhile (Setup) isn't brought back, and false comes back
+const finish = async (a: Account, still = () => true) => {
   const u = await getUser(a.fid!).catch(() => null)
+  if (!still()) return false
   // the account as ensureSigner saved it, with its new key
   const saved = accounts.find((x) => idOf(x) === idOf(a)) || a
   const before = accounts.some((x) => x.done && idOf(x) !== idOf(a))
@@ -25,6 +28,7 @@ const finish = async (a: Account) => {
   const campaign = firstSignIn(before)
   if (campaign) sendSignup(campaign, saved).catch(() => {})
   go('/')
+  return true
 }
 
 const Steps = ({ steps, at }: { steps: string[]; at: number }) => (
@@ -35,7 +39,8 @@ const Steps = ({ steps, at }: { steps: string[]; at: number }) => (
 export function Join({ step }: { step?: string }) {
   // in a Farcaster client (a mini app): the account it's signed in to, which the choices are about (host.ts)
   const host = offered(useHost(), accounts)
-  if (account && !account.done) return <Setup />
+  // an account still being set up resumes, unless "Add account" set it aside (api.ts setAside)
+  if (account && resumesSetup()) return <Setup key={idOf(account)} />
   if (step === 'create') return <Create />
   if (step === 'signin') return <SignIn />
   if (step === 'wallet') return <WalletIn host={host} />
@@ -76,6 +81,9 @@ export function Join({ step }: { step?: string }) {
           {wallet}
         </>
       )}
+      {account && !account.done && (
+        <button class="link-btn" onClick={() => setAside(null)}>{t('Finish setting up {name}', { name: account.display || short(idOf(account)) })}</button>
+      )}
     </div>
   )
 }
@@ -98,7 +106,11 @@ function Create({ wallet }: { wallet?: string }) {
   const go = async () => {
     const phrase = wallet ? '' : generateMnemonic(wordlist)
     // a phrase account is known by its custody address, never by the phrase
-    setAccount({ phrase, wallet, custody: phrase ? address(await custodyKey(phrase)) : undefined, display: display.trim() })
+    const a: Account = { phrase, wallet, custody: phrase ? address(await custodyKey(phrase)) : undefined, display: display.trim() }
+    // set up again (the same wallet, after starting over): an earlier setup still finishing leaves it be
+    startedOver.delete(idOf(a))
+    setAside(null)
+    setAccount(a)
   }
   return (
     <div class="join">
@@ -224,9 +236,14 @@ function SignIn() {
   )
 }
 
+// accounts whose setup the person left with "Start over": a signature that still lands afterwards doesn't bring them
+// back (Setup's keep)
+const startedOver = new Set<string>()
+
 // Registration and first-time setup. Every step is re-derived from the node, so a reload resumes wherever it stopped.
 function Setup() {
   const a = account!
+  const id = idOf(a)
   // a phrase account shows its phrase first; nothing is registered until it's saved
   const [step, setStep] = useState<'save' | 'register' | 'setup'>(a.fid ? 'setup' : a.wallet ? 'register' : 'save')
   const [err, setErr] = useState('')
@@ -234,59 +251,89 @@ function Setup() {
   const retry = useRef<() => void>(undefined)
   // a wallet asks its owner for each signature, so it never retries by itself
   const failed = async (e: any, quiet = false) => {
-    if (!account!.wallet) return quiet || setErr(e.message)
+    if (!a.wallet) return quiet || setErr(e.message)
     setErr(e.message)
     await new Promise<void>((r) => (retry.current = r))
     setErr('')
+  }
+  // the way out at every step, for a wallet that never signs or a registration that never lands: the account leaves
+  // this browser (removeAccount), and a wallet or a saved phrase signs in to it later if it did get registered
+  const startOver = () => {
+    if (step !== 'save' && !a.wallet && !confirm(t("Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again."))) return
+    startedOver.add(id)
+    removeAccount(a)
+    go('/join')
   }
 
   useEffect(() => {
     if (step === 'save') return
     let live = true
+    // this setup is still the one on the page: not started over, set aside or replaced by another account
+    const here = () => live && !startedOver.has(id) && !!account && idOf(account) === id
+    // the new key goes onto the saved copy of this account, which may have changed since: one started over meanwhile
+    // isn't brought back (its key goes), and one created again or finished keeps its own name and state
+    const keep = (b: Account) => {
+      const saved = accounts.find((x) => idOf(x) === id)
+      if (!saved || startedOver.has(id)) return false
+      // (a key of its own that this one replaces is no use to anyone)
+      if (saved.pub && saved.pub !== b.pub) dropEd(saved.pub).catch(() => {})
+      return updateAccount({ ...saved, pub: b.pub, signer: b.signer, signerAt: b.signerAt, nonce: b.nonce, scopes: b.scopes })
+    }
     ;(async () => {
       const custody = await custodyOf(a)
       // an FID registered on Optimism after Hypersnap's fork never reaches Hypersnap: that custody registers here too
-      const id = account!.fid
-      if (id && id < 2 ** 32 && !(await get('/v1/onChainEventsByFid', { fid: id, event_type: 'EVENT_TYPE_ID_REGISTER' }).then((r) => r.events.length, () => 1)))
-        setAccount({ ...account!, fid: undefined })
-      for (let sent = 0; live && !account!.fid; await sleep(3000)) {
+      const fid0 = account?.fid
+      const lost = fid0 && fid0 < 2 ** 32 && !(await get('/v1/onChainEventsByFid', { fid: fid0, event_type: 'EVENT_TYPE_ID_REGISTER' }).then((r) => r.events.length, () => 1))
+      if (!here()) return
+      if (lost) setAccount({ ...account!, fid: undefined })
+      for (let sent = 0; here() && !account!.fid; await sleep(3000)) {
         try {
           const fid = await nativeFid(custody.address)
+          if (!here()) return
           if (fid) setAccount({ ...account!, fid })
           // one that hasn't landed in a minute (its anchor block went stale, say) is sent again
           else if (Date.now() - sent > 60_000) {
-            if (sent && account!.wallet) throw new Error("Your account hasn't reached the network yet. Try again in a minute.")
+            if (sent && a.wallet) throw new Error("Your account hasn't reached the network yet. Try again in a minute.")
             setStep('register')
             await registerNative(custody)
             sent = Date.now()
           }
         } catch (e: any) {
+          if (!here()) return
           await failed(e)
           // a phrase tries again in ten seconds; a wallet when its owner says so
-          sent = account!.wallet ? 0 : Date.now() - 50_000
+          sent = a.wallet ? 0 : Date.now() - 50_000
         }
       }
-      if (!live) return
+      if (!here()) return
       setStep('setup')
       setErr('')
-      for (let i = 0; live; i++) {
+      for (let i = 0; here(); i++) {
         try {
           const acc = account!
           // ask the wallet only once the node knows the new FID
           if (acc.wallet)
-            while (live && !(await getUser(acc.fid!).then((u) => String(u.custody_address).toLowerCase() === acc.wallet, () => false))) await sleep(3000)
-          await ensureSigner(acc)
-          if (acc.display && !(await getUser(acc.fid!).then((u) => u.display_name === acc.display, () => false))) await setUserData(USER_DATA.DISPLAY, acc.display)
-          await finish(acc)
+            while (here() && !(await getUser(acc.fid!).then((u) => String(u.custody_address).toLowerCase() === acc.wallet, () => false))) await sleep(3000)
+          if (!here()) return
+          await ensureSigner(acc, false, keep)
+          if (!here()) return
+          const named = !acc.display || (await getUser(acc.fid!).then((u) => u.display_name === acc.display, () => false))
+          if (!here()) return
+          // signed as this account, whichever one is selected by the time it goes out
+          if (!named) await setUserData(USER_DATA.DISPLAY, acc.display!, accounts.find((x) => idOf(x) === id) || acc)
+          if (!here()) return
+          await finish(acc, here)
           return
         } catch (e: any) {
+          if (!here()) return
           // early attempts fail until the node indexes the new FID, so stay quiet for a bit
           await failed(e, i < 6)
-          if (!account!.wallet) await sleep(5000)
+          if (!a.wallet) await sleep(5000)
         }
       }
     })()
-    return () => void (live = false)
+    // a wallet waiting for "Try again" stops waiting, and the loop above sees it's no longer here
+    return () => ((live = false), retry.current?.())
   }, [step === 'save'])
 
   return (
@@ -315,7 +362,7 @@ function Setup() {
       )}
       {err && <p class="warn">{t(err)}</p>}
       {err && a.wallet && <button class="btn wide" onClick={() => retry.current?.()}>{t('Try again')}</button>}
-      {step === 'save' && <button class="link-btn" onClick={() => setAccount(null)}>{t('Start over')}</button>}
+      <button class="link-btn" onClick={startOver}>{t('Start over')}</button>
     </div>
   )
 }

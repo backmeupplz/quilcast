@@ -398,6 +398,7 @@
   "Sparkle cursor": "Cursor brillante",
   "Spooky": "Terror",
   "Start over": "Empezar de nuevo",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "¿Empezar de nuevo? Este navegador olvida esta cuenta. Si ya está registrada, solo su frase de recuperación vuelve a iniciar sesión en ella.",
   "Start over (plain profile)": "Empezar de nuevo (perfil sencillo)",
   "Sticker": "Sticker",
   "Stickers ({n}/{max})": "Stickers ({n}/{max})",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Enlace del pack de stickers de Telegram",
   "What the pack is called everywhere it shows.": "Cómo se llama el pack en todos los sitios donde aparece.",
   "by {name}": "por {name}",
-  "Added": "Añadido"
+  "Added": "Añadido",
+  "Finish setting up {name}": "Termina de configurar {name}"
 }

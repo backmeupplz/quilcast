@@ -691,6 +691,7 @@
   "Start a Space": "Avvia uno Spazio",
   "Start from": "Parti da",
   "Start over": "Ricomincia",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "Ricominciare? Questo browser dimentica questo account. Se è già registrato, solo la sua frase di recupero permette di accedervi di nuovo.",
   "Start over (plain profile)": "Ricomincia (profilo semplice)",
   "Start time": "Ora di inizio",
   "Started {when}": "Iniziato: {when}",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "Link del pack di sticker di Telegram",
   "What the pack is called everywhere it shows.": "Il nome del pack ovunque venga mostrato.",
   "by {name}": "di {name}",
-  "Added": "Aggiunto"
+  "Added": "Aggiunto",
+  "Finish setting up {name}": "Completa la configurazione di {name}"
 }

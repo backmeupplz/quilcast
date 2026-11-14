@@ -691,6 +691,7 @@
   "Start a Space": "เริ่มสเปซ",
   "Start from": "เริ่มจาก",
   "Start over": "เริ่มใหม่",
+  "Start over? This browser forgets this account. If it's registered already, only its recovery phrase signs in to it again.": "เริ่มใหม่ไหม เบราว์เซอร์นี้จะลืมบัญชีนี้ หากบัญชีลงทะเบียนแล้ว จะเข้าสู่ระบบได้อีกครั้งด้วยวลีกู้คืนของบัญชีเท่านั้น",
   "Start over (plain profile)": "เริ่มใหม่ (โปรไฟล์ธรรมดา)",
   "Start time": "เวลาเริ่ม",
   "Started {when}": "เริ่มเมื่อ {when}",
@@ -1312,5 +1313,6 @@
   "Telegram sticker pack link": "ลิงก์แพ็กสติกเกอร์ Telegram",
   "What the pack is called everywhere it shows.": "ชื่อของแพ็กในทุกที่ที่แสดง",
   "by {name}": "โดย {name}",
-  "Added": "เพิ่มแล้ว"
+  "Added": "เพิ่มแล้ว",
+  "Finish setting up {name}": "ตั้งค่า {name} ให้เสร็จ"
 }
