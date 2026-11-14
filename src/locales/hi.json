@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "डायरेक्टरी लोड नहीं हो सकी। थोड़ी देर में फिर से कोशिश करें।",
   "The free translator is busy. Try again in a minute.": "मुफ़्त अनुवादक अभी व्यस्त है। एक मिनट में फिर से कोशिश करें।",
   "The notification key is still being confirmed. Try again in a minute.": "नोटिफ़िकेशन की अभी कन्फ़र्म हो रही है। एक मिनट में फिर से कोशिश करें।",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "सूचना कुंजी जाँचने के लिए Optimism RPC तक नहीं पहुँच सके। सेटिंग्स में RPC जाँचें।",
   "The signing keys couldn't be revoked: {error}": "साइनिंग कीज़ रद्द नहीं हो सकीं: {error}",
   "The song is checked when you save.": "सेव करते समय गाना जाँचा जाता है।",
   "The swap route looks wrong, so Quilcast stopped.": "स्वैप का रूट गलत लग रहा है, इसलिए Quilcast रुक गया।",

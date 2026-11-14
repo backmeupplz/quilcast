@@ -1,6 +1,6 @@
 // Just enough Optimism to register an FID: JSON-RPC, RLP, EIP-1559 signing.
 import { keccak_256 } from '@noble/hashes/sha3.js'
-import { address, concat, ecSign, hex, unhex } from './fc.ts'
+import { address, concat, ecSign, hex, KEY_REGISTRY, unhex } from './fc.ts'
 
 const ID_REGISTRY = '0x00000000fc6c5f01fc30151999387bb99a9f489b'
 
@@ -15,6 +15,23 @@ const arg = (a: string) => a.replace(/^0x/, '').padStart(64, '0')
 
 export const balance = async (url: string, addr: string) => BigInt(await rpc(url, 'eth_getBalance', [addr, 'latest']))
 export const fidOf = async (url: string, addr: string) => Number(await call(url, ID_REGISTRY, '0x' + sel('idOf(address)') + arg(addr)))
+
+/** A key of `fid` in Farcaster's KeyRegistry, what mini app webhooks are checked against: 0 never added, 1 added,
+ *  2 removed. Throws when the RPC can't be asked or answers with something that isn't a KeyData (callers catch it,
+ *  so the message isn't shown). */
+export async function keyState(url: string, fid: number, key: Uint8Array) {
+  // keyDataOf(uint256 fid, bytes key) returns (uint8 state, uint32 keyType)
+  const r: string = await rpc(url, 'eth_call', [{ to: KEY_REGISTRY, data: '0x' + sel('keyDataOf(uint256,bytes)') + arg(fid.toString(16)) + arg('40') + arg(key.length.toString(16)) + hex(key).padEnd(Math.ceil(key.length / 32) * 64, '0') }, 'latest'])
+  const state = /^0x[0-9a-f]{128}$/i.test(r) ? BigInt(r.slice(0, 66)) : -1n
+  if (state < 0n || state > 2n) throw new Error(`unexpected KeyRegistry answer: ${String(r).slice(0, 140)}`)
+  return Number(state) as 0 | 1 | 2
+}
+
+/** Whether transaction `hash` was mined and reverted: true when it failed, false when it went through, undefined while it's pending. */
+export async function reverted(url: string, hash: string) {
+  const r = await rpc(url, 'eth_getTransactionReceipt', [hash])
+  return r ? BigInt(r.status) === 0n : undefined
+}
 
 // RLP: bytes or lists of bytes; integers go in as minimal big-endian bytes
 type R = Uint8Array | R[]

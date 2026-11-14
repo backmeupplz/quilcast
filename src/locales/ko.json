@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "디렉터리를 불러오지 못했어요. 잠시 후 다시 시도하세요.",
   "The free translator is busy. Try again in a minute.": "무료 번역기가 혼잡해요. 1분 후 다시 시도하세요.",
   "The notification key is still being confirmed. Try again in a minute.": "알림 키가 아직 확인되는 중이에요. 1분 후 다시 시도하세요.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "알림 키를 확인하려고 Optimism RPC에 연결하지 못했어요. 설정에서 RPC를 확인하세요.",
   "The signing keys couldn't be revoked: {error}": "서명 키를 취소하지 못했어요: {error}",
   "The song is checked when you save.": "노래는 저장할 때 확인돼요.",
   "The swap route looks wrong, so Quilcast stopped.": "스왑 경로가 이상해서 Quilcast가 중단했어요.",

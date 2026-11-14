@@ -24,8 +24,9 @@ export const saveSettings = () => save('quilcast:settings', settings)
 // `dm` is a farcaster.xyz token that opens the account's direct casts and nothing else
 // `pub` is this browser's signing key and `appPub` the on-chain key mini app webhooks are signed with: their private
 // halves are in the vault (`signer`/`appKey` hold them raw only where the vault couldn't take them); `inbox` is the
-// secret for this browser's mini app notifications on our server, and `notify` lists the app origins that may send them
-export type Account = { phrase: string; custody?: string; wallet?: string; fid?: number; username?: string; display?: string; pub?: string; signer?: string; signerAt?: number; nonce?: number; scopes?: number; done?: boolean; dm?: string; appPub?: string; appKey?: string; inbox?: string; notify?: string[]; fcx?: { secret: string; exp: number } }
+// secret for this browser's mini app notifications on our server, and `notify` lists the app origins that may send them;
+// `appUntil` is the deadline of the KeyGateway add that puts `appPub` on chain
+export type Account = { phrase: string; custody?: string; wallet?: string; fid?: number; username?: string; display?: string; pub?: string; signer?: string; signerAt?: number; nonce?: number; scopes?: number; done?: boolean; dm?: string; appPub?: string; appKey?: string; appUntil?: number; inbox?: string; notify?: string[]; fcx?: { secret: string; exp: number } }
 // every account this browser holds; `account` is the selected one, keyed by its wallet or custody address
 export const idOf = (a: Account) => a.wallet || a.custody || ''
 

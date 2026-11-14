@@ -426,6 +426,7 @@
   "The approval is taking too long.": "承認に時間がかかりすぎています。",
   "The directory couldn't be loaded. Try again in a bit.": "ディレクトリを読み込めませんでした。少し経ってからもう一度お試しください。",
   "The notification key is still being confirmed. Try again in a minute.": "通知キーはまだ承認待ちです。1分ほどしてからもう一度お試しください。",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "通知キーを確認するための Optimism RPC に接続できませんでした。設定で RPC を確認してください。",
   "The signing keys couldn't be revoked: {error}": "署名キーを取り消せませんでした：{error}",
   "The song is checked when you save.": "曲は保存時に確認されます。",
   "The swap route looks wrong, so Quilcast stopped.": "スワップルートがおかしいため、Quilcast は処理を中止しました。",

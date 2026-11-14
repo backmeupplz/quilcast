@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "Không tải được danh mục. Hãy thử lại sau ít phút.",
   "The free translator is busy. Try again in a minute.": "Trình dịch miễn phí đang bận. Hãy thử lại sau một phút.",
   "The notification key is still being confirmed. Try again in a minute.": "Khóa thông báo vẫn đang được xác nhận. Hãy thử lại sau một phút.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "Không thể kết nối Optimism RPC để kiểm tra khóa thông báo. Hãy kiểm tra RPC trong phần cài đặt.",
   "The signing keys couldn't be revoked: {error}": "Không thu hồi được khóa ký: {error}",
   "The song is checked when you save.": "Bài hát sẽ được kiểm tra khi bạn lưu.",
   "The swap route looks wrong, so Quilcast stopped.": "Tuyến hoán đổi có vẻ sai, nên Quilcast đã dừng lại.",

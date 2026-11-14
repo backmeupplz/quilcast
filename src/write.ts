@@ -3,7 +3,7 @@ import { ed25519 } from '@noble/curves/ed25519.js'
 import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting, publishedArticle, setAccount, settings, updateAccount, users, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
-import { balance, sendTx } from './eth.ts'
+import { balance, keyState, reverted, sendTx } from './eth.ts'
 import { castAt, castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { search } from './pow.worker.ts'
@@ -137,55 +137,99 @@ async function custodyTx(a: Account, to: string, data: (c: Custody) => Promise<s
   return sendTx(settings.rpc, key, to, await data(keyCustody(key)))
 }
 
-// whether the node lists `key` among the account's on-chain keys (throws when it can't be asked)
-const onChainNow = async (fid: number, key: Uint8Array) =>
-  ((await get('/v1/onChainSignersByFid', { fid }, true)).events as { signerEventBody?: { key?: string } }[])
-    .some((e) => e.signerEventBody?.key?.toLowerCase() === '0x' + hex(key))
-const onChain = (fid: number, key: Uint8Array) => onChainNow(fid, key).catch(() => false)
+// The app key's state in Farcaster's KeyRegistry on Optimism (0 never added, 1 added, 2 removed), read straight from
+// the chain: Hypersnap stopped indexing new KeyRegistry adds, so its /v1/onChainSignersByFid never lists keys added
+// since. Throws when the RPC can't be asked.
+const appKeyState = (fid: number, key: Uint8Array) => keyState(settings.rpc, fid, key)
 
-/** The key mini app webhook events are signed with. Apps check it against Farcaster's KeyRegistry, which the
- *  Hypersnap signer isn't in, so this one is added on chain (KeyGateway.add from the custody), once per browser. */
-export async function ensureAppKey(onWait?: (what: string) => void) {
-  let a = account!
+// forget an account's app key (and its copy in the vault)
+const dropAppKey = (a: Account, pub: Uint8Array) => {
+  updateAccount({ ...fresh(a), appPub: undefined, appKey: undefined, appUntil: undefined })
+  dropEd(hex(pub)).catch(() => {})
+}
+const now = () => Math.floor(Date.now() / 1000)
+// how long after its add's deadline a key still not on chain is given up on: the chain compares the deadline with its
+// own clock, which this browser's may run behind
+const GRACE = 600
+
+/** The key mini app webhook events are signed with, for account `as` (the selected one). Apps check it against
+ *  Farcaster's KeyRegistry, which the Hypersnap signer isn't in, so this one is added on chain (KeyGateway.add from
+ *  the custody), once per browser. A kept key that can't be on chain any more is replaced with a new one: removed
+ *  since (from another app), or never added and past its add's deadline (the add reverted or was dropped, maybe while
+ *  this page was closed). `pause` is the wait between checks for the key on chain (tests shorten it). */
+export async function ensureAppKey(onWait?: (what: string) => void, pause = 3000, as = account!) {
+  let a = fresh(as)
   let key = a.appPub || a.appKey ? await keyOf(a.appPub, a.appKey).catch(() => undefined) : undefined
+  // an RPC that can't be asked keeps the key: the wait below tries again
+  const state = key && (await appKeyState(a.fid!, key.pub).catch(() => undefined))
+  if (key && (state === 2 || (state === 0 && a.appUntil && now() > a.appUntil + GRACE))) {
+    dropAppKey(a, key.pub)
+    a = fresh(a)
+    key = undefined
+  } else if (key && state === 0 && !a.appUntil) {
+    // kept from before deadlines were: its add went out at the latest now, so its deadline is within the hour
+    updateAccount({ ...fresh(a), appUntil: now() + 3600 })
+    a = fresh(a)
+  }
+  let tx: string | undefined
   if (!key) {
     const [k, raw] = await newKey()
+    // KeyGateway refuses the add after this, so a key still not on chain by then never will be
+    const until = now() + 3600
     onWait?.(a.wallet ? t('Confirm the key in your wallet (Optimism)') : t('Adding a notification key on Optimism…'))
-    await custodyTx(a, KEY_GATEWAY, (c) => keyGatewayAdd(a.fid!, c, k.pub, Math.floor(Date.now() / 1000) + 3600))
+    tx = await custodyTx(a, KEY_GATEWAY, (c) => keyGatewayAdd(a.fid!, c, k.pub, until))
     // kept as soon as the transaction is out, so a reload doesn't add a second key
-    setAccount((a = { ...account!, appPub: hex(k.pub), appKey: raw }))
+    updateAccount({ ...fresh(a), appPub: hex(k.pub), appKey: raw, appUntil: until })
+    a = fresh(a)
     key = k
   }
   onWait?.(t('Waiting for the network to see the key…'))
-  for (let i = 0; !(await onChain(a.fid!, key.pub)); i++) {
-    if (i >= 40) throw new Error('The notification key is still being confirmed. Try again in a minute.')
-    await new Promise((r) => setTimeout(r, 3000))
+  for (let i = 0, answered = false; ; i++) {
+    const s = await appKeyState(a.fid!, key.pub).catch(() => undefined)
+    if (s === 1) return key
+    // removed meanwhile (from another app): a new key is added in its place
+    if (s === 2) {
+      dropAppKey(a, key.pub)
+      return ensureAppKey(onWait, pause, a)
+    }
+    answered ||= s !== undefined
+    // the add reverted: the key will never be on chain, so the next try adds a new one
+    if (tx && (await reverted(settings.rpc, tx).catch(() => undefined))) {
+      dropAppKey(a, key.pub)
+      throw new Error('The transaction failed on chain.')
+    }
+    if (i >= 40)
+      throw answered
+        ? new Error('The notification key is still being confirmed. Try again in a minute.')
+        : new Error("Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.")
+    await new Promise((r) => setTimeout(r, pause))
   }
-  return key
 }
 
 const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 /** A JSON Farcaster Signature over `payload`, signed with the app key: what mini app webhooks receive. */
 export async function signEvent(payload: object, onWait?: (what: string) => void) {
-  const key = await ensureAppKey(onWait)
+  // the account selected now: another one may get selected while the key is being added
+  const a = account!
+  const key = await ensureAppKey(onWait, undefined, a)
   const enc = new TextEncoder()
-  const header = b64url(enc.encode(JSON.stringify({ fid: account!.fid, type: 'app_key', key: '0x' + hex(key.pub) })))
+  const header = b64url(enc.encode(JSON.stringify({ fid: a.fid, type: 'app_key', key: '0x' + hex(key.pub) })))
   const body = b64url(enc.encode(JSON.stringify(payload)))
   return { header, payload: body, signature: b64url(await key.sign(enc.encode(`${header}.${body}`))) }
 }
 
 /** Sign out, step one: the on-chain app key is removed (KeyRegistry.remove from the custody), and the
  *  notification inbox on our server is dropped. Once the key is off chain the account forgets it, so trying again
- *  (the signer's revoke failed after this) doesn't send a remove that can only revert; one the node already doesn't
- *  list is forgotten without a transaction. */
+ *  (the signer's revoke failed after this) doesn't send a remove that can only revert; one the KeyRegistry doesn't
+ *  hold as added (never landed, or removed already) is forgotten without a transaction. */
 export async function removeAppKey(a: Account) {
   a = fresh(a)
   if (a.inbox) await fetch('/api/notify/drop', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ inbox: a.inbox }) }).catch(() => {})
   const pub = a.appPub ? unhex(a.appPub) : a.appKey && ed25519.getPublicKey(unhex(a.appKey))
   if (!pub || !a.fid) return
-  // a node that can't be asked: send the remove, as before
-  if (await onChainNow(a.fid, pub).catch(() => true)) await custodyTx(a, KEY_REGISTRY, async () => keyRegistryRemove(pub))
-  await updateAccount({ ...fresh(a), appPub: undefined, appKey: undefined })
+  // an RPC that can't be asked: send the remove, as before
+  if ((await appKeyState(a.fid, pub).catch(() => 1)) === 1) await custodyTx(a, KEY_REGISTRY, async () => keyRegistryRemove(pub))
+  await updateAccount({ ...fresh(a), appPub: undefined, appKey: undefined, appUntil: undefined })
   dropEd(hex(pub)).catch(() => {})
 }
 

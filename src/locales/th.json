@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "โหลดไดเรกทอรีไม่ได้ ลองอีกครั้งในอีกสักครู่",
   "The free translator is busy. Try again in a minute.": "บริการแปลฟรีไม่ว่างในขณะนี้ ลองอีกครั้งในอีกหนึ่งนาที",
   "The notification key is still being confirmed. Try again in a minute.": "คีย์การแจ้งเตือนยังอยู่ระหว่างการยืนยัน ลองอีกครั้งในอีกหนึ่งนาที",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "เชื่อมต่อ Optimism RPC เพื่อตรวจสอบคีย์การแจ้งเตือนไม่ได้ ตรวจสอบ RPC ในการตั้งค่า",
   "The signing keys couldn't be revoked: {error}": "เพิกถอนคีย์ลงนามไม่ได้: {error}",
   "The song is checked when you save.": "เพลงจะถูกตรวจสอบเมื่อคุณบันทึก",
   "The swap route looks wrong, so Quilcast stopped.": "เส้นทางสวอปดูผิดปกติ Quilcast จึงหยุดไว้",

@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "De lijst kon niet worden geladen. Probeer het zo nog eens.",
   "The free translator is busy. Try again in a minute.": "De gratis vertaler is bezet. Probeer het over een minuut opnieuw.",
   "The notification key is still being confirmed. Try again in a minute.": "De meldingssleutel wordt nog bevestigd. Probeer het over een minuut opnieuw.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "Kon de Optimism-RPC niet bereiken om de meldingssleutel te controleren. Controleer de RPC in de instellingen.",
   "The signing keys couldn't be revoked: {error}": "De ondertekeningssleutels konden niet worden ingetrokken: {error}",
   "The song is checked when you save.": "Het nummer wordt gecontroleerd als je opslaat.",
   "The swap route looks wrong, so Quilcast stopped.": "De swaproute lijkt niet te kloppen, dus Quilcast is gestopt.",

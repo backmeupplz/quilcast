@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "Impossible de charger l’annuaire. Réessayez dans un instant.",
   "The free translator is busy. Try again in a minute.": "Le traducteur gratuit est occupé. Réessayez dans une minute.",
   "The notification key is still being confirmed. Try again in a minute.": "La clé de notifications est encore en cours de confirmation. Réessayez dans une minute.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "Impossible de joindre le RPC Optimism pour vérifier la clé de notification. Vérifie le RPC dans les réglages.",
   "The signing keys couldn't be revoked: {error}": "Impossible de révoquer les clés de signature : {error}",
   "The song is checked when you save.": "La chanson est vérifiée à l’enregistrement.",
   "The swap route looks wrong, so Quilcast stopped.": "La route d’échange semble incorrecte, Quilcast s’est donc arrêté.",

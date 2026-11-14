@@ -426,6 +426,7 @@
   "The approval is taking too long.": "核准花太久時間了。",
   "The directory couldn't be loaded. Try again in a bit.": "無法載入目錄，請稍後再試。",
   "The notification key is still being confirmed. Try again in a minute.": "通知金鑰仍在確認中，請一分鐘後再試。",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "無法連線 Optimism RPC 來檢查通知金鑰。請在設定中檢查 RPC。",
   "The signing keys couldn't be revoked: {error}": "無法撤銷簽署金鑰：{error}",
   "The song is checked when you save.": "歌曲會在儲存時檢查。",
   "The swap route looks wrong, so Quilcast stopped.": "兌換路徑看起來不對，所以 Quilcast 已停止。",

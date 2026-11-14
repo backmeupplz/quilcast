@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "Direktori tidak bisa dimuat. Coba lagi sebentar lagi.",
   "The free translator is busy. Try again in a minute.": "Penerjemah gratis sedang sibuk. Coba lagi sebentar lagi.",
   "The notification key is still being confirmed. Try again in a minute.": "Kunci notifikasi masih dikonfirmasi. Coba lagi sebentar lagi.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "Tidak bisa menghubungi RPC Optimism untuk memeriksa kunci notifikasi. Periksa RPC di pengaturan.",
   "The signing keys couldn't be revoked: {error}": "Kunci tanda tangan tidak bisa dicabut: {error}",
   "The song is checked when you save.": "Lagunya diperiksa saat kamu menyimpan.",
   "The swap route looks wrong, so Quilcast stopped.": "Rute penukaran sepertinya salah, jadi Quilcast berhenti.",

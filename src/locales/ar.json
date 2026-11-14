@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "تعذّر تحميل الدليل. حاول مرة أخرى بعد قليل.",
   "The free translator is busy. Try again in a minute.": "المترجم المجاني مشغول. حاول مرة أخرى بعد دقيقة.",
   "The notification key is still being confirmed. Try again in a minute.": "ما زال مفتاح الإشعارات قيد التأكيد. حاول مرة أخرى بعد دقيقة.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "تعذّر الوصول إلى Optimism RPC للتحقق من مفتاح الإشعارات. تحقّق من RPC في الإعدادات.",
   "The signing keys couldn't be revoked: {error}": "تعذّر إلغاء مفاتيح التوقيع: {error}",
   "The song is checked when you save.": "يتم التحقق من الأغنية عند الحفظ.",
   "The swap route looks wrong, so Quilcast stopped.": "يبدو مسار المبادلة خاطئًا، لذا توقف Quilcast.",

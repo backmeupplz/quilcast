@@ -426,6 +426,7 @@
   "The approval is taking too long.": "Одобрение занимает слишком много времени.",
   "The directory couldn't be loaded. Try again in a bit.": "Не удалось загрузить каталог. Попробуйте чуть позже.",
   "The notification key is still being confirmed. Try again in a minute.": "Ключ уведомлений ещё подтверждается. Попробуйте через минуту.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "Не удалось связаться с Optimism RPC, чтобы проверить ключ уведомлений. Проверьте RPC в настройках.",
   "The signing keys couldn't be revoked: {error}": "Не удалось отозвать ключи подписи: {error}",
   "The song is checked when you save.": "Песня проверяется при сохранении.",
   "The swap route looks wrong, so Quilcast stopped.": "Маршрут обмена выглядит неправильным, поэтому Quilcast остановился.",

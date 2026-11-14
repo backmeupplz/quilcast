@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "Dizin yüklenemedi. Biraz sonra tekrar dene.",
   "The free translator is busy. Try again in a minute.": "Ücretsiz çevirmen şu an meşgul. Bir dakika sonra tekrar dene.",
   "The notification key is still being confirmed. Try again in a minute.": "Bildirim anahtarı hâlâ onaylanıyor. Bir dakika sonra tekrar dene.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "Bildirim anahtarını kontrol etmek için Optimism RPC’ye ulaşılamadı. Ayarlardan RPC’yi kontrol et.",
   "The signing keys couldn't be revoked: {error}": "İmzalama anahtarları iptal edilemedi: {error}",
   "The song is checked when you save.": "Şarkı, kaydettiğinde kontrol edilir.",
   "The swap route looks wrong, so Quilcast stopped.": "Takas rotası yanlış göründüğü için Quilcast durdu.",

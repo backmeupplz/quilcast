@@ -127,7 +127,8 @@ test('a key replaced while the casts go is the one revoked, and a key step that 
       return res(200, {})
     }
     if (u.pathname === '/v1/signer') return res(200, {})
-    if (u.pathname === '/v1/onChainSignersByFid') return res(200, { events: appOnChain ? [{ signerEventBody: { key: '0x' + appPub } }] : [] })
+    // KeyRegistry.keyDataOf(7, appPub) on Optimism: added (1) or removed (2)
+    if (o.body && String(o.body).includes('eth_call') && String(o.body).includes(appPub)) return res(200, { jsonrpc: '2.0', id: 1, result: '0x' + (appOnChain ? 1 : 2).toString(16).padStart(64, '0') + '1'.padStart(64, '0') })
     if (o.body && String(o.body).includes('eth_getBalance')) return res(200, { jsonrpc: '2.0', id: 1, result: '0x0' })
     if (u.pathname === '/v1/castsByFid') return res(200, { messages: removed > 1 ? [] : [cast(1)] })
     if (u.pathname.startsWith('/v1/')) return res(200, { messages: [] })

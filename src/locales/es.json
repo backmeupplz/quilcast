@@ -426,6 +426,7 @@
   "The approval is taking too long.": "La aprobación está tardando demasiado.",
   "The directory couldn't be loaded. Try again in a bit.": "No se pudo cargar el directorio. Inténtalo de nuevo en un rato.",
   "The notification key is still being confirmed. Try again in a minute.": "La clave de notificaciones aún se está confirmando. Inténtalo de nuevo en un minuto.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "No se pudo contactar con el RPC de Optimism para comprobar la clave de notificaciones. Revisa el RPC en los ajustes.",
   "The signing keys couldn't be revoked: {error}": "No se pudieron revocar las claves de firma: {error}",
   "The song is checked when you save.": "La canción se comprueba al guardar.",
   "The swap route looks wrong, so Quilcast stopped.": "La ruta del intercambio parece incorrecta, así que Quilcast se detuvo.",

@@ -744,6 +744,7 @@
   "The directory couldn't be loaded. Try again in a bit.": "Det gick inte att läsa in katalogen. Försök igen om en stund.",
   "The free translator is busy. Try again in a minute.": "Den kostnadsfria översättaren är upptagen. Försök igen om en minut.",
   "The notification key is still being confirmed. Try again in a minute.": "Notisnyckeln håller fortfarande på att bekräftas. Försök igen om en minut.",
+  "Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.": "Kunde inte nå Optimism-RPC:n för att kontrollera aviseringsnyckeln. Kontrollera RPC:n i inställningarna.",
   "The signing keys couldn't be revoked: {error}": "Det gick inte att återkalla signeringsnycklarna: {error}",
   "The song is checked when you save.": "Låten kontrolleras när du sparar.",
   "The swap route looks wrong, so Quilcast stopped.": "Bytesvägen ser fel ut, så Quilcast avbröt.",
