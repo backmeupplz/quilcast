@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, articleNow, articleOf, back, follow, get, go, LINK_RE, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
-import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -695,7 +695,7 @@ export function warm(casts: Cast[], ms = 800) {
       const path = ownPath(safeUrl(u))
       const q = castOf(path)
       if (q) jobs.push(fetchCast(q))
-      else if (!isImg(u) && !isVid(u) && !spaceOf(u) && !/^\/(design|theme)\//.test(path)) jobs.push(unfurl(u))
+      else if (!isImg(u) && !isVid(u) && !spaceOf(u) && !packLink(u) && !/^\/(design|theme)\//.test(path)) jobs.push(unfurl(u))
     }
     for (const e of c.embeds) if (/^(0x)?[0-9a-f]{40}$/i.test(e.cast_id?.hash || '')) jobs.push(fetchCast(e.cast_id!.hash))
   }
@@ -858,7 +858,21 @@ export function ThemeCard({ id, by, big }: { id: string; by?: User; big?: boolea
 
 // Open Graph preview, fetched through our server; a plain domain row until (or unless) it arrives.
 // In a cast (`c`), a mini app's card opens the app.
-export function LinkCard({ u: given, c }: { u: string; c?: Cast }) {
+/** A sticker pack's link: src/stickers.tsx draws it (loaded the first time one shows), with a box of its size till then. */
+let packMod: typeof import('./stickers.tsx') | null = null
+function PackCard({ id }: { id: string }) {
+  const [m, setM] = useState(packMod)
+  useEffect(() => void (!m && import('./stickers.tsx').then((x) => setM((packMod = x)), () => {})), [])
+  return m ? <m.PackEmbed id={id} /> : <div class="stk-embed" aria-busy="true" />
+}
+
+/** A link's card: a sticker pack's own, or the page's preview. */
+export const LinkCard = ({ u, c }: { u: string; c?: Cast }) => {
+  const pack = packLink(u)
+  return pack ? <PackCard key={pack} id={pack} /> : <PageCard key={u} u={u} c={c} />
+}
+
+function PageCard({ u: given, c }: { u: string; c?: Cast }) {
   const u = safeUrl(given)
   const path = ownPath(u)
   const design = /^\/design\//.test(path) ? designId(path) : undefined

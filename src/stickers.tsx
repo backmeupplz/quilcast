@@ -5,7 +5,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { account, getUser, go, type User } from './api.ts'
 import { t, tn } from './i18n.ts'
 import { stickerUrl } from './shared.ts'
-import { handle, Header, Icon, P, shell, toast, userPath } from './ui.tsx'
+import { handle, Header, Icon, P, shell, stop, toast, userPath } from './ui.tsx'
 import { stickerOp } from './write.ts'
 
 type Sticker = { h: string; e: string }
@@ -16,12 +16,14 @@ const src = (p: string, h: string) => `/st/${p}/${h}.webp`
 const shareLink = (id: string) => `https://stickers.quilcast.com/${id}`
 const getJson = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null)
 
-// the account's packs, asked once and kept in step with what's changed here
+// the account's packs, asked once (one request for every embed on a page) and kept in step with what's changed here
 let mine: Pack[] | null = null
-const myPacks = async (fresh = false) => {
-  if (!account?.fid) return []
-  if (!mine || fresh) mine = ((await getJson(`/api/stickers/${account.fid}`)) as Pack[] | null) || mine || []
-  return mine
+let asking: Promise<Pack[]> | null = null
+const myPacks = (fresh = false): Promise<Pack[]> => {
+  if (!account?.fid) return Promise.resolve([])
+  if (mine && !fresh) return Promise.resolve(mine)
+  if (!asking || fresh) asking = getJson(`/api/stickers/${account.fid}`).then((l) => (mine = (l as Pack[] | null) || mine || []))
+  return asking
 }
 const changed = () => myPacks(true).then(() => dispatchEvent(new Event('stickers')))
 function useMine() {
@@ -70,6 +72,44 @@ export function StickerPicker({ pick, close, manage = () => (close(), go('/stick
       {!packs ? <div class="spinner" /> : !p ? <Empty go={manage} /> : (
         <div class="stk-grid">{p.stickers.map((s) => <button aria-label={s.e || t('Sticker')} title={s.e} onClick={() => pick(stickerUrl(p.id, s.h))}><img src={src(p.id, s.h)} alt="" loading="lazy" /></button>)}</div>
       )}
+    </div>
+  )
+}
+
+// packs shown in casts, by id, so a feed asks for each once
+const shown = new Map<string, Promise<Pack | null>>()
+
+/** A sticker pack's link in a cast (ui.tsx LinkCard): its first stickers playing, its name, and Add stickers. */
+export function PackEmbed({ id }: { id: string }) {
+  const [p, setP] = useState<Pack | null | undefined>(undefined)
+  const packs = useMine()
+  useEffect(() => {
+    if (!shown.has(id)) shown.set(id, getJson(`/api/stickers/pack/${id}`))
+    shown.get(id)!.then(setP)
+  }, [id])
+  if (p === undefined) return <div class="stk-embed" aria-busy="true" />
+  if (!p) return null
+  const owner = account?.fid === p.fid
+  const saved = !!packs?.some((x) => x.id === p.id)
+  const add = (e: MouseEvent) => {
+    e.stopPropagation()
+    if (!account?.done) return go(`/stickers/${p.id}`)
+    stickerOp({ op: saved ? 'unsave' : 'save', pack: p.id }).then(changed, (err) => toast(err.message))
+  }
+  return (
+    <div class="stk-embed" onClick={(e) => e.stopPropagation()}>
+      <a class="stk-embed-strip" href={`/stickers/${p.id}`} onClick={stop} aria-label={p.title}>
+        {p.stickers.slice(0, 4).map((s) => <img src={src(p.id, s.h)} alt="" loading="lazy" />)}
+      </a>
+      <div class="stk-embed-foot">
+        <a class="stk-embed-meta" href={`/stickers/${p.id}`} onClick={stop}>
+          <b>{p.title}</b>
+          <small class="muted">{t('Sticker pack')} · {tn(p.stickers.length, '{n} sticker', '{n} stickers')}</small>
+        </a>
+        {owner
+          ? <a class="btn ghost small" href={`/stickers/${p.id}`} onClick={stop}>{t('Open')}</a>
+          : <button class={`btn small${saved ? ' ghost' : ''}`} onClick={add}><Icon d={saved ? P.check : P.plus} size={16} />{saved ? t('Added') : t('Add stickers')}</button>}
+      </div>
     </div>
   )
 }

@@ -5,6 +5,8 @@ export const isImg = (u: string) => /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u)
  *  quilcast.com, as other Farcaster clients show it from there. */
 export const stickerPack = (u: string) => u.match(/^https:\/\/quilcast\.com\/st\/([\w-]{8})\/[0-9a-f]{24}\.webp$/)?.[1] || null
 export const stickerUrl = (pack: string, h: string) => `https://quilcast.com/st/${pack}/${h}.webp`
+/** The pack a sticker pack's link opens (stickers.quilcast.com/<id> or quilcast.com/stickers/<id>), or null. */
+export const packLink = (u: string) => u.match(/^https:\/\/(?:stickers\.quilcast\.com\/|(?:www\.)?quilcast\.com\/stickers\/)([\w-]{8})\/?$/)?.[1] || null
 // Hypersnap V20 (Aug 2026) raised the cap from 2 to 4 for every fid
 export const MAX_EMBEDS = 4
 /** How many more attachments a composer post takes: MAX_EMBEDS less the ones it has and its fixed embeds (the first

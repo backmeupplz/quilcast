@@ -1092,6 +1092,15 @@ small.warn { color: var(--warn); }
 .stk-progress progress::-moz-progress-bar { background: var(--accent); border-radius: 99px; }
 .stk-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 20px; }
 .stk-page > .stk-cards:first-child { margin-top: 0; }
+/* a sticker pack's link in a cast: its first stickers playing on a soft band, then its name and Add stickers */
+.stk-embed { display: grid; min-height: 196px; margin-top: 10px; overflow: hidden; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(16px * var(--rs, 1)); cursor: default; }
+.stk-embed[aria-busy] { background: var(--soft); }
+.stk-embed-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px; background: radial-gradient(120% 140% at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), var(--soft); }
+.stk-embed-strip img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: calc(10px * var(--rs, 1)); }
+.stk-embed-foot { display: flex; align-items: center; gap: 12px; padding: 10px 14px 12px; }
+.stk-embed-meta { flex: 1; min-width: 0; display: grid; color: inherit; text-decoration: none; }
+.stk-embed-meta b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stk-embed-foot .btn { display: inline-flex; align-items: center; gap: 4px; flex: none; }
 /* an odd card out at the end takes the whole row */
 .stk-cards > .stk-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .stk-card { display: grid; align-content: start; gap: 10px; padding: 16px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(16px * var(--rs, 1)); background: var(--bg); }

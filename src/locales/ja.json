@@ -1311,5 +1311,6 @@
   "Sticker pack": "ステッカーパック",
   "Telegram sticker pack link": "Telegramステッカーパックのリンク",
   "What the pack is called everywhere it shows.": "パックが表示されるすべての場所で使われる名前です。",
-  "by {name}": "作成: {name}"
+  "by {name}": "作成: {name}",
+  "Added": "追加済み"
 }
