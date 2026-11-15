@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { test } from 'node:test'
-import { blocked, clientIp, imageInfo, lru, picInfo, safeGet } from './net.mjs'
+import { PassThrough } from 'node:stream'
+import { blocked, clientIp, imageInfo, lru, picInfo, readBody, safeGet, sendOn } from './net.mjs'
 import { scan } from './unfurl.mjs'
 import { looksLike } from './upload.mjs'
 
@@ -107,4 +108,52 @@ test('lru keeps pictures and misses, drops the least used past its size, and loa
   await c.get('e', async () => null)
   assert.equal(c.size, 3, 'count holds too')
   assert.equal(c.has('a'), false)
+})
+
+// #676: a picture over /api/img's 8 MB is checked by its head, then the rest goes on as it comes
+test('readBody cuts a long body off, or with keep hands its rest on paused', async () => {
+  const src = () => {
+    const s = new PassThrough()
+    s.write(Buffer.alloc(6, 1)), s.write(Buffer.alloc(6, 2)), s.end(Buffer.alloc(6, 3))
+    return s
+  }
+  assert.deepEqual(await readBody(src(), 100), { body: Buffer.concat([Buffer.alloc(6, 1), Buffer.alloc(6, 2), Buffer.alloc(6, 3)]), truncated: false })
+  const cut = await readBody(src(), 8)
+  assert.equal(cut.truncated, true)
+  assert.deepEqual(cut.body, Buffer.concat([Buffer.alloc(6, 1), Buffer.alloc(2, 2)]))
+  assert.equal(cut.rest, undefined)
+  const kept = await readBody(src(), 8, true)
+  assert.equal(kept.truncated, true)
+  assert.deepEqual(kept.body, Buffer.concat([Buffer.alloc(6, 1), Buffer.alloc(6, 2)]))
+  assert.equal(kept.rest.isPaused(), true)
+  const out = new PassThrough()
+  const got = []
+  out.on('data', (c) => got.push(c))
+  sendOn(out, kept.body, kept.rest, { max: 100, ms: 5000 })
+  await new Promise((r) => out.on('end', r))
+  assert.deepEqual(Buffer.concat(got), Buffer.concat([Buffer.alloc(6, 1), Buffer.alloc(6, 2), Buffer.alloc(6, 3)]))
+})
+
+test('sendOn cuts off a rest that runs past its cap or its time', async () => {
+  const over = new PassThrough()
+  const out = new PassThrough()
+  out.resume()
+  sendOn(out, Buffer.alloc(8), over, { max: 10, ms: 5000 })
+  over.write(Buffer.alloc(4))
+  await new Promise((r) => out.on('close', r))
+  assert.equal(over.destroyed && out.destroyed, true)
+  const slow = new PassThrough()
+  const out2 = new PassThrough()
+  out2.resume()
+  sendOn(out2, Buffer.alloc(1), slow, { max: 100, ms: 20 })
+  await new Promise((r) => out2.on('close', r))
+  assert.equal(slow.destroyed, true)
+})
+
+test('sendOn lets go of the rest when the reader has already gone', () => {
+  const rest = new PassThrough()
+  const out = new PassThrough()
+  out.destroy()
+  sendOn(out, Buffer.alloc(1), rest, { max: 100, ms: 5000 })
+  assert.equal(rest.destroyed, true)
 })

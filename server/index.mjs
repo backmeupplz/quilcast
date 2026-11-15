@@ -12,7 +12,7 @@ import { brotliCompress, gzip } from 'node:zlib'
 import { castText, imagesIn, queue, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { classify, classifyPart, coverOf, fromV2, headOf, isArticle, maybeArticle, partNow, plainOpening } from '../src/article.ts'
-import { clientIp, fetchJson, gate, imageInfo, keep, lru, parseJson, picInfo, readJson, readText, safeGet } from './net.mjs'
+import { clientIp, fetchJson, gate, imageInfo, keep, lru, parseJson, picInfo, readJson, readText, safeGet, sendOn } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
@@ -156,11 +156,17 @@ const previews = gate(16)
 // through a gate of their own, as a feed of new avatars at once mustn't hold up link previews.
 const pics = lru({ bytes: 64e6, count: 20000, big: 2e6, ttl: 86400e3, miss: 600e3 })
 const picFetches = gate(24, 300)
-const pic = (u) => pics.get(u, async () => {
-  const r = await picFetches(() => safeGet(u, { max: 8e6, timeout: 8000 }))
-  const info = r.status === 200 && !r.truncated && picInfo(r.body)
-  return info && info.w * info.h <= 50e6 ? { type: info.type, body: r.body } : null
-})
+// A picture over 8 MB (a long animated GIF, #676) is checked by its first 8 MB like any other, then the rest goes on to
+// the reader as it comes (/api/img sendOn): never held whole, never kept, at most 64 MB.
+const BIG_PIC = 64e6
+async function fetchPic(u) {
+  const r = await picFetches(() => safeGet(u, { max: 8e6, timeout: 8000, keep: true }))
+  const info = r.status === 200 && !(r.size > BIG_PIC) && picInfo(r.body)
+  if (info && info.w * info.h <= 50e6) return { type: info.type, body: r.body, rest: r.rest, size: r.size }
+  r.rest?.destroy()
+  return null
+}
+const pic = (u) => pics.get(u, () => fetchPic(u))
 const gifCache = new Map()
 
 // --- share cards ---
@@ -1500,17 +1506,26 @@ const server = createServer(async (req, res) => {
     // Another site's picture (shared.ts proxied: avatars, link previews, embeds, mini app icons, Markdown pictures),
     // fetched here so its host never sees who is looking (no tracking pixels) and can't point a reader's browser at
     // their own network: public addresses only (safeGet, also after redirects), a real PNG, JPEG, GIF, WebP, AVIF or
-    // SVG by its bytes, at most 8 MB and 50 megapixels, served inert. Kept a while (pics), so a popular avatar is
-    // fetched once, not once per reader, and only fetches count towards the limit.
+    // SVG by its bytes, at most 50 megapixels and 64 MB (over 8 MB passed on as it comes, not kept), served inert. Kept
+    // a while (pics), so a popular avatar is fetched once, not once per reader, and only fetches count towards the limit.
     // ponytail: served at the size it comes in; resize (avatars are shown at 40 px) if this traffic grows
     if (path === '/api/img') {
       const target = safeUrl(url.searchParams.get('u'))
       if (!target || target.length > 2048) return res.writeHead(400).end()
       if (!pics.has(target) && limited(`img:${ip}`, 600)) return res.writeHead(429).end()
-      const p = await pic(target)
+      let p = await pic(target)
+      // a big one's rest is one reader's: another who asked at the same moment fetches it again, and that counts
+      if (p?.rest && p.taken) {
+        if (limited(`img:${ip}`, 600)) return res.writeHead(429).end()
+        p = await fetchPic(target).catch(() => null)
+      }
       if (!p) return res.writeHead(404).end()
       res.setHeader('content-security-policy', "default-src 'none'; sandbox")
-      return res.writeHead(200, { 'content-type': p.type, 'content-length': p.body.length, 'cache-control': 'public, max-age=86400' }).end(p.body)
+      const head = { 'content-type': p.type, 'cache-control': 'public, max-age=86400' }
+      if (!p.rest) return res.writeHead(200, { ...head, 'content-length': p.body.length }).end(p.body)
+      p.taken = true
+      res.writeHead(200, p.size >= p.body.length ? { ...head, 'content-length': p.size } : head)
+      return sendOn(res, p.body, p.rest, { max: BIG_PIC, ms: 60e3 })
     }
 
     if (path === '/api/poster') {

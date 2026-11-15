@@ -6,6 +6,7 @@ import { lookup } from 'node:dns'
 import http from 'node:http'
 import https from 'node:https'
 import { BlockList, isIP } from 'node:net'
+import { pipeline } from 'node:stream'
 
 // Cloudflare proxies quilcast.com: https://www.cloudflare.com/ips-v4 and ips-v6 (they change rarely)
 const CLOUDFLARE = new BlockList()
@@ -49,8 +50,9 @@ function safeLookup(host, opts, cb) {
 }
 
 /** GET (or, with `method` and `body`, send to) a public URL. Resolves { status, type, body, url, truncated };
- *  rejects on anything not allowed. Only GETs follow redirects. */
-export function safeGet(url, { max = 2e6, timeout = 6000, headers = {}, hops = 4, deadline = Date.now() + timeout, method = 'GET', body } = {}) {
+ *  rejects on anything not allowed. Only GETs follow redirects. With `keep`, a body over `max` comes back as readBody
+ *  leaves it (`rest`, paused, the caller's to pipe on or destroy) along with its declared `size`, if any. */
+export function safeGet(url, { max = 2e6, timeout = 6000, headers = {}, hops = 4, deadline = Date.now() + timeout, method = 'GET', body, keep = false } = {}) {
   return new Promise((resolve, reject) => {
     let u
     try {
@@ -75,28 +77,54 @@ export function safeGet(url, { max = 2e6, timeout = 6000, headers = {}, hops = 4
         } catch {
           return reject(new Error('bad redirect'))
         }
-        return safeGet(next, { max, headers, hops: hops - 1, deadline }).then(resolve, reject)
+        return safeGet(next, { max, headers, hops: hops - 1, deadline, keep }).then(resolve, reject)
       }
-      const chunks = []
-      let n = 0
-      const finish = (truncated) => (clearTimeout(timer), resolve({ status: res.statusCode, type: String(res.headers['content-type'] || ''), body: Buffer.concat(chunks), url: u.href, truncated }))
-      res.on('data', (c) => {
-        if (n + c.length > max) {
-          chunks.push(c.subarray(0, max - n))
-          n = max
-          res.destroy()
-          return finish(true)
-        }
-        n += c.length
-        chunks.push(c)
-      })
-      res.on('end', () => finish(false))
-      res.on('error', (e) => (clearTimeout(timer), reject(e)))
+      readBody(res, max, keep).then(
+        (b) => (clearTimeout(timer), resolve({ status: res.statusCode, type: String(res.headers['content-type'] || ''), url: u.href, size: Number(res.headers['content-length']) || 0, ...b })),
+        (e) => (clearTimeout(timer), reject(e)),
+      )
     })
     const timer = setTimeout(() => req.destroy(new Error('timeout')), left)
     req.on('error', (e) => (clearTimeout(timer), reject(e)))
     req.end(body)
   })
+}
+
+/** A response's body, at most `max` bytes: { body, truncated }. With `keep`, one that runs past `max` isn't cut off: it
+ *  stops there, paused, with what came so far in `body` (a little over `max`) and the response itself as `rest`. */
+export function readBody(res, max, keep = false) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    let n = 0
+    const done = (truncated, rest) => (res.off('data', data), res.off('end', end), resolve({ body: Buffer.concat(chunks), truncated, ...(rest && { rest }) }))
+    const data = (c) => {
+      if (n + c.length <= max) return (n += c.length), chunks.push(c)
+      if (keep) return res.pause(), chunks.push(c), done(true, res)
+      chunks.push(c.subarray(0, max - n))
+      res.destroy()
+      done(true)
+    }
+    const end = () => done(false)
+    res.on('data', data)
+    res.on('end', end)
+    // stays on: an error once `rest` is handed on mustn't go unheard (and so crash the server)
+    res.on('error', reject)
+  })
+}
+
+/** `head`, then the rest of a response readBody kept, into `out` as it comes: at most `max` bytes in all, within `ms`.
+ *  Past either, both are cut off (the reader gets a broken picture, not a hung one). */
+export function sendOn(out, head, rest, { max, ms }) {
+  // a reader who left while the head loaded (pipeline throws on a closed `out`)
+  if (out.destroyed || out.closed) return rest.destroy()
+  let n = head.length
+  // (paused first, so counting doesn't set it flowing before it's piped)
+  rest.pause()
+  const cut = () => (rest.destroy(), out.destroy())
+  const timer = setTimeout(cut, ms)
+  rest.on('data', (c) => (n += c.length) > max && cut())
+  out.write(head)
+  pipeline(rest, out, () => clearTimeout(timer))
 }
 
 /** Type and pixel size of a PNG, GIF, WebP or JPEG from its header, or null when it's none of those. */

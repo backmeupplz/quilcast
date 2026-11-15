@@ -382,27 +382,50 @@ export const Sticker = ({ u }: { u: string }) => (
   <a class="sticker" href={`/stickers/${stickerPack(u)}`} onClick={stop} aria-label={t('Sticker')}><img src={new URL(u).pathname} alt="" /></a>
 )
 
+/** A picture that couldn't be shown, as a link to it: its host and file name. */
+function ImgLink({ u }: { u: string }) {
+  const click = (e: MouseEvent) => {
+    e.stopPropagation()
+    // a look-alike host first shows where it really goes
+    if (lookalike(u) && shell.link(u)) e.preventDefault()
+  }
+  return (
+    <a class="linkcard img-link" href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click}>
+      <span class="lc-text">
+        <span class="lc-site"><Icon d={P.image} size={14} />{new URL(u).hostname.replace(/^www\./, '')}</span>
+        {pathOf(u) && <span class="lc-desc">{pathOf(u)}</span>}
+      </span>
+    </a>
+  )
+}
+
 export function Media({ urls: given, images }: { urls: string[]; images?: boolean }) {
   const all = given.flatMap((u) => safeUrl(u) ?? [])
   const stickers = all.filter(stickerPack)
   const urls = all.filter((u) => !stickerPack(u))
   const imgs = images ? urls : urls.filter(isImg)
-  const shown = imgs.slice(0, 4)
+  // a picture that won't load (gone, or too big for /api/img) becomes a link to it instead of leaving nothing
+  const [bad, setBad] = useState<string[]>([])
+  const first = imgs.slice(0, 4)
+  const shown = first.filter((u) => !bad.includes(u))
+  // the "+N" goes on the last one still shown
+  const last = first.length - 1 - [...first].reverse().findIndex((u) => !bad.includes(u))
   // a lone image keeps its own shape; when warm() learned its size, its box has that shape before it loads
   const box = boxOf(shown.length === 1 ? shapes.get(sized(shown[0], 'w=1200')) : null)
   return (
     <>
       {stickers.map((u) => <Sticker u={u} />)}
-      {imgs.length > 0 && (
+      {shown.length > 0 && (
         <div class={`imgs n${shown.length}`} onClick={stop}>
-          {shown.map((u, i) => (
-            <button class="img" aria-label={t('Open image {n} of {total}', { n: i + 1, total: imgs.length })} onClick={() => shell.view(imgs, i)}>
-              <Img src={our(sized(u, 'w=1200'))} style={box} {...((box || shown.length > 1) && srcsetOf(u) ? { srcset: our(srcsetOf(u)!), sizes: IMG_SIZES } : {})} />
-              {i === 3 && imgs.length > 4 && <span class="more-imgs">+{imgs.length - 4}</span>}
+          {first.map((u, i) => !bad.includes(u) && (
+            <button key={i} class="img" aria-label={t('Open image {n} of {total}', { n: i + 1, total: imgs.length })} onClick={() => shell.view(imgs, i)}>
+              <Img src={our(sized(u, 'w=1200'))} style={box} onError={() => setBad((b) => (b.includes(u) ? b : [...b, u]))} {...((box || shown.length > 1) && srcsetOf(u) ? { srcset: our(srcsetOf(u)!), sizes: IMG_SIZES } : {})} />
+              {i === last && imgs.length > 4 && <span class="more-imgs">+{imgs.length - 4}</span>}
             </button>
           ))}
         </div>
       )}
+      {bad.filter((u) => imgs.includes(u)).map((u) => <ImgLink key={u} u={u} />)}
       {/* keyed: a Media handed another cast's videos (a tapped reply) starts each one fresh, its shape and player too */}
       {urls.filter(isVid).map((u) => <Video key={u} src={u} />)}
     </>
