@@ -588,6 +588,9 @@ export const SENDCLAP = 'https://sendclap.com'
 /** A Sendclap checkout from this account to `fid`: { id, contract, usdc, to, amount (USDC units), period? }. */
 export const sendclapCheckout = (fid: number, what: { type: 'tip'; amount: number } | { type: 'membership'; tier: string }) =>
   keyFetch(`${SENDCLAP}/api/v1/farcaster/${fid}/checkouts`, 'sendclap-checkout', 'POST', JSON.stringify(what), 3, account!, { 'x-fid': String(account!.fid) })
+/** Asks Sendclap to email `email` a link that makes this account's Sendclap page theirs to log in to and edit. */
+export const sendclapClaim = (email: string) =>
+  keyFetch(`${SENDCLAP}/api/v1/farcaster/${account!.fid}/claim`, 'sendclap-claim', 'POST', JSON.stringify({ email }), 3, account!, { 'x-fid': String(account!.fid) })
 
 /** A request to our server signed with the account's Farcaster key. A key ensureSigner just added takes the node a
  *  few seconds to list; one the node doesn't list at all is replaced (`tries` > 1). */

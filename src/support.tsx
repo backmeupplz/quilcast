@@ -9,7 +9,30 @@ import { SENDCLAP } from './write.ts'
 
 type Row = { fid: number; tier: string | null; monthly_cents: number; tips_cents: number; sub_id: number | null; wallet: string | null }
 type Tier = { name: string; description: string; price: number }
-type Info = { page: string | null; contract: `0x${string}`; tiers: Tier[]; supporters: Row[]; supporting: Row[] }
+type Info = { page: string | null; claimed: boolean; contract: `0x${string}`; tiers: Tier[]; supporters: Row[]; supporting: Row[] }
+
+/** Your own Sendclap page: claim it with an email (Sendclap mails a link) to log in there and change the page, tiers and
+ *  payout wallet; once claimed, a way there. */
+function Claim({ claimed }: { claimed: boolean }) {
+  const [email, setEmail] = useState('')
+  const [state, setState] = useState<'' | 'busy' | 'sent'>('')
+  if (claimed) return <p class="sp-claim">{t('Your Sendclap page is yours to edit.')} <a href={`${SENDCLAP}/dashboard`} target="_blank" rel="noopener noreferrer">{t('Open the dashboard')}</a></p>
+  if (state === 'sent') return <p class="sp-claim">{t('Check {email} for a link to claim your Sendclap page.', { email })}</p>
+  const send = (e: Event) => {
+    e.preventDefault()
+    setState('busy')
+    import('./write.ts').then((w) => w.sendclapClaim(email.trim())).then(() => setState('sent'), (err) => (toast(err.message), setState('')))
+  }
+  return (
+    <form class="sp-claim" onSubmit={send}>
+      <p>{t('Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.')}</p>
+      <span class="sp-claim-row">
+        <input type="email" required value={email} placeholder="you@example.com" aria-label={t('Email')} autoComplete="email" onInput={(e) => setEmail(e.currentTarget.value)} />
+        <button type="submit" class="btn ghost small" disabled={state === 'busy'}>{t('Send link')}</button>
+      </span>
+    </form>
+  )
+}
 
 const TIPS = [1, 5, 20]
 const dollars = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -126,10 +149,13 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
           </div>
         )}
         {self ? (
-          <div class="sp-ask">
-            <p>{t('Anyone can join your tiers or tip you here, in USDC on Base.')}</p>
-            <button type="button" class="btn small" onClick={() => shareCast(u, t('You can support me on Quilcast 👏'))}>{t('Ask for support')}</button>
-          </div>
+          <>
+            <div class="sp-ask">
+              <p>{t('Anyone can join your tiers or tip you here, in USDC on Base.')}</p>
+              <button type="button" class="btn small" onClick={() => shareCast(u, t('You can support me on Quilcast 👏'))}>{t('Ask for support')}</button>
+            </div>
+            <Claim claimed={info.claimed} />
+          </>
         ) : (
           <>
             <div class="sp-tiers">

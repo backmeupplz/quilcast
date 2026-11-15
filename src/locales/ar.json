@@ -1356,5 +1356,11 @@
   "{price}/mo": "{price}/شهر",
   "I support @{name} as a {tier} ({price}/mo) 👏": "أدعم @{name} بصفة {tier} ({price}/شهر) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "يمكنك أيضًا دعم أي شخص على Farcaster: افتح ملفه الشخصي على Quilcast واختر الداعمون.",
-  "To support someone, open their profile and pick Supporters.": "لدعم شخص ما، افتح ملفه الشخصي واختر الداعمون."
+  "To support someone, open their profile and pick Supporters.": "لدعم شخص ما، افتح ملفه الشخصي واختر الداعمون.",
+  "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "استلم صفحتك على Sendclap لتسجّل الدخول هناك، وترى كل دفعة، وتغيّر مستوياتك أو المحفظة التي تستلم المدفوعات.",
+  "Email": "البريد الإلكتروني",
+  "Send link": "أرسل الرابط",
+  "Check {email} for a link to claim your Sendclap page.": "تحقق من {email} لتجد رابط استلام صفحتك على Sendclap.",
+  "Your Sendclap page is yours to edit.": "صفحتك على Sendclap أصبحت ملكك لتعدّلها.",
+  "Open the dashboard": "افتح لوحة التحكم"
 }

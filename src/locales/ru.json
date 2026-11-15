@@ -1356,5 +1356,11 @@
   "{price}/mo": "{price}/мес.",
   "I support @{name} as a {tier} ({price}/mo) 👏": "Я поддерживаю @{name} как {tier} ({price}/мес.) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Вы тоже можете поддержать любого человека в Farcaster: откройте его профиль в Quilcast и выберите «Поддерживающие».",
-  "To support someone, open their profile and pick Supporters.": "Чтобы поддержать кого-то, откройте его профиль и выберите «Поддерживающие»."
+  "To support someone, open their profile and pick Supporters.": "Чтобы поддержать кого-то, откройте его профиль и выберите «Поддерживающие».",
+  "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Забери страницу Sendclap, чтобы заходить туда, видеть каждый платёж и менять уровни или кошелёк, на который приходят платежи.",
+  "Email": "Эл. почта",
+  "Send link": "Отправить ссылку",
+  "Check {email} for a link to claim your Sendclap page.": "Проверь {email}: там ссылка, чтобы забрать твою страницу Sendclap.",
+  "Your Sendclap page is yours to edit.": "Твоя страница Sendclap теперь твоя, её можно редактировать.",
+  "Open the dashboard": "Открыть панель"
 }

@@ -1356,5 +1356,11 @@
   "{price}/mo": "{price}/mese",
   "I support @{name} as a {tier} ({price}/mo) 👏": "Sostengo @{name} come {tier} ({price}/mese) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Puoi sostenere chiunque anche su Farcaster: apri il suo profilo su Quilcast e scegli Sostenitori.",
-  "To support someone, open their profile and pick Supporters.": "Per sostenere qualcuno, apri il suo profilo e scegli Sostenitori."
+  "To support someone, open their profile and pick Supporters.": "Per sostenere qualcuno, apri il suo profilo e scegli Sostenitori.",
+  "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Rivendica la tua pagina Sendclap per accedervi, vedere ogni pagamento e modificare i tuoi livelli o il wallet che riceve i pagamenti.",
+  "Email": "Email",
+  "Send link": "Invia link",
+  "Check {email} for a link to claim your Sendclap page.": "Controlla {email}: troverai un link per rivendicare la tua pagina Sendclap.",
+  "Your Sendclap page is yours to edit.": "La tua pagina Sendclap è tua, puoi modificarla.",
+  "Open the dashboard": "Apri la dashboard"
 }

@@ -1356,5 +1356,11 @@
   "{price}/mo": "{price}/월",
   "I support @{name} as a {tier} ({price}/mo) 👏": "@{name}님을 {tier}({price}/월)로 후원해요 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Farcaster의 누구든 후원할 수 있어요. Quilcast에서 프로필을 열고 서포터를 선택해 보세요.",
-  "To support someone, open their profile and pick Supporters.": "누군가를 후원하려면 프로필을 열고 서포터를 선택하세요."
+  "To support someone, open their profile and pick Supporters.": "누군가를 후원하려면 프로필을 열고 서포터를 선택하세요.",
+  "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Sendclap 페이지를 받아 가면 그곳에 로그인해서 모든 결제를 확인하고 티어나 대금을 받는 지갑을 바꿀 수 있어요.",
+  "Email": "이메일",
+  "Send link": "링크 보내기",
+  "Check {email} for a link to claim your Sendclap page.": "{email}에서 Sendclap 페이지를 받아 갈 수 있는 링크를 확인해 주세요.",
+  "Your Sendclap page is yours to edit.": "이제 Sendclap 페이지를 직접 편집할 수 있어요.",
+  "Open the dashboard": "대시보드 열기"
 }

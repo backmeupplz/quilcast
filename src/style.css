@@ -1179,6 +1179,10 @@ small.warn { color: var(--warn); }
 .sp-ask { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
 .sp-ask p { margin: 0; color: var(--muted); font-size: 14px; }
 .sp-ask .btn { flex: none; }
+.sp-claim { margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+.sp-claim p { margin: 0 0 10px; }
+.sp-claim-row { display: flex; gap: 8px; }
+.sp .sp-claim-row input { flex: 1; min-width: 0; width: auto; padding: 7px 12px; border-radius: calc(99px * var(--rs, 1)); border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 14px; }
 .sp-tiers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
 .sp-tier { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: calc(14px * var(--rs, 1)); border: 1px solid var(--line); background: color-mix(in srgb, var(--ink) 3%, transparent); }
 .sp-tier.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
