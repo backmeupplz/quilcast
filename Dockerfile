@@ -20,7 +20,8 @@ RUN rustup target add wasm32-unknown-unknown
 COPY wasm/Cargo.toml wasm/Cargo.lock wasm/build.sh wasm/
 COPY wasm/src wasm/src
 COPY wasm/web wasm/web
-COPY public/favicon.svg public/
+# the files outside wasm/ that build.sh copies into wasm/dist; server/image.test.mjs checks that each one is copied here
+COPY public/favicon.svg public/icon.png public/apple-touch-icon.png public/sw.js public/
 # the casts and accounts taken down for everyone, which the module builds in (wasm/src/mutes.rs)
 COPY src/removed.json src/
 RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/w/wasm/target sh wasm/build.sh

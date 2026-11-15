@@ -373,6 +373,10 @@ pub struct App {
     pub pins: HashMap<u64, Load<Option<String>>>,
     pub search_text: String,
     pub node_text: String,
+    /// what the browser can do for push notifications (src/alerts.rs), as the shell last said
+    pub push: crate::alerts::Push,
+    /// bumped by each spam setting change, so only the last one tells the server
+    pub(crate) alerts_gen: u32,
     pub toast: Option<String>,
     toast_gen: u32,
     pub wants: RefCell<Vec<Want>>,
@@ -399,7 +403,16 @@ impl App {
                 None => accounts.push(a.clone()),
             }
         }
-        let path = host::here();
+        let mut path = host::here();
+        let mut account = account;
+        // a window a tapped push notification opened starts as the account it was for, when it's signed in here
+        if let Some((p, fid)) = crate::alerts::notified_as(&path) {
+            path = p;
+            host::go(&path, true);
+            if let Some(a) = fid.and_then(|f| accounts.iter().find(|a| a.fid == f)) {
+                account = Some(a.clone());
+            }
+        }
         let local = read_local();
         let recents = host::get(RECENTS_KEY).and_then(|s| serde_json::from_str::<Vec<Recent>>(&s).ok()).unwrap_or_default().into_iter().filter(|r| r.fid > 0).take(RECENTS).collect();
         App {
@@ -459,6 +472,8 @@ impl App {
             spam: Default::default(),
             pins: HashMap::new(),
             search_text: String::new(),
+            push: Default::default(),
+            alerts_gen: 0,
             toast: None,
             toast_gen: 0,
             wants: RefCell::new(Vec::new()),
@@ -488,6 +503,46 @@ impl App {
             self.search_text = q.clone();
         }
         self.load_route();
+        self.refresh_alerts();
+        self.take_scheduled();
+    }
+
+    /// A failed scheduled cast's push (server/scheduled.mjs) opens `/?scheduled`: the composer with its Scheduled list.
+    fn take_scheduled(&mut self) {
+        let Some((path, q)) = self.path.split_once('?') else { return };
+        if text::param(q, "scheduled").is_none() {
+            return;
+        }
+        let rest: Vec<&str> = q.split('&').filter(|kv| !kv.is_empty() && text::decode(kv.split('=').next().unwrap_or("")) != "scheduled").collect();
+        let clean = if rest.is_empty() { path.to_string() } else { format!("{path}?{}", rest.join("&")) };
+        host::go(&clean, true);
+        self.path = clean;
+        if self.account.is_some() && self.compose.is_none() {
+            self.open_compose(None, None);
+            self.open_scheduled();
+        }
+    }
+
+    /// A tapped push notification (public/sw.js) opens its page in this window, as the account it was for when
+    /// that one is signed in here.
+    pub fn open_notified(&mut self, path: &str, fid: u64) {
+        if !path.starts_with('/') || path.starts_with("//") {
+            return;
+        }
+        if fid > 0 && self.me() != Some(fid) {
+            if let Some(a) = self.accounts.iter().find(|a| a.fid == fid).cloned() {
+                // a cast or a profile still going out stays with its account, and the page waits too, so it isn't
+                // opened as the wrong one (account_busy says why)
+                if self.account_busy() {
+                    return;
+                }
+                let name = a.username.clone().map_or_else(|| format!("!{}", a.fid), |u| format!("@{u}"));
+                self.use_account(a);
+                self.say(format!("Using {name}"));
+            }
+        }
+        self.navigate(path, false);
+        self.take_scheduled();
     }
 
     pub fn me(&self) -> Option<u64> {
@@ -702,7 +757,10 @@ impl App {
                 return;
             }
             Route::Search(q, Tab::People) if !q.trim().is_empty() => return self.load_people(q.trim().to_string()),
-            Route::Settings => return self.load_edit(),
+            Route::Settings => {
+                self.push_check(|_| {});
+                return self.load_edit();
+            }
             Route::Search(q, Tab::Channels) if !q.trim().is_empty() => return self.load_channels(q.trim().to_string()),
             _ => {}
         }
@@ -1516,11 +1574,36 @@ impl App {
     /// It answers SIGN_FAILED when this browser has no working key. A 403 (the node hasn't listed a key added a
     /// moment ago) is tried twice more, 3 s apart, as quilcast.com does for scheduled casts and uploads.
     pub fn key_fetch(&mut self, method: &str, url: String, what: &str, body: String, extra: &str, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) {
-        self.key_fetch_try(method.to_string(), url, what.to_string(), body, extra.to_string(), 2, f)
+        let Some(a) = self.account.clone() else { return f(self, SIGN_FAILED, br#"{"error":"Sign in first."}"#.to_vec()) };
+        self.key_fetch_try(a, method.to_string(), url, what.to_string(), body, extra.to_string(), 2, f)
+    }
+    /// The same, signed as `a`, which needn't be the account in use (push notifications for each account here).
+    #[allow(clippy::too_many_arguments)]
+    pub fn key_fetch_as(&mut self, a: Account, method: &str, url: String, what: &str, body: String, extra: &str, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) {
+        let (method, what, extra) = (method.to_string(), what.to_string(), extra.to_string());
+        self.load_key(&a.clone(), move |app| app.key_fetch_try(a, method, url, what, body, extra, 2, f))
+    }
+    /// `a`'s raw key out of the vault first when it isn't yet (only the account in use has it from the start),
+    /// then `f`; a WebCrypto key needs nothing.
+    pub(crate) fn load_key(&mut self, a: &Account, f: impl FnOnce(&mut App) + 'static) {
+        if !a.raw || self.has_seed(&a.key) {
+            return f(self);
+        }
+        let id = self.wait(move |app, code, bytes| {
+            if let (1, Ok(s)) = (code, <[u8; 32]>::try_from(bytes.as_slice())) {
+                app.keep_seed(s);
+            }
+            f(app)
+        });
+        host::vget(id, &format!("raw:{}", a.key));
+    }
+    /// Whether this browser can sign as `a` (its key is here and works), without sending anything.
+    pub(crate) fn can_sign(&mut self, a: &Account, f: impl FnOnce(&mut App, bool) + 'static) {
+        let key = fc::unhex(&a.key);
+        self.load_key(a, move |app| app.sign(&key, b"quilcast-wasm: key check", move |app, r| f(app, r.is_ok())))
     }
     #[allow(clippy::too_many_arguments)]
-    fn key_fetch_try(&mut self, method: String, url: String, what: String, body: String, extra: String, tries: u32, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) {
-        let Some(a) = self.account.clone() else { return f(self, SIGN_FAILED, br#"{"error":"Sign in first."}"#.to_vec()) };
+    fn key_fetch_try(&mut self, a: Account, method: String, url: String, what: String, body: String, extra: String, tries: u32, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) {
         let ts = host::ms() as u64;
         let msg = format!("{what}:{}:{ts}:{body}", a.fid);
         let key = fc::unhex(&a.key);
@@ -1530,7 +1613,7 @@ impl App {
                 let sent = body.clone();
                 app.http(&method.clone(), &url.clone(), sent.as_bytes(), &headers, move |app, status, answer| {
                     if status == 403 && tries > 0 && app.me() == Some(a.fid) {
-                        app.later(3000.0, move |app| app.key_fetch_try(method, url, what, body, extra, tries - 1, f));
+                        app.later(3000.0, move |app| app.key_fetch_try(a, method, url, what, body, extra, tries - 1, f));
                     } else {
                         f(app, status, answer)
                     }
@@ -2086,6 +2169,8 @@ impl App {
             let pubk = k2.clone();
             app.raw_seeds.retain(|s| ed25519_dalek::SigningKey::from_bytes(s).verifying_key().as_bytes()[..] != pubk[..]);
             host::adrop(&App::drafts_name(a.fid));
+            // its push notifications stop reaching this browser
+            app.forget_alerts(a.fid);
             app.accounts.retain(|x| x.fid != a.fid);
             app.save_accounts();
             // the next account signed in here takes over, if there is one

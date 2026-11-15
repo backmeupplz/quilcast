@@ -808,7 +808,7 @@ fn settings(app: &App) -> V {
     };
     let mut s = el("section").kid(header("Settings", false));
     if app.account.is_some() {
-        s = s.kid(accounts_pane(app)).kid(profile_pane(app));
+        s = s.kid(accounts_pane(app)).kid(profile_pane(app)).kid(alerts_pane(app));
     }
     s = s.kid(el("div").class("pane").kid(el("h2").txt("Appearance")).kid(el("div").class("choices").attr("role", "radiogroup").attr("aria-label", "Theme").kid(theme("Match the system", "system")).kid(theme("Light", "light")).kid(theme("Dark", "dark"))));
     s = s.kid(el("form").class("pane").on(Ev::Submit, |a, _| a.set_node())
@@ -913,6 +913,47 @@ fn profile_pane(app: &App) -> V {
     p.into()
 }
 
+/// Settings → Notifications (src/app.tsx AlertSettings): push notifications for each account's activity on this
+/// device, and the kinds each one gets (src/alerts.rs).
+fn alerts_pane(app: &App) -> V {
+    let p = el("div").class("pane alerts").kid(el("h2").txt("Notifications"));
+    let p = match app.push.can {
+        None => return p.kid(spinner()).into(),
+        Some(false) => return p.kid(el("p").class("muted small").txt("This browser can't show notifications. On iPhone and iPad, add this site to your Home Screen (Share, then Add to Home Screen) and open it from there to get them.")).into(),
+        Some(true) => p,
+    };
+    let on = app.alerts_on();
+    let mut p = p;
+    for a in &app.accounts {
+        let fid = a.fid;
+        let kinds = on.get(&fid);
+        let busy = app.alerts_busy(fid);
+        let handle = account_user(a).handle();
+        let mut row = el("div").class("alert-acct").key(fid.to_string())
+            .kid(el("div").class("setting")
+                .kid(el("span").txt(format!("Push notifications for @{handle}")))
+                .kid(button(if busy { "Working…" } else if kinds.is_some() { "Turn off" } else { "Turn on" }).class("btn small").attr("aria-label", format!("{} push notifications for @{handle}", if kinds.is_some() { "Turn off" } else { "Turn on" })).attr_if(busy, "disabled", "").click(move |a| a.toggle_alerts(fid))));
+        if let Some(kinds) = kinds {
+            let mut g = el("div").class("alert-kinds").attr("role", "group").attr("aria-label", format!("Kinds for @{handle}"));
+            for (k, label) in crate::alerts::KINDS {
+                let has = kinds.iter().any(|x| x == k);
+                // at least one kind stays on: turning the account off is the button above
+                let last = has && kinds.len() == 1;
+                // keyed by its state too, so a change the server refused is drawn back as it was
+                g = g.kid(el("label").class("check").key(format!("{k}:{has}:{busy}"))
+                    .kid(el("input").attr("type", "checkbox").attr("checked", if has { "true" } else { "" }).attr_if(busy || last, "disabled", "").on(Ev::Change, move |a, _| a.toggle_alert_kind(fid, k)))
+                    .kid(el("span").txt(label)));
+            }
+            row = row.kid(g);
+        }
+        p = p.kid(row);
+    }
+    if app.push.perm == "denied" {
+        p = p.kid(el("p").class("muted small").attr("role", "alert").txt(crate::alerts::BLOCKED));
+    }
+    p.kid(el("p").class("muted small").txt("Replies, mentions, quotes, likes, recasts and follows reach this device even with Quilcast closed. Quilcast's server looks for them once a minute. It keeps your Farcaster ID with this browser's push subscription and these settings, and for a few minutes which notifications it already sent; signing out removes them. People you mute or block, muted words and spam you hide stay out.")).into()
+}
+
 /// Settings → Spam (src/app.tsx): show spam with its label or hide it, for casts and for spam accounts' casts, and
 /// the score from which they count.
 fn spam_pane(app: &App) -> V {
@@ -927,6 +968,7 @@ fn spam_pane(app: &App) -> V {
                     a.settings.spam = v.into();
                 }
                 a.save_settings();
+                a.spam_changed();
             }));
         }
         el("div").class("setting").kid(el("span").txt(label)).kid(g)
@@ -940,6 +982,7 @@ fn spam_pane(app: &App) -> V {
             if let Ok(n) = v.parse::<u32>() {
                 a.settings.spam_at = n.clamp(50, 99);
                 a.save_settings();
+                a.spam_changed();
             }
         })).kid(el("output").txt(format!("{at}%")))))
         .kid(el("p").class("muted small").txt("Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast. Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere."))

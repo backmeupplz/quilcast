@@ -564,3 +564,112 @@ test('channels, who liked and quoted, followers, Browse as, following on this de
   assert.deepEqual(errors, [])
   await page.close()
 })
+
+test('push notifications: Settings signs each account up with its own key, and a tapped one opens as its account', async () => {
+  // Chromium has push and WebCrypto's Ed25519 everywhere; the push service and the permission prompt are stood in for
+  const b = await chromium.launch()
+  try {
+    const page = await b.newPage()
+    const errors = []
+    page.on('pageerror', (e) => errors.push(e.message))
+    await page.addInitScript(() => {
+      const granted = () => localStorage.getItem('e2e:perm') === 'granted'
+      Object.defineProperty(Notification, 'permission', { get: () => (granted() ? 'granted' : 'default') })
+      Notification.requestPermission = async () => (localStorage.setItem('e2e:perm', 'granted'), 'granted')
+      const fake = { endpoint: 'https://push.test/sub1', toJSON: () => ({ endpoint: 'https://push.test/sub1', expirationTime: null, keys: { p256dh: 'BPk', auth: 'au' } }) }
+      PushManager.prototype.getSubscription = async () => (localStorage.getItem('e2e:sub') ? fake : null)
+      PushManager.prototype.subscribe = async function (o) {
+        if (!(o.applicationServerKey instanceof Uint8Array) || !o.applicationServerKey.length) throw new Error('no VAPID key')
+        localStorage.setItem('e2e:sub', '1')
+        return fake
+      }
+    })
+    const alerts = []
+    await page.route('**/api/notify/vapid', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ key: 'BAECAwQ' }) }))
+    await page.route('**/api/alerts/**', (r) => {
+      const q = r.request()
+      alerts.push({ method: q.method(), path: new URL(q.url()).pathname, headers: q.headers(), body: q.postData() || '' })
+      r.fulfill({ contentType: 'application/json', body: q.url().endsWith('/state') ? 'null' : '{}' })
+    })
+    // two accounts signed in here, each with a non-extractable key in the vault as the app keeps them
+    await page.goto(base + '/manifest.webmanifest')
+    const keys = await page.evaluate(async () => {
+      const db = await new Promise((ok, no) => {
+        const r = indexedDB.open('quilcast-wasm', 1)
+        r.onupgradeneeded = () => r.result.createObjectStore('v')
+        r.onsuccess = () => ok(r.result)
+        r.onerror = () => no(r.error)
+      })
+      const hex = (b) => Array.from(new Uint8Array(b), (x) => x.toString(16).padStart(2, '0')).join('')
+      const out = []
+      for (let i = 0; i < 2; i++) {
+        const k = await crypto.subtle.generateKey({ name: 'Ed25519' }, false, ['sign', 'verify'])
+        const pub = hex(await crypto.subtle.exportKey('raw', k.publicKey))
+        await new Promise((ok, no) => {
+          const t = db.transaction('v', 'readwrite')
+          t.objectStore('v').put(k, 'ed:' + pub)
+          t.oncomplete = ok
+          t.onerror = () => no(t.error)
+        })
+        out.push(pub)
+      }
+      return out
+    })
+    const accts = [{ fid: 12345, username: 'tester', pub: keys[0] }, { fid: 777, username: 'second', pub: keys[1] }]
+    await page.evaluate(([n, a]) => {
+      localStorage.setItem('quilcast-wasm:settings', JSON.stringify({ node: n, theme: 'system' }))
+      localStorage.setItem('quilcast-wasm:accounts', JSON.stringify(a))
+      localStorage.setItem('quilcast-wasm:account', JSON.stringify(a[0]))
+    }, [nodeUrl, accts])
+
+    await page.goto(base + '/settings')
+    const on = page.getByRole('button', { name: 'Turn on push notifications for @second' })
+    await on.click()
+    await page.waitForSelector('text=Notifications on')
+    // @second's sign-up, signed by @second's key over quilcast-alerts:<fid>:<ts>:<body>, while @tester stays in use
+    const up = alerts.find((a) => a.method === 'PUT')
+    assert.equal(up.path, '/api/alerts/777')
+    assert.equal(up.headers['x-key'], '0x' + keys[1])
+    const sig = Uint8Array.from(Buffer.from(up.headers['x-sig'], 'hex'))
+    assert.ok(ed25519.verify(sig, new TextEncoder().encode(`quilcast-alerts:777:${up.headers['x-ts']}:${up.body}`), Uint8Array.from(Buffer.from(keys[1], 'hex'))))
+    const body = JSON.parse(up.body)
+    assert.equal(body.subscription.endpoint, 'https://push.test/sub1')
+    assert.deepEqual(body.kinds, ['replies', 'mentions', 'quotes', 'likes', 'recasts', 'follows'])
+    // the service worker that shows them is quilcast.com's, served here too
+    assert.equal(await page.evaluate(() => navigator.serviceWorker.getRegistration('/sw.js').then((r) => r?.active?.scriptURL || r?.installing?.scriptURL || r?.waiting?.scriptURL)), base + '/sw.js')
+    // a kind unticked is sent again with the rest
+    await page.getByRole('group', { name: 'Kinds for @second' }).getByLabel('Likes').uncheck()
+    await page.waitForFunction(() => document.querySelectorAll('[aria-label="Kinds for @second"] input:checked').length === 5)
+    assert.deepEqual(JSON.parse(alerts.filter((a) => a.method === 'PUT').at(-1).body).kinds, ['replies', 'mentions', 'quotes', 'recasts', 'follows'])
+
+    // a tapped notification: the worker asks whether the app is here, then has it open the page as its account
+    const answered = await page.evaluate(() => new Promise((ok) => {
+      const ch = new MessageChannel()
+      ch.port1.onmessage = () => ok(true)
+      navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { probe: true, until: Date.now() + 400 }, ports: [ch.port2] }))
+      setTimeout(() => ok(false), 1000)
+    }))
+    assert.ok(answered)
+    await page.evaluate(() => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { open: '/u/user1', fid: 777 } })))
+    await page.waitForSelector('text=Using @second')
+    assert.equal(new URL(page.url()).pathname, '/u/user1')
+    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('quilcast-wasm:account'))).fid, 777)
+    // a new window it opened starts as the account in ?as-fid=, which leaves the address
+    await page.goto(base + '/u/user1?as-fid=12345')
+    await page.waitForSelector('.profile h2')
+    assert.equal(new URL(page.url()).search, '')
+    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('quilcast-wasm:account'))).fid, 12345)
+
+    // turning off tells the server, unsigned: the endpoint is this browser's secret
+    await page.goto(base + '/settings')
+    await page.getByRole('button', { name: 'Turn off push notifications for @second' }).click()
+    await page.waitForSelector('text=Notifications off')
+    await page.waitForFunction(() => !JSON.parse(localStorage.getItem('quilcast-wasm:alerts')).off.length)
+    const off = alerts.find((a) => a.path === '/api/alerts/777/off')
+    assert.deepEqual(JSON.parse(off.body), { endpoint: 'https://push.test/sub1' })
+    assert.equal(off.headers['x-sig'], undefined)
+    assert.deepEqual(errors, [])
+  } finally {
+    await b.close()
+  }
+})

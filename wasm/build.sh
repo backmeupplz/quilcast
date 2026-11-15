@@ -12,6 +12,8 @@ rm -rf dist
 mkdir -p "dist/assets/$build"
 cp "$wasm" "dist/assets/$build/app.wasm"
 cp web/shell.js web/app.css "dist/assets/$build/"
-cp ../public/favicon.svg dist/
+cp ../public/favicon.svg ../public/icon.png ../public/apple-touch-icon.png web/manifest.webmanifest dist/
+# the service worker that shows push notifications and opens the page a tap points to: quilcast.com's own
+cp ../public/sw.js dist/
 sed "s/__BUILD__/$build/g" web/index.html > dist/index.html
 echo "wasm/dist: build $build, $(wc -c < "dist/assets/$build/app.wasm" | tr -d ' ') bytes of wasm"

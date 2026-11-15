@@ -352,6 +352,27 @@ const q = {
       .then((b) => done(id, 1, new Uint8Array(b)), () => done(id, 0))
   },
   aes_drop: (kp, kl) => void idbDel('aes:' + str(kp, kl)).catch(() => {}),
+  // push notifications (src/alerts.rs): what the browser has, the permission prompt (straight from a click, which
+  // Firefox requires) and the subscription, made through the service worker (sw.js, the same as quilcast.com's)
+  push_get(id) {
+    if (!('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window)) return void done(id, 0)
+    navigator.serviceWorker.getRegistration('/sw.js')
+      .then((r) => r?.pushManager.getSubscription())
+      .catch(() => null)
+      .then((sub) => done(id, 1, enc.encode(JSON.stringify({ perm: Notification.permission, sub: sub ? sub.toJSON() : null }))))
+  },
+  push_ask(id) {
+    if (!('Notification' in window)) return void done(id, 0)
+    Notification.requestPermission().then((p) => done(id, p === 'granted' ? 1 : 0), () => done(id, 0))
+  },
+  push_sub(id, kp, kl) {
+    const key = bytes(kp, kl)
+    // a browser without a reachable push service never answers, so this gives up instead of spinning forever
+    const timeout = new Promise((_, no) => setTimeout(() => no(new Error("This browser's push service didn't answer. Try again in a minute.")), 20000))
+    const sub = navigator.serviceWorker.register('/sw.js')
+      .then((reg) => navigator.serviceWorker.ready.then(() => reg.pushManager.getSubscription().then((had) => had || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }))))
+    Promise.race([sub, timeout]).then((s) => done(id, 1, enc.encode(JSON.stringify(s.toJSON()))), (e) => done(id, 0, enc.encode(String(e?.message || ''))))
+  },
 }
 
 // same-origin links move inside the app instead of loading the page again
@@ -360,6 +381,15 @@ document.addEventListener('click', (e) => {
   if (!a || a.target || a.origin !== location.origin || a.pathname.startsWith('/api/') || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button || e.defaultPrevented) return
   e.preventDefault()
   call(() => send((p, l) => ex.q_nav(p, l, 0), a.pathname + a.search))
+})
+// a tapped push notification (sw.js) asks whether the app is here (yes, while the worker still waits), then opens
+// its page in this window as the account it was for
+navigator.serviceWorker?.addEventListener('message', (e) => {
+  if (e.data?.probe) return void (ex && Date.now() <= e.data.until && e.ports[0]?.postMessage(1))
+  const path = e.data?.open
+  if (!ex || typeof path !== 'string' || !/^\/(?!\/)/.test(path)) return
+  const fid = Number.isSafeInteger(e.data.fid) ? e.data.fid : 0
+  call(() => send((p, l) => ex.q_open(p, l, fid), path))
 })
 addEventListener('popstate', () => call(() => send((p, l) => ex.q_nav(p, l, 1), location.pathname + location.search)))
 history.scrollRestoration = 'manual'

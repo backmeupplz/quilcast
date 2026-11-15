@@ -40,6 +40,9 @@ extern "C" {
     fn aes_seal(id: u32, k: *const u8, kl: usize, d: *const u8, dl: usize);
     fn aes_open(id: u32, k: *const u8, kl: usize, d: *const u8, dl: usize);
     fn aes_drop(k: *const u8, kl: usize);
+    fn push_get(id: u32);
+    fn push_ask(id: u32);
+    fn push_sub(id: u32, key: *const u8, kl: usize);
 }
 
 /// A string or bytes the shell wrote into memory it allocated with `q_alloc` (lib.rs), as `ptr << 32 | len`;
@@ -99,6 +102,13 @@ mod imp {
     pub fn aseal(id: u32, k: &str, d: &[u8]) { unsafe { aes_seal(id, k.as_ptr(), k.len(), d.as_ptr(), d.len()) } }
     pub fn aopen(id: u32, k: &str, d: &[u8]) { unsafe { aes_open(id, k.as_ptr(), k.len(), d.as_ptr(), d.len()) } }
     pub fn adrop(k: &str) { unsafe { aes_drop(k.as_ptr(), k.len()) } }
+    /// whether the browser has push (1) and, as JSON, its permission and subscription: `{"perm","sub"}`
+    pub fn push_state(id: u32) { unsafe { push_get(id) } }
+    /// the permission prompt; only from a click. 1 when granted
+    pub fn push_prompt(id: u32) { unsafe { push_ask(id) } }
+    /// the service worker registered and this browser's subscription (made with VAPID key `key` when there's none),
+    /// as `PushSubscription.toJSON()`; 0 with the error's text when it can't
+    pub fn push_subscribe(id: u32, key: &[u8]) { unsafe { push_sub(id, key.as_ptr(), key.len()) } }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -112,6 +122,8 @@ mod imp {
         /// the picked files let go
         pub static DROPPED: RefCell<Vec<u32>> = RefCell::new(Vec::new());
         static SEED: RefCell<u64> = RefCell::new(0x2545_f491_4f6c_dd1d);
+        /// what the tests can look at: the push calls made, as "get <id>", "ask <id>" and "sub <id>"
+        pub static PUSHED: RefCell<Vec<String>> = RefCell::new(Vec::new());
     }
     pub fn apply(_: &[u8]) {}
     /// recorded as "METHOD url", then the header lines when there are any
@@ -165,6 +177,9 @@ mod imp {
     pub fn aseal(_: u32, _: &str, _: &[u8]) {}
     pub fn aopen(_: u32, _: &str, _: &[u8]) {}
     pub fn adrop(_: &str) {}
+    pub fn push_state(id: u32) { PUSHED.with(|p| p.borrow_mut().push(format!("get {id}"))) }
+    pub fn push_prompt(id: u32) { PUSHED.with(|p| p.borrow_mut().push(format!("ask {id}"))) }
+    pub fn push_subscribe(id: u32, _: &[u8]) { PUSHED.with(|p| p.borrow_mut().push(format!("sub {id}"))) }
 }
 
 pub use imp::*;
