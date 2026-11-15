@@ -24,6 +24,7 @@ import { keepCampaign } from './campaign.ts'
 import { addLocal, answered, exportLocal, IMPORT_MAX, localFollows, localSources, merger, ofAccount, parseImport, pool, removeLocal, room, setLocal, stillFollowed, toOffer, within, type Local } from './local.ts'
 import { asOf, browsePath, recentsOf, remember, repliesFit } from './browse.ts'
 import { useHost } from './host.ts'
+import { SupportTab } from './support.tsx'
 import { allSpots, entry, holding, keepSpot, keepState, navigated, placeKept, showing, spotOf, start, stateOf, takeList } from './restore.ts'
 
 // views most visits never open load when first needed
@@ -1083,7 +1084,7 @@ function Profile({ id }: { id: string }) {
   const [err, setErr] = useState<(Error & { status?: number }) | null>(null)
   const [tries, setTries] = useState(0)
   // Back comes back to the tab it was on (restore.ts)
-  const [tab, setTab] = useState<'casts' | 'replies'>(() => stateOf(`profile:${id}`) || 'casts')
+  const [tab, setTab] = useState<'casts' | 'replies' | 'supporters'>(() => stateOf(`profile:${id}`) || 'casts')
   const tabNow = useRef(tab)
   tabNow.current = tab
   useEffect(() => holding(`profile:${id}`, () => tabNow.current), [id])
@@ -1297,7 +1298,7 @@ function Profile({ id }: { id: string }) {
                     placeholder={t('Search @{name}\'s casts', { name: handle(u) })} aria-label={t('Search @{name}\'s casts', { name: handle(u) })} />
                 </div>
               )}
-              {!term && <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')]]} value={tab} set={(t) => ((tabNow.current = t), setTab(t))} />}
+              {!term && <Tabs tabs={[['casts', t('Casts')], ['replies', t('Replies')], ['supporters', t('Supporters')]]} value={tab} set={(t) => ((tabNow.current = t), setTab(t))} />}
               {!self && blockOf(u.fid) ? (
                 <div class="note">{t('You blocked @{name}, so their casts are hidden.', { name: handle(u) })} <button class="link-btn" onClick={() => setMute('blocks', u.fid, false).catch((e) => toast(e.message))}>{t('Unblock')}</button></div>
               ) : term ? (
@@ -1309,6 +1310,8 @@ function Profile({ id }: { id: string }) {
                     const s = current.current
                     return searchCasts(get, u.fid, term, cursor, () => current.current === s).then((r) => (!cursor && current.current === s && setCapped(r.capped ? s.key : ''), r))
                   }} />
+              ) : tab === 'supporters' ? (
+                <SupportTab u={u} self={self} />
               ) : (
                 <>
                   {tab === 'casts' && pin && <PinnedCast key={pin} hash={pin} owner={u.fid} settle={setSettled} />}

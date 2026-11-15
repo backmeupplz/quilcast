@@ -2,12 +2,12 @@
 // aggregators and bridges (Uniswap, KyberSwap, 1inch, Across, Stargate, Relay…) and returns one transaction to its own
 // contract, which tokens.ts checks before anything is signed. Keys are decrypted from src/vault.ts only to sign.
 import { useEffect, useState } from 'preact/hooks'
-import { createPublicClient, createWalletClient, erc20Abi, formatUnits, http, parseUnits, type Chain } from 'viem'
+import { createPublicClient, createWalletClient, encodeFunctionData, erc20Abi, formatUnits, http, parseAbi, parseUnits, type Chain } from 'viem'
 import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains'
 import { account, askUser, getUser, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { Icon, P, toast } from './ui.tsx'
-import { allowance, approveTx, quote, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
+import { allowance, approveTx, quote, tokensOn, tipAddress, transferStatus, transferTx, type ListedToken, type Quote } from './tokens.ts'
 import { activeWallet, signerOf, type WalletEntry } from './vault.ts'
 import { CHAINS, Coin, type Holding } from './walletui.tsx'
 
@@ -102,21 +102,53 @@ function track(d: Done & { from: string; label: string }): Pending {
   return p
 }
 
-/** A long-pressed like (ui.tsx CastCard): $1 of USDC on Base to `u`, from the active Quilcast wallet, or else from
- *  the wallet the account signed in with (MetaMask, Rabby, WalletConnect…), which asks to confirm it. */
+/** A long-pressed like (ui.tsx CastCard): a $1 tip through Sendclap (see support). */
 export async function tip(u: User) {
-  const to = tipAddress(u)
-  if (!to) throw new Error(t('@{name} has no address to tip.', { name: u.username || u.fid }))
+  if (!tipAddress(u)) throw new Error(t('@{name} has no address to tip.', { name: u.username || u.fid }))
+  return support(u, { type: 'tip', amount: 1 }, t('Tip @{name} $1', { name: u.username || u.fid }))
+}
+
+const SENDCLAP_ABI = parseAbi(['function pay(address creator, uint256 amount, bytes32 ref)', 'function subscribe(address creator, uint96 amount, uint40 period, bytes32 ref)', 'function cancel(uint256 id)'])
+
+/** Base transactions from the active Quilcast wallet, or else from the wallet the account signed in with (MetaMask,
+ *  Rabby, WalletConnect…), which asks to confirm each. */
+async function payer() {
   const w = activeWallet(), from = (w?.address || account?.wallet) as `0x${string}` | undefined
   if (!from) throw new Error(t('Add a wallet in Settings → Wallets to tip.'))
-  const usdc = { chain: 8453, address: USDC[8453] }, amount = 10n ** 6n
-  const has = await pub(8453).readContract({ address: usdc.address, abi: erc20Abi, functionName: 'balanceOf', args: [from] })
-  if (has < amount) throw new Error(t('A tip needs $1 of USDC on Base in {name}.', { name: w?.name || short(from) }))
-  const tx = transferTx(usdc, to, amount)
   // the import on its own line: a failed send inside import(…).then() would count as a chunk that didn't load (ui.tsx wm)
   const connected = w ? undefined : await import('./wallet.ts')
-  const hash = connected ? await connected.sendTx(from, tx.to, tx.data, 0n, 8453, () => askUser.pair(from)) : await send(w!, 8453, tx)
-  return track({ chain: 8453, hash, from, label: t('Tip @{name} $1', { name: u.username || u.fid }) })
+  const go = async (to: string, data: string) => (connected ? connected.sendTx(from, to, data, 0n, 8453, () => askUser.pair(from)) : send(w!, 8453, { to, data })) as Promise<`0x${string}`>
+  return { from, name: w?.name || short(from), go }
+}
+
+/** Tips or joins `u` through Sendclap: its contract moves USDC on Base straight to their wallet (1% to Sendclap) and
+ *  Sendclap records who supports whom, shown on both profiles' Supporters tab (support.tsx). A payment that needs a
+ *  bigger allowance first approves Sendclap for twelve more of it, so a membership renews for a year. */
+export async function support(u: User, what: { type: 'tip'; amount: number } | { type: 'membership'; tier: string }, label: string) {
+  const { from, name, go } = await payer()
+  const { sendclapCheckout, SENDCLAP } = await import('./write.ts')
+  const o = await sendclapCheckout(u.fid, what)
+  const amount = BigInt(o.amount), c = pub(8453)
+  if ((await c.readContract({ address: o.usdc, abi: erc20Abi, functionName: 'balanceOf', args: [from] })) < amount)
+    throw new Error(t('This needs {amount} of USDC on Base in {name}.', { amount: usd(Number(amount) / 1e6), name }))
+  const allowed = await c.readContract({ address: o.usdc, abi: erc20Abi, functionName: 'allowance', args: [from, o.contract] })
+  if (allowed < amount) await mined(8453, await go(o.usdc, encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [o.contract, allowed + amount * 12n] })))
+  const hash = await go(o.contract, o.period
+    ? encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'subscribe', args: [o.to, amount, o.period, o.id] })
+    : encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'pay', args: [o.to, amount, o.id] }))
+  const p = track({ chain: 8453, hash, from, label })
+  // Sendclap would find it within a minute; telling it now makes it show on the profiles at once
+  await mined(8453, hash)
+  await fetch(`${SENDCLAP}/api/v1/orders/${o.id}/confirm`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hash }) }).catch(() => {})
+  return p
+}
+
+/** Ends a Sendclap membership on chain; only the wallet that pays it can. */
+export async function cancelSupport(contract: `0x${string}`, id: number, wallet: string | null) {
+  const { from, go } = await payer()
+  if (wallet && wallet.toLowerCase() !== from.toLowerCase()) throw new Error(t('Switch to the wallet that pays it ({address}) to cancel.', { address: short(wallet) }))
+  const hash = await go(contract, encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'cancel', args: [BigInt(id)] }))
+  if ((await mined(8453, hash)).status !== 'success') throw new Error(t('The transaction failed on chain.'))
 }
 
 function Sent({ d, close }: { d: Pending; close: () => void }) {

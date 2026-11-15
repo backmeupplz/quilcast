@@ -1170,6 +1170,13 @@ small.warn { color: var(--warn); }
 .pick:hover { background-color: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
 .pick option { background: var(--card); color: var(--ink); }
 
+/* a profile's Supporters tab (support.tsx) */
+.support-offer { padding: 4px 0 12px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+.support-btns { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px; margin-top: 8px; }
+.support-btns .btn.armed { box-shadow: 0 0 0 2px var(--accent); }
+.support-h { margin: 18px 16px 6px; font-size: 15px; }
+.support-what { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; max-width: 45%; color: var(--muted); font-size: 13px; text-align: right; }
+
 /* ---------- Japanese mode (Settings): how Japanese websites look. CSS only, under :root[data-jp]: a white, dense
    page on a striped background, small Meiryo/Hiragino type, red-edged title bars, glossy orange buttons, folder
    tabs, square framed avatars, ▶ bullets, dotted rules, yellow marker under names, a news ticker, "NEW!" on the

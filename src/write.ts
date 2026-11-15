@@ -583,6 +583,12 @@ export const follow = (fid: number, on: boolean) => send(on ? MT.LINK_ADD : MT.L
 export const setUserData = (type: number, value: string, as = account!) => send(MT.USER_DATA_ADD, userDataBody(type, value), as)
 
 
+/** Sendclap (sendclap.com) takes tips and memberships for anyone on Farcaster; its farcaster.ts checks this account's key. */
+export const SENDCLAP = 'https://sendclap.com'
+/** A Sendclap checkout from this account to `fid`: { id, contract, usdc, to, amount (USDC units), period? }. */
+export const sendclapCheckout = (fid: number, what: { type: 'tip'; amount: number } | { type: 'membership'; tier: string }) =>
+  keyFetch(`${SENDCLAP}/api/v1/farcaster/${fid}/checkouts`, 'sendclap-checkout', 'POST', JSON.stringify(what), 3, account!, { 'x-fid': String(account!.fid) })
+
 /** A request to our server signed with the account's Farcaster key. A key ensureSigner just added takes the node a
  *  few seconds to list; one the node doesn't list at all is replaced (`tries` > 1). */
 async function keyFetch(url: string, what: string, method: string, body = '', tries = 3, as = account!, extra: Record<string, string> = {}, add = true): Promise<any> {
