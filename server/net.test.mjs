@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { test } from 'node:test'
 import { PassThrough } from 'node:stream'
-import { blocked, clientIp, imageInfo, lru, picInfo, readBody, safeGet, sendOn } from './net.mjs'
+import { blocked, clientIp, imageInfo, lru, picInfo, proxiedPic, readBody, safeGet, sendOn } from './net.mjs'
 import { scan } from './unfurl.mjs'
 import { looksLike } from './upload.mjs'
 
@@ -156,4 +156,72 @@ test('sendOn lets go of the rest when the reader has already gone', () => {
   out.destroy()
   sendOn(out, Buffer.alloc(1), rest, { max: 100, ms: 5000 })
   assert.equal(rest.destroyed, true)
+})
+
+// #677: a slow or cold upstream (here, scaled down: a 9 MB GIF over ~0.9 s with a 0.3 s deadline, as 16 MB over 16 s
+// against /api/img's 8 s) isn't failed: what came by the deadline is checked, then the rest still streams through
+test('readBody with keep hands on a slow body at its deadline, and the rest streams through', async () => {
+  const gif = Buffer.alloc(9e6, 7)
+  Buffer.from('474946383961400030000000', 'hex').copy(gif)
+  const src = new PassThrough()
+  let at = 0
+  const drip = setInterval(() => {
+    src.write(gif.subarray(at, (at += 1e5)))
+    if (at >= gif.length) clearInterval(drip), src.end()
+  }, 10)
+  const t = Date.now()
+  const r = await readBody(src, 8e6, true, Date.now() + 300)
+  assert.ok(Date.now() - t < 600, 'resolves at the deadline, not when the body ends')
+  assert.equal(r.truncated, true)
+  assert.equal(r.late, true)
+  assert.ok(r.body.length > 0 && r.body.length < 8e6, `${r.body.length} bytes by the deadline`)
+  assert.deepEqual(picInfo(r.body), { type: 'image/gif', w: 64, h: 48 })
+  assert.equal(r.rest.isPaused(), true)
+  const out = new PassThrough()
+  const got = []
+  out.on('data', (c) => got.push(c))
+  sendOn(out, r.body, r.rest, { max: 64e6, ms: 60e3 })
+  await new Promise((done) => out.on('end', done))
+  assert.equal(Buffer.compare(Buffer.concat(got), gif), 0)
+})
+
+test('readBody without keep ignores a deadline, and a body done in time has no rest', async () => {
+  const quick = new PassThrough()
+  quick.end(Buffer.alloc(10, 1))
+  assert.deepEqual(await readBody(quick, 100, true, Date.now() + 1000), { body: Buffer.alloc(10, 1), truncated: false })
+  const plain = new PassThrough()
+  const p = readBody(plain, 100, false, Date.now() + 20)
+  setTimeout(() => plain.end(Buffer.alloc(3)), 60)
+  assert.deepEqual(await p, { body: Buffer.alloc(3), truncated: false })
+})
+
+test('lru never keeps a value with a rest still to come', async () => {
+  const c = lru({ bytes: 100, count: 10, big: 50, ttl: 1e6, miss: 1e6 })
+  await c.get('streamed', async () => ({ body: Buffer.alloc(4), rest: new PassThrough() }))
+  assert.equal(c.has('streamed'), false)
+  await c.get('whole', async () => ({ body: Buffer.alloc(4) }))
+  assert.equal(c.has('whole'), true)
+})
+
+test('proxiedPic: a picture by its head, nothing for what is not one, a throw (not a kept miss) for a head cut short', async () => {
+  const opts = { big: 64e6, pixels: 50e6 }
+  const gif = Buffer.from('474946383961400030000000', 'hex')
+  assert.deepEqual(proxiedPic({ status: 200, body: gif, size: 12 }, opts), { type: 'image/gif', body: gif, rest: undefined, size: 12 })
+  assert.equal(proxiedPic({ status: 200, body: Buffer.from('<html>'), size: 6 }, opts), null)
+  assert.equal(proxiedPic({ status: 404, body: gif, size: 12 }, opts), null)
+  const huge = Buffer.from('474946383961ffffffff0000', 'hex') // 65535 x 65535
+  assert.equal(proxiedPic({ status: 200, body: huge, size: 12 }, opts), null)
+  const over = new PassThrough()
+  assert.equal(proxiedPic({ status: 200, body: gif, size: 65e6, rest: over }, opts), null)
+  assert.equal(over.destroyed, true)
+  // the deadline came before a header could be read (nothing, part of one, a JPEG's long EXIF): not a verdict, so not
+  // kept ten minutes as a miss (a slow page that's no picture isn't either; the per-IP limit still counts its fetches)
+  for (const body of [Buffer.alloc(0), gif.subarray(0, 4), Buffer.from('ffd8ffe1', 'hex')]) {
+    const rest = new PassThrough()
+    assert.throws(() => proxiedPic({ status: 200, body, rest, late: true, size: 16e6 }, opts), /timeout/)
+    assert.equal(rest.destroyed, true)
+  }
+  const c = lru({ bytes: 100, count: 10, big: 50, ttl: 1e6, miss: 1e6 })
+  await c.get('cold', async () => proxiedPic({ status: 200, body: Buffer.alloc(0), rest: new PassThrough(), late: true }, opts))
+  assert.equal(c.has('cold'), false)
 })

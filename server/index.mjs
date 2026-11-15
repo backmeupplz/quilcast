@@ -12,7 +12,7 @@ import { brotliCompress, gzip } from 'node:zlib'
 import { castText, imagesIn, queue, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { classify, classifyPart, coverOf, fromV2, headOf, isArticle, maybeArticle, partNow, plainOpening } from '../src/article.ts'
-import { clientIp, fetchJson, gate, imageInfo, keep, lru, parseJson, picInfo, readJson, readText, safeGet, sendOn } from './net.mjs'
+import { clientIp, fetchJson, gate, imageInfo, keep, lru, parseJson, proxiedPic, readJson, readText, safeGet, sendOn } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
@@ -156,15 +156,12 @@ const previews = gate(16)
 // through a gate of their own, as a feed of new avatars at once mustn't hold up link previews.
 const pics = lru({ bytes: 64e6, count: 20000, big: 2e6, ttl: 86400e3, miss: 600e3 })
 const picFetches = gate(24, 300)
-// A picture over 8 MB (a long animated GIF, #676) is checked by its first 8 MB like any other, then the rest goes on to
-// the reader as it comes (/api/img sendOn): never held whole, never kept, at most 64 MB.
+// A picture over 8 MB (a long animated GIF, #676), or one still coming after 8 s (a slow or cold upstream, #677), is
+// checked by what came so far like any other, then the rest goes on to the reader as it comes (/api/img sendOn): never
+// held whole, never kept, at most 64 MB within 60 s. The 8 s still holds for the headers and the picture's own header.
 const BIG_PIC = 64e6
 async function fetchPic(u) {
-  const r = await picFetches(() => safeGet(u, { max: 8e6, timeout: 8000, keep: true }))
-  const info = r.status === 200 && !(r.size > BIG_PIC) && picInfo(r.body)
-  if (info && info.w * info.h <= 50e6) return { type: info.type, body: r.body, rest: r.rest, size: r.size }
-  r.rest?.destroy()
-  return null
+  return proxiedPic(await picFetches(() => safeGet(u, { max: 8e6, timeout: 8000, keep: true })), { big: BIG_PIC, pixels: 50e6 })
 }
 const pic = (u) => pics.get(u, () => fetchPic(u))
 const gifCache = new Map()

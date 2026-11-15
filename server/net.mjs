@@ -79,7 +79,9 @@ export function safeGet(url, { max = 2e6, timeout = 6000, headers = {}, hops = 4
         }
         return safeGet(next, { max, headers, hops: hops - 1, deadline, keep }).then(resolve, reject)
       }
-      readBody(res, max, keep).then(
+      // a kept one's deadline is readBody's once it has started: it stops there and hands on what came (#677)
+      if (keep) clearTimeout(timer)
+      readBody(res, max, keep, keep ? deadline : 0).then(
         (b) => (clearTimeout(timer), resolve({ status: res.statusCode, type: String(res.headers['content-type'] || ''), url: u.href, size: Number(res.headers['content-length']) || 0, ...b })),
         (e) => (clearTimeout(timer), reject(e)),
       )
@@ -91,12 +93,14 @@ export function safeGet(url, { max = 2e6, timeout = 6000, headers = {}, hops = 4
 }
 
 /** A response's body, at most `max` bytes: { body, truncated }. With `keep`, one that runs past `max` isn't cut off: it
- *  stops there, paused, with what came so far in `body` (a little over `max`) and the response itself as `rest`. */
-export function readBody(res, max, keep = false) {
+ *  stops there, paused, with what came so far in `body` (a little over `max`) and the response itself as `rest`; so does
+ *  one still coming at `until` (a slow upstream, #677), however little of it came, marked `late`. */
+export function readBody(res, max, keep = false, until = 0) {
   return new Promise((resolve, reject) => {
     const chunks = []
     let n = 0
-    const done = (truncated, rest) => (res.off('data', data), res.off('end', end), resolve({ body: Buffer.concat(chunks), truncated, ...(rest && { rest }) }))
+    const done = (truncated, rest, late) => (clearTimeout(timer), res.off('data', data), res.off('end', end), resolve({ body: Buffer.concat(chunks), truncated, ...(rest && { rest }), ...(late && { late }) }))
+    const timer = keep && until ? setTimeout(() => (res.pause(), done(true, res, true)), Math.max(0, until - Date.now())) : undefined
     const data = (c) => {
       if (n + c.length <= max) return (n += c.length), chunks.push(c)
       if (keep) return res.pause(), chunks.push(c), done(true, res)
@@ -108,7 +112,7 @@ export function readBody(res, max, keep = false) {
     res.on('data', data)
     res.on('end', end)
     // stays on: an error once `rest` is handed on mustn't go unheard (and so crash the server)
-    res.on('error', reject)
+    res.on('error', (e) => (clearTimeout(timer), reject(e)))
   })
 }
 
@@ -125,6 +129,18 @@ export function sendOn(out, head, rest, { max, ms }) {
   rest.on('data', (c) => (n += c.length) > max && cut())
   out.write(head)
   pipeline(rest, out, () => clearTimeout(timer))
+}
+
+/** /api/img's picture (server/index.mjs fetchPic) from a kept safeGet: { type, body, rest, size } when it's a 200 and
+ *  picInfo's, at most `pixels` and not declared over `big`; null when it isn't. One cut short by its deadline before its
+ *  header could be read (what came may be any of them, or not) throws instead, so it isn't kept as a miss: a cold
+ *  upstream is likely quicker on a retry. */
+export function proxiedPic(r, { big, pixels }) {
+  const info = r.status === 200 && !(r.size > big) && picInfo(r.body)
+  if (info && info.w * info.h <= pixels) return { type: info.type, body: r.body, rest: r.rest, size: r.size }
+  r.rest?.destroy()
+  if (!info && r.late && r.status === 200 && !(r.size > big)) throw new Error('timeout')
+  return null
 }
 
 /** Type and pixel size of a PNG, GIF, WebP or JPEG from its header, or null when it's none of those. */
@@ -195,7 +211,8 @@ export function gate(n, wait = 30) {
 export const keep = (map, max, k, v) => (map.size >= max && map.delete(map.keys().next().value), map.set(k, v), Promise.resolve(v).catch(() => map.delete(k)), v)
 
 /** A cache of loads by key, least recently used out first once its values' `body`s pass `bytes` or it holds `count`:
- *  a value is kept `ttl` ms, a null (nothing there) `miss` ms, and one with a body over `big` not at all. A load that
+ *  a value is kept `ttl` ms, a null (nothing there) `miss` ms, and one with a body over `big` or a `rest` still to
+ *  come (a stream only one reader can have) not at all. A load that
  *  throws (a timeout, a full gate) isn't kept, and a key has one load at a time. */
 export function lru({ bytes, count, big, ttl, miss }) {
   const kept = new Map()
@@ -216,7 +233,7 @@ export function lru({ bytes, count, big, ttl, miss }) {
     const p = load().then((v) => {
       drop(k)
       const size = v?.body?.length || 0
-      if (size <= big) kept.set(k, { v, size, until: Date.now() + (v ? ttl : miss) }), (total += size)
+      if (size <= big && !v?.rest) kept.set(k, { v, size, until: Date.now() + (v ? ttl : miss) }), (total += size)
       for (const old of kept.keys()) {
         if (total <= bytes && kept.size <= count) break
         drop(old)
