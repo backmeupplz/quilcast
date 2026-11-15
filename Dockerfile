@@ -21,6 +21,8 @@ COPY wasm/Cargo.toml wasm/Cargo.lock wasm/build.sh wasm/
 COPY wasm/src wasm/src
 COPY wasm/web wasm/web
 COPY public/favicon.svg public/
+# the casts and accounts taken down for everyone, which the module builds in (wasm/src/mutes.rs)
+COPY src/removed.json src/
 RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/w/wasm/target sh wasm/build.sh
 
 FROM media AS build

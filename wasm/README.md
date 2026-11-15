@@ -6,7 +6,7 @@ Quilcast written in Rust and compiled to WebAssembly, served at [wasm.quilcast.c
 
 - **The module decides everything.** App state, routing, every request, protobuf encoding, signing and every page are Rust (`src/`). There is no JS UI framework and no wasm-bindgen: the module is a plain `wasm32-unknown-unknown` build.
 - **It draws the page as elements, not pixels.** Views build a tree of nodes (`src/view.rs`), and `src/dom.rs` compares it with the one on the page and writes the difference as a short list of operations. Drawing with the DOM rather than a canvas keeps what the browser does for free: text selection, find in page, the screen reader, the keyboard, autofill, and typing with an IME (composition, the caret and spellcheck happen in real `<textarea>`s the module never interrupts).
-- **The shell is small and fixed.** `web/shell.js` (about 270 lines) applies those operations, forwards events and reaches the browser APIs wasm can't call by itself: `fetch`, `localStorage`, IndexedDB, WebCrypto, history and timers. It never parses markup (no `innerHTML`): elements, attributes and text are set one by one, so nothing a cast says can become HTML or script.
+- **The shell is small and fixed.** `web/shell.js` (about 270 lines) applies those operations, forwards events and reaches the browser APIs wasm can't call by itself: `fetch` (with the headers the module names, such as the signature on requests to Quilcast's server), `localStorage`, IndexedDB, WebCrypto, history and timers. It never parses markup (no `innerHTML`): elements, attributes and text are set one by one, so nothing a cast says can become HTML or script.
 - **Keys stay in the browser.** The recovery phrase signs one KEY_ADD (Hypersnap's gasless signers, no transaction) and is then forgotten: it is never stored. The key it adds is a non-extractable WebCrypto Ed25519 key kept in IndexedDB, so the page can sign with it but nothing can read it out; in browsers without Ed25519 in WebCrypto, a raw key sealed with AES-GCM under a non-extractable key instead. Signing out revokes the key with a KEY_REMOVE it signs itself.
 - **The same bytes as quilcast.com.** `src/fc.rs` is a port of `src/fc.ts`; its tests check casts, reactions, follows, KEY_ADD (with its EIP-712 signatures) and KEY_REMOVE byte for byte against vectors the TypeScript encoders produce (`vectors.mjs`), and the phrase derives the same custody address.
 - **Served by the same server.** `server/index.mjs` serves `wasm/dist` for the host `wasm.quilcast.com` (`WASM_HOST`), with its own CSP: `script-src 'self' 'wasm-unsafe-eval'` (to compile the module) and no inline scripts or styles, and nothing may frame it.
@@ -25,22 +25,25 @@ The Dockerfile builds it in a stage of its own (`rust:1.99-slim`), and CI runs t
 
 ## What it does so far
 
-This is the first stage. The ticket's goal is everything quilcast.com does; the list below follows the README's "What it does" and says where each part stands.
+The ticket's goal is everything quilcast.com does, shipped in stages. The list below follows the README's "What it does" and says where each part stands. Stage 1 brought reading, signing in and the basic writes; stage 2 adds channels, the lists of people, Browse as, anonymous mode, mutes, blocks and reports.
 
 | quilcast.com feature | WASM |
 | --- | --- |
 | Following and Trending feeds, threads, profiles with casts and replies tabs | ✅ (feeds load more as you scroll; a reply links to the cast it answers rather than drawing its parents above it) |
 | Cast, reply, quote, like, recast, follow, delete your own casts | ✅ (mentions resolved to FIDs; links in the text become embeds) |
+| Post into a channel, channel pages, the Channels directory (and Search's Channels tab) | ✅ (casts go under each channel's real parent URL, old-style ones included; the composer warns before casting into a members-only channel you're not in) |
+| Who liked, recast or quoted a cast; followers and following lists | ✅ |
+| Browse as someone else, with the last five offered again | ✅ (read-only, from public data; your own mutes and blocks still apply) |
+| Anonymous mode: follow people on this device, a merged Following feed, export, import, and following them once signed in | ✅ (the merged feed has their casts but not yet their recasts) |
+| Mute or block people for a day, a week, a month or for good; mute words; report a cast or a person | ✅ (the same list as quilcast.com, kept on Quilcast's server signed with this browser's key, or in this browser when signed out; casts in `src/removed.json` stay hidden) |
 | Sign in with an existing recovery phrase | ✅ |
-| Notifications | ✅ list of likes, recasts, follows, replies, mentions and quotes (not grouped, no unread dot) |
-| Search for people and casts | ✅ |
+| Notifications | ✅ list of likes, recasts, follows, replies, mentions and quotes, without muted or blocked people (not grouped, no unread dot) |
+| Search for people and casts | ✅ (not yet a profile's own search button) |
 | Rich link previews (`/api/unfurl`) and pictures through `/api/img` | ✅ (no X post cards or mini app launch cards yet) |
 | Quoted casts, pictures, video | ✅ (HLS plays only where the browser plays it natively) |
 | Light and dark, node URL, sign out (Settings) | ✅ |
-| Post into a channel, channel pages, the Channels directory | ⏳ (channel links open on quilcast.com) |
+| The spam filter (spam.quilcast.com labels) | ⏳ |
 | Attach photos, videos and GIFs; @mention autocomplete | ⏳ |
-| Who liked, recast or quoted a cast | ⏳ |
-| Browse as someone else, anonymous mode | ⏳ |
 | Several accounts per browser | ⏳ |
 | Push notifications | ⏳ |
 | Create a new account, sign in with an external wallet | ⏳ |
@@ -51,7 +54,6 @@ This is the first stage. The ticket's goal is everything quilcast.com does; the 
 | Profile looks and the Winamp | ⏳ |
 | App themes (with Quorum import and export), Quorum mode | ⏳ |
 | 22 languages, translations | ⏳ (English only) |
-| Mutes, blocks and reports | ⏳ |
 | Drafts, scheduled casts, Articles, pinned casts | ⏳ |
 | Profile editing, key export and the rest of Settings | ⏳ |
 | Quilcast as a mini app, share cards and meta tags per page, RSS | ⏳ (every page has the same meta tags; RSS stays on quilcast.com) |

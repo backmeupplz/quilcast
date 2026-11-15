@@ -176,9 +176,15 @@ const q = {
   fetch(id, mp, ml, up, ul, bp, bl, cp, cl) {
     const method = str(mp, ml)
     const url = str(up, ul)
-    const ct = str(cp, cl)
+    // headers come as lines of "name: value"; a line that is only a value is the content type
+    const headers = {}
+    for (const line of str(cp, cl).split('\n')) {
+      const i = line.indexOf(': ')
+      if (i > 0) headers[line.slice(0, i)] = line.slice(i + 2)
+      else if (line) headers['content-type'] = line
+    }
     const body = bl ? bytes(bp, bl) : undefined
-    fetch(url, { method, body, headers: ct ? { 'content-type': ct } : undefined, referrerPolicy: 'no-referrer' })
+    fetch(url, { method, body, headers, referrerPolicy: 'no-referrer' })
       .then(async (r) => [r.status, new Uint8Array(await r.arrayBuffer())])
       .catch(() => [0, new Uint8Array()])
       .then(([status, b]) => done(id, status, b))

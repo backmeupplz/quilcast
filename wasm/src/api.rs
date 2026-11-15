@@ -217,6 +217,33 @@ pub struct NotePage {
     pub next: Next,
 }
 
+/// A channel from farcaster.xyz's directory, as Quilcast's server keeps it (server/channels.mjs).
+#[derive(Deserialize, Clone, Default, Debug)]
+#[serde(default)]
+pub struct Channel {
+    pub id: String,
+    /// the parent URL its casts go under (for the oldest channels not …/~/channel/<id>)
+    pub url: String,
+    pub name: String,
+    pub desc: Option<String>,
+    pub image: Option<String>,
+    pub header: Option<String>,
+    #[serde(deserialize_with = "num")]
+    pub followers: u64,
+    #[serde(deserialize_with = "num")]
+    pub members: u64,
+    pub open: bool,
+}
+
+/// A page of people: /v2/farcaster/followers and following (`users`, each the user or `{user}`) and
+/// reactions/cast (`reactions`, each `{user}`), with the next page's cursor.
+pub fn users_page(v: &serde_json::Value) -> (Vec<User>, Option<String>) {
+    let list = v.get("users").or_else(|| v.get("reactions")).and_then(|x| x.as_array()).cloned().unwrap_or_default();
+    let users = list.into_iter().filter_map(|x| serde_json::from_value::<User>(x.get("user").cloned().unwrap_or(x)).ok()).filter(|u| u.fid > 0).collect();
+    let next = v.pointer("/next/cursor").and_then(|c| c.as_str()).filter(|c| !c.is_empty()).map(String::from);
+    (users, next)
+}
+
 /// /v1 reactions the account made (to fill in its likes and recasts on nodes that don't say viewer_context).
 #[derive(Deserialize, Default)]
 #[serde(default)]
@@ -278,6 +305,14 @@ mod tests {
         assert_eq!(c.quoted(), Some((3, "6ba6089bb1d3304b82fa17dbb34aa7c691713b0f".into())));
         assert_eq!(c.urls(), vec!["https://a.b/c.png"]);
         assert_eq!(p.next.cursor.as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn reads_pages_of_people() {
+        let (u, next) = users_page(&serde_json::json!({"reactions": [{"user": {"fid": 3, "username": "a"}}, {"user": null}], "next": {"cursor": "x"}}));
+        assert_eq!((u.len(), u[0].fid, next.as_deref()), (1, 3, Some("x")));
+        let (u, next) = users_page(&serde_json::json!({"users": [{"fid": "4"}, {"object": "follow", "user": {"fid": 5}}], "next": {"cursor": null}}));
+        assert_eq!((u.iter().map(|u| u.fid).collect::<Vec<_>>(), next), (vec![4, 5], None));
     }
 
     #[test]

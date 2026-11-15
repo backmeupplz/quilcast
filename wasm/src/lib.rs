@@ -7,6 +7,7 @@ pub mod app;
 pub mod dom;
 pub mod fc;
 pub mod host;
+pub mod mutes;
 pub mod text;
 pub mod view;
 

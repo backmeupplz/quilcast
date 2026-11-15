@@ -83,12 +83,16 @@ mod imp {
     use std::collections::HashMap;
     thread_local! {
         static STORE: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
-        /// what the tests can look at: every request made, as "METHOD url"
+        /// what the tests can look at: every request made
         pub static SENT: RefCell<Vec<(u32, String, Vec<u8>)>> = RefCell::new(Vec::new());
         static SEED: RefCell<u64> = RefCell::new(0x2545_f491_4f6c_dd1d);
     }
     pub fn apply(_: &[u8]) {}
-    pub fn http(id: u32, method: &str, url: &str, body: &[u8], _: &str) { SENT.with(|s| s.borrow_mut().push((id, format!("{method} {url}"), body.to_vec()))) }
+    /// recorded as "METHOD url", then the header lines when there are any
+    pub fn http(id: u32, method: &str, url: &str, body: &[u8], headers: &str) {
+        let what = if headers.is_empty() { format!("{method} {url}") } else { format!("{method} {url}\n{headers}") };
+        SENT.with(|s| s.borrow_mut().push((id, what, body.to_vec())))
+    }
     pub fn get(k: &str) -> Option<String> { STORE.with(|s| s.borrow().get(k).cloned()) }
     pub fn set(k: &str, v: &str) { STORE.with(|s| s.borrow_mut().insert(k.into(), v.into())); }
     pub fn del(k: &str) { STORE.with(|s| s.borrow_mut().remove(k)); }

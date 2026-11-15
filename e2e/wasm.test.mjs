@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -29,6 +29,13 @@ const casts = [
   cast(2, { text: '<img src=x onerror="window.pwned=1"> not markup' }),
 ]
 const reply = cast(3, { text: 'a reply', parent_hash: casts[0].hash, parent_author: { fid: 1 } })
+const MEMES = 'https://warpcast.com/~/channel/memes'
+const inMemes = cast(4, { text: 'a meme', parent_url: MEMES })
+// farcaster.xyz's channel directory, as server/channels.mjs reads it
+const directory = [
+  { id: 'memes', url: MEMES, name: 'Memes', description: 'the memes channel', followerCount: 900, memberCount: 3 },
+  { id: 'closed', url: 'https://warpcast.com/~/channel/closed', name: 'Closed', followerCount: 10, publicCasting: false },
+]
 
 // --- protobuf, as far as reading the messages back needs ---
 function fields(b) {
@@ -78,6 +85,13 @@ const node = createServer((q, r) => {
   const u = new URL(q.url, 'http://x')
   const p = u.pathname
   const send = (v) => r.end(JSON.stringify(v))
+  if (p === '/v2/all-channels') return send({ result: { channels: directory } })
+  // the keys server/looks.mjs keySigned checks a signed request against: the ones the KEY_ADDs added
+  if (p === '/v1/signersByFid') return send({ signers: submitted.map(opened).filter((m) => m.type === 16).map((m) => ({ key: '0x' + hex(field(m.body, 1)) })) })
+  if (p === '/v2/farcaster/feed/parent_urls') return send({ casts: u.searchParams.get('parent_urls') === MEMES ? [inMemes] : [], next: { cursor: null } })
+  if (p === '/v2/farcaster/reactions/cast') return send({ reactions: [{ user: { fid: 9, username: 'liker', display_name: 'Liker' } }], next: { cursor: null } })
+  if (p === '/v2/farcaster/cast/quotes') return send({ casts: [cast(5, { text: 'a quote' })], next: { cursor: null } })
+  if (p === '/v2/farcaster/followers' || p === '/v2/farcaster/following') return send({ users: [{ fid: 8, username: 'friend' }], next: { cursor: null } })
   if (p === '/v1/submitMessage') {
     const chunks = []
     return q.on('data', (c) => chunks.push(c)).on('end', () => (submitted.push(new Uint8Array(Buffer.concat(chunks))), send({})))
@@ -85,10 +99,12 @@ const node = createServer((q, r) => {
   if (p === '/v2/farcaster/feed/trending' || p === '/v2/farcaster/feed/following') return send({ casts, next: { cursor: null } })
   if (p === '/v2/farcaster/cast/conversation') return send({ conversation: { cast: { ...casts.find((c) => c.hash === u.searchParams.get('identifier')), direct_replies: [reply] } } })
   if (p === '/v2/farcaster/user/custody-address') return u.searchParams.get('custody_address') === CUSTODY ? send({ user: me }) : (r.statusCode = 404, send({}))
-  if (p === '/v2/farcaster/user' && u.searchParams.get('fid') === '12345') return send({ user: me })
+  if (p === '/v2/farcaster/user/bulk') return send({ users: u.searchParams.get('fids').split(',').map((f) => ({ fid: +f, username: `user${f}`, viewer_context: { following: false } })) })
+  if (p === '/v2/farcaster/user') return send({ user: u.searchParams.get('fid') === '12345' ? me : { fid: +u.searchParams.get('fid'), username: `user${u.searchParams.get('fid')}` } })
   if (p === '/v2/farcaster/user/by-username') {
     const name = u.searchParams.get('username')
-    if (name === 'user1') return send({ user: casts[0].author })
+    // with the viewer's follow in it, so the app needn't ask /v1/linkById (whose 404, "not following", the browser logs)
+    if (name === 'user1') return send({ user: { ...casts[0].author, viewer_context: { following: false } } })
     if (name === 'user2') return send({ user: { fid: 2, username: 'user2' } })
     return (r.statusCode = 404), send({})
   }
@@ -98,13 +114,13 @@ const node = createServer((q, r) => {
   send({})
 })
 
-let srv, base, nodeUrl, browser
+let srv, base, nodeUrl, browser, media
 before(async () => {
   assert.ok(existsSync(DIST), 'wasm/dist is missing: run sh wasm/build.sh first')
   nodeUrl = `http://127.0.0.1:${await listen(node)}`
   const port = 41000 + Math.floor(Math.random() * 9000)
   base = `http://127.0.0.1:${port}`
-  srv = spawn(process.execPath, [new URL('../server/index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), WASM_HOST: '127.0.0.1', MEDIA_DIR: await mkdtemp(join(tmpdir(), 'qw-media-')), NODE_URL: nodeUrl }, stdio: 'ignore' })
+  srv = spawn(process.execPath, [new URL('../server/index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), WASM_HOST: '127.0.0.1', MEDIA_DIR: (media = await mkdtemp(join(tmpdir(), 'qw-media-'))), NODE_URL: nodeUrl, FARCASTER_API_URL: nodeUrl }, stdio: 'ignore' })
   for (let i = 0; i < 50 && !(await fetch(base + '/health').then((r) => r.ok, () => false)); i++) await new Promise((r) => setTimeout(r, 100))
   browser = await webkit.launch()
 })
@@ -233,6 +249,27 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
   const l = opened(submitted[2])
   assert.equal(l.type, 3)
 
+  // a cast into a channel goes under the channel's parent URL
+  await page.goto(base + '/channel/memes')
+  await page.click('text=Cast here')
+  await page.fill('.dialog textarea', 'into memes')
+  await page.click('.dialog-foot button.primary')
+  await page.waitForSelector('text=Posted')
+  const inChannel = opened(submitted.at(-1))
+  assert.equal(inChannel.type, 1)
+  assert.equal(new TextDecoder().decode(field(inChannel.body, 7)), MEMES)
+
+  // muting someone is kept on Quilcast's server with the account, signed by this browser's key
+  await page.goto(base + '/u/user1')
+  await page.click('button[aria-label="Profile menu"]')
+  await page.click('.dialog >> text=Mute @user1')
+  await page.click('.dialog >> text=For good')
+  await page.waitForSelector('text=Muted @user1')
+  let muted
+  for (let i = 0; i < 50 && !muted; i++) muted = await readFile(join(media, 'mutes', '12345.json'), 'utf8').then(JSON.parse, () => page.waitForTimeout(100).then(() => null))
+  assert.deepEqual(muted?.users, [{ v: 1 }])
+  assert.equal(await page.locator('text=not on Quilcast\'s server').count(), 0)
+
   // signing out revokes the key with a KEY_REMOVE it signs itself
   await page.goto(base + '/settings')
   await page.click('text=Sign out')
@@ -241,6 +278,82 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
   assert.equal(out.type, 17)
   assert.equal(hex(field(out.body, 1)), keyAdd.signer)
   assert.equal(await page.evaluate(() => localStorage.getItem('quilcast-wasm:account')), null)
+  assert.deepEqual(errors, [])
+  await page.close()
+})
+
+test('channels, who liked and quoted, followers, Browse as, following on this device, mutes and reports', async () => {
+  const { page, errors } = await open('/channels')
+  // the directory, then a channel's page with the casts under its URL
+  await page.waitForSelector('a.person[href="/channel/memes"]')
+  assert.equal(await page.locator('a.person').count(), 2)
+  await page.click('a.person[href="/channel/memes"]')
+  await page.waitForSelector('article.cast')
+  assert.equal(await page.locator('.profile h2').innerText(), 'Memes')
+  assert.equal(await page.locator('article.cast .text').innerText(), 'a meme')
+  assert.equal(await page.locator('article.cast .chan-tag').innerText(), '/memes')
+  // a members-only channel says so
+  await page.goto(base + '/channel/closed')
+  await page.waitForSelector('text=Members only')
+
+  // who liked, recast and quoted a cast; whom someone follows
+  await page.goto(base + `/c/${casts[0].hash}`)
+  await page.click('.stats a[href$="/likes"]')
+  await page.waitForSelector('a.person[href="/u/liker"]')
+  await page.click('a.tab[href$="/quotes"]')
+  await page.waitForSelector('article.cast >> text=a quote')
+  await page.goto(base + '/u/user1')
+  await page.click('.counts a[href="/u/user1/followers"]')
+  await page.waitForSelector('a.person[href="/u/friend"]')
+
+  // Browse as: Home on someone's Following feed, offered again on the signed-out Home
+  await page.goto(base + '/u/user1')
+  await page.click('button[aria-label="Profile menu"]')
+  asked.length = 0
+  await page.click('.dialog >> text=Browse as @user1')
+  await page.waitForSelector('.banner')
+  assert.match(page.url(), /\/\?as=user1$/)
+  await page.waitForSelector('article.cast')
+  assert.ok(asked.some((a) => a.startsWith('GET /v2/farcaster/feed/following?') && a.includes('fid=1')), asked.join(', '))
+  await page.click('.banner >> text=Exit')
+  await page.waitForSelector('.recents a.chip[href="/?as=user1"]')
+
+  // following someone without an account keeps them on this device, and Home's Following tab shows their casts
+  await page.goto(base + '/u/user1')
+  await page.click('.profile button:has-text("Follow")')
+  await page.waitForSelector('text=on this device only')
+  assert.deepEqual(JSON.parse(await page.evaluate(() => localStorage.getItem('quilcast-wasm:local-follows'))), [{ fid: 1, username: 'user1' }])
+  asked.length = 0
+  await page.goto(base + '/')
+  await page.waitForSelector('a.tab.on >> text=Following')
+  await page.waitForSelector('article.cast')
+  assert.equal(await page.locator('article.cast').count(), 1)
+  assert.ok(asked.some((a) => a.startsWith('GET /v2/farcaster/feed/user/casts?') && a.includes('fid=1')), asked.join(', '))
+
+  // muting someone signed out hides their casts, kept in this browser
+  await page.goto(base + '/?feed=trending')
+  await page.waitForSelector('article.cast')
+  assert.equal(await page.locator('article.cast').count(), 2)
+  await page.locator('article.cast').nth(1).locator('button[aria-label=More]').click()
+  await page.click('.dialog >> text=Mute @user2')
+  await page.click('.dialog >> text=For a day')
+  await page.waitForFunction(() => document.querySelectorAll('article.cast').length === 1)
+  assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('quilcast-wasm:mutes:local'))).users[0].v, 2)
+  // and Settings lifts it
+  await page.goto(base + '/settings')
+  await page.click('button:has-text("Unmute")')
+  await page.waitForSelector('text=Unmuted @')
+
+  // a report reaches Quilcast's server (anonymous, signed out)
+  await page.goto(base + '/?feed=trending')
+  await page.locator('article.cast').first().locator('button[aria-label=More]').click()
+  await page.click('.dialog >> text=Report this cast')
+  await page.click('.dialog label:has-text("Harassment")')
+  await page.fill('.dialog textarea', 'testing')
+  await page.click('.dialog >> text=Send report')
+  await page.waitForSelector('text=The report was sent')
+  const reports = (await readFile(join(media, 'reports.jsonl'), 'utf8')).trim().split('\n').map((l) => JSON.parse(l))
+  assert.deepEqual([reports.at(-1).fid, reports.at(-1).hash, reports.at(-1).reason, reports.at(-1).text, reports.at(-1).by], [1, '0x' + casts[0].hash, 'abuse', 'testing', null])
   assert.deepEqual(errors, [])
   await page.close()
 })

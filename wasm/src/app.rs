@@ -4,6 +4,7 @@
 
 use crate::api::*;
 use crate::dom::Dom;
+use crate::mutes::Mutes;
 use crate::{fc, host, text};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -14,24 +15,53 @@ use std::rc::Rc;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 const ACCOUNT_KEY: &str = "quilcast-wasm:account";
 const SETTINGS_KEY: &str = "quilcast-wasm:settings";
+const LOCAL_KEY: &str = "quilcast-wasm:local-follows";
+const RECENTS_KEY: &str = "quilcast-wasm:browsed";
 pub const DEFAULT_NODE: &str = "https://haatz.quilibrium.com";
 pub const OPTIMISM_RPC: &str = "https://mainnet.optimism.io";
 /// Bytes a cast may hold (over 320 it's sent as a long cast).
 pub const MAX_CAST: usize = 1024;
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Tab {
+    People,
+    Casts,
+    Channels,
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub enum Route {
     /// Home: the Following feed, or Trending (`true`)
     Home(bool),
+    /// Home as someone else (`/?as=<username or fid>`): their Following feed, read-only
+    Browse(String),
     Cast(String),
+    /// Who liked ("likes"), recast ("recasts") or quoted ("quotes") a cast
+    Who(String, &'static str),
     /// A profile by name or FID, its replies tab when `true`
     User(String, bool),
+    /// Whom someone follows ("following") or who follows them ("followers")
+    Follows(String, &'static str),
+    Channels,
+    Channel(String),
     Notifications,
-    /// Search: the query, and the Casts tab when `true`
-    Search(String, bool),
+    Search(String, Tab),
     Join,
     Settings,
     NotFound,
+}
+
+/// Who `?as=` asks for: a FID or a username (fnames and ENS names), else None (src/browse.ts asOf).
+pub fn as_of(q: &str) -> Option<String> {
+    let v = text::param(q, "as")?.trim().trim_start_matches('@').to_lowercase();
+    let digits = !v.is_empty() && v.len() <= 10 && v.bytes().all(|b| b.is_ascii_digit());
+    let name = v.len() <= 64 && v.bytes().next().is_some_and(|b| b.is_ascii_lowercase() || b.is_ascii_digit()) && v.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"._-".contains(&b));
+    (digits || name).then_some(v)
+}
+
+/// A channel id as farcaster.xyz writes them.
+pub fn is_channel_id(id: &str) -> bool {
+    (1..=64).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
 }
 
 pub fn parse_route(path_q: &str) -> Route {
@@ -39,12 +69,26 @@ pub fn parse_route(path_q: &str) -> Route {
     let path = path.split('#').next().unwrap_or("");
     let parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
     match parts.as_slice() {
-        [] => Route::Home(text::param(q, "feed").as_deref() == Some("trending")),
+        [] => match as_of(q) {
+            Some(who) => Route::Browse(who),
+            None => Route::Home(text::param(q, "feed").as_deref() == Some("trending")),
+        },
         ["c", h] if fc::is_hash(h) => Route::Cast(h.trim_start_matches("0x").to_lowercase()),
+        ["c", h, k @ ("likes" | "recasts" | "quotes")] if fc::is_hash(h) => Route::Who(h.trim_start_matches("0x").to_lowercase(), if *k == "likes" { "likes" } else if *k == "recasts" { "recasts" } else { "quotes" }),
         ["u", id] => Route::User(text::decode(id), false),
         ["u", id, "replies"] => Route::User(text::decode(id), true),
+        ["u", id, k @ ("followers" | "following")] => Route::Follows(text::decode(id), if *k == "followers" { "followers" } else { "following" }),
+        ["channels"] => Route::Channels,
+        ["channel", id] if is_channel_id(&text::decode(id).to_lowercase()) => Route::Channel(text::decode(id).to_lowercase()),
         ["notifications"] => Route::Notifications,
-        ["search"] => Route::Search(text::param(q, "q").unwrap_or_default(), text::param(q, "tab").as_deref() == Some("casts")),
+        ["search"] => Route::Search(
+            text::param(q, "q").unwrap_or_default(),
+            match text::param(q, "tab").as_deref() {
+                Some("casts") => Tab::Casts,
+                Some("channels") => Tab::Channels,
+                _ => Tab::People,
+            },
+        ),
         ["join"] => Route::Join,
         ["settings"] => Route::Settings,
         _ => Route::NotFound,
@@ -115,8 +159,75 @@ pub struct Compose {
     pub text: String,
     pub parent: Option<Cast>,
     pub quote: Option<Cast>,
+    /// the channel a new cast goes into, by id
+    pub channel: Option<String>,
+    /// the channel list is open, searching for this
+    pub picking: Option<String>,
+    /// the chosen channel is members-only and the account isn't a member
+    pub closed: bool,
     pub sending: bool,
     pub error: Option<String>,
+}
+
+/// A menu or form over the page.
+pub enum Sheet {
+    /// a cast's ⋯ menu
+    Cast(Cast),
+    /// a profile's ⋯ menu
+    User(User),
+    /// how long to mute (or block, `true`) someone
+    Mute(bool, User),
+    Report(Report),
+}
+pub struct Report {
+    pub fid: u64,
+    pub hash: Option<String>,
+    pub who: String,
+    pub reason: &'static str,
+    pub text: String,
+    pub sending: bool,
+    pub error: Option<String>,
+}
+pub const REASONS: [(&str, &str); 6] = [("spam", "Spam"), ("abuse", "Harassment or hate"), ("sexual", "Sexual content"), ("violence", "Violence or threats"), ("illegal", "Illegal"), ("other", "Other")];
+
+/// Someone followed on this device (anonymous mode, src/local.ts).
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct Local {
+    pub fid: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+}
+/// The most accounts followed on this device; imports stop there.
+pub const LOCAL_MAX: usize = 300;
+/// How many of the device feed's accounts (or imported names) are read at once.
+const LOCAL_AT_ONCE: usize = 8;
+
+/// An account browsed as lately (src/browse.ts Recent), newest first.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct Recent {
+    pub fid: u64,
+    pub username: Option<String>,
+    pub display_name: Option<String>,
+    pub pfp_url: Option<String>,
+}
+impl Recent {
+    pub fn user(&self) -> User {
+        User { fid: self.fid, username: self.username.clone(), display_name: self.display_name.clone(), pfp_url: self.pfp_url.clone(), ..Default::default() }
+    }
+}
+pub const RECENTS: usize = 5;
+
+/// One followed account's casts in anonymous mode's merged Following feed: read a page at a time and handed on
+/// newest first once no other account can still have something newer.
+#[derive(Default)]
+pub struct Lane {
+    pub buf: Vec<Cast>,
+    pub cursor: Option<String>,
+    pub done: bool,
+    /// the oldest cast read so far, kept or not (replies to strangers are left out of `buf`): anything still unread
+    /// is older than this
+    pub oldest: Option<f64>,
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Debug)]
@@ -138,6 +249,8 @@ pub struct Join {
 pub enum Want {
     Unfurl(String),
     Quote(String),
+    /// someone's name and face, by FID
+    User(u64),
 }
 
 type Done = Box<dyn FnOnce(&mut App, i32, Vec<u8>)>;
@@ -162,6 +275,32 @@ pub struct App {
     /// likes and recasts tapped this visit, by kind + hash, with the count the cast showed then (src/api.ts taps)
     pub taps: HashMap<String, (bool, u64)>,
     pub compose: Option<Compose>,
+    pub sheet: Option<Sheet>,
+    /// pages of people: who liked or recast a cast, someone's followers and following
+    pub lists: HashMap<String, Feed<User>>,
+    pub channel_lists: HashMap<String, Load<Vec<Channel>>>,
+    pub channels: HashMap<String, Load<Option<Channel>>>,
+    /// old-style parent URLs (chain://…) and their channel ids
+    pub legacy: HashMap<String, String>,
+    pub channel_text: String,
+    pub channel_term: String,
+    channel_gen: u32,
+    pub mutes: Mutes,
+    mutes_touched: bool,
+    pub removed: crate::mutes::Removed,
+    pub word_text: String,
+    /// how long a word is muted for: an index into mutes::SPANS
+    pub word_span: usize,
+    /// people followed on this device (anonymous mode)
+    pub local: Vec<Local>,
+    lanes: HashMap<u64, Lane>,
+    /// bumped whenever the device feed starts over, so answers for an earlier list are dropped (a feed's own gen
+    /// restarts when the feed is dropped)
+    local_gen: u32,
+    local_round: u32,
+    local_empty_rounds: u32,
+    pub import_text: String,
+    pub recents: Vec<Recent>,
     pub join: Join,
     pub search_text: String,
     pub node_text: String,
@@ -183,6 +322,8 @@ impl App {
         let settings: Settings = host::get(SETTINGS_KEY).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         let account: Option<Account> = host::get(ACCOUNT_KEY).and_then(|s| serde_json::from_str(&s).ok()).filter(|a: &Account| a.fid > 0 && !a.key.is_empty());
         let path = host::here();
+        let local = read_local();
+        let recents = host::get(RECENTS_KEY).and_then(|s| serde_json::from_str::<Vec<Recent>>(&s).ok()).unwrap_or_default().into_iter().filter(|r| r.fid > 0).take(RECENTS).collect();
         App {
             dom: Dom::default(),
             route: parse_route(&path),
@@ -203,6 +344,26 @@ impl App {
             mine_recasts: HashSet::new(),
             taps: HashMap::new(),
             compose: None,
+            sheet: None,
+            lists: HashMap::new(),
+            channel_lists: HashMap::new(),
+            channels: HashMap::new(),
+            legacy: HashMap::new(),
+            channel_text: String::new(),
+            channel_term: String::new(),
+            channel_gen: 0,
+            mutes: Mutes::default(),
+            mutes_touched: false,
+            removed: crate::mutes::removed(),
+            word_text: String::new(),
+            word_span: 3,
+            local,
+            lanes: HashMap::new(),
+            local_gen: 0,
+            local_round: 0,
+            local_empty_rounds: 0,
+            import_text: String::new(),
+            recents,
             join: Join::default(),
             search_text: String::new(),
             toast: None,
@@ -219,6 +380,12 @@ impl App {
     }
 
     pub fn start(&mut self) {
+        self.read_mutes();
+        self.get::<HashMap<String, String>>("/api/channels/legacy".into(), |app, r| {
+            if let Ok(m) = r {
+                app.legacy = m;
+            }
+        });
         if let Some(a) = self.account.clone() {
             if a.raw {
                 // the raw key comes out of the vault; without it the account can read but not write
@@ -227,8 +394,12 @@ impl App {
                     if code == 1 && bytes.len() == 32 {
                         app.raw_seed = bytes.try_into().ok();
                     }
+                    // reading the account's mutes is signed, so it waits for the key
+                    app.sync_mutes();
                 });
                 host::vget(id, &key);
+            } else {
+                self.sync_mutes();
             }
             self.load_mine();
         }
@@ -242,6 +413,27 @@ impl App {
         self.account.as_ref().map(|a| a.fid)
     }
 
+    /// Whether a cast stays out of sight (src/mutes.ts hides): taken down for everyone, written by someone muted or
+    /// blocked, or saying a muted word. The account's own casts never do, and on `owner`'s profile their casts show
+    /// even when muted (not when blocked).
+    pub fn hidden(&self, c: &Cast, owner: Option<u64>) -> bool {
+        let fid = c.author.fid;
+        let now = host::ms() as u64;
+        if self.removed.fids.contains(&fid) || self.removed.casts.iter().any(|h| h.trim_start_matches("0x").eq_ignore_ascii_case(&c.bare_hash())) {
+            return true;
+        }
+        if Some(fid) == self.me() {
+            return false;
+        }
+        if self.mutes.blocked(fid, now) {
+            return true;
+        }
+        if Some(fid) == owner {
+            return false;
+        }
+        self.mutes.muted(fid, now) || self.mutes.word_in(&crate::view::shown_text(c), now).is_some()
+    }
+
     // --- drawing ---
 
     pub fn render(&mut self) {
@@ -253,12 +445,15 @@ impl App {
             host::scroll_to(y);
         }
         let wants: Vec<Want> = self.wants.borrow_mut().drain(..).collect();
+        let mut fids = Vec::new();
         for w in wants {
             match w {
                 Want::Unfurl(u) => self.load_unfurl(u),
                 Want::Quote(h) => self.load_quote(h),
+                Want::User(fid) => fids.push(fid),
             }
         }
+        self.load_users(fids);
         host::set_title(&crate::view::title(self));
     }
 
@@ -327,6 +522,7 @@ impl App {
         }
         self.path = path.to_string();
         self.route = parse_route(path);
+        self.sheet = None;
         if let Route::Search(q, _) = &self.route {
             self.search_text = q.clone();
         }
@@ -347,67 +543,123 @@ impl App {
         }
     }
 
+    /// Home's feed: the account's Following, the people followed on this device (anonymous mode), or Trending.
     pub fn home_key(&self, trending: bool) -> String {
         match (trending, self.me()) {
             (false, Some(fid)) => format!("following:{fid}"),
+            (false, None) if !self.local.is_empty() => "local".into(),
             _ => "trending".into(),
         }
     }
 
+    /// A profile that has been read, by name or FID.
+    pub fn user_by(&self, id: &str) -> Option<&User> {
+        match self.profiles.get(&id.to_lowercase()) {
+            Some(Load::Ready(u)) => Some(u),
+            _ => None,
+        }
+    }
+
+    /// The feed or list the current page shows, once what it needs is known.
+    fn page_key(&self) -> Option<String> {
+        Some(match &self.route {
+            Route::Home(t) => self.home_key(*t),
+            Route::Browse(id) => format!("following:{}", self.user_by(id)?.fid),
+            Route::User(id, r) => format!("{}:{}", if *r { "replies" } else { "casts" }, self.user_by(id)?.fid),
+            Route::Follows(id, k) => format!("{k}:{}", self.user_by(id)?.fid),
+            Route::Who(h, "quotes") => format!("quotes:{h}"),
+            Route::Who(h, k) => format!("{k}:{h}"),
+            Route::Channel(id) => match self.channels.get(id) {
+                Some(Load::Ready(_)) => format!("channel:{}", self.channel_url(id)),
+                _ => return None,
+            },
+            Route::Search(q, Tab::Casts) if !q.trim().is_empty() => format!("search:{}", q.trim()),
+            _ => return None,
+        })
+    }
+
     pub fn load_route(&mut self) {
         match self.route.clone() {
-            Route::Home(t) => {
-                let k = self.home_key(t);
-                if !self.feeds.contains_key(&k) {
-                    self.load_feed(k, false);
-                }
-            }
             Route::Cast(h) => {
                 if !matches!(self.threads.get(&h), Some(Load::Ready(_)) | Some(Load::Loading)) {
                     self.load_thread(h);
                 }
+                return;
             }
-            Route::User(id, replies) => self.load_profile(id, replies),
+            Route::Browse(id) | Route::User(id, _) | Route::Follows(id, _) => {
+                if !matches!(self.profiles.get(&id.to_lowercase()), Some(Load::Ready(_)) | Some(Load::Loading)) {
+                    return self.fetch_profile(id);
+                }
+                if let (Route::Browse(_), Some(u)) = (&self.route, self.user_by(&id)) {
+                    let u = u.clone();
+                    self.remember(&u);
+                }
+            }
+            Route::Channel(id) => {
+                if !self.channels.contains_key(&id) {
+                    return self.load_channel(id);
+                }
+            }
+            Route::Channels => {
+                let q = self.channel_term.clone();
+                self.load_channels(q);
+            }
             Route::Notifications => {
                 if self.me().is_some() {
                     self.load_notes(false, true);
                 }
+                return;
             }
-            Route::Search(q, casts) => {
-                if !q.trim().is_empty() {
-                    if casts {
-                        let k = format!("search:{}", q.trim());
-                        if !self.feeds.contains_key(&k) {
-                            self.load_feed(k, false);
-                        }
-                    } else {
-                        self.load_people(q.trim().to_string());
-                    }
+            Route::Search(q, Tab::People) if !q.trim().is_empty() => return self.load_people(q.trim().to_string()),
+            Route::Search(q, Tab::Channels) if !q.trim().is_empty() => return self.load_channels(q.trim().to_string()),
+            _ => {}
+        }
+        let Some(k) = self.page_key() else { return };
+        match &self.route {
+            Route::Follows(..) | Route::Who(_, "likes") | Route::Who(_, "recasts") => {
+                if !self.lists.contains_key(&k) {
+                    self.load_list(k, false);
                 }
             }
-            _ => {}
+            _ => {
+                if !self.feeds.contains_key(&k) {
+                    self.load_feed(k, false);
+                }
+            }
         }
     }
 
     /// Read the current page again from the start.
     pub fn refresh(&mut self) {
         match self.route.clone() {
-            Route::Home(t) => {
-                let k = self.home_key(t);
-                self.load_feed(k, false);
-            }
-            Route::Cast(h) => self.load_thread(h),
-            Route::User(id, replies) => {
+            Route::Cast(h) => return self.load_thread(h),
+            Route::Browse(id) | Route::User(id, _) | Route::Follows(id, _) => {
+                // the profile is read again, then its feed or list (the key needs the profile, so it comes first)
+                if let Some(k) = self.page_key() {
+                    self.feeds.remove(&k);
+                    self.lists.remove(&k);
+                }
                 self.profiles.remove(&id.to_lowercase());
-                self.load_profile(id, replies);
+                return self.fetch_profile(id);
             }
-            Route::Notifications => self.load_notes(false, true),
-            Route::Search(q, true) => self.load_feed(format!("search:{}", q.trim()), false),
-            Route::Search(q, false) => {
+            Route::Notifications => return self.load_notes(false, true),
+            Route::Search(q, Tab::People) => {
                 self.people.remove(q.trim());
-                self.load_people(q.trim().to_string());
+                return self.load_people(q.trim().to_string());
+            }
+            Route::Search(q, Tab::Channels) => {
+                self.channel_lists.remove(q.trim());
+                return self.load_channels(q.trim().to_string());
+            }
+            Route::Channels => {
+                self.channel_lists.remove(&self.channel_term.clone());
             }
             _ => {}
+        }
+        match self.page_key() {
+            Some(k) if matches!(self.route, Route::Who(_, "likes") | Route::Who(_, "recasts")) => self.load_list(k, false),
+            Some(k) => self.load_feed(k, false),
+            None => self.load_route(),
         }
     }
 
@@ -421,12 +673,17 @@ impl App {
             "casts" => self.node("/v2/farcaster/feed/user/casts", &[("fid", arg.into()), ("limit", "25".into()), ("cursor", c)]),
             "replies" => self.node("/v2/farcaster/feed/user/replies_and_recasts", &[("fid", arg.into()), ("limit", "25".into()), ("cursor", c)]),
             "search" => self.node("/v2/farcaster/cast/search", &[("q", arg.into()), ("limit", "25".into()), ("cursor", c)]),
+            "channel" => self.node("/v2/farcaster/feed/parent_urls", &[("parent_urls", arg.into()), ("limit", "25".into()), ("cursor", c)]),
+            "quotes" => self.node("/v2/farcaster/cast/quotes", &[("identifier", arg.into()), ("type", "hash".into()), ("limit", "100".into()), ("cursor", c)]),
             _ => self.node("/v2/farcaster/feed/trending", &[("limit", "50".into()), ("cursor", c)]),
         }
     }
 
     /// The first page of a feed (`more` false: read again from the top), or its next page.
     pub fn load_feed(&mut self, key: String, more: bool) {
+        if key == "local" {
+            return self.load_local(more);
+        }
         let f = self.feeds.entry(key.clone()).or_default();
         if more && (f.loading || f.done || f.cursor.is_none()) {
             return;
@@ -488,38 +745,60 @@ impl App {
         });
     }
 
-    pub fn load_profile(&mut self, id: String, replies: bool) {
-        let k = id.to_lowercase();
-        match self.profiles.get(&k) {
-            Some(Load::Ready(u)) => {
-                let fid = u.fid;
-                let key = format!("{}:{fid}", if replies { "replies" } else { "casts" });
-                if !self.feeds.contains_key(&key) {
-                    self.load_feed(key, false);
-                }
+    /// A page of people (`likes:<hash>`, `recasts:<hash>`, `followers:<fid>`, `following:<fid>`), the first or the next.
+    pub fn load_list(&mut self, key: String, more: bool) {
+        let f = self.lists.entry(key.clone()).or_default();
+        if more && (f.loading || f.done || f.cursor.is_none()) {
+            return;
+        }
+        if !more {
+            f.gen += 1;
+            f.cursor = None;
+            f.done = false;
+        }
+        f.loading = true;
+        f.error = None;
+        let gen = f.gen;
+        let c = if more { f.cursor.clone().unwrap_or_default() } else { String::new() };
+        let (kind, arg) = key.split_once(':').unwrap_or((&key, ""));
+        let url = match kind {
+            "followers" | "following" => self.node(&format!("/v2/farcaster/{kind}"), &[("fid", arg.into()), ("limit", "100".into()), ("cursor", c)]),
+            _ => self.node("/v2/farcaster/reactions/cast", &[("hash", arg.into()), ("types", kind.into()), ("limit", "100".into()), ("cursor", c)]),
+        };
+        self.get::<serde_json::Value>(url, move |app, r| {
+            let Some(f) = app.lists.get_mut(&key) else { return };
+            if f.gen != gen {
                 return;
             }
-            Some(Load::Loading) => return,
-            _ => {}
+            f.loading = false;
+            match r {
+                Ok(v) => {
+                    let (users, next) = users_page(&v);
+                    if !more {
+                        f.items.clear();
+                    }
+                    let had: HashSet<u64> = f.items.iter().map(|u| u.fid).collect();
+                    f.done = users.is_empty() || next.is_none();
+                    f.items.extend(users.into_iter().filter(|u| !had.contains(&u.fid)));
+                    f.cursor = next;
+                }
+                Err((_, e)) => f.error = Some(e),
+            }
+        });
+    }
+
+    /// Read a profile by name or FID; the page that needs it loads the rest once it's here.
+    pub fn fetch_profile(&mut self, id: String) {
+        let k = id.to_lowercase();
+        if matches!(self.profiles.get(&k), Some(Load::Loading)) {
+            return;
         }
         self.profiles.insert(k.clone(), Load::Loading);
         let numeric = !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit());
         let url = if numeric { self.node("/v2/farcaster/user", &[("fid", id.clone())]) } else { self.node("/v2/farcaster/user/by-username", &[("username", k.clone())]) };
         self.get::<UserResp>(url, move |app, r| {
             match r {
-                Ok(UserResp { user: Some(u) }) => {
-                    if let Some(f) = u.viewer_context.as_ref().and_then(|v| v.following) {
-                        app.follows.insert(u.fid, f);
-                    } else if app.me().is_some_and(|m| m != u.fid) {
-                        app.load_follow(u.fid);
-                    }
-                    app.profiles.insert(k, Load::Ready(u));
-                    if let Route::User(rid, rep) = app.route.clone() {
-                        if rid.to_lowercase() == id.to_lowercase() {
-                            app.load_profile(rid, rep);
-                        }
-                    }
-                }
+                Ok(UserResp { user: Some(u) }) => app.got_user(k, u),
                 Ok(_) | Err((404, _)) => {
                     app.profiles.insert(k, Load::Failed("There's no one by that name.".into()));
                 }
@@ -649,6 +928,514 @@ impl App {
         }
     }
 
+    /// People's names and faces by FID (for lists that only keep FIDs), kept with the profiles under the FID, read
+    /// 100 at a time.
+    fn load_users(&mut self, fids: Vec<u64>) {
+        let mut todo: Vec<u64> = fids.into_iter().filter(|f| !self.profiles.contains_key(&f.to_string())).collect();
+        todo.sort_unstable();
+        todo.dedup();
+        for chunk in todo.chunks(100) {
+            let chunk = chunk.to_vec();
+            for f in &chunk {
+                self.profiles.insert(f.to_string(), Load::Loading);
+            }
+            let list: Vec<String> = chunk.iter().map(|f| f.to_string()).collect();
+            let url = self.node("/v2/farcaster/user/bulk", &[("fids", list.join(","))]);
+            self.get::<UsersResp>(url, move |app, r| {
+                let users = match r {
+                    Ok(r) => r.users,
+                    Err(_) => Vec::new(),
+                };
+                for fid in chunk {
+                    match users.iter().find(|u| u.fid == fid) {
+                        Some(u) => app.got_user(fid.to_string(), u.clone()),
+                        None => {
+                            app.profiles.insert(fid.to_string(), Load::Failed("Couldn't read this account.".into()));
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    /// A profile read under `k` (a name or FID): kept, with whether the account follows them, and the page waiting
+    /// for it goes on.
+    fn got_user(&mut self, k: String, u: User) {
+        if let Some(f) = u.viewer_context.as_ref().and_then(|v| v.following) {
+            self.follows.insert(u.fid, f);
+        } else if self.me().is_some_and(|m| m != u.fid) && !self.follows.contains_key(&u.fid) {
+            self.load_follow(u.fid);
+        }
+        self.profiles.insert(k.clone(), Load::Ready(u));
+        if let Route::User(rid, _) | Route::Browse(rid) | Route::Follows(rid, _) = &self.route {
+            if rid.to_lowercase() == k {
+                self.load_route();
+            }
+        }
+    }
+
+    // --- channels ---
+
+    /// The channel a cast was posted in, by its parent URL.
+    pub fn channel_of(&self, url: Option<&str>) -> Option<String> {
+        let u = url?;
+        if let Some(id) = self.legacy.get(u) {
+            return Some(id.clone());
+        }
+        let i = u.find("warpcast.com/~/channel/").map(|i| i + 23).or_else(|| u.find("farcaster.xyz/~/channel/").map(|i| i + 24))?;
+        let id: String = u[i..].chars().take_while(|c| !matches!(c, '/' | '?' | '#')).collect();
+        is_channel_id(&id).then_some(id)
+    }
+
+    /// The URL casts go under for channel `id`: the directory's, else farcaster.xyz's usual one.
+    pub fn channel_url(&self, id: &str) -> String {
+        match self.channels.get(id) {
+            Some(Load::Ready(Some(c))) if !c.url.is_empty() => c.url.clone(),
+            // an old-style channel's URL is also in the legacy map
+            _ => self.legacy.iter().filter(|(_, v)| v.as_str() == id).map(|(u, _)| u).min().cloned().unwrap_or_else(|| default_channel_url(id)),
+        }
+    }
+
+    pub fn load_channel(&mut self, id: String) {
+        if self.channels.contains_key(&id) {
+            return;
+        }
+        self.channels.insert(id.clone(), Load::Loading);
+        let url = format!("/api/channel/{}", text::encode(&id));
+        self.http("GET", &url, &[], "", move |app, status, body| {
+            let v = match status {
+                200..=299 => Load::Ready(serde_json::from_slice::<Channel>(&body).ok().filter(|c| !c.id.is_empty())),
+                // not in the directory: casts under the usual URL still show
+                404 => Load::Ready(None),
+                // couldn't tell, so nothing is cast under a guessed URL
+                _ => Load::Failed(error_text(status, &body)),
+            };
+            app.channels.insert(id.clone(), v);
+            if app.route == Route::Channel(id) {
+                app.load_route();
+            }
+        });
+    }
+
+    /// The top channels by followers, or the ones matching `q`.
+    pub fn load_channels(&mut self, q: String) {
+        if matches!(self.channel_lists.get(&q), Some(Load::Ready(_)) | Some(Load::Loading)) {
+            return;
+        }
+        self.channel_lists.insert(q.clone(), Load::Loading);
+        let url = if q.is_empty() { "/api/channels?n=50".to_string() } else { format!("/api/channels?q={}&n=50", text::encode(&q)) };
+        self.get::<Vec<Channel>>(url, move |app, r| {
+            let v = match r {
+                Ok(list) => {
+                    for c in &list {
+                        app.channels.insert(c.id.clone(), Load::Ready(Some(c.clone())));
+                    }
+                    Load::Ready(list)
+                }
+                Err((_, e)) => Load::Failed(e),
+            };
+            app.channel_lists.insert(q, v);
+        });
+    }
+
+    /// Typing in a channel search box: it looks once the typing stops for a moment.
+    pub fn type_channel(&mut self, v: &str, picker: bool) {
+        if picker {
+            if let Some(c) = self.compose.as_mut() {
+                c.picking = Some(v.to_string());
+            }
+        } else {
+            self.channel_text = v.to_string();
+        }
+        self.channel_gen += 1;
+        let g = self.channel_gen;
+        let q = v.trim().to_lowercase();
+        self.later(300.0, move |app| {
+            if app.channel_gen == g {
+                if !picker {
+                    app.channel_term = q.clone();
+                }
+                app.load_channels(q);
+            }
+        });
+    }
+
+    // --- browsing as someone else ---
+
+    /// The page that browses as `u` (src/browse.ts browsePath): by name, or by FID for a nameless or all-digit one.
+    pub fn browse_path(u: &User) -> String {
+        match &u.username {
+            Some(n) if !n.is_empty() && !n.starts_with("fid:") && !n.bytes().all(|b| b.is_ascii_digit()) => format!("/?as={}", text::encode(&n.to_lowercase())),
+            _ => format!("/?as={}", u.fid),
+        }
+    }
+
+    fn remember(&mut self, u: &User) {
+        if self.recents.first().is_some_and(|r| r.fid == u.fid) {
+            return;
+        }
+        self.recents.retain(|r| r.fid != u.fid);
+        self.recents.insert(0, Recent { fid: u.fid, username: u.username.clone(), display_name: u.display_name.clone(), pfp_url: u.pfp_url.clone() });
+        self.recents.truncate(RECENTS);
+        host::set(RECENTS_KEY, &serde_json::to_string(&self.recents).unwrap_or_default());
+    }
+
+    // --- anonymous mode: following people on this device ---
+
+    pub fn is_local(&self, fid: u64) -> bool {
+        self.local.iter().any(|l| l.fid == fid)
+    }
+
+    fn save_local(&mut self) {
+        if self.local.is_empty() {
+            host::del(LOCAL_KEY);
+        } else {
+            host::set(LOCAL_KEY, &serde_json::to_string(&self.local).unwrap_or_default());
+        }
+        // the merged feed is read again with the new list
+        self.feeds.remove("local");
+        self.lanes.clear();
+        self.local_gen += 1;
+        // Home shows that feed (or Trending once the list is empty), so it is read again now
+        if matches!(self.route, Route::Home(_)) {
+            self.load_route();
+        }
+    }
+
+    /// Follow (`on`) or unfollow someone on this device; nothing is published.
+    pub fn set_local(&mut self, u: &User, on: bool) {
+        if on == self.is_local(u.fid) {
+            return;
+        }
+        if on && self.local.len() >= LOCAL_MAX {
+            return self.say(format!("You can follow up to {LOCAL_MAX} accounts on this device."));
+        }
+        if on {
+            self.local.push(Local { fid: u.fid, username: u.username.clone().filter(|n| local_name(n)) });
+            self.say(format!("Following @{} on this device only. Nothing is published.", u.handle()));
+        } else {
+            self.local.retain(|l| l.fid != u.fid);
+            self.say(format!("Unfollowed @{}", u.handle()));
+        }
+        self.save_local();
+    }
+
+    /// Adds what was pasted under Settings → Following on this device: an export, a JSON list, or FIDs and @names.
+    pub fn import_local(&mut self) {
+        let (mut found, names) = parse_import(&self.import_text);
+        if found.is_empty() && names.is_empty() {
+            return self.say("There are no FIDs or @names in that.");
+        }
+        self.import_text.clear();
+        if names.is_empty() {
+            return self.add_local(found);
+        }
+        // more names than the list could take aren't looked up
+        let mut names: Vec<String> = names.into_iter().take(LOCAL_MAX).collect();
+        names.reverse();
+        let left = Rc::new(RefCell::new(names.len()));
+        let got: Rc<RefCell<Vec<Local>>> = Rc::new(RefCell::new(Vec::new()));
+        let first = Rc::new(RefCell::new(std::mem::take(&mut found)));
+        let queue = Rc::new(RefCell::new(names));
+        for _ in 0..LOCAL_AT_ONCE {
+            self.next_name(queue.clone(), left.clone(), got.clone(), first.clone());
+        }
+    }
+    fn next_name(&mut self, queue: Rc<RefCell<Vec<String>>>, left: Rc<RefCell<usize>>, got: Rc<RefCell<Vec<Local>>>, first: Rc<RefCell<Vec<Local>>>) {
+        let Some(n) = queue.borrow_mut().pop() else { return };
+        self.fid_by_name(n.clone(), move |app, fid| {
+            if let Some(Some(fid)) = fid {
+                got.borrow_mut().push(Local { fid, username: Some(n) });
+            }
+            *left.borrow_mut() -= 1;
+            if *left.borrow() == 0 {
+                let mut all: Vec<Local> = first.borrow().clone();
+                all.extend(got.borrow().iter().cloned());
+                app.add_local(all);
+            } else {
+                app.next_name(queue, left, got, first);
+            }
+        });
+    }
+
+    fn add_local(&mut self, us: Vec<Local>) {
+        let mut n = 0;
+        let mut cut = 0;
+        for u in us {
+            if self.is_local(u.fid) {
+                continue;
+            }
+            if self.local.len() >= LOCAL_MAX {
+                cut += 1;
+                continue;
+            }
+            self.local.push(u);
+            n += 1;
+        }
+        self.save_local();
+        self.say(if cut > 0 { format!("Added {n}; {cut} didn't fit (the list holds {LOCAL_MAX}).") } else { format!("Added {n}.") });
+    }
+
+    /// The device's list as a file another device (or quilcast.com) can import.
+    pub fn export_local(&self) -> String {
+        serde_json::to_string_pretty(&serde_json::json!({"type": "quilcast-local-follows", "version": 1, "follows": self.local})).unwrap_or_default()
+    }
+
+    /// Signed in: follow everyone on the device's list with the account, one at a time.
+    pub fn follow_local_all(&mut self) {
+        if self.account.is_none() || self.busy.contains("follow-all") {
+            return;
+        }
+        let todo: Vec<u64> = self.local.iter().map(|l| l.fid).filter(|f| Some(*f) != self.me() && self.follows.get(f) != Some(&true)).collect();
+        if todo.is_empty() {
+            return self.say("You already follow all of them.");
+        }
+        self.busy.insert("follow-all".into());
+        self.follow_next(todo, 0);
+    }
+    fn follow_next(&mut self, mut todo: Vec<u64>, n: usize) {
+        let Some(fid) = todo.pop() else {
+            self.busy.remove("follow-all");
+            if let Some(me) = self.me() {
+                self.feeds.remove(&format!("following:{me}"));
+            }
+            return self.say(format!("Followed {n} on Farcaster."));
+        };
+        self.follows.insert(fid, true);
+        self.send(fc::mt::LINK_ADD, fc::follow_body(fid), move |app, r| match r {
+            Ok(_) => app.follow_next(todo, n + 1),
+            Err(e) => {
+                app.follows.remove(&fid);
+                app.busy.remove("follow-all");
+                app.say(format!("Followed {n}, then: {e}"));
+            }
+        });
+    }
+
+    /// Anonymous mode's Following feed (src/local.ts): each followed account's casts, read a page at a time, merged
+    /// newest first. A page ends where some account that still has older casts to read stops, so nothing newer can
+    /// turn up later. Recasts aren't in it yet.
+    fn load_local(&mut self, more: bool) {
+        let f = self.feeds.entry("local".into()).or_default();
+        if more && (f.loading || f.done) {
+            return;
+        }
+        if !more {
+            f.items.clear();
+            f.done = false;
+            self.lanes.clear();
+            self.local_gen += 1;
+        }
+        let f = self.feeds.get_mut("local").expect("feed");
+        f.loading = true;
+        f.error = None;
+        f.cursor = Some("local".into());
+        let gen = self.local_gen;
+        for l in &self.local {
+            self.lanes.entry(l.fid).or_default();
+        }
+        let need: Vec<(u64, String)> = self.lanes.iter().filter(|(_, l)| l.buf.is_empty() && !l.done).map(|(fid, l)| (*fid, l.cursor.clone().unwrap_or_default())).collect();
+        if need.is_empty() {
+            return self.merge_local();
+        }
+        let left = Rc::new(RefCell::new(need.len()));
+        let queue = Rc::new(RefCell::new(need));
+        // a few at a time, so a long list doesn't send hundreds of requests at once
+        for _ in 0..LOCAL_AT_ONCE {
+            self.next_lane(queue.clone(), left.clone(), gen);
+        }
+    }
+    fn next_lane(&mut self, queue: Rc<RefCell<Vec<(u64, String)>>>, left: Rc<RefCell<usize>>, gen: u32) {
+        let Some((fid, cursor)) = queue.borrow_mut().pop() else { return };
+        let url = self.node("/v2/farcaster/feed/user/casts", &[("fid", fid.to_string()), ("limit", "25".into()), ("cursor", cursor)]);
+        self.get::<CastPage>(url, move |app, r| {
+            if app.local_gen != gen {
+                return;
+            }
+            let followed: HashSet<u64> = app.local.iter().map(|l| l.fid).collect();
+            if let Some(lane) = app.lanes.get_mut(&fid) {
+                match r {
+                    Ok(p) => {
+                        lane.done = p.casts.is_empty() || p.next.cursor.is_none();
+                        if let Some(t) = p.casts.iter().filter_map(|c| text::parse_time(&c.timestamp)).reduce(f64::min) {
+                            lane.oldest = Some(lane.oldest.map_or(t, |o| o.min(t)));
+                        }
+                        // a reply shows only when it answers someone followed here (src/local.ts)
+                        lane.buf.extend(p.casts.into_iter().filter(|c| c.parent_hash.is_none() || c.parent_author.fid.is_some_and(|f| followed.contains(&f))));
+                        lane.cursor = p.next.cursor;
+                    }
+                    // an account that can't be read is left out rather than holding up everyone else
+                    Err(_) => lane.done = true,
+                }
+            }
+            *left.borrow_mut() -= 1;
+            if *left.borrow() == 0 {
+                app.merge_local();
+            } else {
+                app.next_lane(queue, left, gen);
+            }
+        });
+    }
+    fn merge_local(&mut self) {
+        // a cast without a readable time goes out at once rather than waiting forever below the bound
+        let time = |c: &Cast| text::parse_time(&c.timestamp).unwrap_or(f64::MAX);
+        // the newest of the oldest casts read from accounts that have more (counting replies left out): nothing older
+        // is sure yet
+        let bound = self.lanes.values().filter(|l| !l.done).filter_map(|l| l.oldest.or_else(|| l.buf.iter().map(time).reduce(f64::min))).reduce(f64::max).unwrap_or(f64::MIN);
+        let mut out: Vec<Cast> = Vec::new();
+        for l in self.lanes.values_mut() {
+            let (keep, go): (Vec<Cast>, Vec<Cast>) = std::mem::take(&mut l.buf).into_iter().partition(|c| time(c) < bound);
+            l.buf = keep;
+            out.extend(go);
+        }
+        out.sort_by(|a, b| time(b).partial_cmp(&time(a)).unwrap_or(std::cmp::Ordering::Equal));
+        let finished = self.lanes.values().all(|l| l.done && l.buf.is_empty());
+        let f = self.feeds.entry("local".into()).or_default();
+        f.loading = false;
+        let mut had: HashSet<String> = f.items.iter().map(|c| c.bare_hash()).collect();
+        let before = f.items.len();
+        f.items.extend(out.into_iter().filter(|c| had.insert(c.bare_hash())));
+        let none = f.items.len() == before;
+        f.done = finished;
+        self.local_round += 1;
+        // a new cursor each round, so the view's "more" node is new and is seen again while it's on screen
+        f.cursor = (!finished).then(|| format!("local:{}", self.local_round));
+        // nothing new yet (the account holding the others back had only replies to strangers): its next page is read
+        // right away, a few rounds at most, and after that the view offers Load more
+        if none && !finished {
+            if self.local_empty_rounds < 10 {
+                self.local_empty_rounds += 1;
+                return self.load_local(true);
+            }
+        }
+        self.local_empty_rounds = 0;
+    }
+
+    // --- mutes, blocks and reports ---
+
+    fn mutes_key(&self) -> String {
+        format!("quilcast-wasm:mutes:{}", self.me().map_or("local".to_string(), |f| f.to_string()))
+    }
+    /// The list for the account (or this device, signed out) as last kept here.
+    fn read_mutes(&mut self) {
+        let now = host::ms() as u64;
+        self.mutes = host::get(&self.mutes_key()).and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()).map(|v| crate::mutes::clean(&v, now)).unwrap_or_default();
+        self.mutes_touched = false;
+    }
+    /// The account's list from Quilcast's server: another device may have changed it.
+    pub fn sync_mutes(&mut self) {
+        let Some(fid) = self.me() else { return };
+        self.key_fetch("GET", format!("/api/mutes/{fid}"), "quilcast-mutes-read", String::new(), "", move |app, status, body| {
+            if !(200..300).contains(&status) || app.mutes_touched || app.me() != Some(fid) {
+                return;
+            }
+            if let Ok(v) = serde_json::from_slice::<serde_json::Value>(&body) {
+                app.mutes = crate::mutes::clean(&v, host::ms() as u64);
+                host::set(&app.mutes_key(), &serde_json::to_string(&app.mutes).unwrap_or_default());
+            }
+        });
+    }
+    fn mutes_changed(&mut self) {
+        self.mutes_touched = true;
+        host::set(&self.mutes_key(), &serde_json::to_string(&self.mutes).unwrap_or_default());
+        let Some(fid) = self.me() else { return };
+        let body = serde_json::to_string(&self.mutes).unwrap_or_default();
+        self.key_fetch("PUT", format!("/api/mutes/{fid}"), "quilcast-mutes", body, "", |app, status, body| {
+            if !(200..300).contains(&status) {
+                // kept here either way; the server gets the whole list with the next change
+                app.say(format!("Saved on this device, but not on Quilcast's server: {}", error_text(status, &body)));
+            }
+        });
+    }
+    /// Mute or block (`block`) someone until `until` (ms; None is for good), or lift it (`on` false).
+    pub fn mute(&mut self, block: bool, u: &User, on: bool, until: Option<u64>) {
+        self.mutes.set_fid(block, u.fid, on, until);
+        if block && on {
+            // a blocked person isn't followed either
+            if self.follows.get(&u.fid) == Some(&true) {
+                self.follow(u.fid);
+            }
+            if self.is_local(u.fid) {
+                self.local.retain(|l| l.fid != u.fid);
+                self.save_local();
+            }
+        }
+        self.mutes_changed();
+        let what = if block { if on { "Blocked" } else { "Unblocked" } } else if on { "Muted" } else { "Unmuted" };
+        self.say(format!("{what} @{}", u.handle()));
+    }
+    pub fn mute_word(&mut self, w: &str, on: bool, until: Option<u64>) {
+        if w.trim().is_empty() {
+            return;
+        }
+        self.mutes.set_word(w, on, until);
+        self.mutes_changed();
+    }
+
+    pub fn open_report(&mut self, u: &User, hash: Option<String>) {
+        self.sheet = Some(Sheet::Report(Report { fid: u.fid, hash, who: u.handle(), reason: "spam", text: String::new(), sending: false, error: None }));
+    }
+    /// Sends the report to Quilcast's moderators (server/report.mjs). Signed in, this browser's key signs it.
+    pub fn send_report(&mut self) {
+        let Some(Sheet::Report(r)) = self.sheet.as_mut() else { return };
+        if r.sending {
+            return;
+        }
+        r.sending = true;
+        r.error = None;
+        // the server takes 4 KB: the text is cut to fit, whatever its script
+        let mut text = r.text.trim().to_string();
+        while text.len() > 3000 {
+            text.pop();
+        }
+        let mut j = serde_json::json!({"fid": r.fid, "reason": r.reason, "text": text});
+        if let Some(h) = &r.hash {
+            j["hash"] = serde_json::Value::String(format!("0x{h}"));
+        }
+        let body = j.to_string();
+        let unsigned = body.clone();
+        let done = move |app: &mut App, status: i32, body: Vec<u8>| {
+            if status == SIGN_FAILED {
+                // without a working key here, it goes out anonymously, as quilcast.com's does
+                return app.http("POST", "/api/report", unsigned.as_bytes(), "application/json", report_done);
+            }
+            report_done(app, status, body)
+        };
+        match self.me() {
+            Some(me) => self.key_fetch("POST", "/api/report".into(), "quilcast-report", body, &format!("\nx-fid: {me}"), done),
+            None => self.http("POST", "/api/report", body.as_bytes(), "application/json", report_done),
+        }
+    }
+
+    /// A request to Quilcast's server signed by this browser's key over `<what>:<fid>:<ts>:<body>` (src/write.ts
+    /// keyFetch), which the server checks belongs to the account. `extra` adds header lines.
+    /// It answers SIGN_FAILED when this browser has no working key. A 403 (the node hasn't listed a key added a
+    /// moment ago) is tried once more after 3 s.
+    pub fn key_fetch(&mut self, method: &str, url: String, what: &str, body: String, extra: &str, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) {
+        self.key_fetch_try(method.to_string(), url, what.to_string(), body, extra.to_string(), 1, f)
+    }
+    #[allow(clippy::too_many_arguments)]
+    fn key_fetch_try(&mut self, method: String, url: String, what: String, body: String, extra: String, tries: u32, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) {
+        let Some(a) = self.account.clone() else { return f(self, SIGN_FAILED, br#"{"error":"Sign in first."}"#.to_vec()) };
+        let ts = host::ms() as u64;
+        let msg = format!("{what}:{}:{ts}:{body}", a.fid);
+        let key = fc::unhex(&a.key);
+        self.sign(&key, msg.as_bytes(), move |app, sig| match sig {
+            Ok(sig) => {
+                let headers = signed_headers(&method, &a.key, ts, &sig, &extra);
+                let sent = body.clone();
+                app.http(&method.clone(), &url.clone(), sent.as_bytes(), &headers, move |app, status, answer| {
+                    if status == 403 && tries > 0 && app.me() == Some(a.fid) {
+                        app.later(3000.0, move |app| app.key_fetch_try(method, url, what, body, extra, tries - 1, f));
+                    } else {
+                        f(app, status, answer)
+                    }
+                })
+            }
+            Err(e) => f(app, SIGN_FAILED, serde_json::json!({"error": e}).to_string().into_bytes()),
+        });
+    }
+
     // --- likes and recasts ---
 
     /// Whether a like (1) or recast (2) is on, and the count to show: a tap this visit wins (src/api.ts tapped).
@@ -686,6 +1473,15 @@ impl App {
                 app.say(e);
             }
         });
+    }
+
+    /// Follow or unfollow someone: with the account, or signed out on this device only (anonymous mode).
+    pub fn follow_user(&mut self, u: &User) {
+        if self.account.is_none() {
+            let on = !self.is_local(u.fid);
+            return self.set_local(u, on);
+        }
+        self.follow(u.fid);
     }
 
     pub fn follow(&mut self, fid: u64) {
@@ -737,7 +1533,37 @@ impl App {
         if self.account.is_none() {
             return self.navigate("/join", false);
         }
+        self.sheet = None;
         self.compose = Some(Compose { parent, quote, ..Default::default() });
+    }
+
+    /// A new cast into channel `id` (a channel page's Cast here).
+    pub fn compose_in(&mut self, id: &str) {
+        self.open_compose(None, None);
+        self.pick_channel(Some(id.to_string()));
+    }
+
+    /// Choose the channel the new cast goes into (or none). farcaster.xyz leaves non-members' casts out of a
+    /// members-only channel, so that gets a warning.
+    pub fn pick_channel(&mut self, id: Option<String>) {
+        let Some(c) = self.compose.as_mut() else { return };
+        c.channel = id.clone();
+        c.picking = None;
+        c.closed = false;
+        let (Some(id), Some(me)) = (id, self.me()) else { return };
+        let closed = matches!(self.channels.get(&id), Some(Load::Ready(Some(ch))) if !ch.open);
+        if !closed {
+            return;
+        }
+        let url = format!("/api/channel/{}/member/{me}", text::encode(&id));
+        self.get::<serde_json::Value>(url, move |app, r| {
+            let out = r.ok().and_then(|v| v.get("member").and_then(|m| m.as_bool())) == Some(false);
+            if let Some(c) = app.compose.as_mut() {
+                if c.channel.as_deref() == Some(&id) {
+                    c.closed = out;
+                }
+            }
+        });
     }
 
     pub fn close_compose(&mut self) {
@@ -813,17 +1639,35 @@ impl App {
                 embeds.push(fc::Embed::Url(u));
             }
         }
-        let parent = match &c.parent {
-            Some(p) => fc::Parent::Cast(fc::CastRef { fid: p.author.fid, hash: p.bare_hash() }),
-            None => fc::Parent::None,
+        // a channel the directory hasn't answered about isn't cast into under a guessed URL
+        if let Some(id) = c.channel.as_ref().filter(|id| !matches!(self.channels.get(*id), Some(Load::Ready(_)))) {
+            let id = id.clone();
+            let e = format!("Still looking up /{id}. Try again in a moment.");
+            if !matches!(self.channels.get(&id), Some(Load::Loading)) {
+                self.channels.remove(&id);
+                self.load_channel(id);
+            }
+            if let Some(c) = self.compose.as_mut() {
+                c.sending = false;
+                c.error = Some(e);
+            }
+            return;
+        }
+        let Some(c) = self.compose.as_ref() else { return };
+        let channel_url = c.channel.as_ref().map(|id| self.channel_url(id));
+        let parent = match (&c.parent, &channel_url) {
+            (Some(p), _) => fc::Parent::Cast(fc::CastRef { fid: p.author.fid, hash: p.bare_hash() }),
+            (None, Some(u)) => fc::Parent::Url(u.clone()),
+            (None, None) => fc::Parent::None,
         };
+        let channel_url = if c.parent.is_some() { None } else { channel_url };
         let parent_cast = c.parent.clone();
         let body = fc::cast_body(&text, &mentions, &positions, &embeds, &parent);
         let shown = typed.clone();
         self.send(fc::mt::CAST_ADD, body, move |app, r| match r {
             Ok(hash) => {
                 app.compose = None;
-                app.show_posted(hash, shown, parent_cast, quote);
+                app.show_posted(hash, shown, parent_cast, quote, channel_url);
                 app.say("Posted");
             }
             Err(e) => {
@@ -836,7 +1680,7 @@ impl App {
     }
 
     /// A cast just sent shows where it belongs before the node has indexed it.
-    fn show_posted(&mut self, hash: String, text: String, parent: Option<Cast>, quote: Option<fc::CastRef>) {
+    fn show_posted(&mut self, hash: String, text: String, parent: Option<Cast>, quote: Option<fc::CastRef>, channel: Option<String>) {
         let Some(a) = self.account.clone() else { return };
         let author = User { fid: a.fid, username: a.username.clone(), display_name: a.display.clone(), pfp_url: a.pfp.clone(), ..Default::default() };
         let c = Cast {
@@ -846,6 +1690,7 @@ impl App {
             author,
             parent_hash: parent.as_ref().map(|p| p.bare_hash()),
             parent_author: ParentAuthor { fid: parent.as_ref().map(|p| p.author.fid) },
+            parent_url: channel.clone(),
             embeds: quote.map(|q| EmbedJ { url: None, cast_id: Some(CastIdJ { fid: q.fid, hash: q.hash }) }).into_iter().collect(),
             ..Default::default()
         };
@@ -859,7 +1704,9 @@ impl App {
                 }
             }
             None => {
-                for k in [format!("following:{}", a.fid), format!("casts:{}", a.fid)] {
+                let mut keys = vec![format!("following:{}", a.fid), format!("casts:{}", a.fid)];
+                keys.extend(channel.map(|u| format!("channel:{u}")));
+                for k in keys {
                     if let Some(f) = self.feeds.get_mut(&k) {
                         f.items.insert(0, c.clone());
                     }
@@ -1072,8 +1919,15 @@ impl App {
             None => host::del(ACCOUNT_KEY),
         }
         self.account = a;
+        // the account's own mutes (or this device's, signed out) take over
+        self.read_mutes();
+        self.sync_mutes();
         // what was read for the previous viewer goes
         self.feeds.clear();
+        self.lists.clear();
+        self.lanes.clear();
+        self.local_gen += 1;
+        self.sheet = None;
         self.notes = Feed::default();
         self.threads.clear();
         self.profiles.clear();
@@ -1141,11 +1995,116 @@ impl App {
         self.node_text = n;
         self.save_settings();
         self.feeds.clear();
+        self.lists.clear();
+        self.lanes.clear();
+        self.local_gen += 1;
         self.threads.clear();
         self.profiles.clear();
         self.notes = Feed::default();
         self.say("Node saved");
     }
+}
+
+/// What `key_fetch` answers when it couldn't sign (no account, or no working key in this browser).
+pub const SIGN_FAILED: i32 = -1;
+
+/// The header lines (web/shell.js fetch) of a request signed by the account's key `pubk` (hex) at `ts`: what
+/// server/looks.mjs keySigned reads. Every value is hex or a number, so none can break a line.
+pub fn signed_headers(method: &str, pubk: &str, ts: u64, sig: &[u8], extra: &str) -> String {
+    let ct = if method == "GET" { "" } else { "application/json" };
+    format!("{ct}\nx-key: 0x{pubk}\nx-ts: {ts}\nx-sig: {}{extra}", fc::hex(sig))
+}
+
+fn report_done(app: &mut App, status: i32, body: Vec<u8>) {
+    if (200..300).contains(&status) {
+        app.sheet = None;
+        app.say("Thanks. The report was sent to Quilcast's moderators.");
+    } else if let Some(Sheet::Report(r)) = app.sheet.as_mut() {
+        r.sending = false;
+        r.error = Some(if status == 0 { "The report couldn't be sent. Try again.".into() } else { error_text(status, &body) });
+    }
+}
+
+pub fn default_channel_url(id: &str) -> String {
+    format!("https://warpcast.com/~/channel/{id}")
+}
+
+/// A username as plain text may spell it (lowercase fname or ENS-style name).
+fn local_name(n: &str) -> bool {
+    (1..=64).contains(&n.len()) && n.bytes().next().is_some_and(|b| b.is_ascii_lowercase() || b.is_ascii_digit()) && n.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"._-".contains(&b))
+}
+
+fn clean_local(xs: &serde_json::Value) -> Vec<Local> {
+    let mut out: Vec<Local> = Vec::new();
+    for x in xs.as_array().into_iter().flatten() {
+        let fid = x.get("fid").and_then(|f| f.as_u64().or_else(|| f.as_str().and_then(|s| s.parse().ok()))).unwrap_or(0);
+        if fid == 0 || fid > (1 << 53) - 1 || out.iter().any(|l| l.fid == fid) {
+            continue;
+        }
+        let username = x.get("username").and_then(|n| n.as_str()).filter(|n| local_name(n)).map(String::from);
+        out.push(Local { fid, username });
+    }
+    out
+}
+
+fn read_local() -> Vec<Local> {
+    host::get(LOCAL_KEY).and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()).map(|v| clean_local(&v)).unwrap_or_default()
+}
+
+/// What an import holds (src/local.ts parseImport): an export, a JSON list (of FIDs, usernames or {fid, username}),
+/// or plain text with FIDs and @usernames (also profile links). `names` are usernames still to look up.
+pub fn parse_import(t: &str) -> (Vec<Local>, Vec<String>) {
+    let mut follows: Vec<Local> = Vec::new();
+    let mut names: Vec<String> = Vec::new();
+    let items: Vec<serde_json::Value> = match serde_json::from_str::<serde_json::Value>(t.trim()) {
+        Ok(serde_json::Value::Array(a)) => a,
+        Ok(v) if v.get("follows").is_some_and(|f| f.is_array()) => v["follows"].as_array().cloned().unwrap_or_default(),
+        _ => t.split(|c: char| c.is_whitespace() || ",;".contains(c)).filter(|s| !s.is_empty()).map(|s| serde_json::Value::String(s.into())).collect(),
+    };
+    for x in items {
+        let s = match &x {
+            serde_json::Value::Object(_) => {
+                let l = clean_local(&serde_json::Value::Array(vec![x.clone()]));
+                if let Some(l) = l.into_iter().next() {
+                    if !follows.iter().any(|f| f.fid == l.fid) {
+                        follows.push(l);
+                    }
+                    continue;
+                }
+                match x.get("username").and_then(|n| n.as_str()) {
+                    Some(n) => format!("@{n}"),
+                    None => continue,
+                }
+            }
+            serde_json::Value::Number(n) => n.to_string(),
+            serde_json::Value::String(s) => s.clone(),
+            _ => continue,
+        };
+        let s = s.trim().trim_matches(|c| c == '"' || c == '\'');
+        // a profile link counts by its name or FID (quilcast.com/u/name, farcaster.xyz/name, warpcast.com/~/profiles/123)
+        let s = match s.split_once("://").map_or(s, |(_, r)| r).split_once('/') {
+            Some((host, rest)) if host.contains('.') => {
+                let rest = rest.split(['?', '#']).next().unwrap_or("");
+                let parts: Vec<&str> = rest.split('/').filter(|p| !p.is_empty()).collect();
+                match parts.as_slice() {
+                    ["u", n] | ["~", "profiles", n] | [n] => n.to_string(),
+                    _ => continue,
+                }
+            }
+            _ => s.to_string(),
+        };
+        let s = s.trim_start_matches('@').to_lowercase();
+        if !s.is_empty() && s.len() <= 16 && s.bytes().all(|b| b.is_ascii_digit()) {
+            if let Ok(fid) = s.parse::<u64>() {
+                if fid > 0 && !follows.iter().any(|l| l.fid == fid) {
+                    follows.push(Local { fid, username: None });
+                }
+            }
+        } else if local_name(&s) && !names.contains(&s) {
+            names.push(s);
+        }
+    }
+    (follows, names)
 }
 
 fn drop_reply(c: &mut Cast, hash: &str) {
@@ -1180,9 +2139,263 @@ mod tests {
         assert_eq!(parse_route("/c/nothash"), Route::NotFound);
         assert_eq!(parse_route("/u/dwr"), Route::User("dwr".into(), false));
         assert_eq!(parse_route("/u/dwr/replies"), Route::User("dwr".into(), true));
-        assert_eq!(parse_route("/search?q=gm%20there&tab=casts"), Route::Search("gm there".into(), true));
+        assert_eq!(parse_route("/search?q=gm%20there&tab=casts"), Route::Search("gm there".into(), Tab::Casts));
+        assert_eq!(parse_route("/search?q=x&tab=channels"), Route::Search("x".into(), Tab::Channels));
+        assert_eq!(parse_route("/search?q=x"), Route::Search("x".into(), Tab::People));
+        assert_eq!(parse_route("/?as=@DWR"), Route::Browse("dwr".into()));
+        assert_eq!(parse_route("/?as=3"), Route::Browse("3".into()));
+        assert_eq!(parse_route("/?as=no%20way"), Route::Home(false), "a name that can't be one is ignored");
+        assert_eq!(parse_route("/c/0x6ba6089bb1d3304b82fa17dbb34aa7c691713b0f/likes"), Route::Who("6ba6089bb1d3304b82fa17dbb34aa7c691713b0f".into(), "likes"));
+        assert_eq!(parse_route("/c/6ba6089bb1d3304b82fa17dbb34aa7c691713b0f/quotes"), Route::Who("6ba6089bb1d3304b82fa17dbb34aa7c691713b0f".into(), "quotes"));
+        assert_eq!(parse_route("/u/dwr/followers"), Route::Follows("dwr".into(), "followers"));
+        assert_eq!(parse_route("/channels"), Route::Channels);
+        assert_eq!(parse_route("/channel/Memes"), Route::Channel("memes".into()));
+        assert_eq!(parse_route("/channel/no_way"), Route::NotFound);
         assert_eq!(parse_route("/notifications"), Route::Notifications);
         assert_eq!(parse_route("/nope"), Route::NotFound);
+    }
+
+    #[test]
+    fn imports_lists_names_and_links() {
+        let (f, n) = parse_import("3, @DWR quilcast.com/u/v https://warpcast.com/~/profiles/99 quilcast.com/c/0xab 'x.eth' 0");
+        assert_eq!(f.iter().map(|l| l.fid).collect::<Vec<_>>(), vec![3, 99]);
+        assert_eq!(n, vec!["dwr", "v", "x.eth"]);
+        let (f, n) = parse_import(r#"{"type":"quilcast-local-follows","version":1,"follows":[{"fid":5,"username":"a"},{"fid":5},{"username":"b"},{"fid":"6","username":"<script>"}]}"#);
+        assert_eq!(f, vec![Local { fid: 5, username: Some("a".into()) }, Local { fid: 6, username: None }]);
+        assert_eq!(n, vec!["b"]);
+        let (f, _) = parse_import("[7, 8]");
+        assert_eq!(f.len(), 2);
+    }
+
+    fn at(fid: u64, h: &str, ts: &str) -> Cast {
+        Cast { hash: h.into(), timestamp: ts.into(), author: User { fid, ..Default::default() }, ..Default::default() }
+    }
+
+    #[test]
+    fn the_device_feed_merges_newest_first_and_waits_for_slow_accounts() {
+        let mut app = App::new();
+        app.lanes.insert(1, Lane { buf: vec![at(1, "a3", "2026-01-03T00:00:00Z"), at(1, "a1", "2026-01-01T00:00:00Z")], cursor: Some("c".into()), done: false, oldest: None });
+        app.lanes.insert(2, Lane { buf: vec![at(2, "b4", "2026-01-04T00:00:00Z"), at(2, "b2", "2026-01-02T00:00:00Z")], cursor: None, done: true, oldest: None });
+        app.merge_local();
+        let f = &app.feeds["local"];
+        // account 1 may still have casts between its oldest read (01) and the rest: nothing older than 01 is shown yet
+        assert_eq!(f.items.iter().map(|c| c.hash.as_str()).collect::<Vec<_>>(), vec!["b4", "a3", "b2", "a1"]);
+        assert!(!f.done);
+        app.lanes.get_mut(&1).unwrap().done = true;
+        app.merge_local();
+        assert!(app.feeds["local"].done);
+        app.lanes.insert(3, Lane { buf: vec![at(3, "c5", "2026-01-05T00:00:00Z"), at(3, "c0", "2025-12-31T00:00:00Z")], cursor: Some("x".into()), done: false, oldest: None });
+        app.lanes.insert(4, Lane { buf: vec![at(4, "d1", "2026-01-01T12:00:00Z")], cursor: Some("y".into()), done: false, oldest: None });
+        app.merge_local();
+        let shown: Vec<&str> = app.feeds["local"].items.iter().skip(4).map(|c| c.hash.as_str()).collect();
+        assert_eq!(shown, vec!["c5", "d1"], "c0 waits until account 4 has been read further");
+    }
+
+    #[test]
+    fn replies_left_out_still_hold_back_older_casts() {
+        sent();
+        let mut app = App::new();
+        app.local = vec![Local { fid: 1, username: None }, Local { fid: 2, username: None }];
+        app.load_feed("local".into(), false);
+        let day = |d: u32| format!("2026-01-{d:02}T00:00:00Z");
+        let page = |fid: u64, casts: Vec<serde_json::Value>, more: bool| serde_json::json!({"casts": casts, "next": {"cursor": if more { Some(format!("p{fid}")) } else { None }}}).to_string().into_bytes();
+        let reply = |n: u32| serde_json::json!({"hash": format!("{:040x}", 100 + n), "timestamp": day(n), "author": {"fid": 1}, "parent_hash": "ab", "parent_author": {"fid": 999}});
+        let top = |fid: u64, n: u32| serde_json::json!({"hash": format!("{:040x}", fid * 1000 + n as u64), "timestamp": day(n), "author": {"fid": fid}});
+        for (id, what, _) in sent() {
+            if what.contains("fid=1&") || what.ends_with("fid=1") {
+                // a page of nothing but replies to a stranger
+                app.done(id, 200, page(1, (20..=28).rev().map(reply).collect(), true));
+            } else {
+                app.done(id, 200, page(2, vec![top(2, 27), top(2, 10)], false));
+            }
+        }
+        let days = |app: &App| app.feeds["local"].items.iter().map(|c| c.timestamp[8..10].to_string()).collect::<Vec<_>>();
+        assert_eq!(days(&app), vec!["27"], "day 10 waits: account 1 may still have something newer");
+        app.load_feed("local".into(), true);
+        for (id, _, _) in sent() {
+            app.done(id, 200, page(1, vec![top(1, 15)], false));
+        }
+        assert_eq!(days(&app), vec!["27", "15", "10"]);
+    }
+
+    #[test]
+    fn a_first_page_of_only_replies_to_strangers_reads_on() {
+        sent();
+        let mut app = App::new();
+        app.local = vec![Local { fid: 1, username: None }, Local { fid: 2, username: None }];
+        app.load_feed("local".into(), false);
+        let day = |d: u32| format!("2026-01-{d:02}T00:00:00Z");
+        let page = |casts: Vec<serde_json::Value>, more: bool| serde_json::json!({"casts": casts, "next": {"cursor": if more { Some("next") } else { None }}}).to_string().into_bytes();
+        let reply = |n: u32| serde_json::json!({"hash": format!("{:040x}", 100 + n), "timestamp": day(n), "author": {"fid": 1}, "parent_hash": "ab", "parent_author": {"fid": 999}});
+        let top = |fid: u64, n: u32| serde_json::json!({"hash": format!("{:040x}", fid * 1000 + n as u64), "timestamp": day(n), "author": {"fid": fid}});
+        for (id, what, _) in sent() {
+            let one = what.split("fid=").nth(1).is_some_and(|r| r.starts_with("1&") || r == "1");
+            app.done(id, 200, if one { page((20..=28).rev().map(reply).collect(), true) } else { page(vec![top(2, 10), top(2, 5)], true) });
+        }
+        // nothing could be shown yet, so account 1's next page is asked for at once
+        let next = sent();
+        assert_eq!(next.len(), 1, "{next:?}");
+        assert!(app.feeds["local"].loading);
+        app.done(next[0].0, 200, page(vec![top(1, 12)], false));
+        let f = &app.feeds["local"];
+        assert_eq!(f.items.iter().map(|c| c.timestamp[8..10].to_string()).collect::<Vec<_>>(), vec!["12", "10", "05"], "account 2 is the only one left, so all of it shows");
+    }
+
+    #[test]
+    fn channels_by_parent_url() {
+        let mut app = App::new();
+        app.legacy.insert("https://onchainsummer.xyz".into(), "base".into());
+        assert_eq!(app.channel_of(Some("https://warpcast.com/~/channel/memes")).as_deref(), Some("memes"));
+        assert_eq!(app.channel_of(Some("https://farcaster.xyz/~/channel/wasm?x=1")).as_deref(), Some("wasm"));
+        assert_eq!(app.channel_of(Some("https://onchainsummer.xyz")).as_deref(), Some("base"));
+        assert_eq!(app.channel_of(Some("https://example.com")), None);
+        assert_eq!(app.channel_url("memes"), "https://warpcast.com/~/channel/memes");
+        app.channels.insert("base".into(), Load::Ready(Some(Channel { id: "base".into(), url: "https://onchainsummer.xyz".into(), ..Default::default() })));
+        assert_eq!(app.channel_url("base"), "https://onchainsummer.xyz");
+    }
+
+    #[test]
+    fn mutes_hide_casts_but_not_your_own_or_on_their_profile() {
+        let mut app = App::new();
+        app.account = Some(Account { fid: 9, key: "00".into(), ..Default::default() });
+        let c = |fid: u64, t: &str| Cast { hash: "ab".into(), text: t.into(), author: User { fid, ..Default::default() }, ..Default::default() };
+        app.mutes.set_fid(false, 5, true, None);
+        app.mutes.set_fid(true, 6, true, None);
+        app.mutes.set_word("rug", true, None);
+        assert!(app.hidden(&c(5, "hi"), None));
+        assert!(!app.hidden(&c(5, "hi"), Some(5)), "a muted person's own profile still shows them");
+        assert!(app.hidden(&c(6, "hi"), Some(6)), "a blocked one's doesn't");
+        assert!(app.hidden(&c(7, "a RUG pull"), None));
+        assert!(!app.hidden(&c(9, "my rug"), None), "your own casts always show");
+        assert!(!app.hidden(&c(7, "rugged"), None));
+    }
+
+    #[test]
+    fn blocking_someone_followed_on_this_device_reloads_home() {
+        sent();
+        let mut app = App::new();
+        app.route = Route::Home(false);
+        app.local = vec![Local { fid: 1, username: None }, Local { fid: 2, username: None }];
+        app.load_route();
+        assert!(app.feeds.contains_key("local"));
+        sent();
+        app.mute(true, &User { fid: 1, ..Default::default() }, true, None);
+        assert!(app.feeds.contains_key(&app.home_key(false)), "Home reads its feed again instead of spinning");
+        assert!(sent().iter().any(|(_, w, _)| w.contains("fid=2")), "{:?}", app.local);
+        // the last one: Home falls back to Trending, which is read too
+        app.mute(true, &User { fid: 2, ..Default::default() }, true, None);
+        assert_eq!(app.home_key(false), "trending");
+        assert!(app.feeds.contains_key("trending"));
+    }
+
+    #[test]
+    fn refreshing_a_profile_page_reads_its_feed_and_list_again() {
+        let mut app = App::new();
+        let u = User { fid: 4, username: Some("al".into()), ..Default::default() };
+        app.profiles.insert("al".into(), Load::Ready(u));
+        for (r, k) in [(Route::Browse("al".into()), "following:4"), (Route::User("al".into(), false), "casts:4")] {
+            app.route = r;
+            app.feeds.insert(k.into(), Default::default());
+            app.refresh();
+            assert!(!app.feeds.contains_key(k), "{k} is dropped");
+            app.profiles.insert("al".into(), Load::Ready(User { fid: 4, username: Some("al".into()), ..Default::default() }));
+        }
+        app.route = Route::Follows("al".into(), "followers");
+        app.lists.insert("followers:4".into(), Default::default());
+        app.refresh();
+        assert!(!app.lists.contains_key("followers:4"));
+    }
+
+    fn sent() -> Vec<(u32, String, Vec<u8>)> {
+        host::SENT.with(|s| s.borrow_mut().drain(..).collect())
+    }
+
+    #[test]
+    fn requests_to_our_server_are_signed_like_quilcast_com() {
+        use ed25519_dalek::{Signature, SigningKey, Verifier};
+        sent();
+        let mut app = App::new();
+        let seed = [7u8; 32];
+        let k = SigningKey::from_bytes(&seed);
+        app.raw_seed = Some(seed);
+        app.account = Some(Account { fid: 77, key: fc::hex(k.verifying_key().as_bytes()), raw: true, ..Default::default() });
+        app.key_fetch("PUT", "/api/mutes/77".into(), "quilcast-mutes", r#"{"words":[]}"#.into(), "\nx-fid: 77", |_, _, _| {});
+        let (_, what, body) = sent().pop().expect("a request");
+        let lines: Vec<&str> = what.split('\n').collect();
+        assert_eq!(lines[0], "PUT /api/mutes/77");
+        assert_eq!(lines[1], "application/json");
+        let h = |n: &str| lines.iter().find_map(|l| l.strip_prefix(&format!("{n}: "))).expect(n).to_string();
+        assert_eq!(lines.len(), 6, "{lines:?}");
+        assert_eq!(h("x-key"), format!("0x{}", fc::hex(k.verifying_key().as_bytes())));
+        assert_eq!(h("x-fid"), "77");
+        let ts = h("x-ts");
+        let sig = Signature::from_slice(&fc::unhex(&h("x-sig"))).unwrap();
+        let msg = format!("quilcast-mutes:77:{ts}:{}", String::from_utf8(body).unwrap());
+        assert!(k.verifying_key().verify(msg.as_bytes(), &sig).is_ok(), "signed over <what>:<fid>:<ts>:<body>");
+        // a GET has no content type and signs an empty body
+        app.key_fetch("GET", "/api/mutes/77".into(), "quilcast-mutes-read", String::new(), "", |_, _, _| {});
+        let (_, what, _) = sent().pop().unwrap();
+        assert!(what.starts_with("GET /api/mutes/77\n\nx-key: 0x"), "{what}");
+        // without a key here, it says so rather than sending anything
+        app.raw_seed = None;
+        app.account = None;
+        let got = Rc::new(RefCell::new(0));
+        let g = got.clone();
+        app.key_fetch("GET", "/x".into(), "w", String::new(), "", move |_, s, _| *g.borrow_mut() = s);
+        assert_eq!(*got.borrow(), SIGN_FAILED);
+        assert!(sent().is_empty());
+    }
+
+    #[test]
+    fn a_channel_the_server_couldnt_look_up_isnt_guessed() {
+        sent();
+        let mut app = App::new();
+        app.load_channel("memes".into());
+        let (id, _, _) = sent().pop().unwrap();
+        app.done(id, 502, b"{}".to_vec());
+        assert!(matches!(app.channels.get("memes"), Some(Load::Failed(_))));
+        app.load_channel("nope".into());
+        let (id, _, _) = sent().pop().unwrap();
+        app.done(id, 404, b"null".to_vec());
+        assert!(matches!(app.channels.get("nope"), Some(Load::Ready(None))));
+        // an old-style channel's URL comes from the legacy map when the directory didn't say
+        app.legacy.insert("chain://eip155:1/erc721:0xfd84".into(), "memes".into());
+        assert_eq!(app.channel_url("memes"), "chain://eip155:1/erc721:0xfd84");
+    }
+
+    #[test]
+    fn the_device_feed_reads_a_few_at_a_time_and_keeps_replies_to_people_followed() {
+        sent();
+        let mut app = App::new();
+        app.local = (1..=10).map(|fid| Local { fid, username: None }).collect();
+        app.load_feed("local".into(), false);
+        let first = sent();
+        assert_eq!(first.len(), LOCAL_AT_ONCE, "no more than {LOCAL_AT_ONCE} at once");
+        let page = |fid: u64| {
+            let mut casts = vec![serde_json::json!({"hash": format!("{fid:040x}"), "timestamp": format!("2026-01-{:02}T00:00:00Z", fid), "author": {"fid": fid}})];
+            // a reply to someone followed here, and one to a stranger
+            casts.push(serde_json::json!({"hash": format!("{:040x}", fid + 100), "timestamp": "2025-01-01T00:00:00Z", "author": {"fid": fid}, "parent_hash": "ab", "parent_author": {"fid": 2}}));
+            casts.push(serde_json::json!({"hash": format!("{:040x}", fid + 200), "timestamp": "2025-01-01T00:00:00Z", "author": {"fid": fid}, "parent_hash": "ab", "parent_author": {"fid": 999}}));
+            serde_json::json!({"casts": casts, "next": {"cursor": null}}).to_string().into_bytes()
+        };
+        let fid_of = |what: &str| what.split("fid=").nth(1).unwrap().split('&').next().unwrap().parse::<u64>().unwrap();
+        let mut queue: Vec<(u32, String)> = first.into_iter().map(|(id, w, _)| (id, w)).collect();
+        while let Some((id, w)) = queue.pop() {
+            app.done(id, 200, page(fid_of(&w)));
+            queue.extend(sent().into_iter().map(|(id, w, _)| (id, w)));
+        }
+        let f = &app.feeds["local"];
+        assert!(f.done);
+        assert_eq!(f.items.len(), 20, "each account's cast and its reply to someone followed, not the one to a stranger");
+        assert_eq!(f.items[0].author.fid, 10, "newest first");
+        assert!(f.items.iter().all(|c| c.parent_author.fid != Some(999)));
+    }
+
+    #[test]
+    fn browse_paths() {
+        assert_eq!(App::browse_path(&User { fid: 3, username: Some("DWR.eth".into()), ..Default::default() }), "/?as=dwr.eth");
+        assert_eq!(App::browse_path(&User { fid: 3, username: Some("123".into()), ..Default::default() }), "/?as=3");
+        assert_eq!(App::browse_path(&User { fid: 3, ..Default::default() }), "/?as=3");
     }
 
     #[test]
