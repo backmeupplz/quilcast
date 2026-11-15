@@ -1170,12 +1170,47 @@ small.warn { color: var(--warn); }
 .pick:hover { background-color: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
 .pick option { background: var(--card); color: var(--ink); }
 
-/* a profile's Supporters tab (support.tsx) */
-.support-offer { padding: 4px 0 12px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
-.support-btns { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px; margin-top: 8px; }
-.support-btns .btn.armed { box-shadow: 0 0 0 2px var(--accent); }
-.support-h { margin: 18px 16px 6px; font-size: 15px; }
-.support-what { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; max-width: 45%; color: var(--muted); font-size: 13px; text-align: right; }
+/* a profile's Supporters tab (support.tsx); colors come from the theme, so a profile's look restyles it */
+.sp-offer { padding: 16px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); }
+.sp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sp-head h3 { margin: 0; font-size: 18px; }
+.sp-sum { color: var(--muted); font-size: 14px; }
+.sp-paid { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: calc(12px * var(--rs, 1)); background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+.sp-ask { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+.sp-ask p { margin: 0; color: var(--muted); font-size: 14px; }
+.sp-ask .btn { flex: none; }
+.sp-tiers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.sp-tier { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: calc(14px * var(--rs, 1)); border: 1px solid var(--line); background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.sp-tier.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.sp-tname { font-weight: 700; }
+.sp-price { font-size: 20px; }
+.sp-desc { flex: 1; color: var(--muted); font-size: 13px; line-height: 1.35; margin-bottom: 8px; }
+.sp-tier > .btn { align-self: stretch; }
+.sp-mine { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.sp-joined { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-weight: 700; }
+.sp-tips { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.sp-label { font-weight: 600; margin-right: 4px; }
+.sp-custom { display: inline-flex; align-items: center; gap: 6px; }
+.sp .sp-custom input { width: 80px; flex: none; padding: 6px 10px; border-radius: calc(99px * var(--rs, 1)); border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-size: 14px; }
+.sp .btn.armed { box-shadow: 0 0 0 2px var(--accent); }
+.sp-fine { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+.sp-h { display: flex; align-items: center; gap: 8px; margin: 0; padding: 16px 16px 6px; font-size: 15px; }
+.sp-h span { color: var(--muted); font-weight: 400; }
+.sp-row .row-sub { color: var(--muted); }
+.sp-badge { flex: none; padding: 3px 10px; border-radius: calc(99px * var(--rs, 1)); font-size: 12px; font-weight: 700; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.sp-badge.sp-t1 { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.sp-badge.sp-t2 { background: var(--accent); color: var(--card); }
+.sp-acts { flex: none; display: flex; align-items: center; gap: 4px; }
+.sp-empty { margin: 0; padding: 4px 16px 16px; color: var(--muted); font-size: 14px; }
+/* phones: one tier a row, its button on the right */
+@media (max-width: 600px) {
+  .sp-tiers { grid-template-columns: 1fr; }
+  .sp-tier { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; align-items: center; }
+  .sp-tier > :not(.btn, .sp-mine) { grid-column: 1; }
+  .sp-tier > .btn, .sp-tier > .sp-mine { grid-column: 2; grid-row: 1 / span 3; }
+  .sp-mine { flex-direction: column; align-items: flex-end; gap: 4px; }
+  .sp-desc { margin-bottom: 0; }
+}
 
 /* ---------- Japanese mode (Settings): how Japanese websites look. CSS only, under :root[data-jp]: a white, dense
    page on a striped background, small Meiryo/Hiragino type, red-edged title bars, glossy orange buttons, folder
