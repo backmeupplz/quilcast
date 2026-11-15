@@ -137,6 +137,8 @@ const node = createServer(async (q, r) => {
   // a cast and a profile with characters XML can't hold (a bell, NUL, U+FFFF) in the name, bio and text
   if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === '07'.repeat(20))
     return r.end(JSON.stringify({ cast: { hash: '07'.repeat(20), text: 'ring\u0007 the bell\u0000\uffff', timestamp: '2026-01-01T00:00:00Z', embeds: [], author: { fid: 77, username: 'bell', display_name: '\u0007Bell' }, reactions: {}, replies: {} } }))
+  // Sendclap: fid 77 has two supporters (server SENDCLAP_URL), one paying $3 a month
+  if (u.pathname === '/sendclap/api/v1/farcaster/77') return r.end(JSON.stringify({ supporters: [{ fid: 8, monthly_cents: 300 }, { fid: 9, monthly_cents: 0 }] }))
   if (u.pathname === '/v2/farcaster/user' && u.searchParams.get('fid') === '77')
     return r.end(JSON.stringify({ user: { fid: 77, username: 'bell', display_name: 'Bell\u0007', custody_address: address(key), profile: { bio: { text: 'ding\u0001 dong\ufffe' } } } }))
   if (u.pathname === '/v2/farcaster/cast')
@@ -206,7 +208,7 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SCHEDULED_EVERY_MS: '200' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -466,7 +468,7 @@ test('a profile card: square art, metadata, the profile kept once collected, its
 })
 
 test('a control character in a name, bio or cast still gets the full card', async () => {
-  for (const path of [`/og/c/${'07'.repeat(20)}.png`, `/og/c/${'07'.repeat(20)}.3x2.png`, '/og/u/77.png']) {
+  for (const path of [`/og/c/${'07'.repeat(20)}.png`, `/og/c/${'07'.repeat(20)}.3x2.png`, '/og/u/77.png', '/og/u/77.3x2.png']) {
     const r = await fetch(base + path)
     assert.equal(r.headers.get('content-type'), 'image/png', path)
     const png = Buffer.from(await r.arrayBuffer())
@@ -476,6 +478,17 @@ test('a control character in a name, bio or cast still gets the full card', asyn
   const html = await (await fetch(`${base}/c/${'07'.repeat(20)}`)).text()
   assert.ok(!/[\0-\x08\x0b\x0c\x0e-\x1f\uffff]/.test(html))
   assert.match(html, /<meta property="og:title" content="Bell \(@bell\) on Quilcast"/)
+})
+
+test("a profile link's embed is its own 3:2 card, and a shared support link's button opens Supporters", async () => {
+  const embed = async (q) => JSON.parse((await (await fetch(`${base}/u/bell${q}`)).text()).match(/<meta name="fc:miniapp" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+  const plain = await embed('')
+  assert.match(plain.imageUrl, /^https:\/\/quilcast\.test\/og\/u\/\d+\.3x2\.png\?v=2$/)
+  assert.equal(plain.button.title, 'Open in Quilcast')
+  assert.match(plain.button.action.url, /^https:\/\/quilcast\.test\/u\/\w+$/)
+  const support = await embed('?tab=supporters')
+  assert.match(support.button.title, /^Support @\w+$/)
+  assert.match(support.button.action.url, /^https:\/\/quilcast\.test\/u\/\w+\?tab=supporters$/)
 })
 
 test('any page opens itself as a mini app', async () => {

@@ -571,11 +571,31 @@ async function themeCard(id, raw) {
   ${stk}
 </svg>`
 }
-/** A profile's share card: their picture, name, bio and follower counts. */
+// Sendclap (sendclap.com) keeps who supports whom (src/support.tsx); a profile's card shows its supporters
+const SENDCLAP = (process.env.SENDCLAP_URL || 'https://sendclap.com').replace(/\/$/, '')
+/** How many support `fid` (active memberships and tips), their monthly total and the first few faces; none when Sendclap
+ *  can't say, so the card never waits long on it. */
+async function supportersOf(fid) {
+  const list = (await fetch(`${SENDCLAP}/api/v1/farcaster/${fid}`, { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null), () => null))?.supporters
+  if (!Array.isArray(list) || !list.length) return { n: 0, monthly: 0, pfps: [] }
+  const users = (await nodeJson(`/v2/farcaster/user/bulk?fids=${list.slice(0, 6).map((s) => Number(s.fid)).join(',')}`).catch(() => null))?.users || []
+  const pfps = (await Promise.all(users.map((x) => (x.pfp_url ? dataUri(sized(x.pfp_url, 'w=112')).catch(() => null) : null)))).filter(Boolean)
+  return { n: list.length, monthly: list.reduce((a, s) => a + (Number(s.monthly_cents) || 0), 0), pfps }
+}
+/** A row of overlapping supporter faces and "N supporters · $X/mo", its left edge at x, centered on y. */
+function supportRow(s, x, y) {
+  const faces = s.pfps.map((p, i) => `<clipPath id="sp${i}"><circle cx="${x + 30 + i * 44}" cy="${y}" r="28"/></clipPath>
+  <circle cx="${x + 30 + i * 44}" cy="${y}" r="31" fill="#0d0c11"/><image href="${p}" x="${x + 2 + i * 44}" y="${y - 28}" width="56" height="56" preserveAspectRatio="xMidYMid slice" clip-path="url(#sp${i})"/>`).join('')
+  const tx = x + (s.pfps.length ? 30 + (s.pfps.length - 1) * 44 + 52 : 0)
+  const monthly = s.monthly ? `  ·  $${(s.monthly / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })}/mo` : ''
+  return `${faces}<text x="${tx}" y="${y + 10}" xml:space="preserve" font-family="Inter" font-size="28" fill="#9893a5"><tspan font-weight="700" fill="#edebf3">${n(s.n)}</tspan> ${s.n === 1 ? 'supporter' : 'supporters'}${monthly}</text>`
+}
+/** A profile's share card: their picture, name, bio, supporters and follower counts. */
 async function profileCard(u) {
   const name = cut(nameOf(u), 80)
-  const pfp = u.pfp_url ? await dataUri(sized(u.pfp_url, 'w=352')) : null
-  const bio = wrap(cut(u.profile?.bio?.text || '', 400) || ' ', 34, 1032, 4)
+  const [pfp, s] = await Promise.all([u.pfp_url ? dataUri(sized(u.pfp_url, 'w=352')) : null, supportersOf(u.fid)])
+  // supporters take the bio's last two lines
+  const bio = wrap(cut(u.profile?.bio?.text || '', 400) || ' ', 34, 1032, s.n ? 2 : 4)
   const f = u.follower_count || 0
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
@@ -588,6 +608,7 @@ async function profileCard(u) {
   ${textSvg([wrap(name, 52, 816, 1)[0] || ''], { x: 300, y: 160, size: 52, bold: true, fill: '#edebf3' })}
   ${textSvg([`@${fname(u) || u.fid}`], { x: 300, y: 214, size: 32, fill: '#9893a5' })}
   ${textSvg(bio, { x: 84, y: 336, lh: 45, size: 34, fill: '#edebf3' })}
+  ${s.n ? supportRow(s, 84, 466) : ''}
   <line x1="84" y1="540" x2="1116" y2="540" stroke="#25232d" stroke-width="2"/>
   <g transform="translate(84 562) scale(1.25)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
   <text x="138" y="593" font-family="Inter" font-weight="700" font-size="28" fill="#edebf3">Quilcast</text>
@@ -1055,14 +1076,15 @@ setInterval(refresh, 6 * 3600e3).unref()
 // are functions so `$` sequences in user text are never treated as replacement patterns
 const meta = (h, attr, k, v) => h.replace(new RegExp(`(<meta ${attr}="${k}" content=")[^"]*`), (_, p) => p + esc(v))
 // in Farcaster clients (and Quilcast) a link is a card that opens that same page as a mini app; fc:frame is the older name
-function launchAt(h, path, embed = `${SITE}/embed.png`) {
+/** The mini app embed's tags: `embed` its 3:2 picture, `launch` a button other than "Open in Quilcast" and where it goes. */
+function launchAt(h, path, embed = `${SITE}/embed.png`, launch = { title: 'Open in Quilcast', url: SITE + path }) {
   for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
-    h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: embed, button: { title: 'Open in Quilcast', action: { type, name: 'Quilcast', url: SITE + path, splashImageUrl: `${SITE}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
+    h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: embed, button: { title: launch.title, action: { type, name: 'Quilcast', url: launch.url, splashImageUrl: `${SITE}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
   }
   return h
 }
-function page({ title, desc, path, image, alt, embed, type = 'article', robots, json, body, feed }) {
-  let h = launchAt(index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`), path, embed)
+function page({ title, desc, path, image, alt, embed, launch, type = 'article', robots, json, body, feed }) {
+  let h = launchAt(index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`), path, embed, launch)
   const set = (attr, keys, v) => keys.forEach((k) => (h = meta(h, attr, k, v)))
   set('name', ['description', 'twitter:description'], desc)
   set('property', ['og:description'], desc)
@@ -1609,9 +1631,14 @@ const server = createServer(async (req, res) => {
       const at = fname(u)
       const name = nameOf(u)
       const off = hidden(u)
+      // a shared support cast links to ?tab=supporters (src/support.tsx): its embed's button goes there and says so
+      const support = url.searchParams.get('tab') === 'supporters'
       return html(page({
         title: `${name}${at ? ` (@${at})` : ''} on Farcaster · Quilcast`, desc: describe(u), path: pathOf(u), type: 'profile', robots: off,
-        image: `${SITE}/og/u/${u.fid}.png`, alt: `${name} on Farcaster`, json: ld(u, SITE + pathOf(u)), body: profileBody(u, off ? [] : casts),
+        // ?v=2: the cards gained supporters (2026-11-15), and Cloudflare kept the old ones
+        image: `${SITE}/og/u/${u.fid}.png?v=2`, embed: `${SITE}/og/u/${u.fid}.3x2.png?v=2`, alt: `${name} on Farcaster`,
+        ...(support && { launch: { title: cut(`Support @${at || u.fid}`, 32), url: `${SITE}${pathOf(u)}?tab=supporters` } }),
+        json: ld(u, SITE + pathOf(u)), body: profileBody(u, off ? [] : casts),
         ...(!off && { feed: { title: `${name} (@${at}) on Quilcast`, path: `${pathOf(u)}/rss` } }),
       }))
     }
@@ -1629,14 +1656,17 @@ const server = createServer(async (req, res) => {
       if (!f) return plain(404, { 'cache-control': 'public, max-age=600' })
       return send(req, res, 200, { 'content-type': 'application/rss+xml; charset=utf-8', 'cache-control': 'public, max-age=600' }, f.xml, f.packed)
     }
-    const ogUser = path.match(/^\/og\/u\/([1-9]\d{0,9})\.png$/)
+    // .3x2.png is the same card for mini app embeds (what Farcaster clients and Quilcast show for a shared profile link)
+    const ogUser = path.match(/^\/og\/u\/([1-9]\d{0,9})(\.3x2)?\.png$/)
     if (ogUser) {
-      const k = `u:${ogUser[1]}`
+      // drawn again each hour, for new supporters
+      const k = `u:${ogUser[1]}${ogUser[2] || ''}:${Math.floor(Date.now() / 3600e3)}`
       if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
       const p = await getProfile(ogUser[1]).catch(() => null)
       if (!p) return res.writeHead(404).end()
-      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => profileCard(p.u).then(render))))
-      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }).end(png)
+      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => profileCard(p.u).then((svg) => render(ogUser[2] ? tall(svg) : svg)))))
+      // supporters change, so a few hours rather than a day
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=10800' }).end(png)
     }
 
     const channelPage = path.match(/^\/channel\/([a-z0-9-]{1,64})$/)
