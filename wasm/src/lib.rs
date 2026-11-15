@@ -4,6 +4,7 @@
 
 pub mod api;
 pub mod app;
+pub mod compose;
 pub mod dom;
 pub mod fc;
 pub mod host;

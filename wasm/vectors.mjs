@@ -18,5 +18,8 @@ const out = {
   envelope: fc.hex((await fc.envelope(fc.MT.CAST_ADD, 12345, fc.castBody({ text: 'hello wasm' }), signer)).msg),
   key_add: fc.hex((await fc.keyAdd(12345, custody, signer, 1763200000)).msg),
   key_remove: fc.hex((await fc.keyRemoveSelf(12345, signer, 1763200001)).msg),
+  // src/write.ts draftKey: the custody's personal_sign over a fixed message, and SHA-256 of its r and s
+  drafts_sig: fc.hex(await custody.message(new TextEncoder().encode('Quilcast drafts key for FID 12345\n\nSigning this lets Quilcast encrypt your drafts so only you can read them. It sends nothing and costs nothing.'))),
 }
+out.drafts_key = fc.hex(new Uint8Array(await crypto.subtle.digest('SHA-256', fc.unhex(out.drafts_sig).slice(0, 64))))
 console.log(JSON.stringify(out, null, 1))

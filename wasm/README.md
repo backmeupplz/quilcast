@@ -6,7 +6,7 @@ Quilcast written in Rust and compiled to WebAssembly, served at [wasm.quilcast.c
 
 - **The module decides everything.** App state, routing, every request, protobuf encoding, signing and every page are Rust (`src/`). There is no JS UI framework and no wasm-bindgen: the module is a plain `wasm32-unknown-unknown` build.
 - **It draws the page as elements, not pixels.** Views build a tree of nodes (`src/view.rs`), and `src/dom.rs` compares it with the one on the page and writes the difference as a short list of operations. Drawing with the DOM rather than a canvas keeps what the browser does for free: text selection, find in page, the screen reader, the keyboard, autofill, and typing with an IME (composition, the caret and spellcheck happen in real `<textarea>`s the module never interrupts).
-- **The shell is small and fixed.** `web/shell.js` (about 270 lines) applies those operations, forwards events and reaches the browser APIs wasm can't call by itself: `fetch` (with the headers the module names, such as the signature on requests to Quilcast's server), `localStorage`, IndexedDB, WebCrypto, history and timers. It never parses markup (no `innerHTML`): elements, attributes and text are set one by one, so nothing a cast says can become HTML or script.
+- **The shell is small and fixed.** `web/shell.js` (about 350 lines) applies those operations, forwards events and reaches the browser APIs wasm can't call by itself: `fetch` (with the headers the module names, such as the signature on requests to Quilcast's server), `localStorage`, IndexedDB, WebCrypto, history, timers, the files picked for a cast (which the module reads in pieces) and the browser's image decoder (to draw a photo again without its EXIF). It never parses markup (no `innerHTML`): elements, attributes and text are set one by one, so nothing a cast says can become HTML or script.
 - **Keys stay in the browser.** The recovery phrase signs one KEY_ADD (Hypersnap's gasless signers, no transaction) and is then forgotten: it is never stored. The key it adds is a non-extractable WebCrypto Ed25519 key kept in IndexedDB, so the page can sign with it but nothing can read it out; in browsers without Ed25519 in WebCrypto, a raw key sealed with AES-GCM under a non-extractable key instead. Signing out revokes the key with a KEY_REMOVE it signs itself.
 - **The same bytes as quilcast.com.** `src/fc.rs` is a port of `src/fc.ts`; its tests check casts, reactions, follows, KEY_ADD (with its EIP-712 signatures) and KEY_REMOVE byte for byte against vectors the TypeScript encoders produce (`vectors.mjs`), and the phrase derives the same custody address.
 - **Served by the same server.** `server/index.mjs` serves `wasm/dist` for the host `wasm.quilcast.com` (`WASM_HOST`), with its own CSP: `script-src 'self' 'wasm-unsafe-eval'` (to compile the module) and no inline scripts or styles, and nothing may frame it.
@@ -25,7 +25,7 @@ The Dockerfile builds it in a stage of its own (`rust:1.99-slim`), and CI runs t
 
 ## What it does so far
 
-The ticket's goal is everything quilcast.com does, shipped in stages. The list below follows the README's "What it does" and says where each part stands. Stage 1 brought reading, signing in and the basic writes; stage 2 adds channels, the lists of people, Browse as, anonymous mode, mutes, blocks and reports.
+The ticket's goal is everything quilcast.com does, shipped in stages. The list below follows the README's "What it does" and says where each part stands. Stage 1 brought reading, signing in and the basic writes; stage 2 added channels, the lists of people, Browse as, anonymous mode, mutes, blocks and reports; stage 3 adds what the composer does beyond text (pictures, videos and GIFs, @mention suggestions, drafts, scheduled casts) and pinned casts.
 
 | quilcast.com feature | WASM |
 | --- | --- |
@@ -43,7 +43,8 @@ The ticket's goal is everything quilcast.com does, shipped in stages. The list b
 | Quoted casts, pictures, video | ✅ (HLS plays only where the browser plays it natively) |
 | Light and dark, node URL, sign out (Settings) | ✅ |
 | The spam filter (spam.quilcast.com labels) | ⏳ |
-| Attach photos, videos and GIFs; @mention autocomplete | ⏳ |
+| Attach photos, videos and GIFs; @mention autocomplete | ✅ (photos are drawn again by the browser at 2048 px at most, so their EXIF is gone; videos lose their metadata boxes, as on quilcast.com. Files are kept on Quilcast's server, which is where quilcast.com puts them too for an account whose recovery phrase it doesn't keep) |
+| Threads, the emoji and sticker pickers in the composer | ⏳ (a thread saved as a draft on quilcast.com opens, posts and schedules here, but a new one can't be written yet) |
 | Several accounts per browser | ⏳ |
 | Push notifications | ⏳ |
 | Create a new account, sign in with an external wallet | ⏳ |
@@ -54,7 +55,10 @@ The ticket's goal is everything quilcast.com does, shipped in stages. The list b
 | Profile looks and the Winamp | ⏳ |
 | App themes (with Quorum import and export), Quorum mode | ⏳ |
 | 22 languages, translations | ⏳ (English only) |
-| Drafts, scheduled casts, Articles, pinned casts | ⏳ |
+| Drafts | ✅ (sealed in the browser with the same key quilcast.com makes from the custody, so drafts open on either; this browser makes it while signing in with the recovery phrase, so a session from before stage 3 has to sign in again for drafts) |
+| Scheduled casts | ✅ (signed here for their time and handed to Quilcast's server, as quilcast.com does; listed, edited and cancelled in the composer) |
+| Pinned casts | ✅ (pin and unpin your own casts; a profile shows its pin on top) |
+| Articles | ⏳ |
 | Profile editing, key export and the rest of Settings | ⏳ |
 | Quilcast as a mini app, share cards and meta tags per page, RSS | ⏳ (every page has the same meta tags; RSS stays on quilcast.com) |
 | Reproducible build hashes (`build.json`, `scripts/verify.mjs`) | ⏳ (`wasm/dist` isn't in them yet) |

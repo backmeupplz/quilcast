@@ -156,7 +156,36 @@ pub struct Unfurl {
 
 #[derive(Default)]
 pub struct Compose {
+    /// which composer this is: answers for an earlier one are dropped (compose.rs live)
+    pub gen: u32,
     pub text: String,
+    /// pictures, videos and GIFs on it (compose.rs)
+    pub media: Vec<crate::compose::Attach>,
+    /// the posts after this one, when it's a thread opened from a draft
+    pub rest: Vec<crate::compose::Part>,
+    /// the @name being typed, and the people it could be
+    pub typing: Option<crate::compose::Typing>,
+    pub suggest: Vec<User>,
+    /// bumped to put the caret back in the text after a suggestion is picked
+    pub focus: u32,
+    /// the drafts list, the scheduled list or the GIF search, over the text
+    pub panel: Option<crate::compose::Panel>,
+    /// the draft (by id) or scheduled cast it was opened from
+    pub draft: Option<String>,
+    pub sched: Option<crate::compose::Sched>,
+    /// what it held when opened, to tell whether closing loses anything
+    pub base: String,
+    /// closing asked whether to keep it as a draft
+    pub asking: bool,
+    /// a datetime-local value: when it goes out, empty for now
+    pub when: String,
+    pub timing: bool,
+    /// a reopened draft's quoted cast, by 0x hash, until the node answers
+    pub quote_wait: Option<String>,
+    /// a reopened reply whose cast can't be found (and whose author isn't known): it can only be kept as a draft
+    pub parent_lost: bool,
+    /// the last post of a thread that went out, when the rest failed
+    pub posted: Option<fc::CastRef>,
     pub parent: Option<Cast>,
     pub quote: Option<Cast>,
     /// the channel a new cast goes into, by id
@@ -251,6 +280,10 @@ pub enum Want {
     Quote(String),
     /// someone's name and face, by FID
     User(u64),
+    /// someone's pinned cast
+    Pin(u64),
+    /// the account's drafts, once this browser is known to hold their key
+    Drafts,
 }
 
 type Done = Box<dyn FnOnce(&mut App, i32, Vec<u8>)>;
@@ -302,6 +335,19 @@ pub struct App {
     pub import_text: String,
     pub recents: Vec<Recent>,
     pub join: Join,
+    /// the account's FID and drafts key, made from the phrase while signing in, until the key is kept
+    join_secret: Option<(u64, [u8; 32])>,
+    pub attach_seq: u32,
+    pub compose_seq: u32,
+    pub gifs: HashMap<String, Load<Vec<crate::compose::Gif>>>,
+    pub gif_gen: u32,
+    pub mention_gen: u32,
+    /// whether this browser holds the account's drafts key (None: not asked yet)
+    pub drafts_key: Option<bool>,
+    pub drafts: Option<Load<Vec<crate::compose::Draft>>>,
+    pub scheduled: Option<Load<Vec<crate::compose::Scheduled>>>,
+    /// each profile's pinned cast, by bare hash
+    pub pins: HashMap<u64, Load<Option<String>>>,
     pub search_text: String,
     pub node_text: String,
     pub toast: Option<String>,
@@ -309,7 +355,7 @@ pub struct App {
     pub wants: RefCell<Vec<Want>>,
     pub busy: HashSet<String>,
     pending: HashMap<u32, Done>,
-    next_id: u32,
+    pub(crate) next_id: u32,
     last_toggle: u64,
     scroll_saved: HashMap<String, f64>,
     scroll_after: Option<f64>,
@@ -365,6 +411,16 @@ impl App {
             import_text: String::new(),
             recents,
             join: Join::default(),
+            join_secret: None,
+            attach_seq: 0,
+            compose_seq: 0,
+            gifs: HashMap::new(),
+            gif_gen: 0,
+            mention_gen: 0,
+            drafts_key: None,
+            drafts: None,
+            scheduled: None,
+            pins: HashMap::new(),
             search_text: String::new(),
             toast: None,
             toast_gen: 0,
@@ -402,6 +458,7 @@ impl App {
                 self.sync_mutes();
             }
             self.load_mine();
+            self.check_drafts_key();
         }
         if let Route::Search(q, _) = &self.route {
             self.search_text = q.clone();
@@ -451,6 +508,12 @@ impl App {
                 Want::Unfurl(u) => self.load_unfurl(u),
                 Want::Quote(h) => self.load_quote(h),
                 Want::User(fid) => fids.push(fid),
+                Want::Pin(fid) => self.load_pin(fid),
+                Want::Drafts => {
+                    if self.drafts.is_none() {
+                        self.load_drafts();
+                    }
+                }
             }
         }
         self.load_users(fids);
@@ -459,7 +522,7 @@ impl App {
 
     // --- async plumbing: every request, key operation and timer answers through `done` ---
 
-    fn wait(&mut self, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) -> u32 {
+    pub(crate) fn wait(&mut self, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) -> u32 {
         self.next_id += 1;
         self.pending.insert(self.next_id, Box::new(f));
         self.next_id
@@ -1533,8 +1596,20 @@ impl App {
         if self.account.is_none() {
             return self.navigate("/join", false);
         }
+        if self.compose.as_ref().is_some_and(|c| c.sending) {
+            return;
+        }
         self.sheet = None;
-        self.compose = Some(Compose { parent, quote, ..Default::default() });
+        if let Some(old) = self.compose.take() {
+            App::drop_files(&old);
+        }
+        self.compose_seq += 1;
+        let mut c = Compose { gen: self.compose_seq, parent, quote, ..Default::default() };
+        c.base = crate::compose::snapshot(&c);
+        self.compose = Some(c);
+        if self.drafts_key.is_none() {
+            self.check_drafts_key();
+        }
     }
 
     /// A new cast into channel `id` (a channel page's Cast here).
@@ -1566,49 +1641,42 @@ impl App {
         });
     }
 
+    /// Escape or ✕: a panel closes first; then a cast with something new in it asks whether to keep it as a draft.
     pub fn close_compose(&mut self) {
-        if let Some(c) = &self.compose {
-            if c.sending || (!c.text.trim().is_empty() && !host::ask("Discard this cast?")) {
+        let Some(c) = self.compose.as_mut() else { return };
+        if c.sending {
+            return;
+        }
+        if c.panel.take().is_some() || std::mem::take(&mut c.typing).is_some() {
+            c.suggest.clear();
+            return;
+        }
+        if c.asking {
+            c.asking = false;
+            return;
+        }
+        let empty = c.text.trim().is_empty() && c.media.is_empty() && c.rest.is_empty();
+        let changed = crate::compose::snapshot(c) != c.base;
+        if !empty && changed {
+            if self.drafts_key == Some(true) {
+                c.asking = true;
+                return;
+            }
+            if !host::ask("Discard this cast?") {
                 return;
             }
         }
-        self.compose = None;
+        self.discard_compose();
     }
-
-    pub fn send_compose(&mut self) {
-        let Some(c) = self.compose.as_mut() else { return };
-        let len = c.text.trim().len();
-        if c.sending || (len == 0 && c.quote.is_none()) || c.text.len() > MAX_CAST {
-            return;
-        }
-        c.sending = true;
-        c.error = None;
-        let typed = c.text.trim().to_string();
-        // every name a mention could mean is asked about once, all at the same time
-        let mut names: Vec<String> = fc::mention_spots(&typed).into_iter().flat_map(|(_, n)| fc::mention_tries(&n)).map(|n| n.to_lowercase()).collect();
-        names.sort();
-        names.dedup();
-        let found: Rc<RefCell<HashMap<String, Option<Option<u64>>>>> = Rc::new(RefCell::new(HashMap::new()));
-        if names.is_empty() {
-            return self.post(typed, HashMap::new());
-        }
-        let left = Rc::new(RefCell::new(names.len()));
-        for n in names {
-            let (found, left, typed) = (found.clone(), left.clone(), typed.clone());
-            self.fid_by_name(n.clone(), move |app, fid| {
-                found.borrow_mut().insert(n, fid);
-                *left.borrow_mut() -= 1;
-                if *left.borrow() == 0 {
-                    let m = found.borrow().clone();
-                    app.post(typed, m);
-                }
-            });
+    pub fn discard_compose(&mut self) {
+        if let Some(c) = self.compose.take() {
+            App::drop_files(&c);
         }
     }
 
     /// A name's FID: Some(None) when there's no such user, None when the node couldn't say. ENS names, which the
     /// node's by-username doesn't know, come from search (exact match only).
-    fn fid_by_name(&mut self, name: String, f: impl FnOnce(&mut App, Option<Option<u64>>) + 'static) {
+    pub(crate) fn fid_by_name(&mut self, name: String, f: impl FnOnce(&mut App, Option<Option<u64>>) + 'static) {
         let url = self.node("/v2/farcaster/user/by-username", &[("username", name.clone())]);
         self.get::<UserResp>(url, move |app, r| match r {
             Ok(UserResp { user: Some(u) }) => f(app, Some(Some(u.fid))),
@@ -1627,60 +1695,8 @@ impl App {
         });
     }
 
-    fn post(&mut self, typed: String, found: HashMap<String, Option<Option<u64>>>) {
-        let Some(c) = self.compose.as_ref() else { return };
-        // each name's answer: Some(Some(fid)), Some(None) for no such user, None when the node couldn't say
-        let (text, mentions, positions) = fc::apply_mentions(&typed, |n| found.get(n).cloned().flatten(), 10);
-        let quote = c.quote.as_ref().map(|q| fc::CastRef { fid: q.author.fid, hash: q.bare_hash() });
-        // a cast carries 2 embeds: a quoted cast first, then links from its text (src/shared.ts castEmbeds)
-        let mut embeds: Vec<fc::Embed> = quote.clone().map(fc::Embed::Cast).into_iter().collect();
-        for u in text::text_links(&text) {
-            if embeds.len() < 2 {
-                embeds.push(fc::Embed::Url(u));
-            }
-        }
-        // a channel the directory hasn't answered about isn't cast into under a guessed URL
-        if let Some(id) = c.channel.as_ref().filter(|id| !matches!(self.channels.get(*id), Some(Load::Ready(_)))) {
-            let id = id.clone();
-            let e = format!("Still looking up /{id}. Try again in a moment.");
-            if !matches!(self.channels.get(&id), Some(Load::Loading)) {
-                self.channels.remove(&id);
-                self.load_channel(id);
-            }
-            if let Some(c) = self.compose.as_mut() {
-                c.sending = false;
-                c.error = Some(e);
-            }
-            return;
-        }
-        let Some(c) = self.compose.as_ref() else { return };
-        let channel_url = c.channel.as_ref().map(|id| self.channel_url(id));
-        let parent = match (&c.parent, &channel_url) {
-            (Some(p), _) => fc::Parent::Cast(fc::CastRef { fid: p.author.fid, hash: p.bare_hash() }),
-            (None, Some(u)) => fc::Parent::Url(u.clone()),
-            (None, None) => fc::Parent::None,
-        };
-        let channel_url = if c.parent.is_some() { None } else { channel_url };
-        let parent_cast = c.parent.clone();
-        let body = fc::cast_body(&text, &mentions, &positions, &embeds, &parent);
-        let shown = typed.clone();
-        self.send(fc::mt::CAST_ADD, body, move |app, r| match r {
-            Ok(hash) => {
-                app.compose = None;
-                app.show_posted(hash, shown, parent_cast, quote, channel_url);
-                app.say("Posted");
-            }
-            Err(e) => {
-                if let Some(c) = app.compose.as_mut() {
-                    c.sending = false;
-                    c.error = Some(e);
-                }
-            }
-        });
-    }
-
     /// A cast just sent shows where it belongs before the node has indexed it.
-    fn show_posted(&mut self, hash: String, text: String, parent: Option<Cast>, quote: Option<fc::CastRef>, channel: Option<String>) {
+    pub(crate) fn show_posted(&mut self, hash: String, text: String, parent: Option<Cast>, quote: Option<fc::CastRef>, channel: Option<String>, media: Vec<String>) {
         let Some(a) = self.account.clone() else { return };
         let author = User { fid: a.fid, username: a.username.clone(), display_name: a.display.clone(), pfp_url: a.pfp.clone(), ..Default::default() };
         let c = Cast {
@@ -1691,7 +1707,7 @@ impl App {
             parent_hash: parent.as_ref().map(|p| p.bare_hash()),
             parent_author: ParentAuthor { fid: parent.as_ref().map(|p| p.author.fid) },
             parent_url: channel.clone(),
-            embeds: quote.map(|q| EmbedJ { url: None, cast_id: Some(CastIdJ { fid: q.fid, hash: q.hash }) }).into_iter().collect(),
+            embeds: media.into_iter().map(|u| EmbedJ { url: Some(u), cast_id: None }).chain(quote.map(|q| EmbedJ { url: None, cast_id: Some(CastIdJ { fid: q.fid, hash: q.hash }) })).collect(),
             ..Default::default()
         };
         match &parent {
@@ -1735,7 +1751,7 @@ impl App {
         });
     }
 
-    fn sign(&mut self, key: &[u8], msg: &[u8], f: impl FnOnce(&mut App, Result<Vec<u8>, String>) + 'static) {
+    pub(crate) fn sign(&mut self, key: &[u8], msg: &[u8], f: impl FnOnce(&mut App, Result<Vec<u8>, String>) + 'static) {
         if let Some(seed) = self.raw_seed {
             use ed25519_dalek::Signer;
             let k = ed25519_dalek::SigningKey::from_bytes(&seed);
@@ -1791,13 +1807,18 @@ impl App {
         self.join.step = JoinStep::Finding;
         let addr = fc::address(&custody);
         self.fid_for(addr.clone(), move |app, fid| match fid {
-            Ok(Some(fid)) => app.add_key(fid, addr, custody),
+            Ok(Some(fid)) => {
+                // the drafts key needs the custody, so it's made now, while the phrase is in hand (src/write.ts draftKey)
+                app.join_secret = Some((fid, fc::drafts_secret(fid, &custody)));
+                app.add_key(fid, addr, custody)
+            }
             Ok(None) => app.join_failed("No Farcaster account uses this recovery phrase. You can create one at quilcast.com.".into()),
             Err(e) => app.join_failed(e),
         });
     }
 
     fn join_failed(&mut self, e: String) {
+        self.join_secret = None;
         self.join.step = JoinStep::Idle;
         self.join.error = Some(e);
     }
@@ -1907,7 +1928,11 @@ impl App {
                 a.pfp = u.pfp_url;
             }
             app.join = Join::default();
+            let secret = app.join_secret.take().filter(|(f, _)| *f == a.fid);
             app.set_account(Some(a));
+            if let Some((fid, s)) = secret {
+                app.keep_drafts_key(fid, s);
+            }
             app.navigate("/", false);
             app.say("Signed in");
         });
@@ -1935,7 +1960,13 @@ impl App {
         self.mine_likes.clear();
         self.mine_recasts.clear();
         self.taps.clear();
+        self.drafts = None;
+        self.scheduled = None;
+        self.drafts_key = None;
+        self.pins.clear();
+        self.discard_compose();
         self.load_mine();
+        self.check_drafts_key();
     }
 
     /// Sign out: this browser's key revokes itself (so a copy of it stops working too), then it's deleted.
@@ -1958,6 +1989,7 @@ impl App {
                 host::eddrop(&k2);
             }
             app.raw_seed = None;
+            host::adrop(&App::drafts_name(a.fid));
             app.set_account(None);
             app.navigate("/", false);
             app.say("Signed out");
@@ -2344,6 +2376,255 @@ mod tests {
         app.key_fetch("GET", "/x".into(), "w", String::new(), "", move |_, s, _| *g.borrow_mut() = s);
         assert_eq!(*got.borrow(), SIGN_FAILED);
         assert!(sent().is_empty());
+    }
+
+    /// An app signed in as FID 77 with a raw key, so signing happens at once (no WebCrypto here).
+    fn signed_in() -> (App, ed25519_dalek::SigningKey) {
+        sent();
+        let mut app = App::new();
+        let seed = [9u8; 32];
+        let k = ed25519_dalek::SigningKey::from_bytes(&seed);
+        app.raw_seed = Some(seed);
+        app.account = Some(Account { fid: 77, key: fc::hex(k.verifying_key().as_bytes()), raw: true, ..Default::default() });
+        (app, k)
+    }
+    fn answer(app: &mut App, id: u32, status: i32, body: &str) {
+        app.done(id, status, body.as_bytes().to_vec());
+    }
+
+    #[test]
+    fn scheduling_signs_each_post_for_its_time() {
+        use crate::compose::{b64, unb64, Part};
+        use ed25519_dalek::Signer;
+        let (mut app, k) = signed_in();
+        let at = host::ms() + 3_600_000.0 + 400.0;
+        app.compose = Some(Compose { text: "later".into(), rest: vec![Part { text: "two".into(), media: vec![] }], when: at.to_string(), ..Default::default() });
+        app.send_compose();
+        // the list is read first, so a key the node doesn't list yet is waited for
+        let (id, what, _) = sent().pop().expect("a read");
+        assert!(what.starts_with("GET /api/scheduled/77\n"), "{what}");
+        answer(&mut app, id, 200, "[]");
+        let (id, what, body) = sent().pop().expect("the item");
+        assert!(what.starts_with("PUT /api/scheduled/77\napplication/json\nx-key: "), "{what}");
+        let j: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(j["id"].as_str().unwrap().len(), 36);
+        assert_eq!(j["draft"]["parts"][1]["text"], "two");
+        let msgs: Vec<Vec<u8>> = j["msgs"].as_array().unwrap().iter().map(|m| unb64(m.as_str().unwrap()).unwrap()).collect();
+        // the same bytes as signing them here by hand: on the second, the time asked for; the reply a second later
+        let start = (at / 1000.0).floor() * 1000.0;
+        let one = fc::prepare(fc::mt::CAST_ADD, 77, fc::fc_time(start), &fc::cast_body("later", &[], &[], &[], &fc::Parent::None));
+        assert_eq!(msgs[0], fc::seal(&one, &k.sign(&one.hash).to_bytes(), k.verifying_key().as_bytes()));
+        let parent = fc::Parent::Cast(fc::CastRef { fid: 77, hash: fc::hex(&one.hash) });
+        let two = fc::prepare(fc::mt::CAST_ADD, 77, fc::fc_time(start + 1000.0), &fc::cast_body("two", &[], &[], &[], &parent));
+        assert_eq!(msgs[1], fc::seal(&two, &k.sign(&two.hash).to_bytes(), k.verifying_key().as_bytes()));
+        assert_eq!(b64(&msgs[0]), j["msgs"][0].as_str().unwrap());
+        answer(&mut app, id, 200, "{}");
+        assert!(app.compose.is_none());
+        assert!(app.toast.as_deref().unwrap_or("").starts_with("Scheduled for"));
+        // too soon is turned down before anything is signed
+        app.compose = Some(Compose { text: "now-ish".into(), when: (host::ms() + 1000.0).to_string(), ..Default::default() });
+        app.send_compose();
+        assert!(sent().is_empty());
+        assert_eq!(app.compose.as_ref().unwrap().error.as_deref(), Some("Pick a time at least a minute from now."));
+    }
+
+    #[test]
+    fn uploads_go_in_signed_pieces_and_end_up_as_embeds() {
+        let (mut app, k) = signed_in();
+        app.open_compose(None, None);
+        sent();
+        app.attach(r#"[{"id":5,"type":"image/gif","size":2500000,"name":"a.gif"}]"#);
+        let (id, what, _) = sent().pop().expect("the start");
+        let lines: Vec<&str> = what.split('\n').collect();
+        assert_eq!(lines[0], "POST /api/upload");
+        assert!(lines.contains(&"content-type: image/gif") && lines.contains(&"x-fid: 77") && lines.contains(&"x-size: 2500000"), "{lines:?}");
+        let ts = lines.iter().find_map(|l| l.strip_prefix("x-ts: ")).unwrap();
+        let sig = lines.iter().find_map(|l| l.strip_prefix("x-sig: ")).unwrap();
+        use ed25519_dalek::Verifier;
+        let sig = ed25519_dalek::Signature::from_slice(&fc::unhex(sig)).unwrap();
+        assert!(k.verifying_key().verify(format!("quilcast-upload:77:{ts}:").as_bytes(), &sig).is_ok());
+        answer(&mut app, id, 200, r#"{"id":"0b6c2c7e-7b1a-4c39-9a51-1e7c8f1b2c3d","chunk":8388608}"#);
+        assert!(!App::can_send(app.compose.as_ref().unwrap()), "not while it's uploading");
+        // pieces of 1 MiB, each read from the file when it's its turn
+        let mut off = 0usize;
+        while off < 2_500_000 {
+            let read = app.next_id;
+            let n = (2_500_000 - off).min(1 << 20);
+            app.done(read, 1, vec![1; n]);
+            let (id, what, body) = sent().pop().expect("a piece");
+            assert_eq!(what, format!("PUT /api/upload/0b6c2c7e-7b1a-4c39-9a51-1e7c8f1b2c3d?offset={off}\napplication/octet-stream"));
+            assert_eq!(body.len(), n);
+            off += n;
+            answer(&mut app, id, 200, &format!(r#"{{"received":{off}}}"#));
+        }
+        let (id, what, _) = sent().pop().expect("done");
+        assert_eq!(what, "POST /api/upload/0b6c2c7e-7b1a-4c39-9a51-1e7c8f1b2c3d/done");
+        answer(&mut app, id, 200, r#"{"state":"sending"}"#);
+        let timer = app.next_id;
+        app.done(timer, 1, vec![]);
+        let (id, what, _) = sent().pop().expect("a poll");
+        assert_eq!(what, "GET /api/upload/0b6c2c7e-7b1a-4c39-9a51-1e7c8f1b2c3d");
+        answer(&mut app, id, 200, r#"{"state":"ready","url":"https://quilcast.com/m/0123456789abcdef01234567.gif"}"#);
+        let c = app.compose.as_mut().unwrap();
+        assert_eq!(c.media[0].url.as_deref(), Some("https://quilcast.com/m/0123456789abcdef01234567.gif"));
+        c.text = "look".into();
+        app.send_compose();
+        let (submit, what, msg) = sent().pop().expect("the cast");
+        assert!(what.ends_with("/v1/submitMessage\napplication/octet-stream"), "{what}");
+        let body = fc::cast_body("look", &[], &[], &[fc::Embed::Url("https://quilcast.com/m/0123456789abcdef01234567.gif".into())], &fc::Parent::None);
+        assert!(msg.windows(body.len()).any(|w| w == body), "the upload is the cast's embed");
+        // the file stays while the composer shows it, and goes once it's out
+        assert!(!host::DROPPED.with(|d| d.borrow().contains(&5)));
+        answer(&mut app, submit, 200, "{}");
+        assert!(host::DROPPED.with(|d| d.borrow().contains(&5)), "the sent file is let go");
+        assert!(app.compose.is_none());
+        // a third file doesn't fit beside two
+        app.compose = Some(Compose::default());
+        app.attach_seq = 0;
+        app.attach(r#"[{"id":6,"type":"image/gif","size":10},{"id":7,"type":"image/gif","size":10},{"id":8,"type":"image/gif","size":10}]"#);
+        assert_eq!(app.compose.as_ref().unwrap().media.len(), 2);
+        app.attach(r#"[{"id":9,"type":"application/pdf","size":10}]"#);
+        assert_eq!(app.compose.as_ref().unwrap().media.len(), 2);
+    }
+
+    #[test]
+    fn drafts_are_sealed_before_they_leave_and_opened_when_read() {
+        use crate::compose::Draft;
+        let (mut app, _) = signed_in();
+        app.drafts_key = Some(true);
+        app.open_compose(None, None);
+        app.compose.as_mut().unwrap().text = "keep me".into();
+        // closing something new asks whether to keep it
+        app.close_compose();
+        assert!(app.compose.as_ref().unwrap().asking);
+        sent();
+        app.save_draft();
+        // the shell seals it (IV, then ciphertext) with the key it holds
+        let seal = app.next_id;
+        app.done(seal, 1, (0..40).collect());
+        let (id, what, body) = sent().pop().expect("the draft");
+        assert!(what.starts_with("PUT /api/drafts/77\napplication/json\nx-key: "), "{what}");
+        let j: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(j["box"], crate::compose::draft_box(&(0..40).collect::<Vec<u8>>()));
+        let did = j["id"].as_str().unwrap().to_string();
+        answer(&mut app, id, 200, "{}");
+        assert!(app.compose.is_none());
+        assert_eq!(app.toast.as_deref(), Some("Draft saved"));
+        // read back: each box is opened in the shell
+        app.load_drafts();
+        let (id, what, _) = sent().pop().expect("the list");
+        assert!(what.starts_with("GET /api/drafts/77\n"), "{what}");
+        answer(&mut app, id, 200, &format!(r#"[{{"id":"{did}","box":"{}"}}]"#, crate::compose::draft_box(&[5; 30])));
+        let open = app.next_id;
+        app.done(open, 1, br#"{"at":5,"parts":[{"text":"keep me","media":[]}],"channel":"memes"}"#.to_vec());
+        let l = match &app.drafts {
+            Some(Load::Ready(l)) => l.clone(),
+            _ => panic!("drafts"),
+        };
+        assert_eq!(l, vec![Draft { id: did.clone(), at: 5, parts: vec![crate::compose::Part { text: "keep me".into(), media: vec![] }], channel: Some("memes".into()), ..Default::default() }]);
+        // opened again it's the same draft, and posting it deletes it
+        app.open_compose(None, None);
+        let d = l[0].clone();
+        app.open_draft(&d, None);
+        let c = app.compose.as_ref().unwrap();
+        assert_eq!((c.text.as_str(), c.channel.as_deref(), c.draft.as_deref()), ("keep me", Some("memes"), Some(did.as_str())));
+    }
+
+    #[test]
+    fn a_send_landing_after_the_composer_changed_leaves_the_new_one_alone() {
+        use crate::compose::Draft;
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        app.compose.as_mut().unwrap().text = "first".into();
+        sent();
+        app.send_compose();
+        let (id, what, _) = sent().pop().expect("the cast");
+        assert!(what.contains("/v1/submitMessage"), "{what}");
+        // nothing else opens while it's on its way
+        let d = Draft { id: "d1".into(), parts: vec![crate::compose::Part { text: "mine".into(), media: vec![] }], ..Default::default() };
+        app.open_draft(&d, None);
+        app.open_compose(None, None);
+        assert_eq!(app.compose.as_ref().unwrap().text, "first");
+        // and if another composer is there anyway when it lands, that one keeps its draft and its text
+        app.compose = Some(Compose { gen: 99, text: "mine".into(), draft: Some("d1".into()), ..Default::default() });
+        answer(&mut app, id, 200, "{}");
+        let c = app.compose.as_ref().expect("still open");
+        assert_eq!((c.text.as_str(), c.draft.as_deref()), ("mine", Some("d1")));
+        assert!(sent().iter().all(|(_, w, _)| !w.starts_with("PUT /api/drafts")), "the draft isn't deleted");
+    }
+
+    #[test]
+    fn reopened_threads_skip_empty_posts_and_lost_parents_stay_lost() {
+        use crate::compose::{Draft, Part};
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        let p = |t: &str| Part { text: t.into(), media: vec![] };
+        let d = Draft { id: "d2".into(), parts: vec![p("A"), p(" "), p("B"), p("C")], parent: Some(format!("0x{}", "cd".repeat(20))), pfid: Some(0), ..Default::default() };
+        app.open_draft(&d, None);
+        let c = app.compose.as_ref().unwrap();
+        assert_eq!(c.rest, vec![p("B"), p("C")], "indexes line up with what's sent");
+        assert!(c.parent_lost, "an author of 0 is no author");
+        assert!(!App::can_send(c));
+        assert_eq!(app.draft_of(c).pfid, None);
+    }
+
+    #[test]
+    fn a_photo_shows_the_picture_that_goes_out() {
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        app.attach(r#"[{"id":3,"type":"image/jpeg","size":5000,"name":"p.jpg"}]"#);
+        assert_eq!(app.compose.as_ref().unwrap().media[0].preview.as_deref(), Some("blob:test/3"));
+        let shrink = app.next_id;
+        app.done(shrink, 1, br#"{"id":4,"type":"image/jpeg","size":4000}"#.to_vec());
+        let a = &app.compose.as_ref().unwrap().media[0];
+        assert_eq!((a.preview.as_deref(), a.file), (Some("blob:test/4"), Some(4)));
+        assert!(host::DROPPED.with(|d| d.borrow().contains(&3)), "the original is let go");
+        // one the browser can't read keeps its tile and thumbnail until it's taken off
+        app.attach(r#"[{"id":11,"type":"image/png","size":5000,"name":"bad.png"}]"#);
+        let shrink = app.next_id;
+        app.done(shrink, 0, vec![]);
+        let a = &app.compose.as_ref().unwrap().media[1];
+        assert!(matches!(a.step, crate::compose::Step::Failed(_)));
+        assert_eq!(a.preview.as_deref(), Some("blob:test/11"));
+        assert!(!host::DROPPED.with(|d| d.borrow().contains(&11)));
+        let n = a.n;
+        app.unattach(n);
+        assert!(host::DROPPED.with(|d| d.borrow().contains(&11)));
+        assert_eq!(app.compose.as_ref().unwrap().media.len(), 1);
+    }
+
+    #[test]
+    fn pins_are_signed_and_shown_at_once() {
+        let (mut app, _) = signed_in();
+        let h = "ab".repeat(20);
+        app.set_pin(Some(h.clone()));
+        let (id, what, body) = sent().pop().expect("the pin");
+        assert!(what.starts_with("PUT /api/pin/77\napplication/json\nx-key: "), "{what}");
+        assert_eq!(String::from_utf8(body).unwrap(), format!(r#"{{"hash":"0x{h}"}}"#));
+        answer(&mut app, id, 200, "{}");
+        assert_eq!(app.pinned(77), Some(h.as_str()));
+        app.set_pin(None);
+        let (id, _, body) = sent().pop().unwrap();
+        assert_eq!(body, b"null");
+        answer(&mut app, id, 200, "null");
+        assert_eq!(app.pinned(77), None);
+    }
+
+    #[test]
+    fn mentions_are_suggested_and_picked() {
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        sent();
+        app.type_compose("6|hi @al");
+        let timer = app.next_id;
+        app.done(timer, 1, vec![]);
+        let (id, what, _) = sent().pop().expect("a search");
+        assert!(what.contains("/v2/farcaster/user/search?") && what.contains("q=al"), "{what}");
+        answer(&mut app, id, 200, r#"{"result":{"users":[{"fid":5,"username":"alice"}]}}"#);
+        assert_eq!(app.compose.as_ref().unwrap().suggest.len(), 1);
+        app.pick_mention("alice");
+        assert_eq!(app.compose.as_ref().unwrap().text, "hi @alice ");
+        assert!(app.compose.as_ref().unwrap().suggest.is_empty());
     }
 
     #[test]

@@ -69,6 +69,10 @@ function listen(id, kind) {
     if (kind === 3) e.preventDefault()
     let v = ''
     if (kind === 2 || kind === 5) v = el.type === 'checkbox' || el.type === 'radio' ? String(el.checked) : el.value
+    // files picked: kept here, the module hears what they are and reads them in pieces (file_read)
+    if (kind === 5 && el.type === 'file') (v = JSON.stringify([...el.files].map(keepFile))), (el.value = '')
+    // where the caret is (in UTF-16 units), for @mention suggestions
+    if (kind === 2 && el.hasAttribute('data-caret')) v = `${el.selectionStart ?? v.length}|${v}`
     if (kind === 4) {
       if (e.isComposing) return
       v = e.key + (e.ctrlKey || e.metaKey ? '+mod' : '')
@@ -171,6 +175,15 @@ const sealer = () =>
   (aes ||= idbGet('aes').then((k) => k || crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']).then((k) => idbPut('aes', k).then(() => k))))
 const hex = (b) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
 
+// --- files picked for a cast, kept here by id; the module reads them in pieces and drops them when done ---
+const files = new Map()
+const urls = new Map()
+let fileIds = 0
+function keepFile(f) {
+  files.set(++fileIds, f)
+  return { id: fileIds, type: f.type, size: f.size, name: f.name || '' }
+}
+
 const q = {
   ops: apply,
   fetch(id, mp, ml, up, ul, bp, bl, cp, cl) {
@@ -245,6 +258,79 @@ const q = {
   confirm: (p, l) => (confirm(str(p, l)) ? 1 : 0),
   copy: (p, l) => void navigator.clipboard?.writeText(str(p, l)).catch(() => {}),
   origin: () => pack(location.origin),
+  file_read(id, f, off, len) {
+    const b = files.get(f)
+    if (!b) return void done(id, 0)
+    b.slice(off, off + len).arrayBuffer().then((a) => done(id, 1, new Uint8Array(a)), () => done(id, 0))
+  },
+  file_drop(f) {
+    if (urls.has(f)) URL.revokeObjectURL(urls.get(f))
+    urls.delete(f)
+    files.delete(f)
+  },
+  file_url(f) {
+    if (!files.has(f)) return -1n
+    if (!urls.has(f)) urls.set(f, URL.createObjectURL(files.get(f)))
+    return pack(urls.get(f))
+  },
+  // a photo drawn again by the browser's own decoder at 2048 px at most, so its EXIF (place, device) is gone and it
+  // stands the right way up: JPEG, or PNG when a pixel is see-through (src/write.ts shrink)
+  shrink(id, f) {
+    const file = files.get(f)
+    if (!file) return void done(id, 0)
+    createImageBitmap(file)
+      .then((img) => {
+        const k = Math.min(1, 2048 / Math.max(img.width, img.height))
+        const c = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * k), height: Math.round(img.height * k) })
+        const ctx = c.getContext('2d', { willReadFrequently: true })
+        ctx.drawImage(img, 0, 0, c.width, c.height)
+        const px = file.type === 'image/jpeg' ? null : ctx.getImageData(0, 0, c.width, c.height).data
+        let alpha = false
+        for (let i = 3; px && i < px.length && !alpha; i += 4) alpha = px[i] < 255
+        return new Promise((ok, no) => c.toBlob((b) => (b ? ok(b) : no()), alpha ? 'image/png' : 'image/jpeg', 0.88))
+      })
+      .then((b) => done(id, 1, enc.encode(JSON.stringify(keepFile(b)))), () => done(id, 0))
+  },
+  // a datetime-local value read as local time, and a time written back as one (kind 1) or for reading (kind 0)
+  time_parse(p, l) {
+    const t = new Date(str(p, l)).getTime()
+    return Number.isFinite(t) ? t : -1
+  },
+  time_text(ms, kind) {
+    const d = new Date(ms)
+    const two = (n) => String(n).padStart(2, '0')
+    return pack(kind ? `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}` : d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))
+  },
+  // AES-GCM keys made from bytes the module derives once (the drafts key), kept non-extractable in IndexedDB
+  aes_import(id, kp, kl, rp, rl) {
+    const k = str(kp, kl)
+    crypto.subtle.importKey('raw', bytes(rp, rl), 'AES-GCM', false, ['encrypt', 'decrypt'])
+      .then((key) => idbPut('aes:' + k, key))
+      .then(() => done(id, 1), () => done(id, 0))
+  },
+  aes_has(id, kp, kl) {
+    idbGet('aes:' + str(kp, kl)).then((key) => done(id, key ? 1 : 0), () => done(id, 0))
+  },
+  // sealed: the 12-byte IV, then the ciphertext; opened: from the same
+  aes_seal(id, kp, kl, dp, dl) {
+    const d = bytes(dp, dl)
+    const iv = crypto.getRandomValues(new Uint8Array(12))
+    idbGet('aes:' + str(kp, kl))
+      .then((key) => (key ? crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, d) : Promise.reject()))
+      .then((ct) => {
+        const out = new Uint8Array(12 + ct.byteLength)
+        out.set(iv)
+        out.set(new Uint8Array(ct), 12)
+        done(id, 1, out)
+      }, () => done(id, 0))
+  },
+  aes_open(id, kp, kl, dp, dl) {
+    const d = bytes(dp, dl)
+    idbGet('aes:' + str(kp, kl))
+      .then((key) => (key && d.length > 12 ? crypto.subtle.decrypt({ name: 'AES-GCM', iv: d.subarray(0, 12) }, key, d.subarray(12)) : Promise.reject()))
+      .then((b) => done(id, 1, new Uint8Array(b)), () => done(id, 0))
+  },
+  aes_drop: (kp, kl) => void idbDel('aes:' + str(kp, kl)).catch(() => {}),
 }
 
 // same-origin links move inside the app instead of loading the page again

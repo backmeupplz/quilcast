@@ -255,6 +255,22 @@ pub fn sign65(digest: &[u8; 32], priv_key: &[u8; 32]) -> Vec<u8> {
     out
 }
 
+/// An EIP-191 personal_sign by the custody key: what src/fc.ts keyCustody's `message` makes.
+pub fn personal_sign(msg: &[u8], priv_key: &[u8; 32]) -> Vec<u8> {
+    let mut b = format!("\x19Ethereum Signed Message:\n{}", msg.len()).into_bytes();
+    b.extend_from_slice(msg);
+    sign65(&keccak(&b), priv_key)
+}
+
+/// The AES key drafts are sealed with (src/write.ts draftKey): SHA-256 of r and s of the custody's signature over a
+/// fixed message. RFC 6979 makes the signature, so the key, the same every time, here and on quilcast.com.
+pub fn drafts_secret(fid: u64, custody: &[u8; 32]) -> [u8; 32] {
+    use sha2::Digest;
+    let msg = format!("Quilcast drafts key for FID {fid}\n\nSigning this lets Quilcast encrypt your drafts so only you can read them. It sends nothing and costs nothing.");
+    let sig = personal_sign(msg.as_bytes(), custody);
+    sha2::Sha256::digest(&sig[..64]).into()
+}
+
 // --- EIP-712 for the flat structs Farcaster signs ---
 
 pub enum Val {
@@ -376,7 +392,7 @@ pub const ID_REGISTRY: &str = "0x00000000fc6c5f01fc30151999387bb99a9f489b";
 
 // --- mentions ---
 
-fn name_char(c: char) -> bool {
+pub fn name_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '.' || c == '-'
 }
 
@@ -545,6 +561,14 @@ mod tests {
         let custody = custody_key(PHRASE).unwrap();
         assert_eq!(signed(mt::KEY_ADD, 12345, &key_add_body(12345, &custody, &signer, 1763200000, NOW)), V_KEY_ADD);
         assert_eq!(signed(mt::KEY_REMOVE, 12345, &key_remove_self_body(&signer, 1763200001, NOW)), V_KEY_REMOVE);
+    }
+
+    #[test]
+    fn drafts_key_matches_quilcast_com() {
+        let custody = custody_key(PHRASE).unwrap();
+        let msg = "Quilcast drafts key for FID 12345\n\nSigning this lets Quilcast encrypt your drafts so only you can read them. It sends nothing and costs nothing.";
+        assert_eq!(hex(&personal_sign(msg.as_bytes(), &custody)), "03c11c3e6164e9c7c57d94cfb0ccd20d5784dbfbf6b0d3ae08f64e2b3639f5d56772a2ea708431c496c66b72fd2111a349a77a487050a79ae9b95e2e2085d0d21b");
+        assert_eq!(hex(&drafts_secret(12345, &custody)), "c0502581b5f602f8b7ea9e6b47c98ce852002e4f5eb4220793272aabed27e8b8");
     }
 
     #[test]

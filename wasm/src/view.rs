@@ -22,6 +22,9 @@ const P_BELL: &str = "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 
 const P_X: &str = "M18 6 6 18M6 6l12 12";
 const P_MORE: &str = "M5 12h.01M12 12h.01M19 12h.01";
 const P_HASH: &str = "M4 9h16M4 15h16M10 3 8 21M16 3l-2 18";
+const P_IMAGE: &str = "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21";
+const P_CLOCK: &str = "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2";
+const P_PIN: &str = "M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z";
 
 fn icon(d: &'static str) -> V {
     el("svg").attr("viewBox", "0 0 24 24").attr("aria-hidden", "true").class("ic").kid(el("path").attr("d", d)).into()
@@ -226,9 +229,13 @@ fn browse(app: &App, id: &str) -> V {
 
 /// A feed of casts; `owner`'s profile still shows their casts when they're muted.
 fn feed(app: &App, key: &str, empty: &str, owner: Option<u64>) -> V {
+    feed_skip(app, key, empty, owner, None)
+}
+/// A feed less one cast (`skip`, a bare hash): a profile's pinned cast, drawn above it.
+fn feed_skip(app: &App, key: &str, empty: &str, owner: Option<u64>, skip: Option<&str>) -> V {
     let Some(f) = app.feeds.get(key) else { return spinner() };
     let mut list = el("div").class("feed");
-    for c in f.items.iter().filter(|c| !app.hidden(c, owner)) {
+    for c in f.items.iter().filter(|c| !app.hidden(c, owner) && skip.is_none_or(|h| c.bare_hash() != h || c.recaster.is_some())) {
         let k = format!("{}:{}", c.hash, c.recaster.as_ref().map_or(0, |u| u.fid));
         list = list.kid(cast_card(app, c, false).key(k));
     }
@@ -487,8 +494,25 @@ fn profile(app: &App, id: &str, replies: bool) -> V {
             let key = format!("{}:{}", if replies { "replies" } else { "casts" }, u.fid);
             let u2 = u.clone();
             let head = header(&u.name(), true).kid(more_btn("Profile menu", move |a| a.sheet = Some(Sheet::User(u2.clone()))));
-            let list = if blocked { el("p").class("empty").txt(format!("You blocked @{}, so their casts are hidden.", u.handle())).into() } else { feed(app, &key, "No casts yet.", Some(u.fid)) };
-            s.kid(head).kid(top).kid(tabs).kid(list).into()
+            // the pinned cast goes on top of Casts, and out of the list once it's drawn there (src/castpin.ts listSkip)
+            let mut pinned: Option<V> = None;
+            if !replies && !blocked {
+                if !app.pins.contains_key(&u.fid) {
+                    app.wants.borrow_mut().push(Want::Pin(u.fid));
+                }
+                if let Some(h) = app.pinned(u.fid) {
+                    match app.quotes.get(h) {
+                        None => app.wants.borrow_mut().push(Want::Quote(h.to_string())),
+                        Some(Load::Ready(c)) if !app.hidden(c, Some(u.fid)) && c.author.fid == u.fid => {
+                            pinned = Some(el("div").class("pinned").kid(el("div").class("context").kid(icon(P_PIN)).kid(el("span").txt("Pinned"))).kid(cast_card(app, c, false).key(format!("pin:{h}"))).into());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            let skip = pinned.as_ref().and(app.pinned(u.fid));
+            let list = if blocked { el("p").class("empty").txt(format!("You blocked @{}, so their casts are hidden.", u.handle())).into() } else { feed_skip(app, &key, "No casts yet.", Some(u.fid), skip) };
+            s.kid(head).kid(top).kid(tabs).maybe(pinned).kid(list).into()
         }
     }
 }
@@ -908,6 +932,17 @@ fn sheet(app: &App, s: &Sheet) -> V {
                     a.say("Link copied");
                 }))
                 .kid(item("Quote".into()).click(move |a| a.open_compose(None, Some(c1.clone()))));
+            if let (Some(m), true) = (me, Some(c.author.fid) == me && c.parent_hash.is_none()) {
+                if !app.pins.contains_key(&m) {
+                    app.wants.borrow_mut().push(Want::Pin(m));
+                }
+                let h2 = c.bare_hash();
+                d = d.kid(if app.pinned(m) == Some(h2.as_str()) {
+                    item("Unpin from profile".into()).click(|a| a.set_pin(None))
+                } else {
+                    item("Pin to profile".into()).attr_if(matches!(app.pins.get(&m), Some(Load::Loading)), "disabled", "").click(move |a| a.set_pin(Some(h2.clone())))
+                });
+            }
             if Some(c.author.fid) == me {
                 d = d.kid(item("Delete".into()).class("menu-item danger").click(move |a| {
                     a.sheet = None;
@@ -972,38 +1007,236 @@ fn sheet(app: &App, s: &Sheet) -> V {
 // --- the composer ---
 
 fn composer(app: &App, c: &Compose) -> V {
-    let bytes = c.text.trim().len();
-    let over = c.text.len() > MAX_CAST;
-    let title = if c.parent.is_some() { "Reply" } else if c.quote.is_some() { "Quote" } else { "New cast" };
-    let mut d = el("div").class("dialog").attr("role", "dialog").attr("aria-modal", "true").attr("aria-label", title)
-        .kid(el("div").class("dialog-head").kid(button("").class("icon-btn").attr("aria-label", "Close").kid(icon(P_X)).click(|a| a.close_compose())).kid(el("strong").txt(title)));
+    use crate::compose::{Panel, Step};
+    let title = if c.parent.is_some() { "Reply" } else if c.quote.is_some() || c.quote_wait.is_some() { "Quote" } else { "New cast" };
+    let signed_in = app.account.is_some();
+    let empty = c.text.trim().is_empty() && c.media.is_empty() && c.rest.is_empty();
+    let fresh = c.draft.is_none() && c.sched.is_none();
+    let mut head = el("div").class("dialog-head").kid(button("").class("icon-btn").attr("aria-label", "Close").kid(icon(P_X)).click(|a| a.close_compose())).kid(el("strong").txt(title));
+    if signed_in && fresh && !c.sending && (empty || matches!(c.panel, Some(Panel::Drafts | Panel::Scheduled))) {
+        let on_d = matches!(c.panel, Some(Panel::Drafts));
+        let on_s = matches!(c.panel, Some(Panel::Scheduled));
+        head = head.kid(el("span").class("head-links")
+            .kid(button("Drafts").class(if on_d { "link-btn on" } else { "link-btn" }).attr("aria-pressed", on_d.to_string()).click(move |a| if on_d { a.close_compose() } else { a.open_drafts() }))
+            .kid(button("Scheduled").class(if on_s { "link-btn on" } else { "link-btn" }).attr("aria-pressed", on_s.to_string()).click(move |a| if on_s { a.close_compose() } else { a.open_scheduled() })));
+    }
+    let mut d = el("div").class("dialog compose").attr("role", "dialog").attr("aria-modal", "true").attr("aria-label", title).kid(head);
+    if c.asking {
+        d = d.kid(el("div").class("draft-ask").attr("role", "alertdialog").attr("aria-label", "Save this as a draft?")
+            .kid(el("span").txt("Save this as a draft?"))
+            .kid(button("Discard").class("btn").attr_if(c.sending, "disabled", "").click(|a| a.discard_compose()))
+            .kid(button(if c.sending { "Saving…" } else { "Save draft" }).class("btn primary").attr_if(c.sending, "disabled", "").attr("autofocus", "").click(|a| a.save_draft())))
+            .maybe(c.error.as_ref().map(|e| el("p").class("error").attr("role", "alert").txt(e.clone()).into()));
+        return el("div").class("scrim").kid(d).into();
+    }
+    match &c.panel {
+        Some(Panel::Drafts) => return el("div").class("scrim").kid(d.kid(drafts_pane(app))).into(),
+        Some(Panel::Scheduled) => return el("div").class("scrim").kid(d.kid(scheduled_pane(app))).into(),
+        Some(Panel::Gifs(q)) => return el("div").class("scrim").kid(d.kid(gifs_pane(app, q))).into(),
+        None => {}
+    }
     if let Some(p) = &c.parent {
-        d = d.kid(el("div").class("replying").kid(avatar(&p.author, "xs")).kid(el("span").txt(format!("Replying to @{}: {}", p.author.handle(), shown_text(p).chars().take(140).collect::<String>()))));
+        let what = if c.parent_lost { "Replying to a cast that can't be loaded right now. Save it as a draft and try again later.".to_string() } else { format!("Replying to @{}: {}", p.author.handle(), shown_text(p).chars().take(140).collect::<String>()) };
+        d = d.kid(el("div").class("replying").kid(avatar(&p.author, "xs")).kid(el("span").txt(what)));
     }
     let me = app.account.as_ref().map(|a| User { fid: a.fid, pfp_url: a.pfp.clone(), ..Default::default() }).unwrap_or_default();
-    d = d.kid(el("div").class("compose-row").kid(avatar(&me, "sm")).kid(el("textarea").attr("aria-label", title).attr("placeholder", if c.parent.is_some() { "Write your reply" } else { "What's happening?" }).attr("rows", "5").attr("value", c.text.clone()).attr("autofocus", "").attr_if(c.sending, "disabled", "")
-        .on(Ev::Input, |a, v| {
-            if let Some(c) = a.compose.as_mut() {
-                c.text = v.to_string();
-            }
-        })
+    d = d.kid(el("div").class("compose-row").kid(avatar(&me, "sm")).kid(el("textarea").attr("aria-label", title).attr("placeholder", if c.parent.is_some() { "Write your reply" } else { "What's happening?" }).attr("rows", "5").attr("value", c.text.clone()).attr("data-caret", "").attr("autofocus", c.focus.to_string()).attr_if(c.sending, "disabled", "")
+        .attr("aria-autocomplete", "list").attr_if(!c.suggest.is_empty(), "aria-controls", "mention-list")
+        .on(Ev::Input, |a, v| a.type_compose(v))
         .on(Ev::Key, |a, k| match k {
             "Escape" => a.close_compose(),
             "Enter+mod" => a.send_compose(),
             _ => {}
         })));
+    if c.typing.is_some() && !c.suggest.is_empty() {
+        let mut list = el("div").class("suggest").attr("id", "mention-list").attr("role", "listbox").attr("aria-label", "People");
+        for u in &c.suggest {
+            let name = u.username.clone().unwrap_or_default();
+            list = list.kid(button("").class("menu-item person-opt").attr("role", "option").key(u.fid.to_string()).kid(avatar(u, "xs")).kid(el("bdi").txt(u.name())).kid(el("span").class("muted small").txt(format!("@{name}"))).click(move |a| a.pick_mention(&name)));
+        }
+        d = d.kid(list);
+    }
+    if !c.media.is_empty() {
+        let mut row = el("div").class("attachments");
+        for m in &c.media {
+            let n = m.n;
+            let state = match &m.step {
+                Step::Preparing => Some("Preparing…".to_string()),
+                Step::Uploading(got, size) => Some(format!("Uploading {}%", if *size > 0 { got * 100 / size } else { 0 })),
+                Step::Processing => Some("Processing…".into()),
+                Step::Ready => None,
+                Step::Failed(e) => Some(e.clone()),
+            };
+            let thumb: V = match (&m.preview, m.video) {
+                (Some(p), false) => el("img").attr("src", if p.starts_with("blob:") { p.clone() } else { text::proxied(p) }).attr("alt", "").into(),
+                _ => el("span").class("vid").txt(if m.name.is_empty() { "Video".to_string() } else { m.name.clone() }).into(),
+            };
+            let failed = matches!(m.step, Step::Failed(_));
+            row = row.kid(el("div").class(if failed { "attach failed" } else { "attach" }).key(n.to_string()).kid(thumb)
+                .maybe(state.map(|s| el("span").class("attach-state").attr("role", if failed { "alert" } else { "status" }).txt(s).into()))
+                .kid(button("").class("icon-btn tiny attach-x").attr("aria-label", "Remove").attr_if(c.sending, "disabled", "").kid(icon(P_X)).click(move |a| a.unattach(n))));
+        }
+        d = d.kid(row);
+    }
+    for (i, p) in c.rest.iter().enumerate() {
+        d = d.kid(el("div").class("thread-part").key(format!("part{i}")).kid(el("span").class("muted small").txt(format!("Post {} of the thread{}", i + 2, if p.media.is_empty() { String::new() } else { format!(", {} attached", p.media.len()) }))).kid(el("p").txt(p.text.clone())));
+    }
     if c.parent.is_none() {
         d = d.kid(channel_picker(app, c));
     }
     if let Some(q) = &c.quote {
         d = d.kid(el("div").class("quote").kid(el("span").class("qhead").kid(avatar(&q.author, "xs")).kid(el("bdi").class("name").txt(q.author.name()))).kid(el("span").class("qtext").txt(shown_text(q).chars().take(200).collect::<String>())));
+    } else if c.quote_wait.is_some() {
+        d = d.kid(el("div").class("quote").kid(el("span").class("muted").txt("Loading the quoted cast…")));
+    }
+    if c.timing {
+        let min = host::time_str(host::ms() + crate::compose::SOONEST, true);
+        let max = host::time_str(host::ms() + crate::compose::LATEST, true);
+        d = d.kid(el("div").class("timing")
+            .kid(el("label").kid(el("span").txt("Post at")).kid(el("input").attr("type", "datetime-local").attr("min", min).attr("max", max).attr("value", c.when.clone()).attr_if(c.sending, "disabled", "").on(Ev::Change, |a, v| {
+                if let Some(c) = a.compose.as_mut() {
+                    c.when = v.to_string();
+                    c.error = None;
+                }
+            })))
+            .kid(button("Post now instead").class("btn small").attr_if(c.sending, "disabled", "").click(|a| {
+                if let Some(c) = a.compose.as_mut() {
+                    c.when.clear();
+                    c.timing = false;
+                }
+            })));
     }
     if let Some(e) = &c.error {
         d = d.kid(el("p").class("error").attr("role", "alert").txt(e.clone()));
     }
-    let can = !c.sending && !over && (bytes > 0 || c.quote.is_some());
-    d = d.kid(el("div").class("dialog-foot").kid(el("span").class(if over { "count over" } else { "count" }).attr("aria-live", "polite").txt(format!("{}/{MAX_CAST}", c.text.len()))).kid(button(if c.sending { "Casting…" } else { "Cast" }).class("btn primary").attr_if(!can, "disabled", "").click(|a| a.send_compose())));
+    let over = c.text.len() > MAX_CAST;
+    let full = app.room() == 0;
+    let tools = el("span").class("tools")
+        .kid(el("label").class(if full || c.sending { "icon-btn off" } else { "icon-btn" }).attr("title", "Add photos or videos")
+            .kid(el("input").attr("type", "file").class("file").attr("accept", "image/*,video/mp4,video/webm,video/quicktime").attr("multiple", "").attr("aria-label", "Add photos or videos").attr_if(full || c.sending, "disabled", "").on(Ev::Change, |a, v| a.attach(v)))
+            .kid(icon(P_IMAGE)))
+        .kid(button("GIF").class("icon-btn gif").attr("aria-label", "Add a GIF").attr_if(full || c.sending, "disabled", "").click(|a| a.open_gifs()))
+        .kid(button("").class(if c.timing { "icon-btn on" } else { "icon-btn" }).attr("aria-label", "Schedule").attr("aria-pressed", c.timing.to_string()).attr_if(c.sending || c.posted.is_some(), "disabled", "").kid(icon(P_CLOCK)).click(|a| {
+            if let Some(c) = a.compose.as_mut() {
+                c.timing = !c.timing;
+                if !c.timing {
+                    c.when.clear();
+                }
+            }
+        }));
+    let label = match (c.sending, !c.when.is_empty(), !c.rest.is_empty()) {
+        (true, true, _) => "Scheduling…",
+        (true, false, _) => "Casting…",
+        (false, true, _) => "Schedule",
+        (false, false, true) => "Post thread",
+        (false, false, false) => "Cast",
+    };
+    d = d.kid(el("div").class("dialog-foot").kid(tools).kid(el("span").class(if over { "count over" } else { "count" }).attr("aria-live", "polite").txt(format!("{}/{MAX_CAST}", c.text.len()))).kid(button(label).class("btn primary").attr_if(!App::can_send(c), "disabled", "").click(|a| a.send_compose())));
     el("div").class("scrim").kid(d).into()
+}
+
+fn drafts_pane(app: &App) -> V {
+    let mut p = el("div").class("drafts");
+    if app.drafts_key.is_none() {
+        return p.kid(spinner()).into();
+    }
+    if app.drafts_key != Some(true) {
+        return p.kid(el("p").class("muted").txt("Drafts are sealed with a key your recovery phrase makes, so only you can read them. Sign out and sign in again with your recovery phrase to keep drafts in this browser.")).into();
+    }
+    let now = host::ms();
+    match &app.drafts {
+        Some(Load::Ready(l)) if l.is_empty() => p = p.kid(el("p").class("muted").txt("No drafts yet.")),
+        Some(Load::Ready(l)) => {
+            for d in l {
+                let (d1, id) = (d.clone(), d.id.clone());
+                let first = d.parts.first().map(|p| p.text.trim().to_string()).unwrap_or_default();
+                let mut what = vec![text::ago(&text::iso(d.at as f64), now)];
+                if d.parts.len() > 1 {
+                    what.push("Thread".into());
+                }
+                if d.parent.is_some() {
+                    what.push("Reply".into());
+                } else if d.quote.is_some() {
+                    what.push("Quote".into());
+                }
+                what.extend(d.channel.as_ref().map(|c| format!("/{c}")));
+                p = p.kid(el("div").class("draft").key(d.id.clone())
+                    .kid(button("").class("draft-open").kid(el("span").class("clamp").txt(if first.is_empty() { "…".to_string() } else { first })).kid(el("small").class("muted").txt(what.join(" · "))).click(move |a| a.open_draft(&d1, None)))
+                    .kid(button("").class("icon-btn").attr("aria-label", "Delete draft").kid(icon(P_X)).click(move |a| a.drop_draft(&id, false))));
+            }
+        }
+        Some(Load::Failed(e)) => p = p.kid(problem(e, |a| a.load_drafts())),
+        Some(Load::Loading) => p = p.kid(spinner()),
+        None => {
+            app.wants.borrow_mut().push(Want::Drafts);
+            p = p.kid(spinner());
+        }
+    }
+    p.into()
+}
+
+fn scheduled_pane(app: &App) -> V {
+    let mut p = el("div").class("drafts");
+    match &app.scheduled {
+        Some(Load::Ready(l)) if l.is_empty() => p = p.kid(el("p").class("muted").txt("Nothing scheduled. Write a cast and pick a time with the clock.")),
+        Some(Load::Ready(l)) => {
+            for s in l {
+                let first = s.draft.as_ref().and_then(|d| d.parts.first()).map(|p| p.text.trim().to_string()).filter(|t| !t.is_empty()).unwrap_or_else(|| "…".into());
+                let part = if s.hashes.len() > 1 { format!(" · Thread of {}", s.hashes.len()) } else { String::new() };
+                let state = match s.status.as_str() {
+                    "posted" => "Posted".to_string(),
+                    "posting" => "Sending…".to_string(),
+                    "failed" => format!("Failed: {}", s.error.clone().unwrap_or_default()),
+                    _ if s.posted > 0 => format!("{} of {} sent", s.posted, s.hashes.len()),
+                    _ => "Waiting".to_string(),
+                };
+                let mut row = el("div").class(if s.status == "failed" { "draft failed" } else { "draft" }).key(s.id.clone())
+                    .kid(el("div").class("draft-open").kid(el("span").class("clamp").txt(first)).kid(el("small").class("muted").txt(format!("{}{part} · {state}", host::time_str(s.at as f64, false)))));
+                let id = s.id.clone();
+                match s.status.as_str() {
+                    "posted" => {
+                        row = row.kid(link(format!("/c/{}", s.hash.trim_start_matches("0x"))).class("btn small").txt("View"));
+                        row = row.kid(button("Remove").class("btn small").click(move |a| a.cancel_scheduled(&id, false)));
+                    }
+                    "posting" => {}
+                    _ => {
+                        if let Some(d) = s.draft.clone().filter(|_| s.posted == 0) {
+                            let (sched, at) = (crate::compose::Sched { id: s.id.clone(), waiting: s.status == "scheduled" }, s.at);
+                            row = row.kid(button("Edit").class("btn small").click(move |a| a.open_draft(&d, Some((sched.clone(), at)))));
+                        }
+                        row = row.kid(button(if s.status == "failed" { "Remove" } else { "Cancel" }).class("btn small").click(move |a| a.cancel_scheduled(&id, false)));
+                    }
+                }
+                p = p.kid(row);
+            }
+        }
+        Some(Load::Failed(e)) => p = p.kid(problem(e, |a| a.load_scheduled())),
+        _ => p = p.kid(spinner()),
+    }
+    p.into()
+}
+
+fn gifs_pane(app: &App, q: &str) -> V {
+    let term = q.trim().to_lowercase();
+    let mut grid = el("div").class("gif-grid");
+    match app.gifs.get(&term) {
+        Some(Load::Ready(l)) if l.is_empty() => grid = grid.kid(el("p").class("muted").txt("No GIFs found.")),
+        Some(Load::Ready(l)) => {
+            for g in l.iter().take(30) {
+                let g2 = g.clone();
+                grid = grid.kid(button("").class("gif-opt").attr("aria-label", if g.title.is_empty() { "GIF".to_string() } else { g.title.clone() }).key(g.cast.clone().unwrap_or_default())
+                    .kid(el("img").attr("src", text::proxied(&g.preview)).attr("alt", "").attr("loading", "lazy"))
+                    .click(move |a| a.pick_gif(&g2)));
+            }
+        }
+        Some(Load::Failed(e)) => grid = grid.kid(el("p").class("error").txt(e.clone())),
+        _ => grid = grid.kid(spinner()),
+    }
+    el("div").class("gifs")
+        .kid(el("div").class("row").kid(el("input").attr("type", "search").attr("aria-label", "Search GIFs").attr("placeholder", "Search GIFs").attr("autocomplete", "off").attr("autofocus", "").attr("value", q.to_string()).on(Ev::Input, |a, v| a.type_gifs(v))).kid(button("Back").class("btn small").click(|a| a.close_compose())))
+        .kid(grid)
+        .kid(el("p").class("muted small").txt("GIFs from Tenor."))
+        .into()
 }
 
 /// Where a new cast goes: no channel, or the one picked from the directory.

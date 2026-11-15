@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -30,6 +30,8 @@ const casts = [
 ]
 const reply = cast(3, { text: 'a reply', parent_hash: casts[0].hash, parent_author: { fid: 1 } })
 const MEMES = 'https://warpcast.com/~/channel/memes'
+// a 1×1 PNG, to upload
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==', 'base64')
 const inMemes = cast(4, { text: 'a meme', parent_url: MEMES })
 // farcaster.xyz's channel directory, as server/channels.mjs reads it
 const directory = [
@@ -110,6 +112,12 @@ const node = createServer((q, r) => {
   }
   if (p === '/v2/farcaster/feed/user/casts') return send({ casts: [casts[0]], next: { cursor: null } })
   if (p === '/v1/signer' || p === '/v1/reactionsByFid') return send({ messages: [] })
+  if (p === '/v2/farcaster/user/search') return send({ result: { users: [{ fid: 2, username: 'user2', display_name: 'User 2' }] } })
+  // what server/pins.mjs asks before pinning: the cast, if this FID submitted it
+  if (p === '/v1/castById') {
+    const m = submitted.find((b) => '0x' + hex(field(b, 2)) === u.searchParams.get('hash'))
+    return m ? send({ hash: '0x' + hex(field(m, 2)), data: { fid: opened(m).fid, castAddBody: {} } }) : ((r.statusCode = 404), send({}))
+  }
   r.statusCode = 404
   send({})
 })
@@ -120,7 +128,7 @@ before(async () => {
   nodeUrl = `http://127.0.0.1:${await listen(node)}`
   const port = 41000 + Math.floor(Math.random() * 9000)
   base = `http://127.0.0.1:${port}`
-  srv = spawn(process.execPath, [new URL('../server/index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), WASM_HOST: '127.0.0.1', MEDIA_DIR: (media = await mkdtemp(join(tmpdir(), 'qw-media-'))), NODE_URL: nodeUrl, FARCASTER_API_URL: nodeUrl }, stdio: 'ignore' })
+  srv = spawn(process.execPath, [new URL('../server/index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), WASM_HOST: '127.0.0.1', MEDIA_DIR: (media = await mkdtemp(join(tmpdir(), 'qw-media-'))), NODE_URL: nodeUrl, FARCASTER_API_URL: nodeUrl, FREE_FLOOR: '0' }, stdio: 'ignore' })
   for (let i = 0; i < 50 && !(await fetch(base + '/health').then((r) => r.ok, () => false)); i++) await new Promise((r) => setTimeout(r, 100))
   browser = await webkit.launch()
 })
@@ -258,6 +266,110 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
   const inChannel = opened(submitted.at(-1))
   assert.equal(inChannel.type, 1)
   assert.equal(new TextDecoder().decode(field(inChannel.body, 7)), MEMES)
+
+  // the cast just posted is pinned to the profile (the server checks with the node that it's this account's own)
+  await page.locator('article.cast').first().locator('button[aria-label=More]').click()
+  await page.click('.dialog >> text=Pin to profile')
+  await page.waitForSelector('text=Pinned to your profile')
+  assert.equal(JSON.parse(await readFile(join(media, 'pins', '12345.json'), 'utf8')).hash, '0x' + hex(field(submitted.at(-1), 2)))
+
+  // an @name being typed offers people; a picture goes up through Quilcast's server and becomes the cast's embed
+  await page.click('nav.side .cast-btn')
+  await page.locator('.dialog textarea').pressSequentially('hi @us')
+  await page.click('.suggest >> text=@user2')
+  assert.equal(await page.inputValue('.dialog textarea'), 'hi @user2 ')
+  await page.setInputFiles('.dialog input[type=file]', { name: 'dot.png', mimeType: 'image/png', buffer: PNG })
+  await page.waitForSelector('.attach img')
+  await page.waitForFunction(() => document.querySelector('.attach') && !document.querySelector('.attach-state'), null, { timeout: 20000 }).catch(async (e) => {
+    throw new Error(`${e.message}: ${await page.locator('.attach').innerText().catch(() => '?')} ${errors.join(' | ')}`)
+  })
+  await page.click('.dialog-foot button.primary')
+  await page.waitForSelector('text=Posted')
+  const pic = opened(submitted.at(-1))
+  const url = new TextDecoder().decode(field(field(pic.body, 6), 1))
+  // photos are drawn again by the browser (no EXIF), as a JPEG when nothing is see-through
+  assert.match(url, /\/m\/[0-9a-f]{24}\.jpg$/)
+  assert.ok((await readdir(join(media))).includes(url.split('/').pop()), 'kept on the server')
+  assert.deepEqual([...field(pic.body, 2)], [2], 'the picked name is a mention')
+
+  // closing a cast offers to keep it as a draft, sealed in the browser: the server only ever has ciphertext
+  await page.click('nav.side .cast-btn')
+  await page.fill('.dialog textarea', 'a draft to keep')
+  await page.click('.dialog button[aria-label=Close]')
+  await page.click('.draft-ask >> text=Save draft')
+  await page.waitForSelector('text=Draft saved')
+  const drafts = join(media, 'drafts', '12345')
+  const [sealed] = await readdir(drafts)
+  const box = await readFile(join(drafts, sealed), 'utf8')
+  assert.match(box, /^[\w+/=]+\.[\w+/=]+$/)
+  assert.doesNotMatch(box, /draft to keep/)
+  await page.click('nav.side .cast-btn')
+  await page.click('.dialog .head-links >> text=Drafts')
+  await page.click('.draft-open >> text=a draft to keep')
+  assert.equal(await page.inputValue('.dialog textarea'), 'a draft to keep')
+  await page.click('.dialog button[aria-label=Close]')
+
+  // a scheduled cast is signed now for its time and handed to the server, listed, and cancelled
+  await page.click('nav.side .cast-btn')
+  await page.fill('.dialog textarea', 'see you later')
+  await page.click('.dialog button[aria-label=Schedule]')
+  const when = await page.evaluate(() => {
+    const d = new Date(Date.now() + 2 * 3600e3)
+    const two = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`
+  })
+  await page.fill('.timing input', when)
+  await page.click('.dialog-foot button.primary')
+  await page.waitForSelector('text=Scheduled for')
+  const waiting = join(media, 'scheduled', '12345')
+  const [item] = (await readdir(waiting)).filter((f) => f.endsWith('.json'))
+  const sched = JSON.parse(await readFile(join(waiting, item), 'utf8'))
+  assert.deepEqual([sched.status, sched.text, sched.msgs.length], ['scheduled', 'see you later', 1])
+  assert.ok(Math.abs(sched.at - (Date.now() + 2 * 3600e3)) < 120e3, 'for the time picked')
+  await page.click('nav.side .cast-btn')
+  await page.click('.dialog .head-links >> text=Scheduled')
+  await page.click('.draft:has-text("see you later") >> text=Cancel')
+  await page.waitForSelector('text=Cancelled')
+  assert.deepEqual((await readdir(waiting)).filter((f) => f.endsWith('.json')), [])
+  await page.keyboard.press('Escape')
+
+  // one that failed can't be replaced on the server, so Edit schedules it again as a new one and takes the failed one off
+  for (let i = 0; i < 3 && (await page.locator('.dialog').count()); i++) await page.click('.dialog button[aria-label=Close]')
+  await page.click('nav.side .cast-btn')
+  await page.fill('.dialog textarea', 'try me again')
+  await page.click('.dialog button[aria-label=Schedule]')
+  await page.fill('.timing input', when)
+  await page.click('.dialog-foot button.primary')
+  let failedFile
+  for (let i = 0; i < 50 && !failedFile; i++) [failedFile] = await page.waitForTimeout(100).then(() => readdir(waiting)).then((l) => l.filter((f) => f.endsWith('.json')))
+  assert.ok(failedFile, 'scheduled')
+  const failed = JSON.parse(await readFile(join(waiting, failedFile), 'utf8'))
+  await writeFile(join(waiting, failedFile), JSON.stringify({ ...failed, at: Date.now() - 3600e3, status: 'failed', done: Date.now(), error: 'node down' }))
+  await page.click('nav.side .cast-btn')
+  await page.click('.dialog .head-links >> text=Scheduled')
+  await page.click('.draft.failed:has-text("try me again") >> text=Edit')
+  await page.waitForSelector('.dialog textarea')
+  assert.equal(await page.inputValue('.dialog textarea'), 'try me again')
+  assert.equal(await page.inputValue('.timing input'), '', 'a failed one\'s time has passed')
+  await page.fill('.timing input', when)
+  await page.click('.dialog-foot button.primary')
+  await page.waitForSelector('text=Scheduled for')
+  let again
+  for (let i = 0; i < 50; i++) {
+    again = (await readdir(waiting)).filter((f) => f.endsWith('.json'))
+    if (again.length === 1 && again[0] !== failedFile) break
+    await page.waitForTimeout(100)
+  }
+  assert.equal(again.length, 1, 'the failed one is taken off')
+  assert.notEqual(again[0], failedFile, 'scheduled under a new id')
+  const redone = JSON.parse(await readFile(join(waiting, again[0]), 'utf8'))
+  assert.deepEqual([redone.status, redone.text], ['scheduled', 'try me again'])
+  assert.equal(await page.locator('text=already sent').count(), 0)
+  await page.click('nav.side .cast-btn')
+  await page.click('.dialog .head-links >> text=Scheduled')
+  await page.click('.draft:has-text("try me again") >> text=Cancel')
+  await page.waitForSelector('text=Cancelled')
+  await page.keyboard.press('Escape')
 
   // muting someone is kept on Quilcast's server with the account, signed by this browser's key
   await page.goto(base + '/u/user1')

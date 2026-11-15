@@ -29,6 +29,17 @@ extern "C" {
     fn confirm(ptr: *const u8, len: usize) -> u32;
     fn copy(ptr: *const u8, len: usize);
     fn origin() -> u64;
+    fn file_read(id: u32, f: u32, off: f64, len: u32);
+    fn file_drop(f: u32);
+    fn file_url(f: u32) -> u64;
+    fn shrink(id: u32, f: u32);
+    fn time_parse(p: *const u8, l: usize) -> f64;
+    fn time_text(ms: f64, kind: u32) -> u64;
+    fn aes_import(id: u32, k: *const u8, kl: usize, raw: *const u8, rl: usize);
+    fn aes_has(id: u32, k: *const u8, kl: usize);
+    fn aes_seal(id: u32, k: *const u8, kl: usize, d: *const u8, dl: usize);
+    fn aes_open(id: u32, k: *const u8, kl: usize, d: *const u8, dl: usize);
+    fn aes_drop(k: *const u8, kl: usize);
 }
 
 /// A string or bytes the shell wrote into memory it allocated with `q_alloc` (lib.rs), as `ptr << 32 | len`;
@@ -75,6 +86,19 @@ mod imp {
     pub fn ask(s: &str) -> bool { unsafe { confirm(s.as_ptr(), s.len()) != 0 } }
     pub fn clip(s: &str) { unsafe { copy(s.as_ptr(), s.len()) } }
     pub fn site() -> String { take_str(unsafe { origin() }).unwrap_or_default() }
+    pub fn fread(id: u32, f: u32, off: u64, len: u32) { unsafe { file_read(id, f, off as f64, len) } }
+    pub fn fdrop(f: u32) { unsafe { file_drop(f) } }
+    pub fn furl(f: u32) -> Option<String> { take_str(unsafe { file_url(f) }) }
+    pub fn fshrink(id: u32, f: u32) { unsafe { shrink(id, f) } }
+    /// a datetime-local value as Unix ms in the browser's time zone
+    pub fn parse_time(s: &str) -> Option<f64> { Some(unsafe { time_parse(s.as_ptr(), s.len()) }).filter(|t| *t >= 0.0) }
+    /// `local` true: as a datetime-local value; false: for reading, in the browser's language
+    pub fn time_str(ms: f64, local: bool) -> String { take_str(unsafe { time_text(ms, local as u32) }).unwrap_or_default() }
+    pub fn aimport(id: u32, k: &str, raw: &[u8]) { unsafe { aes_import(id, k.as_ptr(), k.len(), raw.as_ptr(), raw.len()) } }
+    pub fn ahas(id: u32, k: &str) { unsafe { aes_has(id, k.as_ptr(), k.len()) } }
+    pub fn aseal(id: u32, k: &str, d: &[u8]) { unsafe { aes_seal(id, k.as_ptr(), k.len(), d.as_ptr(), d.len()) } }
+    pub fn aopen(id: u32, k: &str, d: &[u8]) { unsafe { aes_open(id, k.as_ptr(), k.len(), d.as_ptr(), d.len()) } }
+    pub fn adrop(k: &str) { unsafe { aes_drop(k.as_ptr(), k.len()) } }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -85,6 +109,8 @@ mod imp {
         static STORE: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
         /// what the tests can look at: every request made
         pub static SENT: RefCell<Vec<(u32, String, Vec<u8>)>> = RefCell::new(Vec::new());
+        /// the picked files let go
+        pub static DROPPED: RefCell<Vec<u32>> = RefCell::new(Vec::new());
         static SEED: RefCell<u64> = RefCell::new(0x2545_f491_4f6c_dd1d);
     }
     pub fn apply(_: &[u8]) {}
@@ -127,6 +153,18 @@ mod imp {
     pub fn ask(_: &str) -> bool { true }
     pub fn clip(_: &str) {}
     pub fn site() -> String { "https://wasm.quilcast.com".into() }
+    pub fn fread(_: u32, _: u32, _: u64, _: u32) {}
+    pub fn fdrop(f: u32) { DROPPED.with(|d| d.borrow_mut().push(f)) }
+    pub fn furl(f: u32) -> Option<String> { Some(format!("blob:test/{f}")) }
+    pub fn fshrink(_: u32, _: u32) {}
+    /// tests write times as Unix ms
+    pub fn parse_time(s: &str) -> Option<f64> { s.parse().ok() }
+    pub fn time_str(ms: f64, _: bool) -> String { format!("{ms}") }
+    pub fn aimport(_: u32, _: &str, _: &[u8]) {}
+    pub fn ahas(_: u32, _: &str) {}
+    pub fn aseal(_: u32, _: &str, _: &[u8]) {}
+    pub fn aopen(_: u32, _: &str, _: &[u8]) {}
+    pub fn adrop(_: &str) {}
 }
 
 pub use imp::*;
