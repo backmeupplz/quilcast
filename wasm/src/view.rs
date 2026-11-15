@@ -85,6 +85,7 @@ pub fn title(app: &App) -> String {
         Route::Notifications => "Notifications".into(),
         Route::Search(q, _) if !q.is_empty() => format!("{q} · Search"),
         Route::Search(..) => "Search".into(),
+        Route::Join if app.account.is_some() => "Add account".into(),
         Route::Join => "Sign in".into(),
         Route::Settings => "Settings".into(),
         Route::NotFound => "Not found".into(),
@@ -768,10 +769,8 @@ fn search(app: &App, q: &str, t: Tab) -> V {
 // --- signing in ---
 
 fn join(app: &App) -> V {
-    let s = el("section").kid(header("Sign in", true));
-    if let Some(a) = &app.account {
-        return s.kid(el("p").class("empty").txt(format!("You're signed in as @{}.", a.username.clone().unwrap_or_else(|| a.fid.to_string())))).into();
-    }
+    let adding = app.account.is_some();
+    let s = el("section").kid(header(if adding { "Add account" } else { "Sign in" }, true));
     let j = &app.join;
     let working = j.step != JoinStep::Idle;
     let status = match j.step {
@@ -785,9 +784,13 @@ fn join(app: &App) -> V {
         .kid(el("textarea").attr("id", "phrase").attr("rows", "3").attr("autocomplete", "off").attr("autocapitalize", "none").attr("spellcheck", "false").attr("placeholder", "twelve or twenty-four words").attr("value", j.phrase.clone()).attr_if(working, "disabled", "").on(Ev::Input, |a, v| a.join.phrase = v.to_string()))
         .maybe(j.error.as_ref().map(|e| el("p").class("error").attr("role", "alert").txt(e.clone()).into()))
         .maybe(status.map(|t| el("p").class("muted").attr("role", "status").kid(spinner()).txt(t).into()))
-        .kid(el("button").attr("type", "submit").class("btn primary").attr_if(working, "disabled", "").txt("Sign in"));
+        .kid(el("button").attr("type", "submit").class("btn primary").attr_if(working, "disabled", "").txt(if adding { "Add account" } else { "Sign in" }));
     s.kid(el("div").class("pane")
-        .kid(el("p").txt("Sign in with the recovery phrase of your Farcaster account (the same one Warpcast, Quorum and Quilcast use)."))
+        .kid(el("p").txt(if adding {
+            "Add another Farcaster account to this browser with its recovery phrase. Switch between your accounts in Settings."
+        } else {
+            "Sign in with the recovery phrase of your Farcaster account (the same one Warpcast, Quorum and Quilcast use)."
+        }))
         .kid(form)
         .kid(el("p").class("muted small").txt("Your phrase never leaves this browser. It signs one message that adds a key for this browser to your account, and then it's forgotten: Quilcast WASM doesn't keep it. The key it adds is held by your browser, which can sign with it but won't hand it out."))
         .kid(el("p").class("muted small").kid(text("No account yet? ")).kid(external("https://quilcast.com/join").txt("Create one at quilcast.com")).kid(text("."))))
@@ -804,9 +807,8 @@ fn settings(app: &App) -> V {
         })).kid(el("span").txt(label))
     };
     let mut s = el("section").kid(header("Settings", false));
-    if let Some(a) = &app.account {
-        let out = app.busy.contains("signout");
-        s = s.kid(el("div").class("pane").kid(el("h2").txt("Account")).kid(el("p").txt(format!("Signed in as @{} (FID {})", a.username.clone().unwrap_or_default(), a.fid))).kid(button(if out { "Signing out…" } else { "Sign out" }).class("btn danger").attr_if(out, "disabled", "").click(|a| a.sign_out())));
+    if app.account.is_some() {
+        s = s.kid(accounts_pane(app)).kid(profile_pane(app));
     }
     s = s.kid(el("div").class("pane").kid(el("h2").txt("Appearance")).kid(el("div").class("choices").attr("role", "radiogroup").attr("aria-label", "Theme").kid(theme("Match the system", "system")).kid(theme("Light", "light")).kid(theme("Dark", "dark"))));
     s = s.kid(el("form").class("pane").on(Ev::Submit, |a, _| a.set_node())
@@ -822,6 +824,93 @@ fn settings(app: &App) -> V {
         .kid(el("p").txt(format!("Quilcast WASM {VERSION}: the Quilcast client written in Rust and compiled to WebAssembly. The module draws every page itself; a small script only hands it the browser.")))
         .kid(el("p").kid(external("https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/wasm").txt("Source")).kid(text(" · ")).kid(external("https://quilcast.com").txt("The full Quilcast at quilcast.com"))))
         .into()
+}
+
+/// An account signed in here, as Settings lists it.
+fn account_user(a: &crate::app::Account) -> User {
+    User { fid: a.fid, username: a.username.clone(), display_name: a.display.clone(), pfp_url: a.pfp.clone(), ..Default::default() }
+}
+
+/// Settings → Accounts (src/app.tsx AccountList): every account signed in here, switching between them, adding one,
+/// and signing out of the one in use.
+fn accounts_pane(app: &App) -> V {
+    let me = app.me();
+    let out = app.busy.contains("signout");
+    let mut list = el("div").class("rows accounts");
+    for a in &app.accounts {
+        let u = account_user(a);
+        let on = me == Some(a.fid);
+        let fid = a.fid;
+        let who = el("span").class("who").kid(avatar(&u, "sm")).kid(el("span").class("names").kid(el("bdi").class("name").txt(u.name())).kid(el("span").class("muted small").txt(format!("@{}", u.handle()))));
+        let row = el("div").class(if on { "row-item acct on" } else { "row-item acct" }).key(a.fid.to_string()).kid(who);
+        list = list.kid(if on {
+            row.kid(el("span").class("muted small").attr("aria-current", "true").txt("In use"))
+        } else {
+            row.kid(button("Switch").class("btn small").attr("aria-label", format!("Switch to @{}", u.handle())).attr_if(out, "disabled", "").click(move |a| a.switch_account(fid)))
+        });
+    }
+    let name = app.account.as_ref().map(|a| account_user(a).handle()).unwrap_or_default();
+    el("div").class("pane")
+        .kid(el("h2").txt("Accounts"))
+        .kid(list)
+        .kid(el("div").class("row")
+            .kid(link("/join").class("btn").txt("Add account"))
+            .kid(button(&if out { "Signing out…".to_string() } else { format!("Sign out of @{name}") }).class("btn danger").attr_if(out, "disabled", "").click(|a| a.sign_out())))
+        .into()
+}
+
+/// Settings → Profile (src/app.tsx Settings): the photo, name, bio and website, saved as the account's user data.
+fn profile_pane(app: &App) -> V {
+    use crate::compose::Step;
+    use crate::me::{BIO, DISPLAY, FIELD_MAX, URL};
+    let p = el("div").class("pane profile-edit").kid(el("h2").txt("Profile"));
+    let Some(e) = app.edit.as_ref().filter(|e| Some(e.fid) == app.me()) else {
+        return p.kid(spinner()).into();
+    };
+    if e.orig.is_none() {
+        return match &e.error {
+            Some(err) => p.kid(problem(err, |a| a.retry_edit())).into(),
+            None => p.kid(spinner()).into(),
+        };
+    }
+    let busy = e.saving;
+    // the new photo while it's on its way, else the one the profile has
+    let face: V = match e.photo.as_ref().and_then(|a| a.preview.clone()) {
+        Some(src) if src.starts_with("blob:") => el("span").class("av lg").kid(el("img").attr("src", src).attr("alt", "")).into(),
+        Some(src) => avatar(&User { pfp_url: Some(src), ..Default::default() }, "lg"),
+        None => avatar(&User { pfp_url: Some(e.now.pfp.clone()).filter(|s| !s.is_empty()), ..Default::default() }, "lg"),
+    };
+    let state = e.photo.as_ref().and_then(|a| match &a.step {
+        Step::Preparing => Some(("status", "Preparing…".to_string())),
+        Step::Uploading(got, size) => Some(("status", format!("Uploading {}%", if *size > 0 { got * 100 / size } else { 0 }))),
+        Step::Processing => Some(("status", "Processing…".into())),
+        Step::Ready => None,
+        Step::Failed(err) => Some(("alert", err.clone())),
+    });
+    let mut photo = el("div").class("photo-row").kid(face)
+        .kid(el("label").class(if busy { "btn small off" } else { "btn small" })
+            .kid(el("input").attr("type", "file").class("file").attr("accept", "image/jpeg,image/png,image/webp,image/gif").attr("aria-label", "Change photo").attr_if(busy, "disabled", "").on(Ev::Change, |a, v| a.pick_photo(v)))
+            .kid(el("span").txt("Change photo")));
+    if e.photo.is_some() {
+        photo = photo.kid(button("Keep the old one").class("btn small").attr_if(busy, "disabled", "").click(|a| a.unpick_photo()));
+    }
+    if let Some((role, t)) = state {
+        photo = photo.kid(el("span").class("muted small").attr("role", role).txt(t));
+    }
+    let field = |k: u64, id: &'static str, label: &'static str, ph: &'static str, area: bool| -> V {
+        let input = if area { el("textarea").attr("rows", "3") } else { el("input").attr("type", if k == URL { "url" } else { "text" }) };
+        let input = input.attr("id", id).attr("placeholder", ph).attr("maxlength", FIELD_MAX.to_string()).attr("value", e.now.get(k).to_string()).attr_if(busy, "disabled", "").on(Ev::Input, move |a, v| a.edit_field(k, v));
+        el("div").class("field").kid(el("label").attr("for", id).class("muted small").txt(label)).kid(input).into()
+    };
+    let changed = !e.changes().is_empty();
+    let mut p = p.kid(photo)
+        .kid(field(DISPLAY, "edit-name", "Name", "Your name", false))
+        .kid(field(BIO, "edit-bio", "Bio", "A line or two about you", true))
+        .kid(field(URL, "edit-url", "Website", "https://…", false));
+    if changed || busy {
+        p = p.kid(button(if busy { "Saving…" } else { "Save changes" }).class("btn primary").attr_if(busy || e.photo_busy(), "disabled", "").click(|a| a.save_profile()));
+    }
+    p.into()
 }
 
 /// Settings → Spam (src/app.tsx): show spam with its label or hide it, for casts and for spam accounts' casts, and

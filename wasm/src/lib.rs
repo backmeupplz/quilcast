@@ -8,6 +8,7 @@ pub mod compose;
 pub mod dom;
 pub mod emoji;
 pub mod fc;
+pub mod me;
 pub mod host;
 pub mod mutes;
 pub mod spam;

@@ -13,7 +13,10 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-const ACCOUNT_KEY: &str = "quilcast-wasm:account";
+/// the account in use
+pub(crate) const ACCOUNT_KEY: &str = "quilcast-wasm:account";
+/// every account signed in here, the one in use among them (src/me.rs)
+pub(crate) const ACCOUNTS_KEY: &str = "quilcast-wasm:accounts";
 const SETTINGS_KEY: &str = "quilcast-wasm:settings";
 const LOCAL_KEY: &str = "quilcast-wasm:local-follows";
 const RECENTS_KEY: &str = "quilcast-wasm:browsed";
@@ -303,7 +306,15 @@ pub struct App {
     pub route: Route,
     pub settings: Settings,
     pub account: Option<Account>,
-    raw_seed: Option<[u8; 32]>,
+    /// every account signed in to in this browser (src/me.rs), in the order they were added
+    pub accounts: Vec<Account>,
+    /// the raw keys taken out of the vault (browsers without Ed25519 in WebCrypto), found by their public key
+    pub(crate) raw_seeds: Vec<[u8; 32]>,
+    /// Settings → Profile while it's being edited
+    pub edit: Option<crate::me::Edit>,
+    /// the generation the next feed or list starts at: never reused, so an answer for a dropped feed (another
+    /// account's, say) can't land in a new one
+    feed_gen: u32,
     pub feeds: HashMap<String, Feed<Cast>>,
     pub notes: Feed<Notification>,
     pub threads: HashMap<String, Load<Cast>>,
@@ -379,6 +390,15 @@ impl App {
     pub fn new() -> App {
         let settings: Settings = host::get(SETTINGS_KEY).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         let account: Option<Account> = host::get(ACCOUNT_KEY).and_then(|s| serde_json::from_str(&s).ok()).filter(|a: &Account| a.fid > 0 && !a.key.is_empty());
+        let mut accounts: Vec<Account> = host::get(ACCOUNTS_KEY).and_then(|s| serde_json::from_str::<Vec<Account>>(&s).ok()).unwrap_or_default();
+        accounts.retain(|a| a.fid > 0 && !a.key.is_empty());
+        // a session from before several accounts (or the list's copy of the one in use, which may be older)
+        if let Some(a) = &account {
+            match accounts.iter_mut().find(|x| x.fid == a.fid) {
+                Some(x) => *x = a.clone(),
+                None => accounts.push(a.clone()),
+            }
+        }
         let path = host::here();
         let local = read_local();
         let recents = host::get(RECENTS_KEY).and_then(|s| serde_json::from_str::<Vec<Recent>>(&s).ok()).unwrap_or_default().into_iter().filter(|r| r.fid > 0).take(RECENTS).collect();
@@ -389,7 +409,10 @@ impl App {
             node_text: settings.node.clone(),
             settings,
             account,
-            raw_seed: None,
+            accounts,
+            raw_seeds: Vec::new(),
+            edit: None,
+            feed_gen: 0,
             feeds: HashMap::new(),
             notes: Feed::default(),
             threads: HashMap::new(),
@@ -457,22 +480,9 @@ impl App {
             }
         });
         if let Some(a) = self.account.clone() {
-            if a.raw {
-                // the raw key comes out of the vault; without it the account can read but not write
-                let key = format!("raw:{}", a.key);
-                let id = self.wait(move |app, code, bytes| {
-                    if code == 1 && bytes.len() == 32 {
-                        app.raw_seed = bytes.try_into().ok();
-                    }
-                    // reading the account's mutes is signed, so it waits for the key
-                    app.sync_mutes();
-                });
-                host::vget(id, &key);
-            } else {
-                self.sync_mutes();
-            }
-            self.load_mine();
-            self.check_drafts_key();
+            // a raw key comes out of the vault first (without it the account can read but not write), and reading
+            // the account's mutes is signed, so it waits for the key
+            self.use_account(a);
         }
         if let Route::Search(q, _) = &self.route {
             self.search_text = q.clone();
@@ -692,6 +702,7 @@ impl App {
                 return;
             }
             Route::Search(q, Tab::People) if !q.trim().is_empty() => return self.load_people(q.trim().to_string()),
+            Route::Settings => return self.load_edit(),
             Route::Search(q, Tab::Channels) if !q.trim().is_empty() => return self.load_channels(q.trim().to_string()),
             _ => {}
         }
@@ -765,12 +776,14 @@ impl App {
         if key == "local" {
             return self.load_local(more);
         }
+        self.feed_gen += 1;
+        let gen0 = self.feed_gen;
         let f = self.feeds.entry(key.clone()).or_default();
         if more && (f.loading || f.done || f.cursor.is_none()) {
             return;
         }
         if !more {
-            f.gen += 1;
+            f.gen = gen0;
             f.cursor = None;
             f.done = false;
         }
@@ -828,12 +841,14 @@ impl App {
 
     /// A page of people (`likes:<hash>`, `recasts:<hash>`, `followers:<fid>`, `following:<fid>`), the first or the next.
     pub fn load_list(&mut self, key: String, more: bool) {
+        self.feed_gen += 1;
+        let gen0 = self.feed_gen;
         let f = self.lists.entry(key.clone()).or_default();
         if more && (f.loading || f.done || f.cursor.is_none()) {
             return;
         }
         if !more {
-            f.gen += 1;
+            f.gen = gen0;
             f.cursor = None;
             f.done = false;
         }
@@ -894,7 +909,7 @@ impl App {
         let Some(me) = self.me() else { return };
         let url = self.node("/v1/linkById", &[("fid", me.to_string()), ("target_fid", target.to_string()), ("link_type", "follow".into())]);
         self.http("GET", &url, &[], "", move |app, status, _| {
-            if status != 0 && !(500..600).contains(&status) {
+            if status != 0 && !(500..600).contains(&status) && app.me() == Some(me) {
                 app.follows.insert(target, (200..300).contains(&status));
             }
         });
@@ -927,6 +942,8 @@ impl App {
 
     pub fn load_notes(&mut self, more: bool, fresh: bool) {
         let Some(me) = self.me() else { return };
+        self.feed_gen += 1;
+        let gen0 = self.feed_gen;
         let f = &mut self.notes;
         if more && (f.loading || f.done || f.cursor.is_none()) {
             return;
@@ -935,7 +952,7 @@ impl App {
             if f.loading && !fresh {
                 return;
             }
-            f.gen += 1;
+            f.gen = gen0;
         }
         f.loading = true;
         f.error = None;
@@ -943,6 +960,9 @@ impl App {
         let cursor = if more { f.cursor.clone().unwrap_or_default() } else { String::new() };
         let url = self.node("/v2/farcaster/notifications", &[("fid", me.to_string()), ("limit", "50".into()), ("cursor", cursor), ("include_quotes_and_deep_replies", "true".into())]);
         self.get::<NotePage>(url, move |app, r| {
+            if app.me() != Some(me) {
+                return;
+            }
             let f = &mut app.notes;
             if f.gen != gen {
                 return;
@@ -999,6 +1019,9 @@ impl App {
             let url = self.node("/v1/reactionsByFid", &[("fid", fid.to_string()), ("reaction_type", kind.into()), ("pageSize", "200".into()), ("reverse", "true".into())]);
             self.get::<V1Messages>(url, move |app, r| {
                 let Ok(m) = r else { return };
+                if app.me() != Some(fid) {
+                    return;
+                }
                 let set = if kind == "Like" { &mut app.mine_likes } else { &mut app.mine_recasts };
                 for msg in m.messages {
                     if let Some(t) = msg.data.reaction_body.and_then(|b| b.target_cast_id) {
@@ -1772,9 +1795,9 @@ impl App {
     }
 
     pub(crate) fn sign(&mut self, key: &[u8], msg: &[u8], f: impl FnOnce(&mut App, Result<Vec<u8>, String>) + 'static) {
-        if let Some(seed) = self.raw_seed {
+        for seed in &self.raw_seeds {
             use ed25519_dalek::Signer;
-            let k = ed25519_dalek::SigningKey::from_bytes(&seed);
+            let k = ed25519_dalek::SigningKey::from_bytes(seed);
             if k.verifying_key().as_bytes()[..] == key[..] {
                 return f(self, Ok(k.sign(msg).to_bytes().to_vec()));
             }
@@ -1827,6 +1850,19 @@ impl App {
         self.join.step = JoinStep::Finding;
         let addr = fc::address(&custody);
         self.fid_for(addr.clone(), move |app, fid| match fid {
+            // an account already signed in here gets no second key: it's switched to (and keeps its drafts key, which
+            // a session from before drafts may not have had)
+            Ok(Some(fid)) if app.accounts.iter().any(|a| a.fid == fid) => {
+                app.join = Join::default();
+                if app.me() != Some(fid) {
+                    app.switch_account(fid);
+                }
+                if app.me() == Some(fid) {
+                    app.keep_drafts_key(fid, fc::drafts_secret(fid, &custody));
+                    app.navigate("/", false);
+                    app.say("That account is already signed in here.");
+                }
+            }
             Ok(Some(fid)) => {
                 // the drafts key needs the custody, so it's made now, while the phrase is in hand (src/write.ts draftKey)
                 app.join_secret = Some((fid, fc::drafts_secret(fid, &custody)));
@@ -1882,7 +1918,6 @@ impl App {
         self.join.step = JoinStep::AddingKey;
         let id = self.wait(move |app, code, pubk| {
             if code == 1 && pubk.len() == 32 {
-                app.raw_seed = None;
                 app.key_add(fid, custody_addr, custody, pubk, false);
             } else {
                 // no Ed25519 in this browser's WebCrypto: a raw key, sealed in the vault
@@ -1894,7 +1929,7 @@ impl App {
                     if code != 1 {
                         return app.join_failed("This browser can't keep a key. Try another browser.".into());
                     }
-                    app.raw_seed = Some(seed);
+                    app.raw_seeds.push(seed);
                     app.key_add(fid, custody_addr, custody, pubk, true);
                 });
                 host::vset(id, &key, &seed);
@@ -1947,23 +1982,40 @@ impl App {
                 a.display = u.display_name;
                 a.pfp = u.pfp_url;
             }
-            app.join = Join::default();
-            let secret = app.join_secret.take().filter(|(f, _)| *f == a.fid);
-            app.set_account(Some(a));
-            if let Some((fid, s)) = secret {
-                app.keep_drafts_key(fid, s);
-            }
-            app.navigate("/", false);
-            app.say("Signed in");
+            app.join_done(a);
         });
     }
 
-    fn set_account(&mut self, a: Option<Account>) {
+    /// The new account takes over, once nothing of the one in use is still going out (an account added while a
+    /// thread or a profile was being sent would cut it off halfway).
+    pub(crate) fn join_done(&mut self, a: Account) {
+        if self.sending() {
+            return self.later(1000.0, move |app| app.join_done(a));
+        }
+        self.join = Join::default();
+        let secret = self.join_secret.take().filter(|(f, _)| *f == a.fid);
+        self.set_account(Some(a));
+        if let Some((fid, s)) = secret {
+            self.keep_drafts_key(fid, s);
+        }
+        self.navigate("/", false);
+        self.say("Signed in");
+    }
+
+    pub(crate) fn set_account(&mut self, a: Option<Account>) {
         match &a {
-            Some(a) => host::set(ACCOUNT_KEY, &serde_json::to_string(a).unwrap_or_default()),
+            Some(a) => {
+                host::set(ACCOUNT_KEY, &serde_json::to_string(a).unwrap_or_default());
+                match self.accounts.iter_mut().find(|x| x.fid == a.fid) {
+                    Some(x) => *x = a.clone(),
+                    None => self.accounts.push(a.clone()),
+                }
+                self.save_accounts();
+            }
             None => host::del(ACCOUNT_KEY),
         }
         self.account = a;
+        self.drop_edit();
         // the account's own mutes (or this device's, signed out) take over
         self.read_mutes();
         self.sync_mutes();
@@ -1994,13 +2046,31 @@ impl App {
     pub fn sign_out(&mut self) {
         let Some(a) = self.account.clone() else { return };
         // a thread still going out would stop halfway, with nothing to say so
-        if self.compose.as_ref().is_some_and(|c| c.sending) {
-            return self.say("Wait for the cast to finish sending.");
+        if self.account_busy() {
+            return;
         }
-        if !host::ask("Sign out? This browser's key is revoked, and signing in again needs your recovery phrase.") {
+        let name = a.username.clone().map_or_else(|| format!("!{}", a.fid), |u| format!("@{u}"));
+        if !host::ask(&format!("Sign out of {name}? This browser's key is revoked, and signing in again needs your recovery phrase.")) {
             return;
         }
         self.busy.insert("signout".into());
+        // a raw key still on its way out of the vault (just switched to) is waited for, so it's revoked, not just
+        // forgotten here
+        if a.raw && !self.has_seed(&a.key) {
+            let vkey = format!("raw:{}", a.key);
+            let id = self.wait(move |app, code, bytes| {
+                if let (1, Ok(s)) = (code, <[u8; 32]>::try_from(bytes.as_slice())) {
+                    app.keep_seed(s);
+                }
+                app.revoke(a, name);
+            });
+            return host::vget(id, &vkey);
+        }
+        self.revoke(a, name);
+    }
+
+    /// Signs and sends the KEY_REMOVE of `a`'s key, then forgets the account here.
+    fn revoke(&mut self, a: Account, name: String) {
         let key = fc::unhex(&a.key);
         let now = fc::fc_time(host::ms());
         let u = fc::prepare(fc::mt::KEY_REMOVE, a.fid, now, &fc::key_remove_self_body(&key, (host::ms() / 1000.0) as u64, now));
@@ -2013,11 +2083,25 @@ impl App {
             } else {
                 host::eddrop(&k2);
             }
-            app.raw_seed = None;
+            let pubk = k2.clone();
+            app.raw_seeds.retain(|s| ed25519_dalek::SigningKey::from_bytes(s).verifying_key().as_bytes()[..] != pubk[..]);
             host::adrop(&App::drafts_name(a.fid));
-            app.set_account(None);
-            app.navigate("/", false);
-            app.say("Signed out");
+            app.accounts.retain(|x| x.fid != a.fid);
+            app.save_accounts();
+            // the next account signed in here takes over, if there is one
+            match app.accounts.first().cloned() {
+                Some(next) => {
+                    let other = next.username.clone().map_or_else(|| format!("!{}", next.fid), |u| format!("@{u}"));
+                    app.use_account(next);
+                    app.navigate("/", false);
+                    app.say(format!("Signed out of {name}. Using {other}"));
+                }
+                None => {
+                    app.set_account(None);
+                    app.navigate("/", false);
+                    app.say("Signed out");
+                }
+            }
         };
         let signer = key.clone();
         self.sign(&signer, &hash, move |app, sig| match sig {
@@ -2374,7 +2458,7 @@ mod tests {
         let mut app = App::new();
         let seed = [7u8; 32];
         let k = SigningKey::from_bytes(&seed);
-        app.raw_seed = Some(seed);
+        app.raw_seeds = vec![seed];
         app.account = Some(Account { fid: 77, key: fc::hex(k.verifying_key().as_bytes()), raw: true, ..Default::default() });
         app.key_fetch("PUT", "/api/mutes/77".into(), "quilcast-mutes", r#"{"words":[]}"#.into(), "\nx-fid: 77", |_, _, _| {});
         let (_, what, body) = sent().pop().expect("a request");
@@ -2394,7 +2478,7 @@ mod tests {
         let (_, what, _) = sent().pop().unwrap();
         assert!(what.starts_with("GET /api/mutes/77\n\nx-key: 0x"), "{what}");
         // without a key here, it says so rather than sending anything
-        app.raw_seed = None;
+        app.raw_seeds.clear();
         app.account = None;
         let got = Rc::new(RefCell::new(0));
         let g = got.clone();
@@ -2415,7 +2499,7 @@ mod tests {
         let mut app = App::new();
         let seed = [9u8; 32];
         let k = ed25519_dalek::SigningKey::from_bytes(&seed);
-        app.raw_seed = Some(seed);
+        app.raw_seeds = vec![seed];
         app.account = Some(Account { fid: 77, key: fc::hex(k.verifying_key().as_bytes()), raw: true, ..Default::default() });
         (app, k)
     }

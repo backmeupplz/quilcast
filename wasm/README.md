@@ -26,7 +26,7 @@ The Dockerfile builds it in a stage of its own (`rust:1.99-slim`), and CI runs t
 
 ## What it does so far
 
-The ticket's goal is everything quilcast.com does, shipped in stages. The list below follows the README's "What it does" and says where each part stands. Stage 1 brought reading, signing in and the basic writes; stage 2 added channels, the lists of people, Browse as, anonymous mode, mutes, blocks and reports; stage 3 added what the composer does beyond text (pictures, videos and GIFs, @mention suggestions, drafts, scheduled casts) and pinned casts; stage 4 adds writing threads, the emoji and sticker pickers, four embeds a cast, and the spam filter.
+The ticket's goal is everything quilcast.com does, shipped in stages. The list below follows the README's "What it does" and says where each part stands. Stage 1 brought reading, signing in and the basic writes; stage 2 added channels, the lists of people, Browse as, anonymous mode, mutes, blocks and reports; stage 3 added what the composer does beyond text (pictures, videos and GIFs, @mention suggestions, drafts, scheduled casts) and pinned casts; stage 4 added writing threads, the emoji and sticker pickers, four embeds a cast, and the spam filter; stage 5 adds several accounts per browser and editing your profile.
 
 | quilcast.com feature | WASM |
 | --- | --- |
@@ -48,7 +48,7 @@ The ticket's goal is everything quilcast.com does, shipped in stages. The list b
 | Threads, the emoji and sticker pickers in the composer | ✅ (+ adds a post after the one being written, each with its own pictures and @mentions; Backspace in an empty post takes it out; Post all sends them as replies, one after another, and one that fails leaves only what didn't go out. The emoji list is quilcast.com's, built into the module; stickers come from the account's packs) |
 | Sticker pack pages (make a pack, import one from Telegram, share and add packs) and pack link cards | ⏳ (stickers in casts show as stickers and open their pack on quilcast.com) |
 | The composer's Markdown mode (formatting buttons, pictures inside the text) | ⏳ |
-| Several accounts per browser | ⏳ |
+| Several accounts per browser | ✅ (Settings → Accounts lists them, switches between them and adds one with its recovery phrase; each keeps its own key, mutes and drafts key, and signing out of one revokes only its key and hands over to the next. Signing in again to an account already here switches to it rather than adding a second key) |
 | Push notifications | ⏳ |
 | Create a new account, sign in with an external wallet | ⏳ |
 | Messages (direct casts) | ⏳ |
@@ -62,6 +62,7 @@ The ticket's goal is everything quilcast.com does, shipped in stages. The list b
 | Scheduled casts | ✅ (signed here for their time and handed to Quilcast's server, as quilcast.com does; listed, edited and cancelled in the composer) |
 | Pinned casts | ✅ (pin and unpin your own casts; a profile shows its pin on top) |
 | Articles | ⏳ |
-| Profile editing, key export and the rest of Settings | ⏳ |
+| Profile editing | ✅ (Settings → Profile: the photo, drawn again by the browser and uploaded like a cast's, the name, bio and website, each sent as its own USER_DATA_ADD signed here) |
+| Key export and the rest of Settings | ⏳ (Quilcast WASM never keeps the recovery phrase, so there is nothing to export yet) |
 | Quilcast as a mini app, share cards and meta tags per page, RSS | ⏳ (every page has the same meta tags; RSS stays on quilcast.com) |
 | Reproducible build hashes (`build.json`, `scripts/verify.mjs`) | ⏳ (`wasm/dist` isn't in them yet) |

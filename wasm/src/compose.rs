@@ -409,7 +409,11 @@ fn status_error(status: i32, body: &[u8], what: &str) -> String {
 }
 
 impl App {
+    /// The upload numbered `n`: a picture on the cast being written, or the new photo in Settings → Profile.
     fn attach_mut(&mut self, n: u32) -> Option<&mut Attach> {
+        if self.edit.as_ref().and_then(|e| e.photo.as_ref()).is_some_and(|a| a.n == n) {
+            return self.edit.as_mut()?.photo.as_mut();
+        }
         self.compose.as_mut()?.posts.iter_mut().flat_map(|p| p.media.iter_mut()).find(|a| a.n == n)
     }
     fn attach_failed(&mut self, n: u32, e: String) {
@@ -452,33 +456,39 @@ impl App {
             if let Some(p) = self.compose.as_mut().and_then(|c| c.posts.get_mut(at)) {
                 p.media.push(a);
             }
-            match f.kind.as_str() {
-                "image/jpeg" | "image/png" | "image/webp" => {
-                    let id = self.wait(move |app, code, body| {
-                        let shrunk = (code == 1).then(|| serde_json::from_slice::<Picked>(&body).ok()).flatten();
-                        // a picture that couldn't be read keeps its tile (and thumbnail) until it's taken off
-                        let Some(s) = shrunk else {
-                            if app.attach_mut(n).is_none() {
-                                host::fdrop(f.id);
-                            }
-                            return app.attach_failed(n, "This picture couldn't be read.".into());
-                        };
-                        host::fdrop(f.id);
-                        // the thumbnail moves to the picture as it will go out: the original's address is let go
-                        match app.attach_mut(n) {
-                            Some(a) => {
-                                a.file = Some(s.id);
-                                a.preview = host::furl(s.id);
-                            }
-                            None => return host::fdrop(s.id),
+            self.start_file(n, f);
+        }
+    }
+
+    /// Readies the picked file of upload `n` (a picture drawn again without its EXIF, a video without its metadata
+    /// boxes) and uploads it.
+    pub(crate) fn start_file(&mut self, n: u32, f: Picked) {
+        match f.kind.as_str() {
+            "image/jpeg" | "image/png" | "image/webp" => {
+                let id = self.wait(move |app, code, body| {
+                    let shrunk = (code == 1).then(|| serde_json::from_slice::<Picked>(&body).ok()).flatten();
+                    // a picture that couldn't be read keeps its tile (and thumbnail) until it's taken off
+                    let Some(s) = shrunk else {
+                        if app.attach_mut(n).is_none() {
+                            host::fdrop(f.id);
                         }
-                        app.upload(n, s.id, s.kind, s.size, Rc::new(Vec::new()));
-                    });
-                    host::fshrink(id, f.id);
-                }
-                "video/mp4" | "video/quicktime" => self.video_walk(n, f.id, f.kind, f.size, 0, Vec::new(), 0),
-                _ => self.upload(n, f.id, f.kind, f.size, Rc::new(Vec::new())),
+                        return app.attach_failed(n, "This picture couldn't be read.".into());
+                    };
+                    host::fdrop(f.id);
+                    // the thumbnail moves to the picture as it will go out: the original's address is let go
+                    match app.attach_mut(n) {
+                        Some(a) => {
+                            a.file = Some(s.id);
+                            a.preview = host::furl(s.id);
+                        }
+                        None => return host::fdrop(s.id),
+                    }
+                    app.upload(n, s.id, s.kind, s.size, Rc::new(Vec::new()));
+                });
+                host::fshrink(id, f.id);
             }
+            "video/mp4" | "video/quicktime" => self.video_walk(n, f.id, f.kind, f.size, 0, Vec::new(), 0),
+            _ => self.upload(n, f.id, f.kind, f.size, Rc::new(Vec::new())),
         }
     }
 

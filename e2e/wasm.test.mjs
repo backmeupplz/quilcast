@@ -70,7 +70,7 @@ function opened(msg) {
   assert.equal(hex(field(msg, 2)), hex(blake3(data, { dkLen: 20 })), 'hash is blake3 of the data')
   assert.ok(ed25519.verify(field(msg, 4), field(msg, 2), field(msg, 6)), 'signed by the key it names')
   const type = Number(field(data, 1))
-  const bodyField = { 1: 5, 3: 7, 4: 7, 16: 19, 17: 20 }[type]
+  const bodyField = { 1: 5, 3: 7, 4: 7, 11: 12, 16: 19, 17: 20 }[type]
   return { type, fid: Number(field(data, 2)), signer: hex(field(msg, 6)), body: field(data, bodyField) }
 }
 
@@ -112,6 +112,8 @@ const node = createServer((q, r) => {
   }
   if (p === '/v2/farcaster/feed/user/casts') return send({ casts: [casts[0]], next: { cursor: null } })
   if (p === '/v1/signer' || p === '/v1/reactionsByFid') return send({ messages: [] })
+  // the profile Settings edits: what the account has set so far
+  if (p === '/v1/userDataByFid') return send({ messages: u.searchParams.get('fid') === '12345' ? [{ data: { userDataBody: { type: 'USER_DATA_TYPE_DISPLAY', value: 'Tester' } } }, { data: { userDataBody: { type: 'USER_DATA_TYPE_BIO', value: 'testing things' } } }] : [] })
   if (p === '/v2/farcaster/user/search') return send({ result: { users: [{ fid: 2, username: 'user2', display_name: 'User 2' }] } })
   // what server/pins.mjs asks before pinning: the cast, if this FID submitted it
   if (p === '/v1/castById') {
@@ -454,8 +456,29 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
   assert.deepEqual(muted?.users, [{ v: 1 }])
   assert.equal(await page.locator('text=not on Quilcast\'s server').count(), 0)
 
-  // signing out revokes the key with a KEY_REMOVE it signs itself
+  // Settings lists the accounts signed in here, with a way to add another
   await page.goto(base + '/settings')
+  await page.waitForSelector('.accounts .acct.on >> text=@tester')
+  assert.equal(await page.locator('.accounts .acct.on >> text=In use').count(), 1)
+  await page.click('text=Add account')
+  await page.waitForSelector('h1:has-text("Add account")')
+  assert.equal(await page.locator('textarea#phrase').count(), 1)
+
+  // the profile: what the node has, and a new name and bio sent as USER_DATA_ADDs signed by this browser's key
+  await page.goto(base + '/settings')
+  await page.waitForFunction(() => document.querySelector('#edit-name')?.value === 'Tester')
+  assert.equal(await page.inputValue('#edit-bio'), 'testing things')
+  const before = submitted.length
+  await page.fill('#edit-name', 'Tester Two')
+  await page.fill('#edit-url', 'https://tester.example')
+  await page.click('text=Save changes')
+  await page.waitForSelector('text=Profile saved')
+  const data = submitted.slice(before).map(opened)
+  assert.deepEqual(data.map((m) => [m.type, m.fid, m.signer]), [[11, 12345, keyAdd.signer], [11, 12345, keyAdd.signer]])
+  assert.deepEqual(data.map((m) => [Number(field(m.body, 1)), new TextDecoder().decode(field(m.body, 2))]), [[2, 'Tester Two'], [5, 'https://tester.example']])
+  assert.equal(await page.locator('text=Save changes').count(), 0)
+
+  // signing out revokes the key with a KEY_REMOVE it signs itself
   await page.click('text=Sign out')
   await page.waitForSelector('text=Signed out')
   const out = opened(submitted.at(-1))
