@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
 import { createServer, request } from 'node:http'
+import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -192,6 +193,11 @@ let sixDown = true
 const MEMES = 'chain://eip155:1/erc721:0xfd8427165df67df6d7fd689ae67c8ebf56d9ca61'
 const nodePort = await listen(node)
 const media = await mkdtemp(join(tmpdir(), 'qc-media-'))
+// a stand-in for wasm/dist (wasm/build.sh), served at wasm.quilcast.com
+const wasmDir = await mkdtemp(join(tmpdir(), 'qc-wasm-'))
+await mkdir(join(wasmDir, 'assets/b1'), { recursive: true })
+await writeFile(join(wasmDir, 'index.html'), '<!doctype html><title>Quilcast WASM</title><script type="module" src="/assets/b1/shell.js"></script>')
+await writeFile(join(wasmDir, 'assets/b1/app.wasm'), Buffer.concat([Buffer.from([0, 0x61, 0x73, 0x6d, 1, 0, 0, 0]), Buffer.alloc(4096)]))
 await writeFile(join(media, '0123456789abcdef01234567.png'), Buffer.from('0123456789'))
 // a real picture someone uploaded before uploads were recorded (0.36.0), named after its content as uploads are
 const OLD_PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 1]), Buffer.alloc(40, 99)])
@@ -208,7 +214,7 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
   for (let i = 0; i < 50; i++) {
     if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
@@ -216,6 +222,45 @@ before(async () => {
   throw new Error('server did not start')
 })
 after(() => (srv.kill(), internal.close(), node.close()))
+
+test('wasm.quilcast.com serves the WebAssembly build, with its own CSP, and the same /api/', async () => {
+  // a raw request, as Node's own client insists the Host header name the address it connects to
+  const get = (path, headers = {}) => new Promise((ok, no) => {
+    const s = connect(port, '127.0.0.1', () => s.write(`GET ${path} HTTP/1.1\r\nHost: wasm.quilcast.com\r\nConnection: close\r\n${Object.entries(headers).map(([k, v]) => `${k}: ${v}\r\n`).join('')}\r\n`))
+    const chunks = []
+    s.on('data', (c) => chunks.push(c)).on('error', no).on('end', () => {
+      const all = Buffer.concat(chunks)
+      const cut = all.indexOf('\r\n\r\n')
+      const [line, ...rest] = String(all.subarray(0, cut)).split('\r\n')
+      ok({ status: Number(line.split(' ')[1]), headers: Object.fromEntries(rest.map((h) => [h.slice(0, h.indexOf(':')).toLowerCase(), h.slice(h.indexOf(':') + 1).trim()])), body: all.subarray(cut + 4) })
+    })
+  })
+  // every page is the app's one page, which reads the address itself
+  for (const path of ['/', '/u/dwr', '/c/6ba6089bb1d3304b82fa17dbb34aa7c691713b0f']) {
+    const r = await get(path)
+    assert.equal(r.status, 200, path)
+    assert.match(String(r.body), /<title>Quilcast WASM<\/title>/)
+    const csp = r.headers['content-security-policy']
+    assert.match(csp, /script-src 'self' 'wasm-unsafe-eval'(;|$)/)
+    assert.match(csp, /frame-ancestors 'none'/)
+    assert.doesNotMatch(csp, /unsafe-inline/)
+  }
+  // the module is served as wasm (so it compiles while it downloads), compressed and cached for good
+  const w = await get('/assets/b1/app.wasm', { 'accept-encoding': 'gzip' })
+  assert.equal(w.status, 200)
+  assert.equal(w.headers['content-type'], 'application/wasm')
+  assert.equal(w.headers['content-encoding'], 'gzip')
+  assert.match(w.headers['cache-control'], /immutable/)
+  assert.equal((await get('/assets/b1/missing.js')).status, 404)
+  // no way out of the build
+  for (const path of ['/../package.json', '/%2e%2e/package.json', '/assets/..%2f..%2fpackage.json']) assert.doesNotMatch(String((await get(path)).body), /"name"/, path)
+  // /api/ is the same server's: link previews, the image proxy…
+  const api = await get('/api/unfurl?url=nope')
+  assert.equal(api.status, 200)
+  assert.equal(String(api.body), 'null')
+  // quilcast.com itself is unchanged
+  assert.doesNotMatch(String(await (await fetch(base + '/u/dwr')).text()), /Quilcast WASM/)
+})
 
 test('malformed percent-encoding is a 400, not a crash', async () => {
   assert.equal((await fetch(base + '/%E0%A4%A')).status, 400)

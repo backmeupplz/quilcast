@@ -59,10 +59,15 @@ jobs:
       # A Mac runner links in its cached install, Linux installs (scripts/ci-install.sh)
       - name: npm ci
         run: sh scripts/ci-install.sh
-      # WebKit, Safari's engine, for e2e/; the install is a no-op once the runner has this Playwright's WebKit
-      - run: npx playwright install ${{ runner.os == 'Linux' && '--with-deps ' || '' }}webkit
+      # WebKit, Safari's engine, for e2e/ (and Chromium, for e2e/wasm.test.mjs's sign-in where WebKit can't keep keys); the install is a no-op once the runner has this Playwright's browsers
+      - run: npx playwright install ${{ runner.os == 'Linux' && '--with-deps ' || '' }}webkit chromium
       # Same order as the Dockerfile: the server tests serve dist/
       - run: npm run build
+      # Quilcast WASM (wasm/): its Rust tests, then its build, which e2e/wasm.test.mjs serves
+      - name: Rust
+        run: sh scripts/ci-rust.sh
+      - name: Quilcast WASM
+        run: cd wasm && cargo test --locked -q && sh build.sh
       # Every test file at once (unit, server and the app in WebKit), with the type and locale checks alongside
       - name: Tests, tsc and i18n
         run: |

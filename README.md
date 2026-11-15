@@ -91,6 +91,7 @@ Quilcast is a small project by one developer, and it depends on the Hypersnap no
 | `src/compose.tsx`, `src/write.ts`, `server/drafts.mjs` | Drafts: the composer's Drafts list and save/discard prompt, sealing them in the browser, and keeping the sealed files (one per draft, per FID) |
 | `src/compose.tsx`, `src/write.ts`, `server/scheduled.mjs` | Scheduled casts: the composer's time picker and Scheduled list, signing casts for later in the browser, and checking, keeping and sending them at their time |
 | `android/`, `ios/` | The apps (see Apps) |
+| `wasm/` | Quilcast WASM: the client in Rust, compiled to WebAssembly and served at wasm.quilcast.com (see Quilcast WASM) |
 
 The message encoders are checked byte for byte against `@farcaster/core`, `viem` and Quilibrium's `quorum-shared`.
 
@@ -152,6 +153,10 @@ xcodebuild test -project ios/Quilcast.xcodeproj -scheme Quilcast -destination 'p
 ```
 
 One release ships everything: bump `versionName`/`versionCode` in `android/app/build.gradle.kts`, add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, and publish a release `vX.Y.Z` on git.borodutch.com. `.forgejo/workflows/release.yml` then uploads the bundle to Google Play, the iPhone app to App Review, attaches `quilcast-X.Y.Z.apk` and `quilcast.apk` to the release (here and on GitHub), and moves the F-Droid merge request to the new version. F-Droid builds the tag itself and ships our APK only when its build matches. Store texts live in `appstore/<locale>/listing.md` (the App Store's, with the screenshot captions; en-US is `appstore/listing.md`) and `fastlane/metadata/android/<language>/` (Play's and F-Droid's), in 24 languages, and `node scripts/store-copy.mjs` checks them against the stores' limits. The keyword research behind them is in Prime Radiant's `projects/quilcast/drafts/aso-<locale>.md`. CI builds the apps only when `android/` or `ios/` change.
+
+## Quilcast WASM
+
+[wasm.quilcast.com](https://wasm.quilcast.com) is Quilcast written in Rust and compiled to WebAssembly: the module holds the app's state, signs its messages and draws every page itself, and a small script only hands it the browser's APIs. It talks to Hypersnap directly and uses this server's `/api/*`, and its keys stay in the browser like here. It's being built up to everything quilcast.com does; [`wasm/README.md`](wasm/README.md) explains how it works and lists what it does so far.
 
 ## Contracts
 

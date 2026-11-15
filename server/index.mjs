@@ -735,6 +735,15 @@ async function keptCast(hash) {
 // --- collect.quilcast.com: the Collect mini app (collect/), each cast's page with share tags and pictures ---
 const COLLECT_HOST = process.env.COLLECT_HOST || 'collect.quilcast.com'
 const STICKERS_HOST = process.env.STICKERS_HOST || 'stickers.quilcast.com'
+// wasm.quilcast.com: Quilcast built as a WebAssembly module (wasm/, built into wasm/dist). Its pages come from there and
+// its /api/ calls reach this server's handlers like the app's do. The module needs 'wasm-unsafe-eval' to be compiled;
+// no other script runs (the shell is a file of this site), and nothing may frame it.
+const WASM_HOST = process.env.WASM_HOST || 'wasm.quilcast.com'
+const WASM_DIR = join(process.env.WASM_DIR || new URL('../wasm/dist/', import.meta.url).pathname, '/')
+const WASM_CSP = [
+  "default-src 'self'", "script-src 'self' 'wasm-unsafe-eval'", "style-src 'self'", 'img-src * data: blob:', 'media-src * data: blob:',
+  "connect-src 'self' https: http://localhost:* http://127.0.0.1:*", "font-src 'self'", "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-src 'none'", "frame-ancestors 'none'",
+].join('; ')
 const COLLECT = `https://${COLLECT_HOST}`
 const CONTRACT = '0x5961d6a95f140b40cb993190e9dc5076f0830d3e'
 const BASE_RPC = process.env.BASE_RPC || 'https://mainnet.base.org'
@@ -1106,7 +1115,7 @@ function page({ title, desc, path, image, alt, embed, launch, type = 'article', 
 // out of search: no canonical, a robots tag instead
 const noindex = (h) => h.replace(/\s*<link rel="canonical" href="[^"]*" \/>/, '').replace('</head>', '<meta name="robots" content="noindex, follow" />\n</head>')
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.json': 'application/json', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' }
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.json': 'application/json', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.wasm': 'application/wasm' }
 
 // static files under a path without their extension: About (plain HTML for crawlers), the legal pages the stores link to, and Apple's universal links file
 // the standalone pages in the app's other languages (public/<lang>/<page>.html), each at its own address
@@ -1121,7 +1130,7 @@ const zip = { br: promisify(brotliCompress), gzip: promisify(gzip) }
  *  changes (its compressed copies kept in `packed`); an object `memo` keeps them itself, for a body that goes stale (a feed),
  *  so it can't push dist/'s files out of `packed`. */
 async function send(req, res, code, headers, body, memo) {
-  if (body.length > 1024 && /^(text\/|application\/(json|manifest|rss\+xml)|image\/svg)/.test(headers['content-type'])) {
+  if (body.length > 1024 && /^(text\/|application\/(json|manifest|rss\+xml|wasm)|image\/svg)/.test(headers['content-type'])) {
     const accept = String(req.headers['accept-encoding'] || '')
     const enc = /\bbr\b/.test(accept) ? 'br' : /\bgzip\b/.test(accept) ? 'gzip' : ''
     headers = { ...headers, vary: 'accept-encoding' }
@@ -1194,6 +1203,20 @@ const server = createServer(async (req, res) => {
     if (String(req.headers.host || '').split(':')[0] === STICKERS_HOST) {
       const id = path.match(/^\/([\w-]{8})$/)?.[1]
       return res.writeHead(301, { location: `${SITE}/stickers${id ? `/${id}` : ''}`, 'cache-control': 'public, max-age=86400' }).end()
+    }
+
+    if (String(req.headers.host || '').split(':')[0] === WASM_HOST && !path.startsWith('/api/')) {
+      res.setHeader('content-security-policy', WASM_CSP)
+      const file = normalize(join(WASM_DIR, path))
+      if (file.startsWith(WASM_DIR) && extname(file) && extname(file) !== '.html') {
+        const body = await readFile(file).catch(() => null)
+        if (!body) return res.writeHead(404).end()
+        return send(req, res, 200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600' }, body, 'wasm:' + file)
+      }
+      // every page is the app, which reads the address itself
+      const page = await readFile(join(WASM_DIR, 'index.html')).catch(() => null)
+      if (!page) return res.writeHead(503, { 'content-type': 'text/plain; charset=utf-8' }).end('This server was built without Quilcast WASM (wasm/build.sh).')
+      return html(page, 'wasm:index')
     }
 
     // ogre mode's GIFs: a random one each time (server/shrek.mjs)

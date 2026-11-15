@@ -1,0 +1,27 @@
+[package]
+name = "quilcast-wasm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ed25519-dalek = { version = "2", default-features = false, features = ["std", "fast", "zeroize"] }
+k256 = { version = "0.13", default-features = false, features = ["ecdsa", "std"] }
+sha3 = { version = "0.10", default-features = false }
+sha2 = { version = "0.10", default-features = false }
+hmac = { version = "0.12", default-features = false }
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+blake3 = { version = "1", default-features = false }
+getrandom = { version = "0.2", features = ["custom"] }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

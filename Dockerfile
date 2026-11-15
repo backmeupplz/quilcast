@@ -12,6 +12,17 @@ FROM node:24.22.1-slim AS media
 RUN apt-get update && apt-get install -y --no-install-recommends webp && rm -rf /var/lib/apt/lists/*
 COPY --from=ffmpeg /ffmpeg /usr/local/bin/
 
+# Quilcast WASM (wasm/, served at wasm.quilcast.com): Rust compiled to WebAssembly, nothing else (wasm/build.sh). Its own
+# stage, so the image only rebuilds it when wasm/ changes
+FROM rust:1.99-slim AS wasm
+WORKDIR /w
+RUN rustup target add wasm32-unknown-unknown
+COPY wasm/Cargo.toml wasm/Cargo.lock wasm/build.sh wasm/
+COPY wasm/src wasm/src
+COPY wasm/web wasm/web
+COPY public/favicon.svg public/
+RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/w/wasm/target sh wasm/build.sh
+
 FROM media AS build
 WORKDIR /app
 COPY --from=manifests /app ./
@@ -36,6 +47,7 @@ FROM media
 WORKDIR /app
 COPY --from=deps /app/node_modules node_modules
 COPY --from=build /out ./
+COPY --from=wasm /w/wasm/dist wasm/dist
 ENV PORT=3000
 EXPOSE 3000
 # the media volume (/data) is owned by uid 1000
