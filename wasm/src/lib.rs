@@ -1,6 +1,7 @@
 //! Quilcast as a WebAssembly module. The shell (web/shell.js) loads it, calls `q_start`, and from then on hands it
-//! the page's events (`q_event`), finished requests, key operations and timers (`q_done`) and navigation (`q_nav`).
-//! A tapped push notification's page comes through `q_open`. After each, the module draws the page again.
+//! the page's events (`q_event`), finished requests, key operations and timers (`q_done`), navigation (`q_nav`) and
+//! accounts another tab signed in or out (`q_accounts`). A tapped push notification's page comes through `q_open`.
+//! After each, the module draws the page again.
 
 pub mod alerts;
 pub mod api;
@@ -77,6 +78,12 @@ pub extern "C" fn q_event(node: u32, kind: u32, ptr: *mut u8, len: usize) {
 pub extern "C" fn q_done(id: u32, code: i32, ptr: *mut u8, len: usize) {
     let bytes = unsafe { adopt(ptr, len) };
     with(|app| app.done(id, code, bytes));
+}
+
+/// Another tab changed the accounts signed in here (a `storage` event for them).
+#[no_mangle]
+pub extern "C" fn q_accounts() {
+    with(|app| app.accounts_changed());
 }
 
 /// A same-origin link was followed (`pop` 0) or the person went back or forward (1).

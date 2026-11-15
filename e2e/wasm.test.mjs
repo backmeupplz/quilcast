@@ -262,7 +262,9 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
     t.diagnostic(`WebKit here can't keep a key (${why}): signing in in Chromium`)
     other = await chromium.launch()
   }
-  const { page, errors } = await open('/join', other || browser)
+  // a context of its own, so a second tab shares its storage
+  const ctx = await (other || browser).newContext()
+  const { page, errors } = await open('/join', ctx)
   await page.fill('textarea', PHRASE.toUpperCase())
   asked.length = 0
   await page.click('button[type=submit]')
@@ -460,6 +462,15 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
   await page.goto(base + '/settings')
   await page.waitForSelector('.accounts .acct.on >> text=@tester')
   assert.equal(await page.locator('.accounts .acct.on >> text=In use').count(), 1)
+  // another tab signs in a second account: this one lists it at once, without reloading
+  const tab = await ctx.newPage()
+  await tab.goto(base + '/health')
+  await tab.evaluate(() => {
+    const list = JSON.parse(localStorage.getItem('quilcast-wasm:accounts'))
+    localStorage.setItem('quilcast-wasm:accounts', JSON.stringify([...list, { ...list[0], fid: 777, username: 'other', pub: 'ab'.repeat(32) }]))
+  })
+  await page.waitForSelector('.accounts .acct >> text=@other')
+  assert.equal(await page.locator('.accounts .acct.on >> text=@tester').count(), 1)
   await page.click('text=Add account')
   await page.waitForSelector('h1:has-text("Add account")')
   assert.equal(await page.locator('textarea#phrase').count(), 1)
@@ -477,6 +488,12 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
   assert.deepEqual(data.map((m) => [m.type, m.fid, m.signer]), [[11, 12345, keyAdd.signer], [11, 12345, keyAdd.signer]])
   assert.deepEqual(data.map((m) => [Number(field(m.body, 1)), new TextDecoder().decode(field(m.body, 2))]), [[2, 'Tester Two'], [5, 'https://tester.example']])
   assert.equal(await page.locator('text=Save changes').count(), 0)
+  // saving the profile wrote the list back with the other tab's account still in it; then that tab signs it out
+  const stored = () => page.evaluate(() => JSON.parse(localStorage.getItem('quilcast-wasm:accounts')).map((a) => a.fid))
+  assert.deepEqual(await stored(), [12345, 777])
+  await tab.evaluate(() => localStorage.setItem('quilcast-wasm:accounts', JSON.stringify(JSON.parse(localStorage.getItem('quilcast-wasm:accounts')).filter((a) => a.fid !== 777))))
+  await page.waitForSelector('.accounts .acct >> text=@other', { state: 'detached' })
+  await tab.close()
 
   // signing out revokes the key with a KEY_REMOVE it signs itself
   await page.click('text=Sign out')
@@ -486,7 +503,7 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
   assert.equal(hex(field(out.body, 1)), keyAdd.signer)
   assert.equal(await page.evaluate(() => localStorage.getItem('quilcast-wasm:account')), null)
   assert.deepEqual(errors, [])
-  await page.close()
+  await ctx.close()
 })
 
 test('channels, who liked and quoted, followers, Browse as, following on this device, mutes and reports', async () => {

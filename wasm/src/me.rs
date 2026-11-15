@@ -73,6 +73,13 @@ impl Edit {
     }
 }
 
+/// The accounts list as it's stored now, or None when this browser has none yet.
+pub(crate) fn stored_accounts() -> Option<Vec<Account>> {
+    let mut v: Vec<Account> = serde_json::from_str(&host::get(ACCOUNTS_KEY)?).ok()?;
+    v.retain(|a| a.fid > 0 && !a.key.is_empty());
+    Some(v)
+}
+
 /// A profile's fields from `/v1/userDataByFid`: each message's type comes as its name or its number.
 pub fn read_prof(v: &serde_json::Value) -> Prof {
     let mut p = Prof::default();
@@ -102,6 +109,56 @@ impl App {
 
     pub(crate) fn save_accounts(&self) {
         host::set(ACCOUNTS_KEY, &serde_json::to_string(&self.accounts).unwrap_or_default());
+    }
+
+    /// Takes the list as it's stored now before changing it (src/api.ts setAccount): another tab may have signed an
+    /// account in or out since this one read it, and writing this tab's older copy back would undo that. A browser
+    /// that has no list yet (a session from before several accounts) keeps the one it made.
+    pub(crate) fn reread_accounts(&mut self) {
+        if let Some(v) = stored_accounts() {
+            self.accounts = v;
+        }
+    }
+
+    /// Another tab changed the accounts (the shell forwards its `storage` events, as src/api.ts listens to them):
+    /// this tab takes the list, and starts over on Home when the account it uses was signed out there (or signed
+    /// out and in again, with another key: the one this tab holds is revoked).
+    pub fn accounts_changed(&mut self) {
+        let fresh = match stored_accounts() {
+            Some(v) => v,
+            // a session from before several accounts, as long as it's still there
+            None if host::get(ACCOUNT_KEY).is_some() => return,
+            // everything cleared
+            None => Vec::new(),
+        };
+        // the keys of accounts signed out elsewhere go from memory too (only those: one this tab is still signing in
+        // with isn't on the list yet)
+        let gone: Vec<String> = self.accounts.iter().filter(|a| !fresh.iter().any(|x| x.key == a.key)).map(|a| a.key.clone()).collect();
+        self.accounts = fresh;
+        self.raw_seeds.retain(|s| !gone.contains(&fc::hex(ed25519_dalek::SigningKey::from_bytes(s).verifying_key().as_bytes())));
+        let Some(a) = self.account.clone() else { return };
+        if let Some(x) = self.accounts.iter().find(|x| x.fid == a.fid && x.key == a.key) {
+            // still here: its name and face as the other tab last saved them
+            self.account = Some(x.clone());
+            return;
+        }
+        let name = a.username.clone().map_or_else(|| format!("!{}", a.fid), |u| format!("@{u}"));
+        // the account the other tab handed over to, as a reload here would pick it
+        let now: Option<Account> = host::get(ACCOUNT_KEY).and_then(|s| serde_json::from_str(&s).ok());
+        let next = now.and_then(|n| self.accounts.iter().find(|x| x.fid == n.fid).cloned()).or_else(|| self.accounts.first().cloned());
+        match next {
+            Some(next) => {
+                let other = next.username.clone().map_or_else(|| format!("!{}", next.fid), |u| format!("@{u}"));
+                self.use_account(next);
+                self.navigate("/", false);
+                self.say(format!("Signed out of {name} in another tab. Using {other}"));
+            }
+            None => {
+                self.set_account(None);
+                self.navigate("/", false);
+                self.say(format!("Signed out of {name} in another tab"));
+            }
+        }
     }
 
     /// Whether the raw key with public key `key` (hex) is out of the vault.
@@ -319,6 +376,7 @@ impl App {
             a.pfp = Some(p.pfp.clone()).filter(|s| !s.is_empty());
             let a = a.clone();
             host::set(ACCOUNT_KEY, &serde_json::to_string(&a).unwrap_or_default());
+            self.reread_accounts();
             if let Some(x) = self.accounts.iter_mut().find(|x| x.fid == fid) {
                 *x = a;
             }
@@ -394,6 +452,135 @@ mod tests {
         assert!(app.account.is_none() && app.accounts.is_empty());
         assert_eq!(app.toast.as_deref(), Some("Signed out"));
         assert!(App::new().account.is_none());
+    }
+
+    fn stored() -> Vec<u64> {
+        stored_accounts().unwrap().iter().map(|a| a.fid).collect()
+    }
+    fn sign_out_now(app: &mut App) {
+        sent();
+        app.sign_out();
+        let (id, _, _) = sent().into_iter().find(|(_, w, _)| w.contains("/v1/submitMessage")).expect("a KEY_REMOVE");
+        app.done(id, 200, b"{}".to_vec());
+    }
+
+    #[test]
+    fn an_account_another_tab_signed_in_survives_this_tabs_saves() {
+        sent();
+        // this tab opened with @one alone; another tab, opened as well, then signs in to @two
+        let mut tab = App::new();
+        tab.raw_seeds = vec![[1; 32]];
+        tab.set_account(Some(acct(77, "one", [1; 32])));
+        let mut other = App::new();
+        other.raw_seeds = vec![[1; 32], [2; 32]];
+        other.set_account(Some(acct(88, "two", [2; 32])));
+        assert_eq!(stored(), vec![77, 88]);
+        assert_eq!(tab.accounts.len(), 1, "no storage event yet");
+
+        // a new account here, its profile saved, and signing out of it: @two stays stored throughout
+        tab.set_account(Some(acct(99, "three", [3; 32])));
+        tab.raw_seeds.push([3; 32]);
+        assert_eq!(stored(), vec![77, 88, 99]);
+        tab.edit = Some(Edit { fid: 99, orig: Some(Prof::default()), ..Default::default() });
+        tab.profile_saved(99);
+        assert_eq!(stored(), vec![77, 88, 99]);
+        sign_out_now(&mut tab);
+        assert_eq!(stored(), vec![77, 88]);
+        assert_eq!(tab.me(), Some(77));
+        assert_eq!(tab.accounts.iter().map(|a| a.fid).collect::<Vec<_>>(), vec![77, 88], "and this tab lists it now");
+
+        // the storage event alone brings it over as well, without changing the account in use
+        other.set_account(Some(acct(55, "four", [4; 32])));
+        sent();
+        tab.accounts_changed();
+        assert_eq!(tab.accounts.iter().map(|a| a.fid).collect::<Vec<_>>(), vec![77, 88, 55]);
+        assert_eq!(tab.me(), Some(77));
+        assert!(sent().is_empty(), "nothing read again");
+        // and switching to it works from here
+        tab.switch_account(55);
+        assert_eq!(tab.me(), Some(55));
+    }
+
+    #[test]
+    fn an_account_signed_out_in_another_tab_starts_this_one_over() {
+        let mut tab = two_accounts();
+        tab.route = Route::Settings;
+        let mut other = App::new();
+        other.raw_seeds = vec![[1; 32], [2; 32]];
+        assert_eq!(other.me(), Some(88));
+
+        // the other tab signs out of @one, not the account in use here: this tab only drops it from its list
+        other.switch_account(77);
+        sign_out_now(&mut other);
+        assert_eq!(other.me(), Some(88));
+        tab.accounts_changed();
+        assert_eq!(tab.me(), Some(88));
+        assert_eq!(tab.route, Route::Settings);
+        assert_eq!(tab.accounts.len(), 1);
+        assert_eq!(tab.raw_seeds, vec![[2u8; 32]], "@one's key is gone from memory here too");
+
+        // then it signs out of @two and in again, with another key: the one this tab holds is revoked, so it starts
+        // over, with the account as the other tab has it now
+        other.set_account(Some(acct(88, "two", [6; 32])));
+        other.raw_seeds = vec![[6; 32]];
+        tab.feeds.insert("trending:old".into(), Default::default());
+        tab.accounts_changed();
+        assert_eq!(tab.account.as_ref().map(|a| a.key.clone()), Some(acct(88, "two", [6; 32]).key));
+        assert_eq!(tab.route, Route::Home(false));
+        assert!(!tab.feeds.contains_key("trending:old"), "what was read with the old key goes");
+        assert_eq!(tab.toast.as_deref(), Some("Signed out of @two in another tab. Using @two"));
+        assert!(tab.raw_seeds.is_empty(), "the revoked key is let go");
+
+        // @one signed in there and then @two signed out: this tab goes on as the account the other tab handed over to
+        other.set_account(Some(acct(77, "one", [5; 32])));
+        other.raw_seeds.push([5; 32]);
+        other.switch_account(88);
+        sign_out_now(&mut other);
+        assert_eq!(other.me(), Some(77));
+        tab.route = Route::Settings;
+        tab.accounts_changed();
+        assert_eq!(tab.me(), Some(77));
+        assert_eq!(tab.route, Route::Home(false));
+        assert_eq!(tab.toast.as_deref(), Some("Signed out of @two in another tab. Using @one"));
+        assert_eq!(stored(), vec![77]);
+
+        // the last one signed out there leaves this tab signed out
+        sign_out_now(&mut other);
+        assert!(other.account.is_none());
+        tab.accounts_changed();
+        assert!(tab.account.is_none() && tab.accounts.is_empty());
+        assert_eq!(tab.toast.as_deref(), Some("Signed out of @one in another tab"));
+        assert!(App::new().account.is_none());
+    }
+
+    #[test]
+    fn a_storage_event_keeps_the_key_of_an_account_still_signing_in_here() {
+        let mut tab = two_accounts();
+        // add_key has the new raw key in hand; the account reaches the list only once the node lists the key
+        tab.raw_seeds.push([3; 32]);
+        let mut other = App::new();
+        other.switch_account(77);
+        tab.accounts_changed();
+        assert!(tab.has_seed(&acct(99, "three", [3; 32]).key));
+        tab.join_done(acct(99, "three", [3; 32]));
+        assert_eq!(tab.me(), Some(99));
+        assert!(tab.has_seed(&acct(99, "three", [3; 32]).key), "it can sign");
+        assert_eq!(stored(), vec![77, 88, 99]);
+    }
+
+    #[test]
+    fn a_session_from_before_several_accounts_keeps_its_account_on_a_storage_event() {
+        sent();
+        host::set(ACCOUNT_KEY, &serde_json::to_string(&acct(77, "one", [1; 32])).unwrap());
+        let mut tab = App::new();
+        assert_eq!(tab.accounts.len(), 1);
+        tab.accounts_changed();
+        assert_eq!(tab.me(), Some(77));
+        assert_eq!(tab.accounts.len(), 1);
+        // everything cleared in another tab signs this one out
+        host::del(ACCOUNT_KEY);
+        tab.accounts_changed();
+        assert!(tab.account.is_none() && tab.accounts.is_empty());
     }
 
     #[test]

@@ -393,6 +393,10 @@ navigator.serviceWorker?.addEventListener('message', (e) => {
 })
 addEventListener('popstate', () => call(() => send((p, l) => ex.q_nav(p, l, 1), location.pathname + location.search)))
 history.scrollRestoration = 'manual'
+// another tab signed an account in or out: the module takes the list as it's stored now (src/api.ts does the same)
+addEventListener('storage', (e) => {
+  if (ex && e.storageArea === localStorage && (e.key === null || e.key === 'quilcast-wasm:accounts' || e.key === 'quilcast-wasm:account')) call(() => ex.q_accounts())
+})
 
 try {
   const { instance } = await WebAssembly.instantiateStreaming(fetch(new URL('app.wasm', import.meta.url)), { q })

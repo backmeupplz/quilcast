@@ -2089,6 +2089,7 @@ impl App {
         match &a {
             Some(a) => {
                 host::set(ACCOUNT_KEY, &serde_json::to_string(a).unwrap_or_default());
+                self.reread_accounts();
                 match self.accounts.iter_mut().find(|x| x.fid == a.fid) {
                     Some(x) => *x = a.clone(),
                     None => self.accounts.push(a.clone()),
@@ -2169,6 +2170,7 @@ impl App {
             let pubk = k2.clone();
             app.raw_seeds.retain(|s| ed25519_dalek::SigningKey::from_bytes(s).verifying_key().as_bytes()[..] != pubk[..]);
             host::adrop(&App::drafts_name(a.fid));
+            app.reread_accounts();
             // its push notifications stop reaching this browser
             app.forget_alerts(a.fid);
             app.accounts.retain(|x| x.fid != a.fid);
