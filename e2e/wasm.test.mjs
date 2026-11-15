@@ -140,8 +140,16 @@ after(async () => {
   node.close()
 })
 
+// spam.quilcast.com's scores (src/spam.ts), by cast hash and by FID: anything else it hasn't scored
+const spamScores = {}
 async function open(path = '/', b = browser) {
   const page = await b.newPage()
+  await page.route('https://spam.quilcast.com/**', (route) => {
+    const u = new URL(route.request().url())
+    const keys = (u.searchParams.get('h') || u.searchParams.get('fid') || '').split(',')
+    const body = Object.fromEntries(keys.filter((k) => k in spamScores).map((k) => [k, spamScores[k]]))
+    route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) })
+  })
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
@@ -184,6 +192,41 @@ test('reads: the feed, cast text as text, threads and profiles', async () => {
   assert.equal(await page.locator('.profile h2').innerText(), 'User 1')
   assert.deepEqual(errors, [])
   await page.close()
+})
+
+test('spam: labelled from the threshold, hidden once Settings says so', async () => {
+  spamScores['0x' + casts[1].hash] = 0.97
+  spamScores['1'] = 0.92
+  try {
+    const { page, errors } = await open('/')
+    await page.waitForSelector('article.cast .spam-tag')
+    const tags = await page.locator('article.cast .spam-tag').allInnerTexts()
+    assert.deepEqual(tags, ['Spam account 92%', 'Spam 97%'])
+    // Settings → Spam: Hide takes the spam cast out; hiding spam accounts takes the account's casts out too
+    await page.goto(base + '/settings')
+    await page.click('[aria-label="Spam casts"] >> text=Hide')
+    await page.goto(base + '/')
+    await page.waitForSelector('article.cast')
+    assert.deepEqual(await page.locator('article.cast .text').allInnerTexts().then((t) => t.map((x) => x.slice(0, 2))), ['gm'])
+    await page.goto(base + '/settings')
+    await page.click('[aria-label="Spam accounts"] >> text=Hide')
+    await page.goto(base + '/')
+    // every cast on the page is hidden: the feed is there, with nothing in it
+    await page.waitForSelector('main .feed', { state: 'attached' })
+    await page.waitForTimeout(1800)
+    assert.equal(await page.locator('article.cast').count(), 0)
+    // and a threshold over both scores brings them back, labels gone
+    await page.goto(base + '/settings')
+    await page.locator('input[type=range]').fill('99')
+    await page.goto(base + '/')
+    await page.waitForSelector('article.cast')
+    assert.equal(await page.locator('article.cast').count(), 2)
+    assert.equal(await page.locator('.spam-tag').count(), 0)
+    assert.deepEqual(errors, [])
+    await page.close()
+  } finally {
+    for (const k of Object.keys(spamScores)) delete spamScores[k]
+  }
 })
 
 /** The error that stops this browser keeping a CryptoKey in IndexedDB, if one does. */
@@ -291,6 +334,35 @@ test('signs in with a recovery phrase, then casts, likes and signs out with vali
   assert.match(url, /\/m\/[0-9a-f]{24}\.jpg$/)
   assert.ok((await readdir(join(media))).includes(url.split('/').pop()), 'kept on the server')
   assert.deepEqual([...field(pic.body, 2)], [2], 'the picked name is a mention')
+
+  // a thread written post by post: each goes out as a reply to the one before; an emoji goes where the caret is
+  await page.click('nav.side .cast-btn')
+  await page.fill('.dialog .part textarea', 'first post')
+  await page.click('.dialog button[aria-label="Add another post to the thread"]')
+  await page.waitForFunction(() => document.querySelectorAll('.dialog .part textarea').length === 2 && document.activeElement === document.querySelectorAll('.dialog .part textarea')[1])
+  await page.locator('.dialog .part textarea').nth(1).pressSequentially('second post')
+  await page.locator('.dialog .part textarea').nth(1).press('ArrowLeft')
+  await page.click('.dialog button[aria-label="Add an emoji"]')
+  await page.fill('.dialog input[aria-label="Search emoji"]', 'thumbs up')
+  await page.click('.dialog .emoji-opt[aria-label="thumbs up"]')
+  await page.waitForFunction(() => document.querySelectorAll('.dialog .part textarea')[1]?.value === 'second pos👍t').catch(async (e) => {
+    throw new Error(`${e.message}: ${await page.locator('.dialog .part textarea').nth(1).inputValue().catch(() => '?')}`)
+  })
+  assert.equal(await page.evaluate(() => document.activeElement.selectionStart), 12, 'the caret comes back after it')
+  // an empty third post is left out, and Backspace in it takes it away
+  await page.click('.dialog button[aria-label="Add another post to the thread"]')
+  await page.locator('.dialog .part textarea').nth(2).press('Backspace')
+  await page.waitForFunction(() => document.querySelectorAll('.dialog .part textarea').length === 2)
+  // the sticker picker: this account has no packs yet
+  await page.click('.dialog button[aria-label="Add a sticker"]')
+  await page.waitForSelector('.dialog .stk-empty')
+  await page.click('.dialog .stickers >> text=Back')
+  await page.click('.dialog-foot button.primary:has-text("Post all")')
+  await page.waitForSelector('text=Thread posted')
+  const [one, two] = submitted.slice(-2).map(opened)
+  assert.equal(new TextDecoder().decode(field(one.body, 4)), 'first post')
+  assert.equal(new TextDecoder().decode(field(two.body, 4)), 'second pos👍t')
+  assert.equal(hex(field(field(two.body, 3), 2)), hex(field(submitted.at(-2), 2)), 'the second replies to the first')
 
   // closing a cast offers to keep it as a draft, sealed in the browser: the server only ever has ciphertext
   await page.click('nav.side .cast-btn')

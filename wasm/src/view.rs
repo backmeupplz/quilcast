@@ -25,6 +25,9 @@ const P_HASH: &str = "M4 9h16M4 15h16M10 3 8 21M16 3l-2 18";
 const P_IMAGE: &str = "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21";
 const P_CLOCK: &str = "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2";
 const P_PIN: &str = "M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z";
+const P_SMILE: &str = "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01";
+const P_STICKER: &str = "M21 12V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7zM21 12h-5a4 4 0 0 0-4 4v5M8 13.5s1.2 1.5 3 1.5M9 9h.01M15 9h.01";
+const P_PLUS: &str = "M12 5v14M5 12h14";
 
 fn icon(d: &'static str) -> V {
     el("svg").attr("viewBox", "0 0 24 24").attr("aria-hidden", "true").class("ic").kid(el("path").attr("d", d)).into()
@@ -291,6 +294,7 @@ fn cast_card(app: &App, c: &Cast, big: bool) -> El {
     let head = el("div").class("head")
         .kid(link(c.author.path()).class("who").kid(el("bdi").class("name").txt(c.author.name())).kid(el("span").class("handle").txt(format!("@{}", c.author.handle()))))
         .maybe(chan.map(|id| link(format!("/channel/{id}")).class("chan-tag").txt(format!("/{id}")).into()))
+        .maybe(spam_tag(app, c))
         .kid(link(format!("/c/{hash}")).class("time").attr("title", c.timestamp.clone()).txt(text::ago(&c.timestamp, now)));
     let mut body = el("div").class("body").kid(head);
     if let (Some(p), false) = (&c.parent_hash, big) {
@@ -322,6 +326,17 @@ fn cast_card(app: &App, c: &Cast, big: bool) -> El {
     card.kid(link(c.author.path()).class("side-av").attr("aria-label", c.author.name()).kid(avatar(&c.author, if big { "md" } else { "sm" }))).kid(body)
 }
 
+/// "Spam 97%" on a cast spam.quilcast.com scores at or over the threshold, else "Spam account 92%" when its author
+/// does (src/ui.tsx).
+fn spam_tag(app: &App, c: &Cast) -> Option<V> {
+    let (label, title) = match (app.spam_of(c), app.spam_account_of(c.author.fid)) {
+        (Some(n), _) => (format!("Spam {n}%"), "How likely spam.quilcast.com thinks this cast is spam"),
+        (None, Some(n)) => (format!("Spam account {n}%"), "How likely spam.quilcast.com thinks this is a spam account"),
+        _ => return None,
+    };
+    Some(el("span").class("spam-tag").attr("title", title).txt(label).into())
+}
+
 fn embeds(app: &App, c: &Cast) -> Option<V> {
     let urls = c.urls();
     let quote = c.quoted();
@@ -329,7 +344,13 @@ fn embeds(app: &App, c: &Cast) -> Option<V> {
         return None;
     }
     let mut box_ = el("div").class("embeds");
-    let imgs: Vec<&String> = urls.iter().filter(|u| text::is_img(u)).collect();
+    // a sticker is drawn as it is, with no frame, and opens its pack on quilcast.com (src/ui.tsx Sticker)
+    let (stickers, urls): (Vec<&String>, Vec<&String>) = urls.iter().partition(|u| crate::compose::sticker_pack(u).is_some());
+    for u in stickers {
+        let pack = crate::compose::sticker_pack(u).unwrap_or_default();
+        box_ = box_.kid(external(format!("https://quilcast.com/stickers/{pack}")).class("sticker").attr("aria-label", "Sticker").kid(el("img").attr("src", u.clone()).attr("alt", "").attr("loading", "lazy")));
+    }
+    let imgs: Vec<&String> = urls.iter().copied().filter(|u| text::is_img(u)).collect();
     if !imgs.is_empty() {
         let mut row = el("div").class(if imgs.len() > 1 { "imgs strip" } else { "imgs" });
         for u in imgs {
@@ -337,14 +358,14 @@ fn embeds(app: &App, c: &Cast) -> Option<V> {
         }
         box_ = box_.kid(row);
     }
-    for u in urls.iter().filter(|u| text::is_vid(u)) {
+    for u in urls.iter().copied().filter(|u| text::is_vid(u)) {
         let mut v = el("video").attr("src", u.clone()).attr("controls", "").attr("preload", "none").attr("playsinline", "");
         if let Some(p) = text::poster(u) {
             v = v.attr("poster", p);
         }
         box_ = box_.kid(v);
     }
-    for u in urls.iter().filter(|u| !text::is_img(u) && !text::is_vid(u)) {
+    for u in urls.iter().copied().filter(|u| !text::is_img(u) && !text::is_vid(u)) {
         box_ = box_.kid(link_card(app, u));
     }
     if let Some((_, h)) = quote {
@@ -472,6 +493,9 @@ fn profile(app: &App, id: &str, replies: bool) -> V {
             let mut pills = el("div").class("pills");
             if u.viewer_context.as_ref().and_then(|v| v.followed_by) == Some(true) && !me {
                 pills = pills.kid(el("span").class("pill").txt("Follows you"));
+            }
+            if let Some(n) = app.spam_account_of(u.fid) {
+                pills = pills.kid(el("span").class("spam-tag").attr("title", "How likely spam.quilcast.com thinks this is a spam account").txt(format!("Spam account {n}%")));
             }
             if blocked {
                 pills = pills.kid(el("span").class("pill warn").txt("Blocked"));
@@ -789,7 +813,7 @@ fn settings(app: &App) -> V {
         .kid(el("h2").txt("Hypersnap node"))
         .kid(el("label").attr("for", "node").class("muted small").txt("Reads and writes go straight to this node."))
         .kid(el("div").class("row").kid(el("input").attr("id", "node").attr("type", "url").attr("value", app.node_text.clone()).attr("spellcheck", "false").on(Ev::Input, |a, v| a.node_text = v.to_string())).kid(el("button").attr("type", "submit").class("btn").txt("Save"))));
-    s = s.kid(muted_pane(app)).kid(words_pane(app));
+    s = s.kid(spam_pane(app)).kid(muted_pane(app)).kid(words_pane(app));
     if app.account.is_none() || !app.local.is_empty() {
         s = s.kid(local_pane(app));
     }
@@ -797,6 +821,39 @@ fn settings(app: &App) -> V {
         .kid(el("h2").txt("About"))
         .kid(el("p").txt(format!("Quilcast WASM {VERSION}: the Quilcast client written in Rust and compiled to WebAssembly. The module draws every page itself; a small script only hands it the browser.")))
         .kid(el("p").kid(external("https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/wasm").txt("Source")).kid(text(" · ")).kid(external("https://quilcast.com").txt("The full Quilcast at quilcast.com"))))
+        .into()
+}
+
+/// Settings → Spam (src/app.tsx): show spam with its label or hide it, for casts and for spam accounts' casts, and
+/// the score from which they count.
+fn spam_pane(app: &App) -> V {
+    let seg = |label: &'static str, accounts: bool| {
+        let now = if accounts { &app.settings.spam_accounts } else { &app.settings.spam };
+        let mut g = el("div").class("seg").attr("role", "group").attr("aria-label", label);
+        for (v, shown) in [("show", "Show"), ("hide", "Hide")] {
+            g = g.kid(button(shown).class(if now.as_str() == v || (v == "show" && now != "hide") { "on" } else { "" }).attr("aria-pressed", (now.as_str() == v || (v == "show" && now != "hide")).to_string()).click(move |a| {
+                if accounts {
+                    a.settings.spam_accounts = v.into();
+                } else {
+                    a.settings.spam = v.into();
+                }
+                a.save_settings();
+            }));
+        }
+        el("div").class("setting").kid(el("span").txt(label)).kid(g)
+    };
+    let at = app.spam_at();
+    el("div").class("pane")
+        .kid(el("h2").txt("Spam"))
+        .kid(seg("Spam casts", false))
+        .kid(seg("Spam accounts", true))
+        .kid(el("label").class("setting").kid(el("span").txt("Spam threshold")).kid(el("span").class("range").kid(el("input").attr("type", "range").attr("min", "50").attr("max", "99").attr("value", at.to_string()).attr("aria-label", "Spam threshold").on(Ev::Input, |a, v| {
+            if let Ok(n) = v.parse::<u32>() {
+                a.settings.spam_at = n.clamp(50, 99);
+                a.save_settings();
+            }
+        })).kid(el("output").txt(format!("{at}%")))))
+        .kid(el("p").class("muted small").txt("Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast. Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere."))
         .into()
 }
 
@@ -915,11 +972,16 @@ fn sheet(app: &App, s: &Sheet) -> V {
         let (u1, u2, u3) = (u.clone(), u.clone(), u.clone());
         let muted = app.mutes.muted(u.fid, now);
         let blocked = app.mutes.blocked(u.fid, now);
-        vec![
+        // on a cast or an account spam.quilcast.com labelled: one tap tells Quilcast the label is wrong
+        let cast_spam = hash.as_ref().is_some_and(|h| app.spam.casts.get(h).is_some_and(|s| s * 100.0 >= app.spam_at() as f64));
+        let labelled = cast_spam || app.spam_account_of(u.fid).is_some();
+        let (fid, h2) = (u.fid, hash.clone());
+        let not_spam: Option<V> = labelled.then(|| item("Not spam".into()).click(move |a| a.not_spam(fid, h2.clone())).into());
+        not_spam.into_iter().chain([
             item(format!("{} @{}", if muted { "Unmute" } else { "Mute" }, u.handle())).click(move |a| if muted { a.mute(false, &u1, false, None) } else { a.sheet = Some(Sheet::Mute(false, u1.clone())) }).into(),
             item(format!("{} @{}", if blocked { "Unblock" } else { "Block" }, u.handle())).class("menu-item danger").click(move |a| if blocked { a.mute(true, &u2, false, None) } else { a.sheet = Some(Sheet::Mute(true, u2.clone())) }).into(),
             item(if hash.is_some() { "Report this cast".into() } else { format!("Report @{}", u.handle()) }).class("menu-item danger").click(move |a| a.open_report(&u3, hash.clone())).into(),
-        ]
+        ]).collect()
     };
     let d = match s {
         Sheet::Cast(c) => {
@@ -932,16 +994,17 @@ fn sheet(app: &App, s: &Sheet) -> V {
                     a.say("Link copied");
                 }))
                 .kid(item("Quote".into()).click(move |a| a.open_compose(None, Some(c1.clone()))));
-            if let (Some(m), true) = (me, Some(c.author.fid) == me && c.parent_hash.is_none()) {
+            if let Some(m) = me.filter(|m| c.author.fid == *m) {
                 if !app.pins.contains_key(&m) {
                     app.wants.borrow_mut().push(Want::Pin(m));
                 }
                 let h2 = c.bare_hash();
-                d = d.kid(if app.pinned(m) == Some(h2.as_str()) {
-                    item("Unpin from profile".into()).click(|a| a.set_pin(None))
-                } else {
-                    item("Pin to profile".into()).attr_if(matches!(app.pins.get(&m), Some(Load::Loading)), "disabled", "").click(move |a| a.set_pin(Some(h2.clone())))
-                });
+                // a reply can't be pinned here, but one pinned elsewhere can be unpinned (src/ui.tsx isPin)
+                if app.pinned(m) == Some(h2.as_str()) {
+                    d = d.kid(item("Unpin from profile".into()).click(|a| a.set_pin(None)));
+                } else if c.parent_hash.is_none() {
+                    d = d.kid(item("Pin to profile".into()).attr_if(matches!(app.pins.get(&m), Some(Load::Loading)), "disabled", "").click(move |a| a.set_pin(Some(h2.clone()))));
+                }
             }
             if Some(c.author.fid) == me {
                 d = d.kid(item("Delete".into()).class("menu-item danger").click(move |a| {
@@ -1007,10 +1070,10 @@ fn sheet(app: &App, s: &Sheet) -> V {
 // --- the composer ---
 
 fn composer(app: &App, c: &Compose) -> V {
-    use crate::compose::{Panel, Step};
+    use crate::compose::Panel;
     let title = if c.parent.is_some() { "Reply" } else if c.quote.is_some() || c.quote_wait.is_some() { "Quote" } else { "New cast" };
     let signed_in = app.account.is_some();
-    let empty = c.text.trim().is_empty() && c.media.is_empty() && c.rest.is_empty();
+    let empty = c.empty();
     let fresh = c.draft.is_none() && c.sched.is_none();
     let mut head = el("div").class("dialog-head").kid(button("").class("icon-btn").attr("aria-label", "Close").kid(icon(P_X)).click(|a| a.close_compose())).kid(el("strong").txt(title));
     if signed_in && fresh && !c.sending && (empty || matches!(c.panel, Some(Panel::Drafts | Panel::Scheduled))) {
@@ -1033,6 +1096,8 @@ fn composer(app: &App, c: &Compose) -> V {
         Some(Panel::Drafts) => return el("div").class("scrim").kid(d.kid(drafts_pane(app))).into(),
         Some(Panel::Scheduled) => return el("div").class("scrim").kid(d.kid(scheduled_pane(app))).into(),
         Some(Panel::Gifs(q)) => return el("div").class("scrim").kid(d.kid(gifs_pane(app, q))).into(),
+        Some(Panel::Emoji(q, g)) => return el("div").class("scrim").kid(d.kid(emoji_pane(q, *g))).into(),
+        Some(Panel::Stickers(t)) => return el("div").class("scrim").kid(d.kid(stickers_pane(app, *t))).into(),
         None => {}
     }
     if let Some(p) = &c.parent {
@@ -1040,47 +1105,48 @@ fn composer(app: &App, c: &Compose) -> V {
         d = d.kid(el("div").class("replying").kid(avatar(&p.author, "xs")).kid(el("span").txt(what)));
     }
     let me = app.account.as_ref().map(|a| User { fid: a.fid, pfp_url: a.pfp.clone(), ..Default::default() }).unwrap_or_default();
-    d = d.kid(el("div").class("compose-row").kid(avatar(&me, "sm")).kid(el("textarea").attr("aria-label", title).attr("placeholder", if c.parent.is_some() { "Write your reply" } else { "What's happening?" }).attr("rows", "5").attr("value", c.text.clone()).attr("data-caret", "").attr("autofocus", c.focus.to_string()).attr_if(c.sending, "disabled", "")
-        .attr("aria-autocomplete", "list").attr_if(!c.suggest.is_empty(), "aria-controls", "mention-list")
-        .on(Ev::Input, |a, v| a.type_compose(v))
-        .on(Ev::Key, |a, k| match k {
-            "Escape" => a.close_compose(),
-            "Enter+mod" => a.send_compose(),
-            _ => {}
-        })));
-    if c.typing.is_some() && !c.suggest.is_empty() {
-        let mut list = el("div").class("suggest").attr("id", "mention-list").attr("role", "listbox").attr("aria-label", "People");
-        for u in &c.suggest {
-            let name = u.username.clone().unwrap_or_default();
-            list = list.kid(button("").class("menu-item person-opt").attr("role", "option").key(u.fid.to_string()).kid(avatar(u, "xs")).kid(el("bdi").txt(u.name())).kid(el("span").class("muted small").txt(format!("@{name}"))).click(move |a| a.pick_mention(&name)));
+    // each post of the thread: its text, the people an @name could be, and its pictures, videos and GIFs
+    let cur = c.cur();
+    let count = c.posts.len();
+    let mut parts = el("div").class("parts");
+    for (i, p) in c.posts.iter().enumerate() {
+        let placeholder = if i > 0 { "Add another post" } else if c.parent.is_some() { "Write your reply" } else if c.quote.is_some() || c.quote_wait.is_some() { "Add a comment" } else { "What's happening?" };
+        let label = if count > 1 { format!("Post {} of {count}", i + 1) } else { title.to_string() };
+        let mut ta = el("textarea").attr("aria-label", label).attr("placeholder", placeholder).attr("rows", if count == 1 { "5" } else { "3" }).attr("value", p.text.clone()).attr("data-caret", "").attr_if(c.sending, "disabled", "")
+            .attr("aria-autocomplete", "list")
+            .on(Ev::Input, move |a, v| a.type_post(i, v))
+            .on(Ev::Key, move |a, k| match k {
+                "Escape" => a.close_compose(),
+                "Enter+mod" => a.send_compose(),
+                // Backspace in an empty post takes it out of the thread (src/compose.tsx keys)
+                "Backspace" if i > 0 && a.compose.as_ref().and_then(|c| c.posts.get(i)).is_some_and(|p| p.text.is_empty() && p.media.is_empty()) => a.remove_post(i),
+                _ => {}
+            });
+        if i == cur {
+            ta = ta.attr("autofocus", c.focus.to_string()).attr("data-sel", crate::compose::utf16_at(&p.text, p.caret).to_string()).attr_if(!c.suggest.is_empty(), "aria-controls", "mention-list");
         }
-        d = d.kid(list);
-    }
-    if !c.media.is_empty() {
-        let mut row = el("div").class("attachments");
-        for m in &c.media {
-            let n = m.n;
-            let state = match &m.step {
-                Step::Preparing => Some("Preparing…".to_string()),
-                Step::Uploading(got, size) => Some(format!("Uploading {}%", if *size > 0 { got * 100 / size } else { 0 })),
-                Step::Processing => Some("Processing…".into()),
-                Step::Ready => None,
-                Step::Failed(e) => Some(e.clone()),
-            };
-            let thumb: V = match (&m.preview, m.video) {
-                (Some(p), false) => el("img").attr("src", if p.starts_with("blob:") { p.clone() } else { text::proxied(p) }).attr("alt", "").into(),
-                _ => el("span").class("vid").txt(if m.name.is_empty() { "Video".to_string() } else { m.name.clone() }).into(),
-            };
-            let failed = matches!(m.step, Step::Failed(_));
-            row = row.kid(el("div").class(if failed { "attach failed" } else { "attach" }).key(n.to_string()).kid(thumb)
-                .maybe(state.map(|s| el("span").class("attach-state").attr("role", if failed { "alert" } else { "status" }).txt(s).into()))
-                .kid(button("").class("icon-btn tiny attach-x").attr("aria-label", "Remove").attr_if(c.sending, "disabled", "").kid(icon(P_X)).click(move |a| a.unattach(n))));
+        let mut row = el("div").class("compose-row").kid(avatar(&me, "sm")).kid(ta);
+        if i > 0 {
+            row = row.kid(button("").class("icon-btn tiny part-x").attr("aria-label", format!("Remove post {}", i + 1)).attr_if(c.sending, "disabled", "").kid(icon(P_X)).click(move |a| a.remove_post(i)));
         }
-        d = d.kid(row);
+        let mut part = el("div").class(if i + 1 < count { "part threaded" } else { "part" }).key(format!("post{}", p.id)).kid(row);
+        if i == cur && c.typing.is_some() && !c.suggest.is_empty() {
+            let mut list = el("div").class("suggest").attr("id", "mention-list").attr("role", "listbox").attr("aria-label", "People");
+            for u in &c.suggest {
+                let name = u.username.clone().unwrap_or_default();
+                list = list.kid(button("").class("menu-item person-opt").attr("role", "option").key(u.fid.to_string()).kid(avatar(u, "xs")).kid(el("bdi").txt(u.name())).kid(el("span").class("muted small").txt(format!("@{name}"))).click(move |a| a.pick_mention(&name)));
+            }
+            part = part.kid(list);
+        }
+        if !p.media.is_empty() {
+            part = part.kid(attachments(&p.media, c.sending));
+        }
+        if p.text.len() > MAX_CAST {
+            part = part.kid(el("p").class("error small").attr("role", "alert").txt(format!("This post is {} characters too long.", p.text.len() - MAX_CAST)));
+        }
+        parts = parts.kid(part);
     }
-    for (i, p) in c.rest.iter().enumerate() {
-        d = d.kid(el("div").class("thread-part").key(format!("part{i}")).kid(el("span").class("muted small").txt(format!("Post {} of the thread{}", i + 2, if p.media.is_empty() { String::new() } else { format!(", {} attached", p.media.len()) }))).kid(el("p").txt(p.text.clone())));
-    }
+    d = d.kid(parts);
     if c.parent.is_none() {
         d = d.kid(channel_picker(app, c));
     }
@@ -1109,13 +1175,17 @@ fn composer(app: &App, c: &Compose) -> V {
     if let Some(e) = &c.error {
         d = d.kid(el("p").class("error").attr("role", "alert").txt(e.clone()));
     }
-    let over = c.text.len() > MAX_CAST;
+    let used = c.posts.get(cur).map_or(0, |p| p.text.len());
+    let over = used > MAX_CAST;
     let full = app.room() == 0;
+    let off = full || c.sending;
     let tools = el("span").class("tools")
-        .kid(el("label").class(if full || c.sending { "icon-btn off" } else { "icon-btn" }).attr("title", "Add photos or videos")
-            .kid(el("input").attr("type", "file").class("file").attr("accept", "image/*,video/mp4,video/webm,video/quicktime").attr("multiple", "").attr("aria-label", "Add photos or videos").attr_if(full || c.sending, "disabled", "").on(Ev::Change, |a, v| a.attach(v)))
+        .kid(el("label").class(if off { "icon-btn off" } else { "icon-btn" }).attr("title", "Add photos or videos")
+            .kid(el("input").attr("type", "file").class("file").attr("accept", "image/*,video/mp4,video/webm,video/quicktime").attr("multiple", "").attr("aria-label", "Add photos or videos").attr_if(off, "disabled", "").on(Ev::Change, |a, v| a.attach(v)))
             .kid(icon(P_IMAGE)))
-        .kid(button("GIF").class("icon-btn gif").attr("aria-label", "Add a GIF").attr_if(full || c.sending, "disabled", "").click(|a| a.open_gifs()))
+        .kid(button("GIF").class("icon-btn gif").attr("aria-label", "Add a GIF").attr_if(off, "disabled", "").click(|a| a.open_gifs()))
+        .kid(button("").class("icon-btn").attr("aria-label", "Add a sticker").attr("title", "Add a sticker").attr_if(off, "disabled", "").kid(icon(P_STICKER)).click(|a| a.open_stickers()))
+        .kid(button("").class("icon-btn").attr("aria-label", "Add an emoji").attr("title", "Add an emoji").attr_if(c.sending, "disabled", "").kid(icon(P_SMILE)).click(|a| a.open_emoji()))
         .kid(button("").class(if c.timing { "icon-btn on" } else { "icon-btn" }).attr("aria-label", "Schedule").attr("aria-pressed", c.timing.to_string()).attr_if(c.sending || c.posted.is_some(), "disabled", "").kid(icon(P_CLOCK)).click(|a| {
             if let Some(c) = a.compose.as_mut() {
                 c.timing = !c.timing;
@@ -1123,16 +1193,45 @@ fn composer(app: &App, c: &Compose) -> V {
                     c.when.clear();
                 }
             }
-        }));
-    let label = match (c.sending, !c.when.is_empty(), !c.rest.is_empty()) {
+        }))
+        .kid(button("").class("icon-btn add-part").attr("aria-label", "Add another post to the thread").attr("title", "Add another post to the thread").attr_if(!c.can_add(), "disabled", "").kid(icon(P_PLUS)).click(|a| a.add_post()));
+    let thread = App::parts(c).len() > 1;
+    let label = match (c.sending, !c.when.is_empty(), thread) {
         (true, true, _) => "Scheduling…",
         (true, false, _) => "Casting…",
         (false, true, _) => "Schedule",
-        (false, false, true) => "Post thread",
+        (false, false, true) => "Post all",
+        (false, false, false) if c.parent.is_some() => "Reply",
         (false, false, false) => "Cast",
     };
-    d = d.kid(el("div").class("dialog-foot").kid(tools).kid(el("span").class(if over { "count over" } else { "count" }).attr("aria-live", "polite").txt(format!("{}/{MAX_CAST}", c.text.len()))).kid(button(label).class("btn primary").attr_if(!App::can_send(c), "disabled", "").click(|a| a.send_compose())));
+    d = d.kid(el("div").class("dialog-foot").kid(tools).kid(el("span").class(if over { "count over" } else { "count" }).attr("aria-live", "polite").txt(format!("{used}/{MAX_CAST}"))).kid(button(label).class("btn primary").attr_if(!App::can_send(c), "disabled", "").click(|a| a.send_compose())));
     el("div").class("scrim").kid(d).into()
+}
+
+/// A post's pictures, videos and GIFs in the composer, each with how its upload is going.
+fn attachments(media: &[crate::compose::Attach], sending: bool) -> V {
+    use crate::compose::Step;
+    let mut row = el("div").class("attachments");
+    for m in media {
+        let n = m.n;
+        let state = match &m.step {
+            Step::Preparing => Some("Preparing…".to_string()),
+            Step::Uploading(got, size) => Some(format!("Uploading {}%", if *size > 0 { got * 100 / size } else { 0 })),
+            Step::Processing => Some("Processing…".into()),
+            Step::Ready => None,
+            Step::Failed(e) => Some(e.clone()),
+        };
+        let sticker = m.url.as_deref().and_then(crate::compose::sticker_pack).is_some();
+        let thumb: V = match (&m.preview, m.video) {
+            (Some(p), false) => el("img").attr("src", if p.starts_with("blob:") || sticker { p.clone() } else { text::proxied(p) }).attr("alt", "").into(),
+            _ => el("span").class("vid").txt(if m.name.is_empty() { "Video".to_string() } else { m.name.clone() }).into(),
+        };
+        let failed = matches!(m.step, Step::Failed(_));
+        row = row.kid(el("div").class(if failed { "attach failed" } else if sticker { "attach sticker" } else { "attach" }).key(n.to_string()).kid(thumb)
+            .maybe(state.map(|s| el("span").class("attach-state").attr("role", if failed { "alert" } else { "status" }).txt(s).into()))
+            .kid(button("").class("icon-btn tiny attach-x").attr("aria-label", "Remove").attr_if(sending, "disabled", "").kid(icon(P_X)).click(move |a| a.unattach(n))));
+    }
+    row.into()
 }
 
 fn drafts_pane(app: &App) -> V {
@@ -1214,6 +1313,85 @@ fn scheduled_pane(app: &App) -> V {
         _ => p = p.kid(spinner()),
     }
     p.into()
+}
+
+/// The emoji picker: a search, or a group at a time picked from the tabs (src/emoji.tsx).
+fn emoji_pane(q: &str, group: usize) -> V {
+    use crate::compose::Panel;
+    let groups = crate::emoji::groups();
+    let found = crate::emoji::search(q);
+    let pick = |e: &'static str, name: &'static str| button(e).class("emoji-opt").attr("aria-label", name).attr("title", name).key(name).click(move |a| a.insert_emoji(e));
+    let mut grid = el("div").class("emoji-grid");
+    let mut tabs = None;
+    if !q.trim().is_empty() {
+        if found.is_empty() {
+            grid = grid.kid(el("p").class("muted").txt("No emoji found."));
+        }
+        for (e, n) in found {
+            grid = grid.kid(pick(e, n));
+        }
+    } else {
+        let g = group.min(groups.len().saturating_sub(1));
+        let mut t = el("div").class("emoji-tabs").attr("role", "tablist").attr("aria-label", "Emoji groups");
+        for (i, x) in groups.iter().enumerate() {
+            t = t.kid(button(x.emoji[0].0).attr("role", "tab").attr("aria-label", x.name).attr("title", x.name).attr("aria-selected", (i == g).to_string()).class(if i == g { "on" } else { "" }).click(move |a| {
+                if let Some(Panel::Emoji(_, at)) = a.compose.as_mut().and_then(|c| c.panel.as_mut()) {
+                    *at = i;
+                }
+            }));
+        }
+        tabs = Some(t.into());
+        for (e, n) in groups.get(g).map(|x| x.emoji.as_slice()).unwrap_or_default() {
+            grid = grid.kid(pick(e, n));
+        }
+    }
+    el("div").class("gifs emoji")
+        .kid(el("div").class("row").kid(el("input").attr("type", "search").attr("aria-label", "Search emoji").attr("placeholder", "Search emoji").attr("autocomplete", "off").attr("autofocus", "").attr("value", q.to_string()).on(Ev::Input, |a, v| {
+            if let Some(Panel::Emoji(q, _)) = a.compose.as_mut().and_then(|c| c.panel.as_mut()) {
+                *q = v.to_string();
+            }
+        })).kid(button("Back").class("btn small").click(|a| a.close_compose())))
+        .maybe(tabs)
+        .kid(grid)
+        .into()
+}
+
+/// The sticker picker: a tab per pack the account has, then the pack's stickers (src/stickers.tsx StickerPicker).
+fn stickers_pane(app: &App, tab: usize) -> V {
+    use crate::compose::Panel;
+    let head = |tabs: Option<V>| el("div").class("row stk-head").maybe(tabs).kid(button("Back").class("btn small").click(|a| a.close_compose()));
+    let p = el("div").class("gifs stickers");
+    match &app.stickers {
+        Some(Load::Ready(packs)) if packs.is_empty() => p.kid(head(None)).kid(el("div").class("stk-empty")
+            .kid(el("b").txt("No stickers yet"))
+            .kid(el("p").class("muted").txt("No sticker packs yet. Make one, import one from Telegram, or add one someone shared, on quilcast.com."))
+            .kid(external("https://quilcast.com/stickers").class("btn small").txt("Get stickers"))).into(),
+        Some(Load::Ready(packs)) => {
+            let at = tab.min(packs.len() - 1);
+            let mut tabs = el("div").class("stk-tabs").attr("role", "tablist").attr("aria-label", "Sticker packs");
+            for (i, x) in packs.iter().enumerate() {
+                let first = crate::compose::sticker_url(&x.id, &x.stickers[0].h);
+                tabs = tabs.kid(button("").attr("role", "tab").attr("aria-label", x.title.clone()).attr("title", x.title.clone()).attr("aria-selected", (i == at).to_string()).class(if i == at { "on" } else { "" }).key(x.id.clone())
+                    .kid(el("img").attr("src", first).attr("alt", ""))
+                    .click(move |a| {
+                        if let Some(Panel::Stickers(t)) = a.compose.as_mut().and_then(|c| c.panel.as_mut()) {
+                            *t = i;
+                        }
+                    }));
+            }
+            let pack = &packs[at];
+            let mut grid = el("div").class("stk-grid");
+            for s in &pack.stickers {
+                let (id, h) = (pack.id.clone(), s.h.clone());
+                grid = grid.kid(button("").attr("aria-label", if s.e.is_empty() { "Sticker".to_string() } else { s.e.clone() }).attr("title", s.e.clone()).key(s.h.clone())
+                    .kid(el("img").attr("src", crate::compose::sticker_url(&pack.id, &s.h)).attr("alt", "").attr("loading", "lazy"))
+                    .click(move |a| a.pick_sticker(&id, &h)));
+            }
+            p.kid(head(Some(tabs.into()))).kid(grid).into()
+        }
+        Some(Load::Failed(e)) => p.kid(head(None)).kid(problem(e, |a| a.load_stickers())).into(),
+        _ => p.kid(head(None)).kid(spinner()).into(),
+    }
 }
 
 fn gifs_pane(app: &App, q: &str) -> V {

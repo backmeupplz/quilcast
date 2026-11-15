@@ -117,10 +117,17 @@ pub struct Account {
 pub struct Settings {
     pub node: String,
     pub theme: String,
+    /// spam casts and spam accounts' casts: "show" (labelled) or "hide", and the score from which they count, in
+    /// percent (src/spam.ts, the same names as quilcast.com's settings)
+    pub spam: String,
+    #[serde(rename = "spamAccounts")]
+    pub spam_accounts: String,
+    #[serde(rename = "spamAt")]
+    pub spam_at: u32,
 }
 impl Default for Settings {
     fn default() -> Self {
-        Settings { node: DEFAULT_NODE.into(), theme: "system".into() }
+        Settings { node: DEFAULT_NODE.into(), theme: "system".into(), spam: "show".into(), spam_accounts: "show".into(), spam_at: 70 }
     }
 }
 
@@ -158,12 +165,11 @@ pub struct Unfurl {
 pub struct Compose {
     /// which composer this is: answers for an earlier one are dropped (compose.rs live)
     pub gen: u32,
-    pub text: String,
-    /// pictures, videos and GIFs on it (compose.rs)
-    pub media: Vec<crate::compose::Attach>,
-    /// the posts after this one, when it's a thread opened from a draft
-    pub rest: Vec<crate::compose::Part>,
-    /// the @name being typed, and the people it could be
+    /// the posts of the cast or thread, each with its pictures, videos and GIFs (compose.rs): never empty once open
+    pub posts: Vec<crate::compose::Post>,
+    /// the post being written in, which attachments, emoji and @mention suggestions go to
+    pub at: usize,
+    /// the @name being typed (in post `at`), and the people it could be
     pub typing: Option<crate::compose::Typing>,
     pub suggest: Vec<User>,
     /// bumped to put the caret back in the text after a suggestion is picked
@@ -284,6 +290,9 @@ pub enum Want {
     Pin(u64),
     /// the account's drafts, once this browser is known to hold their key
     Drafts,
+    /// a cast's spam score, by bare hash, and an account's, by FID
+    Spam(String),
+    SpamAccount(u64),
 }
 
 type Done = Box<dyn FnOnce(&mut App, i32, Vec<u8>)>;
@@ -346,6 +355,9 @@ pub struct App {
     pub drafts_key: Option<bool>,
     pub drafts: Option<Load<Vec<crate::compose::Draft>>>,
     pub scheduled: Option<Load<Vec<crate::compose::Scheduled>>>,
+    /// the account's sticker packs, for the composer's picker
+    pub stickers: Option<Load<Vec<crate::compose::Pack>>>,
+    pub spam: crate::spam::Spam,
     /// each profile's pinned cast, by bare hash
     pub pins: HashMap<u64, Load<Option<String>>>,
     pub search_text: String,
@@ -420,6 +432,8 @@ impl App {
             drafts_key: None,
             drafts: None,
             scheduled: None,
+            stickers: None,
+            spam: Default::default(),
             pins: HashMap::new(),
             search_text: String::new(),
             toast: None,
@@ -488,7 +502,7 @@ impl App {
         if Some(fid) == owner {
             return false;
         }
-        self.mutes.muted(fid, now) || self.mutes.word_in(&crate::view::shown_text(c), now).is_some()
+        self.mutes.muted(fid, now) || self.mutes.word_in(&crate::view::shown_text(c), now).is_some() || self.hides_spam(c)
     }
 
     // --- drawing ---
@@ -503,8 +517,11 @@ impl App {
         }
         let wants: Vec<Want> = self.wants.borrow_mut().drain(..).collect();
         let mut fids = Vec::new();
+        let (mut spam, mut spam_fids) = (Vec::new(), Vec::new());
         for w in wants {
             match w {
+                Want::Spam(h) => spam.push(h),
+                Want::SpamAccount(f) => spam_fids.push(f),
                 Want::Unfurl(u) => self.load_unfurl(u),
                 Want::Quote(h) => self.load_quote(h),
                 Want::User(fid) => fids.push(fid),
@@ -517,6 +534,7 @@ impl App {
             }
         }
         self.load_users(fids);
+        self.ask_spam(spam, spam_fids);
         host::set_title(&crate::view::title(self));
     }
 
@@ -1473,9 +1491,9 @@ impl App {
     /// A request to Quilcast's server signed by this browser's key over `<what>:<fid>:<ts>:<body>` (src/write.ts
     /// keyFetch), which the server checks belongs to the account. `extra` adds header lines.
     /// It answers SIGN_FAILED when this browser has no working key. A 403 (the node hasn't listed a key added a
-    /// moment ago) is tried once more after 3 s.
+    /// moment ago) is tried twice more, 3 s apart, as quilcast.com does for scheduled casts and uploads.
     pub fn key_fetch(&mut self, method: &str, url: String, what: &str, body: String, extra: &str, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) {
-        self.key_fetch_try(method.to_string(), url, what.to_string(), body, extra.to_string(), 1, f)
+        self.key_fetch_try(method.to_string(), url, what.to_string(), body, extra.to_string(), 2, f)
     }
     #[allow(clippy::too_many_arguments)]
     fn key_fetch_try(&mut self, method: String, url: String, what: String, body: String, extra: String, tries: u32, f: impl FnOnce(&mut App, i32, Vec<u8>) + 'static) {
@@ -1604,7 +1622,9 @@ impl App {
             App::drop_files(&old);
         }
         self.compose_seq += 1;
-        let mut c = Compose { gen: self.compose_seq, parent, quote, ..Default::default() };
+        let mut c = Compose::new(self.compose_seq);
+        c.parent = parent;
+        c.quote = quote;
         c.base = crate::compose::snapshot(&c);
         self.compose = Some(c);
         if self.drafts_key.is_none() {
@@ -1655,7 +1675,7 @@ impl App {
             c.asking = false;
             return;
         }
-        let empty = c.text.trim().is_empty() && c.media.is_empty() && c.rest.is_empty();
+        let empty = c.empty();
         let changed = crate::compose::snapshot(c) != c.base;
         if !empty && changed {
             if self.drafts_key == Some(true) {
@@ -1962,6 +1982,7 @@ impl App {
         self.taps.clear();
         self.drafts = None;
         self.scheduled = None;
+        self.stickers = None;
         self.drafts_key = None;
         self.pins.clear();
         self.discard_compose();
@@ -1972,6 +1993,10 @@ impl App {
     /// Sign out: this browser's key revokes itself (so a copy of it stops working too), then it's deleted.
     pub fn sign_out(&mut self) {
         let Some(a) = self.account.clone() else { return };
+        // a thread still going out would stop halfway, with nothing to say so
+        if self.compose.as_ref().is_some_and(|c| c.sending) {
+            return self.say("Wait for the cast to finish sending.");
+        }
         if !host::ask("Sign out? This browser's key is revoked, and signing in again needs your recovery phrase.") {
             return;
         }
@@ -2379,6 +2404,12 @@ mod tests {
     }
 
     /// An app signed in as FID 77 with a raw key, so signing happens at once (no WebCrypto here).
+    fn with_posts(texts: &[&str]) -> Compose {
+        let mut c = Compose::new(1);
+        c.posts = texts.iter().enumerate().map(|(i, t)| crate::compose::Post { id: i as u32, text: t.to_string(), ..Default::default() }).collect();
+        c
+    }
+
     fn signed_in() -> (App, ed25519_dalek::SigningKey) {
         sent();
         let mut app = App::new();
@@ -2394,11 +2425,13 @@ mod tests {
 
     #[test]
     fn scheduling_signs_each_post_for_its_time() {
-        use crate::compose::{b64, unb64, Part};
+        use crate::compose::{b64, unb64};
         use ed25519_dalek::Signer;
         let (mut app, k) = signed_in();
         let at = host::ms() + 3_600_000.0 + 400.0;
-        app.compose = Some(Compose { text: "later".into(), rest: vec![Part { text: "two".into(), media: vec![] }], when: at.to_string(), ..Default::default() });
+        let mut c = with_posts(&["later", "two"]);
+        c.when = at.to_string();
+        app.compose = Some(c);
         app.send_compose();
         // the list is read first, so a key the node doesn't list yet is waited for
         let (id, what, _) = sent().pop().expect("a read");
@@ -2422,7 +2455,9 @@ mod tests {
         assert!(app.compose.is_none());
         assert!(app.toast.as_deref().unwrap_or("").starts_with("Scheduled for"));
         // too soon is turned down before anything is signed
-        app.compose = Some(Compose { text: "now-ish".into(), when: (host::ms() + 1000.0).to_string(), ..Default::default() });
+        let mut c = with_posts(&["now-ish"]);
+        c.when = (host::ms() + 1000.0).to_string();
+        app.compose = Some(c);
         app.send_compose();
         assert!(sent().is_empty());
         assert_eq!(app.compose.as_ref().unwrap().error.as_deref(), Some("Pick a time at least a minute from now."));
@@ -2466,8 +2501,8 @@ mod tests {
         assert_eq!(what, "GET /api/upload/0b6c2c7e-7b1a-4c39-9a51-1e7c8f1b2c3d");
         answer(&mut app, id, 200, r#"{"state":"ready","url":"https://quilcast.com/m/0123456789abcdef01234567.gif"}"#);
         let c = app.compose.as_mut().unwrap();
-        assert_eq!(c.media[0].url.as_deref(), Some("https://quilcast.com/m/0123456789abcdef01234567.gif"));
-        c.text = "look".into();
+        assert_eq!(c.posts[0].media[0].url.as_deref(), Some("https://quilcast.com/m/0123456789abcdef01234567.gif"));
+        c.posts[0].text = "look".into();
         app.send_compose();
         let (submit, what, msg) = sent().pop().expect("the cast");
         assert!(what.ends_with("/v1/submitMessage\napplication/octet-stream"), "{what}");
@@ -2478,13 +2513,14 @@ mod tests {
         answer(&mut app, submit, 200, "{}");
         assert!(host::DROPPED.with(|d| d.borrow().contains(&5)), "the sent file is let go");
         assert!(app.compose.is_none());
-        // a third file doesn't fit beside two
-        app.compose = Some(Compose::default());
+        // a fifth file doesn't fit beside four
+        app.compose = Some(Compose::new(1));
         app.attach_seq = 0;
-        app.attach(r#"[{"id":6,"type":"image/gif","size":10},{"id":7,"type":"image/gif","size":10},{"id":8,"type":"image/gif","size":10}]"#);
-        assert_eq!(app.compose.as_ref().unwrap().media.len(), 2);
+        app.attach(r#"[{"id":6,"type":"image/gif","size":10},{"id":7,"type":"image/gif","size":10},{"id":8,"type":"image/gif","size":10},{"id":12,"type":"image/gif","size":10},{"id":13,"type":"image/gif","size":10}]"#);
+        assert_eq!(app.compose.as_ref().unwrap().posts[0].media.len(), 4);
+        assert!(host::DROPPED.with(|d| d.borrow().contains(&13)), "the one turned away is let go");
         app.attach(r#"[{"id":9,"type":"application/pdf","size":10}]"#);
-        assert_eq!(app.compose.as_ref().unwrap().media.len(), 2);
+        assert_eq!(app.compose.as_ref().unwrap().posts[0].media.len(), 4);
     }
 
     #[test]
@@ -2493,7 +2529,7 @@ mod tests {
         let (mut app, _) = signed_in();
         app.drafts_key = Some(true);
         app.open_compose(None, None);
-        app.compose.as_mut().unwrap().text = "keep me".into();
+        app.compose.as_mut().unwrap().posts[0].text = "keep me".into();
         // closing something new asks whether to keep it
         app.close_compose();
         assert!(app.compose.as_ref().unwrap().asking);
@@ -2527,7 +2563,7 @@ mod tests {
         let d = l[0].clone();
         app.open_draft(&d, None);
         let c = app.compose.as_ref().unwrap();
-        assert_eq!((c.text.as_str(), c.channel.as_deref(), c.draft.as_deref()), ("keep me", Some("memes"), Some(did.as_str())));
+        assert_eq!((c.posts[0].text.as_str(), c.channel.as_deref(), c.draft.as_deref()), ("keep me", Some("memes"), Some(did.as_str())));
     }
 
     #[test]
@@ -2535,7 +2571,7 @@ mod tests {
         use crate::compose::Draft;
         let (mut app, _) = signed_in();
         app.open_compose(None, None);
-        app.compose.as_mut().unwrap().text = "first".into();
+        app.compose.as_mut().unwrap().posts[0].text = "first".into();
         sent();
         app.send_compose();
         let (id, what, _) = sent().pop().expect("the cast");
@@ -2544,12 +2580,15 @@ mod tests {
         let d = Draft { id: "d1".into(), parts: vec![crate::compose::Part { text: "mine".into(), media: vec![] }], ..Default::default() };
         app.open_draft(&d, None);
         app.open_compose(None, None);
-        assert_eq!(app.compose.as_ref().unwrap().text, "first");
+        assert_eq!(app.compose.as_ref().unwrap().posts[0].text, "first");
         // and if another composer is there anyway when it lands, that one keeps its draft and its text
-        app.compose = Some(Compose { gen: 99, text: "mine".into(), draft: Some("d1".into()), ..Default::default() });
+        let mut c = with_posts(&["mine"]);
+        c.gen = 99;
+        c.draft = Some("d1".into());
+        app.compose = Some(c);
         answer(&mut app, id, 200, "{}");
         let c = app.compose.as_ref().expect("still open");
-        assert_eq!((c.text.as_str(), c.draft.as_deref()), ("mine", Some("d1")));
+        assert_eq!((c.posts[0].text.as_str(), c.draft.as_deref()), ("mine", Some("d1")));
         assert!(sent().iter().all(|(_, w, _)| !w.starts_with("PUT /api/drafts")), "the draft isn't deleted");
     }
 
@@ -2562,10 +2601,203 @@ mod tests {
         let d = Draft { id: "d2".into(), parts: vec![p("A"), p(" "), p("B"), p("C")], parent: Some(format!("0x{}", "cd".repeat(20))), pfid: Some(0), ..Default::default() };
         app.open_draft(&d, None);
         let c = app.compose.as_ref().unwrap();
-        assert_eq!(c.rest, vec![p("B"), p("C")], "indexes line up with what's sent");
+        assert_eq!(App::parts(c), vec![p("A"), p("B"), p("C")], "indexes line up with what's sent");
+        assert_eq!(c.posts.len(), 3);
         assert!(c.parent_lost, "an author of 0 is no author");
         assert!(!App::can_send(c));
         assert_eq!(app.draft_of(c).pfid, None);
+    }
+
+    #[test]
+    fn a_thread_is_written_post_by_post_and_goes_out_as_replies() {
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        sent();
+        // nothing to add a post after yet
+        app.add_post();
+        assert_eq!(app.compose.as_ref().unwrap().posts.len(), 1);
+        app.type_post(0, "3|one");
+        app.add_post();
+        app.type_post(1, "3|two");
+        // an empty post on the end is left out, and Backspace-style removal takes one out with its files
+        app.add_post();
+        app.add_post();
+        assert_eq!(app.compose.as_ref().unwrap().posts.len(), 3, "not after an empty one");
+        app.compose.as_mut().unwrap().at = 2;
+        app.attach(r#"[{"id":21,"type":"image/gif","size":10}]"#);
+        app.remove_post(2);
+        assert!(host::DROPPED.with(|d| d.borrow().contains(&21)), "its file is let go");
+        app.add_post();
+        let c = app.compose.as_ref().unwrap();
+        assert_eq!((c.posts.len(), c.at), (3, 2));
+        assert_eq!(App::parts(c).iter().map(|p| p.text.as_str()).collect::<Vec<_>>(), vec!["one", "two"]);
+        sent();
+        app.send_compose();
+        let (id, _, msg) = sent().pop().expect("the first post");
+        let one = fc::cast_body("one", &[], &[], &[], &fc::Parent::None);
+        assert!(msg.windows(one.len()).any(|w| w == one));
+        answer(&mut app, id, 200, "{}");
+        let first = app.compose.as_ref().unwrap().posted.clone().expect("the first went out");
+        let (id, _, msg) = sent().pop().expect("the second post");
+        let two = fc::cast_body("two", &[], &[], &[], &fc::Parent::Cast(first));
+        assert!(msg.windows(two.len()).any(|w| w == two), "a reply to the first");
+        answer(&mut app, id, 200, "{}");
+        assert!(app.compose.is_none());
+        assert_eq!(app.toast.as_deref(), Some("Thread posted"));
+    }
+
+    #[test]
+    fn a_thread_that_stops_halfway_goes_on_from_the_post_that_failed() {
+        let (mut app, _) = signed_in();
+        app.compose = Some(with_posts(&["one", "", "two", "three"]));
+        sent();
+        app.send_compose();
+        let (id, _, _) = sent().pop().expect("the first post");
+        answer(&mut app, id, 200, "{}");
+        let first = app.compose.as_ref().unwrap().posted.clone().unwrap();
+        let (id, _, _) = sent().pop().expect("the second post");
+        answer(&mut app, id, 400, r#"{"errCode":"bad_request","message":"nope"}"#);
+        let c = app.compose.as_ref().unwrap();
+        assert!(c.error.is_some() && !c.sending);
+        assert_eq!(c.posts.iter().map(|p| p.text.as_str()).collect::<Vec<_>>(), vec!["two", "three"], "only what didn't go out is left");
+        app.send_compose();
+        let (_, _, msg) = sent().pop().expect("tried again");
+        let two = fc::cast_body("two", &[], &[], &[], &fc::Parent::Cast(first));
+        assert!(msg.windows(two.len()).any(|w| w == two), "still a reply to the one that went out");
+    }
+
+    #[test]
+    fn emoji_go_where_the_caret_was() {
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        // the caret comes in UTF-16 units: after "😀 a" is 4
+        app.type_post(0, "4|😀 ab");
+        app.open_emoji();
+        app.insert_emoji("👍");
+        let c = app.compose.as_ref().unwrap();
+        assert_eq!(c.posts[0].text, "😀 a👍b");
+        assert!(c.panel.is_none());
+        assert_eq!(crate::compose::utf16_at(&c.posts[0].text, c.posts[0].caret), 6, "the caret goes after it");
+    }
+
+    #[test]
+    fn stickers_come_from_the_accounts_packs_and_go_out_as_pictures() {
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        sent();
+        app.open_stickers();
+        let (id, what, _) = sent().pop().expect("the packs");
+        assert!(what.starts_with("GET /api/stickers/77"), "{what}");
+        let h = "0123456789abcdef01234567";
+        answer(&mut app, id, 200, &format!(r#"[{{"id":"Pack_1-x","fid":77,"title":"Mine","stickers":[{{"h":"{h}","e":"🙂"}},{{"h":"../x","e":""}}]}},{{"id":"emptyyyy","fid":77,"title":"Empty","stickers":[]}}]"#));
+        let packs = match &app.stickers {
+            Some(Load::Ready(l)) => l.clone(),
+            _ => panic!("packs"),
+        };
+        assert_eq!(packs.len(), 1, "an empty pack gets no tab");
+        assert_eq!(packs[0].stickers.len(), 1, "only stickers an address can hold");
+        app.pick_sticker("Pack_1-x", h);
+        let c = app.compose.as_ref().unwrap();
+        let url = format!("https://quilcast.com/st/Pack_1-x/{h}.webp");
+        assert_eq!(c.posts[0].media[0].url.as_deref(), Some(url.as_str()));
+        assert_eq!(crate::compose::sticker_pack(&url), Some("Pack_1-x"));
+        assert_eq!(crate::compose::sticker_pack("https://quilcast.com/st/Pack_1-x/zz.webp"), None);
+        assert_eq!(crate::compose::sticker_pack("https://evil.com/st/Pack_1-x/0123456789abcdef01234567.webp"), None);
+    }
+
+    #[test]
+    fn spam_is_labelled_or_hidden_from_the_threshold() {
+        let mut app = App::new();
+        sent();
+        let spammy = Cast { hash: format!("0x{}", "aa".repeat(20)), author: User { fid: 5, ..Default::default() }, ..Default::default() };
+        let fine = Cast { hash: format!("0x{}", "bb".repeat(20)), author: User { fid: 6, ..Default::default() }, ..Default::default() };
+        // shown (the default): nothing is held back while the scores are asked for
+        assert!(!app.hidden(&spammy, None));
+        // drawing its label asks for its score and its author's
+        assert_eq!(app.spam_of(&spammy), None);
+        let wants: Vec<Want> = app.wants.borrow_mut().drain(..).collect();
+        assert!(wants.iter().any(|w| matches!(w, Want::Spam(h) if *h == "aa".repeat(20))));
+        assert!(wants.iter().any(|w| matches!(w, Want::SpamAccount(5))));
+        app.ask_spam(vec!["aa".repeat(20), "bb".repeat(20), "aa".repeat(20)], vec![5, 6]);
+        let reqs = sent();
+        let urls: Vec<&str> = reqs.iter().map(|(_, w, _)| w.as_str()).collect();
+        assert!(urls.iter().any(|u| u.starts_with(&format!("GET https://spam.quilcast.com/scores?h=0x{},0x{}", "aa".repeat(20), "bb".repeat(20)))), "{urls:?}");
+        assert!(urls.iter().any(|u| u.starts_with("GET https://spam.quilcast.com/users?fid=5,6")), "{urls:?}");
+        // asked once: drawing again doesn't ask again
+        app.ask_spam(vec!["aa".repeat(20)], vec![5]);
+        assert!(sent().is_empty());
+        for (id, w, _) in reqs {
+            let body = if w.contains("scores") { format!(r#"{{"0x{}":0.97,"0x{}":0.2}}"#, "aa".repeat(20), "bb".repeat(20)) } else { r#"{"5":0.1,"6":0.75}"#.to_string() };
+            answer(&mut app, id, 200, &body);
+        }
+        assert_eq!(app.spam_of(&spammy), Some(97));
+        assert_eq!(app.spam_of(&fine), None);
+        assert_eq!(app.spam_account_of(6), Some(75));
+        assert!(!app.hidden(&spammy, None), "labelled, not hidden");
+        app.settings.spam = "hide".into();
+        assert!(app.hidden(&spammy, None) && !app.hidden(&fine, None));
+        app.settings.spam_accounts = "hide".into();
+        assert!(app.hidden(&fine, None), "a spam account's casts go too");
+        assert!(!app.hidden(&fine, Some(6)), "but not on its own profile");
+        app.settings.spam_at = 99;
+        assert!(!app.hidden(&spammy, None) && !app.hidden(&fine, None), "under the threshold");
+        // with Hide on, a cast whose score hasn't come is held back for a moment, not shown then taken away
+        let new = Cast { hash: format!("0x{}", "cc".repeat(20)), author: User { fid: 5, ..Default::default() }, ..Default::default() };
+        assert!(app.hidden(&new, None));
+        app.ask_spam(vec!["cc".repeat(20)], vec![]);
+        let (id, _, _) = sent().pop().expect("asked");
+        assert!(app.hidden(&new, None), "while its score is on its way");
+        // the service answers null for one it hasn't scored: shown at once, not after the wait
+        answer(&mut app, id, 200, &format!(r#"{{"0x{}":null}}"#, "cc".repeat(20)));
+        assert!(!app.hidden(&new, None));
+    }
+
+    #[test]
+    fn a_draft_with_four_pictures_and_a_quote_keeps_the_quote() {
+        use crate::compose::{Draft, Part};
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        let media: Vec<String> = (0..4).map(|i| format!("https://quilcast.com/m/{i}.jpg")).collect();
+        let d = Draft { id: "d3".into(), parts: vec![Part { text: "q".into(), media }], quote: Some(format!("0x{}", "ef".repeat(20))), ..Default::default() };
+        app.open_draft(&d, None);
+        let c = app.compose.as_ref().unwrap();
+        assert_eq!(c.posts[0].media.len(), 3, "the quote takes one of the four");
+        assert_eq!(c.room(0), 0);
+        assert!(c.quote_wait.is_some());
+    }
+
+    #[test]
+    fn an_upload_poll_that_doesnt_get_through_is_asked_again() {
+        let (mut app, _) = signed_in();
+        app.open_compose(None, None);
+        app.attach(r#"[{"id":31,"type":"image/gif","size":10}]"#);
+        let (id, _, _) = sent().pop().expect("the upload starts");
+        answer(&mut app, id, 200, r#"{"id":"0b6c2c7e-7b1a-4c39-9a51-1e7c8f1b2c3d","chunk":1048576}"#);
+        let read = app.next_id;
+        app.done(read, 1, vec![0; 10]);
+        let (id, _, _) = sent().pop().expect("the piece");
+        answer(&mut app, id, 200, r#"{"received":10}"#);
+        let (id, what, _) = sent().pop().expect("done");
+        assert!(what.starts_with("POST /api/upload/0b6c2c7e-7b1a-4c39-9a51-1e7c8f1b2c3d/done"), "{what}");
+        answer(&mut app, id, 502, "bad gateway");
+        assert!(matches!(app.compose.as_ref().unwrap().posts[0].media[0].step, crate::compose::Step::Processing), "not failed");
+        let timer = app.next_id;
+        app.done(timer, 1, vec![]);
+        let (id, what, _) = sent().pop().expect("asked again");
+        assert!(what.starts_with("GET /api/upload/0b6c2c7e"), "{what}");
+        answer(&mut app, id, 200, r#"{"state":"ready","url":"https://quilcast.com/m/0123456789abcdef01234567.gif"}"#);
+        assert_eq!(app.compose.as_ref().unwrap().posts[0].media[0].step, crate::compose::Step::Ready);
+    }
+
+    #[test]
+    fn signing_out_waits_for_a_cast_on_its_way() {
+        let (mut app, _) = signed_in();
+        app.compose = Some(with_posts(&["one", "two"]));
+        app.send_compose();
+        sent();
+        app.sign_out();
+        assert!(sent().is_empty() && app.account.is_some());
+        assert_eq!(app.toast.as_deref(), Some("Wait for the cast to finish sending."));
     }
 
     #[test]
@@ -2573,24 +2805,24 @@ mod tests {
         let (mut app, _) = signed_in();
         app.open_compose(None, None);
         app.attach(r#"[{"id":3,"type":"image/jpeg","size":5000,"name":"p.jpg"}]"#);
-        assert_eq!(app.compose.as_ref().unwrap().media[0].preview.as_deref(), Some("blob:test/3"));
+        assert_eq!(app.compose.as_ref().unwrap().posts[0].media[0].preview.as_deref(), Some("blob:test/3"));
         let shrink = app.next_id;
         app.done(shrink, 1, br#"{"id":4,"type":"image/jpeg","size":4000}"#.to_vec());
-        let a = &app.compose.as_ref().unwrap().media[0];
+        let a = &app.compose.as_ref().unwrap().posts[0].media[0];
         assert_eq!((a.preview.as_deref(), a.file), (Some("blob:test/4"), Some(4)));
         assert!(host::DROPPED.with(|d| d.borrow().contains(&3)), "the original is let go");
         // one the browser can't read keeps its tile and thumbnail until it's taken off
         app.attach(r#"[{"id":11,"type":"image/png","size":5000,"name":"bad.png"}]"#);
         let shrink = app.next_id;
         app.done(shrink, 0, vec![]);
-        let a = &app.compose.as_ref().unwrap().media[1];
+        let a = &app.compose.as_ref().unwrap().posts[0].media[1];
         assert!(matches!(a.step, crate::compose::Step::Failed(_)));
         assert_eq!(a.preview.as_deref(), Some("blob:test/11"));
         assert!(!host::DROPPED.with(|d| d.borrow().contains(&11)));
         let n = a.n;
         app.unattach(n);
         assert!(host::DROPPED.with(|d| d.borrow().contains(&11)));
-        assert_eq!(app.compose.as_ref().unwrap().media.len(), 1);
+        assert_eq!(app.compose.as_ref().unwrap().posts[0].media.len(), 1);
     }
 
     #[test]
@@ -2615,7 +2847,7 @@ mod tests {
         let (mut app, _) = signed_in();
         app.open_compose(None, None);
         sent();
-        app.type_compose("6|hi @al");
+        app.type_post(0, "6|hi @al");
         let timer = app.next_id;
         app.done(timer, 1, vec![]);
         let (id, what, _) = sent().pop().expect("a search");
@@ -2623,7 +2855,8 @@ mod tests {
         answer(&mut app, id, 200, r#"{"result":{"users":[{"fid":5,"username":"alice"}]}}"#);
         assert_eq!(app.compose.as_ref().unwrap().suggest.len(), 1);
         app.pick_mention("alice");
-        assert_eq!(app.compose.as_ref().unwrap().text, "hi @alice ");
+        assert_eq!(app.compose.as_ref().unwrap().posts[0].text, "hi @alice ");
+        assert_eq!(app.compose.as_ref().unwrap().posts[0].caret, "hi @alice ".len(), "the caret goes after the name");
         assert!(app.compose.as_ref().unwrap().suggest.is_empty());
     }
 

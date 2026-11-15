@@ -10,8 +10,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-/// A cast carries at most 2 embeds: uploads and a quoted cast first, then links from its text (src/shared.ts).
-pub const MAX_EMBEDS: usize = 2;
+/// A cast carries at most 4 embeds: uploads and a quoted cast first, then links from its text (src/shared.ts).
+pub const MAX_EMBEDS: usize = 4;
 /// What server/upload.mjs takes.
 pub const TYPES: [&str; 7] = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm", "video/quicktime"];
 const IMAGE_MAX: u64 = 10_000_000;
@@ -79,6 +79,75 @@ pub struct Gif {
     pub preview: String,
     pub title: String,
     pub cast: Option<String>,
+}
+
+/// One post of the cast or thread being written.
+#[derive(Clone, Debug, Default)]
+pub struct Post {
+    /// its number in this composer, so its editor keeps its place on the page as posts come and go
+    pub id: u32,
+    pub text: String,
+    pub media: Vec<Attach>,
+    /// where the caret was last, as a byte offset into `text` (an emoji goes there)
+    pub caret: usize,
+}
+impl Post {
+    pub fn empty(&self) -> bool {
+        self.text.trim().is_empty() && self.media.is_empty()
+    }
+    fn part(&self) -> Part {
+        Part { text: self.text.trim().to_string(), media: self.media.iter().filter_map(|a| a.url.clone()).collect() }
+    }
+}
+
+impl Compose {
+    pub fn new(gen: u32) -> Compose {
+        Compose { gen, posts: vec![Post::default()], ..Default::default() }
+    }
+    pub fn empty(&self) -> bool {
+        self.posts.iter().all(Post::empty)
+    }
+    /// The post being written in: `at`, or the first when that's gone.
+    pub fn cur(&self) -> usize {
+        if self.at < self.posts.len() {
+            self.at
+        } else {
+            0
+        }
+    }
+    fn new_post(&mut self) -> Post {
+        Post { id: self.posts.iter().map(|p| p.id + 1).max().unwrap_or(0), ..Default::default() }
+    }
+    /// Room for more pictures and videos on post `i`: the first one's quoted cast takes one.
+    pub fn room(&self, i: usize) -> usize {
+        let fixed = if i == 0 { self.quote.is_some() as usize + self.quote_wait.is_some() as usize } else { 0 };
+        MAX_EMBEDS.saturating_sub(self.posts.get(i).map_or(0, |p| p.media.len()) + fixed)
+    }
+    /// Whether another post can be added after the one being written: only after one with something in it.
+    pub fn can_add(&self) -> bool {
+        let i = self.cur();
+        !self.sending && self.posts.get(i).is_some_and(|p| !p.empty() || (i == 0 && self.quote.is_some()))
+    }
+}
+
+/// The caret, a byte offset into `text`, in the UTF-16 units the browser counts in.
+pub fn utf16_at(text: &str, byte: usize) -> usize {
+    let mut b = byte.min(text.len());
+    while !text.is_char_boundary(b) {
+        b -= 1;
+    }
+    text[..b].encode_utf16().count()
+}
+/// The byte offset of the caret the browser gives in UTF-16 units.
+pub fn byte_at(text: &str, caret16: usize) -> usize {
+    let mut n16 = 0;
+    for (i, c) in text.char_indices() {
+        if n16 >= caret16 {
+            return i;
+        }
+        n16 += c.len_utf16();
+    }
+    text.len()
 }
 
 /// One post of a cast or thread, as drafts keep it.
@@ -155,6 +224,39 @@ pub enum Panel {
     Scheduled,
     /// the GIF search, with what's typed
     Gifs(String),
+    /// the emoji picker: what's typed, and the group shown when nothing is
+    Emoji(String, usize),
+    /// the sticker picker, on the account's pack at this place in the list
+    Stickers(usize),
+}
+
+/// A sticker pack (server/stickers.mjs), as `/api/stickers/<fid>` lists the account's.
+#[derive(Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct Pack {
+    pub id: String,
+    pub fid: u64,
+    pub title: String,
+    pub stickers: Vec<Sticker>,
+}
+#[derive(Deserialize, Clone, Debug, Default)]
+#[serde(default)]
+pub struct Sticker {
+    pub h: String,
+    pub e: String,
+}
+/// A sticker's address, the picture a cast embeds (src/shared.ts stickerUrl).
+pub fn sticker_url(pack: &str, h: &str) -> String {
+    format!("https://quilcast.com/st/{pack}/{h}.webp")
+}
+/// The pack a sticker's address names, or None for any other picture (src/shared.ts stickerPack).
+pub fn sticker_pack(u: &str) -> Option<&str> {
+    let rest = u.strip_prefix("https://quilcast.com/st/")?;
+    let (pack, file) = rest.split_once('/')?;
+    let h = file.strip_suffix(".webp")?;
+    let pack_ok = pack.len() == 8 && pack.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
+    let h_ok = h.len() == 24 && h.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+    (pack_ok && h_ok).then_some(pack)
 }
 
 /// The "@name" being typed where the caret is: its byte range in the text and the name so far.
@@ -167,15 +269,7 @@ pub struct Typing {
 
 /// The @mention the caret is in or right after (the caret in UTF-16 units, as the browser counts).
 pub fn mention_at(text: &str, caret16: usize) -> Option<Typing> {
-    let mut n16 = 0;
-    let mut caret = text.len();
-    for (i, c) in text.char_indices() {
-        if n16 >= caret16 {
-            caret = i;
-            break;
-        }
-        n16 += c.len_utf16();
-    }
+    let caret = byte_at(text, caret16);
     let before = &text[..caret];
     let start = before.rfind('@')?;
     let name = &before[start + 1..];
@@ -316,7 +410,7 @@ fn status_error(status: i32, body: &[u8], what: &str) -> String {
 
 impl App {
     fn attach_mut(&mut self, n: u32) -> Option<&mut Attach> {
-        self.compose.as_mut()?.media.iter_mut().find(|a| a.n == n)
+        self.compose.as_mut()?.posts.iter_mut().flat_map(|p| p.media.iter_mut()).find(|a| a.n == n)
     }
     fn attach_failed(&mut self, n: u32, e: String) {
         let upload = self.attach_mut(n).and_then(|a| {
@@ -328,15 +422,17 @@ impl App {
         }
     }
 
-    /// Room for more pictures and videos on the cast being written.
+    /// Room for more pictures and videos on the post being written.
     pub fn room(&self) -> usize {
-        let Some(c) = &self.compose else { return 0 };
-        MAX_EMBEDS.saturating_sub(c.media.len() + c.quote.is_some() as usize + c.quote_wait.is_some() as usize)
+        self.compose.as_ref().map_or(0, |c| c.room(c.cur()))
     }
 
-    /// Files picked for the cast (the shell's list): each is cleaned and uploaded.
+    /// Files picked for the post being written (the shell's list): each is cleaned and uploaded.
     pub fn attach(&mut self, picked: &str) {
         let files: Vec<Picked> = serde_json::from_str(picked).unwrap_or_default();
+        let Some(at) = self.compose.as_ref().map(|c| c.cur()) else {
+            return files.iter().for_each(|f| host::fdrop(f.id));
+        };
         for f in files {
             if self.room() == 0 {
                 host::fdrop(f.id);
@@ -353,8 +449,8 @@ impl App {
             let video = f.kind.starts_with("video/");
             let preview = if video { None } else { host::furl(f.id) };
             let a = Attach { n, url: None, preview, video, name: f.name.clone(), step: Step::Preparing, file: Some(f.id), upload: None };
-            if let Some(c) = self.compose.as_mut() {
-                c.media.push(a);
+            if let Some(p) = self.compose.as_mut().and_then(|c| c.posts.get_mut(at)) {
+                p.media.push(a);
             }
             match f.kind.as_str() {
                 "image/jpeg" | "image/png" | "image/webp" => {
@@ -477,7 +573,7 @@ impl App {
                 a.step = Step::Processing;
             }
             let url = format!("/api/upload/{id}/done");
-            return self.http("POST", &url, &[], "", move |app, status, body| app.upload_state(n, id, status, body));
+            return self.http("POST", &url, &[], "", move |app, status, body| app.upload_state(n, id, status, body, 0));
         }
         self.read_file(file, off, chunk.min(size - off), move |app, bytes| {
             let Some(mut bytes) = bytes else { return app.attach_failed(n, "This file couldn't be read.".into()) };
@@ -506,9 +602,17 @@ impl App {
         });
     }
 
-    fn upload_state(&mut self, n: u32, id: String, status: i32, body: Vec<u8>) {
+    /// What the server says of an upload it has whole; asked again while it's still processing. A request that
+    /// didn't get through (no connection, a busy server) is asked again a few times rather than failing the upload.
+    fn upload_state(&mut self, n: u32, id: String, status: i32, body: Vec<u8>, misses: u32) {
         if self.attach_mut(n).is_none() {
             return;
+        }
+        if (status == 0 || status >= 500) && misses < 3 {
+            return self.later(1500.0 * (misses + 1) as f64, move |app| {
+                let url = format!("/api/upload/{id}");
+                app.http("GET", &url, &[], "", move |app, status, body| app.upload_state(n, id, status, body, misses + 1));
+            });
         }
         let j: serde_json::Value = serde_json::from_slice(&body).unwrap_or_default();
         let state = j.get("state").and_then(|v| v.as_str()).unwrap_or("");
@@ -534,15 +638,16 @@ impl App {
         }
         self.later(1500.0, move |app| {
             let url = format!("/api/upload/{id}");
-            app.http("GET", &url, &[], "", move |app, status, body| app.upload_state(n, id, status, body));
+            app.http("GET", &url, &[], "", move |app, status, body| app.upload_state(n, id, status, body, 0));
         });
     }
 
     /// Takes a picture or video off the cast (stopping its upload).
     pub fn unattach(&mut self, n: u32) {
-        let Some(c) = self.compose.as_mut() else { return };
-        let Some(i) = c.media.iter().position(|a| a.n == n).filter(|_| !c.sending) else { return };
-        let a = c.media.remove(i);
+        let Some(c) = self.compose.as_mut().filter(|c| !c.sending) else { return };
+        let Some(p) = c.posts.iter_mut().find(|p| p.media.iter().any(|a| a.n == n)) else { return };
+        let Some(i) = p.media.iter().position(|a| a.n == n) else { return };
+        let a = p.media.remove(i);
         if let Some(f) = a.file {
             host::fdrop(f);
         }
@@ -553,7 +658,7 @@ impl App {
 
     /// Lets go of every file a closing composer still holds.
     pub fn drop_files(c: &Compose) {
-        for a in &c.media {
+        for a in c.posts.iter().flat_map(|p| &p.media) {
             if let Some(f) = a.file {
                 host::fdrop(f);
             }
@@ -599,26 +704,43 @@ impl App {
         if self.room() == 0 {
             return self.say(format!("A cast holds {MAX_EMBEDS} pictures or videos at most."));
         }
+        self.add_ready(url, text::safe_url(&g.preview));
+    }
+    /// A sticker from the picker goes on the post being written, as a GIF does.
+    pub fn pick_sticker(&mut self, pack: &str, h: &str) {
+        if self.room() == 0 {
+            return self.say(format!("A cast holds {MAX_EMBEDS} pictures or videos at most."));
+        }
+        self.add_ready(sticker_url(pack, h), None);
+    }
+    fn add_ready(&mut self, url: String, preview: Option<String>) {
         self.attach_seq += 1;
         let n = self.attach_seq;
         if let Some(c) = self.compose.as_mut() {
+            let i = c.cur();
             let mut a = Attach::ready(url);
             a.n = n;
-            a.preview = text::safe_url(&g.preview).or(a.preview);
-            c.media.push(a);
+            a.preview = preview.or(a.preview);
+            c.posts[i].media.push(a);
             c.panel = None;
+            c.focus += 1;
         }
     }
 
     // --- @mentions ---
 
-    /// The composer's text changed: `v` is "caret|text" (web/shell.js), and an @name being typed is looked up.
-    pub fn type_compose(&mut self, v: &str) {
+    /// Post `i`'s text changed, or its caret moved or it got the focus: `v` is "caret|text" (web/shell.js). It
+    /// becomes the post being written, and an @name being typed is looked up.
+    pub fn type_post(&mut self, i: usize, v: &str) {
         let (caret, t) = v.split_once('|').and_then(|(c, t)| Some((c.parse::<usize>().ok()?, t))).unwrap_or((usize::MAX, v));
-        let Some(c) = self.compose.as_mut() else { return };
-        c.text = t.to_string();
-        let typing = mention_at(&c.text, caret);
-        let same = typing.as_ref().map(|t| &t.name) == c.typing.as_ref().map(|t| &t.name);
+        // what was sent is what the composer held when Send was pressed: nothing changes it meanwhile
+        let Some(c) = self.compose.as_mut().filter(|c| !c.sending) else { return };
+        let Some(p) = c.posts.get_mut(i) else { return };
+        p.text = t.to_string();
+        p.caret = byte_at(&p.text, caret);
+        let typing = mention_at(&p.text, caret);
+        let same = c.at == i && typing.as_ref().map(|t| &t.name) == c.typing.as_ref().map(|t| &t.name);
+        c.at = i;
         c.typing = typing.clone();
         if same {
             return;
@@ -644,33 +766,120 @@ impl App {
         });
     }
     pub fn pick_mention(&mut self, name: &str) {
-        let Some(c) = self.compose.as_mut() else { return };
+        let Some(c) = self.compose.as_mut().filter(|c| !c.sending) else { return };
         let Some(t) = c.typing.take() else { return };
-        if t.end > c.text.len() || !c.text.is_char_boundary(t.start) || !c.text.is_char_boundary(t.end) {
+        let i = c.cur();
+        let p = &mut c.posts[i];
+        if t.end > p.text.len() || !p.text.is_char_boundary(t.start) || !p.text.is_char_boundary(t.end) {
             return;
         }
-        let rest = &c.text[t.end..];
+        let rest = p.text[t.end..].to_string();
         let gap = if rest.starts_with(' ') { "" } else { " " };
-        c.text = format!("{}@{name}{gap}{rest}", &c.text[..t.start]);
+        let head = format!("{}@{name}{gap}", &p.text[..t.start]);
+        p.caret = head.len() + (gap.is_empty() as usize);
+        p.text = head + &rest;
         c.suggest.clear();
         c.focus += 1;
     }
 
-    // --- sending: now, as a thread, or later ---
+    // --- threads ---
 
-    /// The posts the composer holds: what's typed, then the rest of a thread opened from a draft.
-    pub fn parts(c: &Compose) -> Vec<Part> {
-        let first = Part { text: c.text.trim().to_string(), media: c.media.iter().filter_map(|a| a.url.clone()).collect() };
-        let mut out = vec![first];
-        out.extend(c.rest.iter().filter(|p| !p.text.trim().is_empty() || !p.media.is_empty()).map(|p| Part { text: p.text.trim().to_string(), media: p.media.clone() }));
-        out
+    /// Adds a post at the end of the thread, and moves there (src/compose.tsx add).
+    pub fn add_post(&mut self) {
+        let Some(c) = self.compose.as_mut().filter(|c| c.can_add()) else { return };
+        let p = c.new_post();
+        c.posts.push(p);
+        c.at = c.posts.len() - 1;
+        c.typing = None;
+        c.suggest.clear();
+        c.focus += 1;
+    }
+    /// Takes post `i` (not the first) out of the thread, with its attachments, and moves to the one before.
+    pub fn remove_post(&mut self, i: usize) {
+        let Some(c) = self.compose.as_mut().filter(|c| !c.sending && i > 0 && i < c.posts.len()) else { return };
+        let p = c.posts.remove(i);
+        c.at = i - 1;
+        c.typing = None;
+        c.suggest.clear();
+        c.focus += 1;
+        for a in p.media {
+            if let Some(f) = a.file {
+                host::fdrop(f);
+            }
+            if let Some(id) = a.upload {
+                self.http("DELETE", &format!("/api/upload/{id}"), &[], "", |_, _, _| {});
+            }
+        }
     }
 
-    /// Whether the cast can go: something to send, nothing still uploading or too long.
+    // --- emoji and stickers ---
+
+    pub fn open_emoji(&mut self) {
+        if let Some(c) = self.compose.as_mut() {
+            c.panel = Some(Panel::Emoji(String::new(), 0));
+        }
+    }
+    /// An emoji goes where the caret was in the post being written, and the caret after it.
+    pub fn insert_emoji(&mut self, e: &str) {
+        let Some(c) = self.compose.as_mut() else { return };
+        let i = c.cur();
+        let p = &mut c.posts[i];
+        let mut at = p.caret.min(p.text.len());
+        while !p.text.is_char_boundary(at) {
+            at -= 1;
+        }
+        p.text.insert_str(at, e);
+        p.caret = at + e.len();
+        c.panel = None;
+        c.typing = None;
+        c.suggest.clear();
+        c.focus += 1;
+    }
+    pub fn open_stickers(&mut self) {
+        if let Some(c) = self.compose.as_mut() {
+            c.panel = Some(Panel::Stickers(0));
+        }
+        if !matches!(self.stickers, Some(Load::Ready(_) | Load::Loading)) {
+            self.load_stickers();
+        }
+    }
+    /// The account's sticker packs (src/stickers.tsx myPacks).
+    pub fn load_stickers(&mut self) {
+        let Some(fid) = self.me() else { return };
+        self.stickers = Some(Load::Loading);
+        self.get::<Vec<Pack>>(format!("/api/stickers/{fid}"), move |app, r| {
+            if app.me() != Some(fid) {
+                return;
+            }
+            app.stickers = Some(match r {
+                // only what a sticker's address can hold, and only packs with something in them get a tab
+                Ok(l) => Load::Ready(
+                    l.into_iter()
+                        .map(|mut p| {
+                            p.stickers.retain(|s| sticker_pack(&sticker_url(&p.id, &s.h)).is_some());
+                            p
+                        })
+                        .filter(|p| !p.stickers.is_empty())
+                        .collect(),
+                ),
+                Err((_, e)) => Load::Failed(e),
+            });
+        });
+    }
+
+    // --- sending: now, as a thread, or later ---
+
+    /// The posts the composer sends: the first, then each later one with something in it (an empty one left at the
+    /// end of a thread is left out, as quilcast.com leaves it out).
+    pub fn parts(c: &Compose) -> Vec<Part> {
+        c.posts.iter().enumerate().filter(|(i, p)| *i == 0 || !p.empty()).map(|(_, p)| p.part()).collect()
+    }
+
+    /// Whether the cast can go: something in its first post, nothing still uploading or too long.
     pub fn can_send(c: &Compose) -> bool {
-        let ready = c.media.iter().all(|a| a.step == Step::Ready);
-        let something = !c.text.trim().is_empty() || !c.media.is_empty() || c.quote.is_some();
-        let fits = c.text.len() <= MAX_CAST && c.rest.iter().all(|p| p.text.len() <= MAX_CAST);
+        let ready = c.posts.iter().flat_map(|p| &p.media).all(|a| a.step == Step::Ready);
+        let something = c.posts.first().is_some_and(|p| !p.empty()) || c.quote.is_some();
+        let fits = c.posts.iter().all(|p| p.text.len() <= MAX_CAST);
         !c.sending && ready && something && fits && c.quote_wait.is_none() && !c.parent_lost
     }
 
@@ -776,15 +985,13 @@ impl App {
             c.sending = false;
             c.error = Some(e);
             // the post that failed comes up to be tried again (or kept as a draft)
-            if c.posted.is_some() && c.text.trim().is_empty() && c.media.is_empty() && !c.rest.is_empty() {
-                let p = c.rest.remove(0);
-                c.text = p.text;
-                for u in p.media {
-                    self.attach_seq += 1;
-                    let mut a = Attach::ready(u);
-                    a.n = self.attach_seq;
-                    c.media.push(a);
+            // (with the emptied first post and any empty ones after it, which were left out of what's sent)
+            if c.posted.is_some() && c.posts.iter().skip(1).any(|p| !p.empty()) {
+                while c.posts[0].empty() {
+                    c.posts.remove(0);
                 }
+                c.at = 0;
+                c.focus += 1;
             }
         }
     }
@@ -822,19 +1029,28 @@ impl App {
                 // out, the draft or scheduled cast it was opened from would send it again, so that goes
                 let mut gone = (None, None);
                 if let Some(c) = app.compose.as_mut().filter(|c| c.gen == gen) {
-                    if i == 0 {
-                        c.text.clear();
-                        // the files that went out are let go now; closing finds none left to drop
-                        for a in std::mem::take(&mut c.media) {
-                            if let Some(f) = a.file {
-                                host::fdrop(f);
-                            }
+                    // the post that went out is the composer's first one with something in it (empty ones before it
+                    // were left out of what's sent, so they go too); the first post stays, emptied, for the quote
+                    let sent: Vec<Attach> = if i == 0 {
+                        c.posts[0].text.clear();
+                        std::mem::take(&mut c.posts[0].media)
+                    } else {
+                        match c.posts.iter().skip(1).position(|p| !p.empty()) {
+                            Some(k) => c.posts.drain(1..=k + 1).flat_map(|p| p.media).collect(),
+                            None => Vec::new(),
                         }
+                    };
+                    // the files that went out are let go now; closing finds none left to drop
+                    for a in sent {
+                        if let Some(f) = a.file {
+                            host::fdrop(f);
+                        }
+                    }
+                    if i == 0 {
                         c.quote = None;
                         gone = (c.draft.take(), c.sched.take());
-                    } else if !c.rest.is_empty() {
-                        c.rest.remove(0);
                     }
+                    c.at = c.at.min(c.posts.len() - 1);
                     c.posted = Some(fc::CastRef { fid: me, hash: hash.clone() });
                 }
                 if let Some(d) = gone.0.filter(|d| !d.is_empty()) {
@@ -943,8 +1159,7 @@ impl App {
 
     /// The draft the composer holds now.
     pub fn draft_of(&self, c: &Compose) -> Draft {
-        let mut parts = vec![Part { text: c.text.clone(), media: c.media.iter().filter_map(|a| a.url.clone()).collect() }];
-        parts.extend(c.rest.iter().cloned());
+        let parts = c.posts.iter().enumerate().filter(|(i, p)| *i == 0 || !p.empty()).map(|(_, p)| Part { text: p.text.clone(), media: p.media.iter().filter_map(|a| a.url.clone()).collect() }).collect();
         let (parent, pfid, channel) = match (&c.posted, &c.parent, &c.channel) {
             (Some(p), _, _) => (Some(format!("0x{}", p.hash.trim_start_matches("0x"))), Some(p.fid), None),
             (None, Some(p), _) => (Some(format!("0x{}", p.bare_hash())), Some(p.author.fid).filter(|f| *f > 0), None),
@@ -1009,7 +1224,7 @@ impl App {
     /// Saves what the composer holds as a draft (the one it was opened from, or a new one), then closes it.
     pub fn save_draft(&mut self) {
         let (Some(fid), Some(c)) = (self.me(), self.compose.as_ref()) else { return };
-        if c.media.iter().any(|a| a.step != Step::Ready) {
+        if c.posts.iter().flat_map(|p| &p.media).any(|a| a.step != Step::Ready) {
             if let Some(c) = self.compose.as_mut() {
                 c.error = Some("Wait for the uploads to finish, or take them off.".into());
             }
@@ -1070,17 +1285,30 @@ impl App {
         let Some(old) = self.compose.take() else { return };
         App::drop_files(&old);
         self.compose_seq += 1;
-        let mut c = Compose { gen: self.compose_seq, draft: (!d.id.is_empty()).then(|| d.id.clone()), channel: d.channel.clone(), ..Default::default() };
-        let first = d.parts.first().cloned().unwrap_or_default();
-        c.text = first.text;
-        for u in first.media.into_iter().filter_map(|u| text::safe_url(&u)).take(MAX_EMBEDS) {
-            self.attach_seq += 1;
-            let mut a = Attach::ready(u);
-            a.n = self.attach_seq;
-            c.media.push(a);
+        let mut c = Compose::new(self.compose_seq);
+        c.draft = (!d.id.is_empty()).then(|| d.id.clone());
+        c.channel = d.channel.clone();
+        // empty posts past the first are left out, as the composer leaves them out of what it sends (src/write.ts
+        // unsent); the first post's quoted cast takes one of its embeds, so the quote isn't the one pushed out
+        let quoted = d.quote.as_deref().is_some_and(|h| fc::is_hash(&h.trim_start_matches("0x").to_lowercase()));
+        c.posts.clear();
+        for (i, p) in d.parts.iter().enumerate() {
+            let room = if i == 0 { MAX_EMBEDS - quoted as usize } else { MAX_EMBEDS };
+            let mut post = Post { id: i as u32, text: p.text.clone(), ..Default::default() };
+            post.caret = post.text.len();
+            for u in p.media.iter().filter_map(|u| text::safe_url(u)).take(room) {
+                self.attach_seq += 1;
+                let mut a = Attach::ready(u);
+                a.n = self.attach_seq;
+                post.media.push(a);
+            }
+            if i == 0 || !post.empty() {
+                c.posts.push(post);
+            }
         }
-        // empty posts past the first are left out, as the composer leaves them out of what it sends (src/write.ts unsent)
-        c.rest = d.parts.iter().skip(1).map(|p| Part { text: p.text.clone(), media: p.media.iter().filter_map(|u| text::safe_url(u)).take(MAX_EMBEDS).collect() }).filter(|p| !p.text.trim().is_empty() || !p.media.is_empty()).collect();
+        if c.posts.is_empty() {
+            c.posts.push(Post::default());
+        }
         if let Some((s, at)) = sched {
             if s.waiting {
                 c.when = host::time_str(at as f64, true);
@@ -1244,8 +1472,8 @@ impl App {
 
 /// What the composer holds, to tell whether it changed since it opened.
 pub fn snapshot(c: &Compose) -> String {
-    let media: Vec<&str> = c.media.iter().filter_map(|a| a.url.as_deref()).collect();
-    format!("{}\u{0}{:?}\u{0}{}\u{0}{:?}\u{0}{}", c.text.trim(), media, c.rest.len(), c.channel, c.when)
+    let posts: Vec<(&str, Vec<&str>)> = c.posts.iter().filter(|p| !p.empty()).map(|p| (p.text.trim(), p.media.iter().filter_map(|a| a.url.as_deref()).collect())).collect();
+    format!("{posts:?}\u{0}{:?}\u{0}{}", c.channel, c.when)
 }
 
 #[cfg(test)]
@@ -1307,10 +1535,11 @@ mod tests {
     #[test]
     fn embeds_are_uploads_then_the_quote_then_links() {
         let q = fc::CastRef { fid: 3, hash: "ab".repeat(20) };
-        let e = embeds_for("see https://a.com and https://b.com", &["https://quilcast.com/m/x.jpg".into()], Some(&q));
-        assert_eq!(e.len(), 2);
+        let e = embeds_for("see https://a.com and https://b.com and https://c.com", &["https://quilcast.com/m/x.jpg".into()], Some(&q));
+        assert_eq!(e.len(), 4, "four at most, as src/shared.ts MAX_EMBEDS");
         assert!(matches!(&e[0], fc::Embed::Url(u) if u == "https://quilcast.com/m/x.jpg"));
         assert!(matches!(&e[1], fc::Embed::Cast(c) if c.fid == 3));
+        assert!(matches!(&e[3], fc::Embed::Url(u) if u == "https://b.com"));
         let e = embeds_for("see https://a.com", &[], None);
         assert!(matches!(&e[..], [fc::Embed::Url(u)] if u == "https://a.com"));
     }

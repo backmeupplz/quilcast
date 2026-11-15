@@ -67,7 +67,7 @@ jobs:
       - name: Rust
         run: sh scripts/ci-rust.sh
       - name: Quilcast WASM
-        run: cd wasm && cargo test --locked -q && sh build.sh
+        run: node wasm/emoji.mjs --check && cd wasm && cargo test --locked -q && sh build.sh
       # Every test file at once (unit, server and the app in WebKit), with the type and locale checks alongside
       - name: Tests, tsc and i18n
         run: |

@@ -17,6 +17,7 @@ Quilcast written in Rust and compiled to WebAssembly, served at [wasm.quilcast.c
 rustup target add wasm32-unknown-unknown
 cd wasm && cargo test && sh build.sh     # wasm/dist
 node wasm/vectors.mjs                    # the vectors fc.rs tests against
+node wasm/emoji.mjs                      # src/emoji.txt, the emoji picker's list, from unicode-emoji-json
 npm run build && node --test e2e/wasm.test.mjs   # the app in WebKit against a stand-in node
 WASM_HOST=localhost npm start            # then open http://localhost:3000
 ```
@@ -25,7 +26,7 @@ The Dockerfile builds it in a stage of its own (`rust:1.99-slim`), and CI runs t
 
 ## What it does so far
 
-The ticket's goal is everything quilcast.com does, shipped in stages. The list below follows the README's "What it does" and says where each part stands. Stage 1 brought reading, signing in and the basic writes; stage 2 added channels, the lists of people, Browse as, anonymous mode, mutes, blocks and reports; stage 3 adds what the composer does beyond text (pictures, videos and GIFs, @mention suggestions, drafts, scheduled casts) and pinned casts.
+The ticket's goal is everything quilcast.com does, shipped in stages. The list below follows the README's "What it does" and says where each part stands. Stage 1 brought reading, signing in and the basic writes; stage 2 added channels, the lists of people, Browse as, anonymous mode, mutes, blocks and reports; stage 3 added what the composer does beyond text (pictures, videos and GIFs, @mention suggestions, drafts, scheduled casts) and pinned casts; stage 4 adds writing threads, the emoji and sticker pickers, four embeds a cast, and the spam filter.
 
 | quilcast.com feature | WASM |
 | --- | --- |
@@ -42,9 +43,11 @@ The ticket's goal is everything quilcast.com does, shipped in stages. The list b
 | Rich link previews (`/api/unfurl`) and pictures through `/api/img` | ✅ (no X post cards or mini app launch cards yet) |
 | Quoted casts, pictures, video | ✅ (HLS plays only where the browser plays it natively) |
 | Light and dark, node URL, sign out (Settings) | ✅ |
-| The spam filter (spam.quilcast.com labels) | ⏳ |
-| Attach photos, videos and GIFs; @mention autocomplete | ✅ (photos are drawn again by the browser at 2048 px at most, so their EXIF is gone; videos lose their metadata boxes, as on quilcast.com. Files are kept on Quilcast's server, which is where quilcast.com puts them too for an account whose recovery phrase it doesn't keep) |
-| Threads, the emoji and sticker pickers in the composer | ⏳ (a thread saved as a draft on quilcast.com opens, posts and schedules here, but a new one can't be written yet) |
+| The spam filter (spam.quilcast.com labels) | ✅ ("Spam 97%" and "Spam account 92%" labels on casts and profiles, Settings → Spam to hide spam casts or spam accounts' casts, the threshold, and Not spam in the ⋯ menus; with Hide on, a cast waits up to 1.5 s for its score before it's drawn, as on quilcast.com) |
+| Attach photos, videos and GIFs; @mention autocomplete | ✅ (four a cast, a quoted cast taking one; photos are drawn again by the browser at 2048 px at most, so their EXIF is gone; videos lose their metadata boxes, as on quilcast.com. Files are kept on Quilcast's server, which is where quilcast.com puts them too for an account whose recovery phrase it doesn't keep) |
+| Threads, the emoji and sticker pickers in the composer | ✅ (+ adds a post after the one being written, each with its own pictures and @mentions; Backspace in an empty post takes it out; Post all sends them as replies, one after another, and one that fails leaves only what didn't go out. The emoji list is quilcast.com's, built into the module; stickers come from the account's packs) |
+| Sticker pack pages (make a pack, import one from Telegram, share and add packs) and pack link cards | ⏳ (stickers in casts show as stickers and open their pack on quilcast.com) |
+| The composer's Markdown mode (formatting buttons, pictures inside the text) | ⏳ |
 | Several accounts per browser | ⏳ |
 | Push notifications | ⏳ |
 | Create a new account, sign in with an external wallet | ⏳ |

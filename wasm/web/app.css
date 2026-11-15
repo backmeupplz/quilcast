@@ -266,8 +266,41 @@ button.draft-open:hover { background: var(--hover); }
 .attach-state { position: absolute; inset: auto 0 0; padding: 4px 6px; font-size: 12px; background: rgb(0 0 0 / .6); color: #fff; }
 .attach-x { position: absolute; top: 4px; right: 4px; background: rgb(0 0 0 / .6); color: #fff; }
 .attach-x:hover { background: rgb(0 0 0 / .8); }
-.thread-part { margin-left: 48px; padding: 6px 12px; border-left: 2px solid var(--line); }
-.thread-part p { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* a thread's posts: a line runs from each face down to the next post */
+.parts { display: flex; flex-direction: column; gap: 4px; }
+.part { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.part.threaded::before { content: ""; position: absolute; left: 19px; top: 46px; bottom: -4px; width: 2px; background: var(--line); }
+.parts:has(.part + .part) .compose-row textarea { min-height: 64px; }
+.part-x { align-self: flex-start; margin-top: 6px; }
+/* the emoji and sticker pickers sit where the GIF search does */
+.emoji-tabs, .stk-tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.emoji-tabs button, .stk-tabs button { flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: none; font-size: 22px; opacity: .6; cursor: pointer; padding: 4px; }
+.emoji-tabs button.on, .stk-tabs button.on, .emoji-tabs button:hover, .stk-tabs button:hover { opacity: 1; background: var(--hover); }
+.stk-tabs img { width: 100%; height: 100%; object-fit: contain; }
+.stk-head .stk-tabs { flex: 1; min-width: 0; }
+.emoji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 2px; max-height: 50vh; overflow-y: auto; }
+.emoji-opt { border: 0; background: none; font-size: 26px; line-height: 1; height: 44px; border-radius: 10px; cursor: pointer; }
+.emoji-opt:hover { background: var(--hover); }
+.stk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; max-height: 50vh; overflow-y: auto; }
+.stk-grid button { aspect-ratio: 1; padding: 6px; border: 0; border-radius: 14px; background: none; cursor: pointer; }
+.stk-grid button:hover { background: var(--hover); }
+.stk-grid img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.stk-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 12px; text-align: center; }
+.stk-empty p { margin: 0; }
+.attach.sticker { background: none; }
+.attach.sticker img { object-fit: contain; }
+/* a sticker in a cast: no frame, as it is, at most 160 px */
+.sticker { display: block; width: fit-content; }
+.sticker img { display: block; width: 160px; max-width: 100%; height: auto; max-height: 160px; object-fit: contain; }
+/* spam.quilcast.com's label */
+.spam-tag { font-size: 12px; font-weight: 700; color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+/* Settings rows with a choice on the right */
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: 4px 14px; cursor: pointer; color: var(--fg); }
+.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.range { display: inline-flex; align-items: center; gap: 8px; }
+.range output { min-width: 3em; text-align: end; font-variant-numeric: tabular-nums; }
 .tools { display: flex; align-items: center; gap: 2px; margin-inline-end: auto; color: var(--accent); }
 .tools .icon-btn { color: var(--accent); }
 .tools .icon-btn.on { background: var(--accent-soft); }

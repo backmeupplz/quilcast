@@ -6,9 +6,11 @@ pub mod api;
 pub mod app;
 pub mod compose;
 pub mod dom;
+pub mod emoji;
 pub mod fc;
 pub mod host;
 pub mod mutes;
+pub mod spam;
 pub mod text;
 pub mod view;
 

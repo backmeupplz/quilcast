@@ -77,15 +77,28 @@ function listen(id, kind) {
       if (e.isComposing) return
       v = e.key + (e.ctrlKey || e.metaKey ? '+mod' : '')
       if (v === 'Enter+mod') e.preventDefault()
+      // Backspace in an empty post takes the post away and moves the focus up: it mustn't then delete there too
+      if (v === 'Backspace' && el.value === '') e.preventDefault()
     }
     call(() => send((p, l) => ex.q_event(id, kind, p, l), v))
   })
+  // a post's caret, wherever it moves (a click, the arrow keys, the focus coming back), is told as its input is, so
+  // an emoji goes where it is and the module knows which post is being written
+  if (kind === 2 && el.hasAttribute('data-caret')) {
+    const tell = () => call(() => send((p, l) => ex.q_event(id, kind, p, l), `${el.selectionStart ?? el.value.length}|${el.value}`))
+    el.addEventListener('focus', tell)
+    el.addEventListener('click', tell)
+    el.addEventListener('keyup', (e) => /^(Arrow|Home|End|Page)/.test(e.key) && tell())
+  }
 }
 
 function apply(p, l) {
   const v = new DataView(mem.buffer, p, l)
   let i = 0
   let focus
+  // textareas whose text the module changed in this pass: one keeps its caret where the module says even if it has
+  // the focus already (a mention picked with a button that doesn't take the focus)
+  const valued = new Set()
   const u32 = () => ((i += 4), v.getUint32(i - 4, true))
   const s = () => {
     const n = u32()
@@ -142,14 +155,22 @@ function apply(p, l) {
         const val = s()
         const el = nodes.get(id)
         if (n === 'checked') el.checked = val === 'true'
-        else if (el[n] !== val) el[n] = val
+        else if (el[n] !== val) {
+          el[n] = val
+          if (n === 'value') valued.add(el)
+        }
         break
       }
       default:
         throw new Error(`bad op ${op}`)
     }
   }
-  if (focus?.isConnected) focus.focus()
+  // one the module puts the focus on gets its caret back where the module says (after an emoji or a mention)
+  if (focus?.isConnected && (document.activeElement !== focus || valued.has(focus))) {
+    focus.focus()
+    const at = focus.getAttribute('data-sel')
+    if (at !== null && focus.setSelectionRange) focus.setSelectionRange(+at, +at)
+  }
 }
 
 // --- the key vault: IndexedDB, values sealed with AES-GCM under a key the browser made non-extractable ---
