@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "그들의 활동을 아낌없이 응원해요.",
   "Be the first to support @{name}.": "@{name}님의 첫 서포터가 되어 보세요.",
   "Fan": "팬",
-  "I support @{name} 👏": "@{name}님을 후원해요 👏",
   "I tipped @{name} {amount} 👏": "@{name}님에게 {amount} 팁을 보냈어요 👏",
   "Joined": "가입함",
   "Keep the casts coming.": "캐스트를 계속 올려 주세요.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Quilcast에서 저를 후원해 주세요 👏",
   "Your supporters": "내 서포터",
   "{n} supporter|{n} supporters": "서포터 {n}명",
-  "{price}/mo": "{price}/월"
+  "{price}/mo": "{price}/월",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "@{name}님을 {tier}({price}/월)로 후원해요 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Farcaster의 누구든 후원할 수 있어요. Quilcast에서 프로필을 열고 서포터를 선택해 보세요.",
+  "To support someone, open their profile and pick Supporters.": "누군가를 후원하려면 프로필을 열고 서포터를 선택하세요."
 }

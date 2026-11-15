@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "Ủng hộ tác phẩm của họ thật lớn.",
   "Be the first to support @{name}.": "Hãy là người đầu tiên ủng hộ @{name}.",
   "Fan": "Người hâm mộ",
-  "I support @{name} 👏": "Mình ủng hộ @{name} 👏",
   "I tipped @{name} {amount} 👏": "Mình đã tip @{name} {amount} 👏",
   "Joined": "Đã tham gia",
   "Keep the casts coming.": "Hãy tiếp tục đăng cast nhé.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Bạn có thể ủng hộ mình trên Quilcast 👏",
   "Your supporters": "Người ủng hộ bạn",
   "{n} supporter|{n} supporters": "{n} người ủng hộ",
-  "{price}/mo": "{price}/tháng"
+  "{price}/mo": "{price}/tháng",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "Mình ủng hộ @{name} với tư cách {tier} ({price}/tháng) 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Bạn cũng có thể ủng hộ bất kỳ ai trên Farcaster: mở hồ sơ của họ trên Quilcast và chọn Người ủng hộ.",
+  "To support someone, open their profile and pick Supporters.": "Để ủng hộ ai đó, hãy mở hồ sơ của họ và chọn Người ủng hộ."
 }

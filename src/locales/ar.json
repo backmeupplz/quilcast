@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "ادعم عملهم بسخاء.",
   "Be the first to support @{name}.": "كن أول من يدعم @{name}.",
   "Fan": "معجب",
-  "I support @{name} 👏": "أدعم @{name} 👏",
   "I tipped @{name} {amount} 👏": "أعطيت @{name} إكرامية بقيمة {amount} 👏",
   "Joined": "منضم",
   "Keep the casts coming.": "واصل نشر الكاستات.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "يمكنك دعمي على Quilcast 👏",
   "Your supporters": "داعموك",
   "{n} supporter|{n} supporters": "{n} داعم|{n} داعم|{n} داعمان|{n} داعمين|{n} داعمًا|{n} داعم",
-  "{price}/mo": "{price}/شهر"
+  "{price}/mo": "{price}/شهر",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "أدعم @{name} بصفة {tier} ({price}/شهر) 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "يمكنك أيضًا دعم أي شخص على Farcaster: افتح ملفه الشخصي على Quilcast واختر الداعمون.",
+  "To support someone, open their profile and pick Supporters.": "لدعم شخص ما، افتح ملفه الشخصي واختر الداعمون."
 }

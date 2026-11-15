@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "大力支持他們的創作。",
   "Be the first to support @{name}.": "成為第一個支持 @{name} 的人。",
   "Fan": "粉絲",
-  "I support @{name} 👏": "我支持 @{name} 👏",
   "I tipped @{name} {amount} 👏": "我打賞了 @{name} {amount} 👏",
   "Joined": "已加入",
   "Keep the casts coming.": "繼續發文吧。",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "你可以在 Quilcast 上支持我 👏",
   "Your supporters": "你的支持者",
   "{n} supporter|{n} supporters": "{n} 位支持者",
-  "{price}/mo": "{price}/月"
+  "{price}/mo": "{price}/月",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "我以{tier}（{price}/月）的身分支持 @{name} 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "你也可以支持 Farcaster 上的任何人：在 Quilcast 開啟 TA 的個人檔案並選擇支持者。",
+  "To support someone, open their profile and pick Supporters.": "想支持某人，請開啟 TA 的個人檔案並選擇支持者。"
 }

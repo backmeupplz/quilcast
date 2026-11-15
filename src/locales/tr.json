@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "Çalışmalarını büyük ölçüde destekle.",
   "Be the first to support @{name}.": "@{name} kişisini destekleyen ilk kişi sen ol.",
   "Fan": "Hayran",
-  "I support @{name} 👏": "@{name} kişisini destekliyorum 👏",
   "I tipped @{name} {amount} 👏": "@{name} kişisine {amount} bahşiş verdim 👏",
   "Joined": "Katıldın",
   "Keep the casts coming.": "Cast'ler gelmeye devam etsin.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Beni Quilcast'te destekleyebilirsin 👏",
   "Your supporters": "Destekçilerin",
   "{n} supporter|{n} supporters": "{n} destekçi|{n} destekçi",
-  "{price}/mo": "{price}/ay"
+  "{price}/mo": "{price}/ay",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "@{name} kişisini {tier} ({price}/ay) olarak destekliyorum 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Farcaster'da herkesi sen de destekleyebilirsin: Quilcast'te profilini aç ve Destekçiler'i seç.",
+  "To support someone, open their profile and pick Supporters.": "Birini desteklemek için profilini aç ve Destekçiler'i seç."
 }

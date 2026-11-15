@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "Stötta deras arbete på riktigt.",
   "Be the first to support @{name}.": "Bli den första att stötta @{name}.",
   "Fan": "Fan",
-  "I support @{name} 👏": "Jag stöttar @{name} 👏",
   "I tipped @{name} {amount} 👏": "Jag gav @{name} {amount} i dricks 👏",
   "Joined": "Medlem",
   "Keep the casts coming.": "Fortsätt med casten.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Du kan stötta mig på Quilcast 👏",
   "Your supporters": "Dina supportrar",
   "{n} supporter|{n} supporters": "{n} supporter|{n} supportrar",
-  "{price}/mo": "{price}/mån"
+  "{price}/mo": "{price}/mån",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "Jag stöttar @{name} som {tier} ({price}/mån) 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Du kan också stötta vem som helst på Farcaster: öppna profilen i Quilcast och välj Supportrar.",
+  "To support someone, open their profile and pick Supporters.": "Om du vill stötta någon, öppna profilen och välj Supportrar."
 }

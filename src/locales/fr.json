@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "Soutiens leur travail en grand.",
   "Be the first to support @{name}.": "Sois le premier à soutenir @{name}.",
   "Fan": "Fan",
-  "I support @{name} 👏": "Je soutiens @{name} 👏",
   "I tipped @{name} {amount} 👏": "J'ai laissé {amount} de pourboire à @{name} 👏",
   "Joined": "Rejoint",
   "Keep the casts coming.": "Continue à publier des casts.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Tu peux me soutenir sur Quilcast 👏",
   "Your supporters": "Tes soutiens",
   "{n} supporter|{n} supporters": "{n} soutien|{n} soutiens",
-  "{price}/mo": "{price}/mois"
+  "{price}/mo": "{price}/mois",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "Je soutiens @{name} en tant que {tier} ({price}/mois) 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Vous pouvez aussi soutenir n’importe qui sur Farcaster : ouvrez son profil sur Quilcast et choisissez Soutiens.",
+  "To support someone, open their profile and pick Supporters.": "Pour soutenir quelqu’un, ouvrez son profil et choisissez Soutiens."
 }

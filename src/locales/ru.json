@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "Поддержи их работу по-крупному.",
   "Be the first to support @{name}.": "Стань первым, кто поддержит @{name}.",
   "Fan": "Фанат",
-  "I support @{name} 👏": "Я поддерживаю @{name} 👏",
   "I tipped @{name} {amount} 👏": "Я отправил(а) @{name} чаевые: {amount} 👏",
   "Joined": "Вы в числе участников",
   "Keep the casts coming.": "Продолжай публиковать касты.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Ты можешь поддержать меня в Quilcast 👏",
   "Your supporters": "Твои поддерживающие",
   "{n} supporter|{n} supporters": "{n} поддерживающий|{n} поддерживающих|{n} поддерживающих",
-  "{price}/mo": "{price}/мес."
+  "{price}/mo": "{price}/мес.",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "Я поддерживаю @{name} как {tier} ({price}/мес.) 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Вы тоже можете поддержать любого человека в Farcaster: откройте его профиль в Quilcast и выберите «Поддерживающие».",
+  "To support someone, open their profile and pick Supporters.": "Чтобы поддержать кого-то, откройте его профиль и выберите «Поддерживающие»."
 }

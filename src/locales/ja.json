@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "活動を思いきり応援しよう。",
   "Be the first to support @{name}.": "@{name} の最初のサポーターになりましょう。",
   "Fan": "ファン",
-  "I support @{name} 👏": "@{name} をサポートしています 👏",
   "I tipped @{name} {amount} 👏": "@{name} に {amount} のチップを送りました 👏",
   "Joined": "参加中",
   "Keep the casts coming.": "キャストを続けてね。",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Quilcast で私をサポートしてね 👏",
   "Your supporters": "あなたのサポーター",
   "{n} supporter|{n} supporters": "サポーター {n} 人",
-  "{price}/mo": "{price}/月"
+  "{price}/mo": "{price}/月",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "@{name} を{tier}（{price}/月）としてサポートしています 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Farcaster の誰でもサポートできます。Quilcast でその人のプロフィールを開いて、サポーターを選んでください。",
+  "To support someone, open their profile and pick Supporters.": "誰かをサポートするには、その人のプロフィールを開いて、サポーターを選んでください。"
 }

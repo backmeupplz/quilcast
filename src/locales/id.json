@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "Dukung karya mereka secara besar-besaran.",
   "Be the first to support @{name}.": "Jadilah yang pertama mendukung @{name}.",
   "Fan": "Penggemar",
-  "I support @{name} 👏": "Aku mendukung @{name} 👏",
   "I tipped @{name} {amount} 👏": "Aku memberi @{name} tip {amount} 👏",
   "Joined": "Bergabung",
   "Keep the casts coming.": "Terus berbagi cast.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Kamu bisa mendukungku di Quilcast 👏",
   "Your supporters": "Pendukungmu",
   "{n} supporter|{n} supporters": "{n} pendukung",
-  "{price}/mo": "{price}/bln"
+  "{price}/mo": "{price}/bln",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "Aku mendukung @{name} sebagai {tier} ({price}/bln) 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Kamu juga bisa mendukung siapa saja di Farcaster: buka profilnya di Quilcast dan pilih Pendukung.",
+  "To support someone, open their profile and pick Supporters.": "Untuk mendukung seseorang, buka profilnya dan pilih Pendukung."
 }

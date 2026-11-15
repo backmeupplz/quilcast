@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "Steun hun werk op grote schaal.",
   "Be the first to support @{name}.": "Wees de eerste die @{name} steunt.",
   "Fan": "Fan",
-  "I support @{name} 👏": "Ik steun @{name} 👏",
   "I tipped @{name} {amount} 👏": "Ik gaf @{name} {amount} fooi 👏",
   "Joined": "Lid",
   "Keep the casts coming.": "Blijf casts maken.",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "Je kunt me steunen op Quilcast 👏",
   "Your supporters": "Je supporters",
   "{n} supporter|{n} supporters": "{n} supporter|{n} supporters",
-  "{price}/mo": "{price}/mnd"
+  "{price}/mo": "{price}/mnd",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "Ik steun @{name} als {tier} ({price}/mnd) 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Je kunt ook iedereen op Farcaster steunen: open hun profiel op Quilcast en kies Supporters.",
+  "To support someone, open their profile and pick Supporters.": "Om iemand te steunen, open je hun profiel en kies je Supporters."
 }

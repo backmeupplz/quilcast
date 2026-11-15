@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "उनके काम को खुलकर सपोर्ट करें।",
   "Be the first to support @{name}.": "@{name} को सपोर्ट करने वाले पहले व्यक्ति बनें।",
   "Fan": "फैन",
-  "I support @{name} 👏": "मैं @{name} को सपोर्ट करता हूँ 👏",
   "I tipped @{name} {amount} 👏": "मैंने @{name} को {amount} की टिप दी 👏",
   "Joined": "जुड़े हुए",
   "Keep the casts coming.": "कास्ट करते रहिए।",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "आप Quilcast पर मुझे सपोर्ट कर सकते हैं 👏",
   "Your supporters": "आपके सपोर्टर",
   "{n} supporter|{n} supporters": "{n} सपोर्टर|{n} सपोर्टर",
-  "{price}/mo": "{price}/माह"
+  "{price}/mo": "{price}/माह",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "मैं @{name} को {tier} ({price}/माह) के रूप में सपोर्ट करता हूँ 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "आप Farcaster पर किसी को भी सपोर्ट कर सकते हैं: Quilcast पर उनकी प्रोफ़ाइल खोलें और सपोर्टर चुनें।",
+  "To support someone, open their profile and pick Supporters.": "किसी को सपोर्ट करने के लिए उनकी प्रोफ़ाइल खोलें और सपोर्टर चुनें।"
 }

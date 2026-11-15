@@ -1338,7 +1338,6 @@
   "Back their work in a big way.": "สนับสนุนผลงานของเขาอย่างเต็มที่",
   "Be the first to support @{name}.": "เป็นคนแรกที่สนับสนุน @{name}",
   "Fan": "แฟน",
-  "I support @{name} 👏": "ฉันสนับสนุน @{name} 👏",
   "I tipped @{name} {amount} 👏": "ฉันให้ทิป @{name} {amount} 👏",
   "Joined": "เข้าร่วมแล้ว",
   "Keep the casts coming.": "โพสต์แคสต์ต่อไปนะ",
@@ -1354,5 +1353,8 @@
   "You can support me on Quilcast 👏": "คุณสนับสนุนฉันได้บน Quilcast 👏",
   "Your supporters": "ผู้สนับสนุนของคุณ",
   "{n} supporter|{n} supporters": "ผู้สนับสนุน {n} คน",
-  "{price}/mo": "{price}/เดือน"
+  "{price}/mo": "{price}/เดือน",
+  "I support @{name} as a {tier} ({price}/mo) 👏": "ฉันสนับสนุน @{name} ในฐานะ {tier} ({price}/เดือน) 👏",
+  "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "คุณก็สนับสนุนใครก็ได้บน Farcaster เช่นกัน: เปิดโปรไฟล์ของเขาบน Quilcast แล้วเลือกผู้สนับสนุน",
+  "To support someone, open their profile and pick Supporters.": "หากต้องการสนับสนุนใครสักคน ให้เปิดโปรไฟล์ของเขาแล้วเลือกผู้สนับสนุน"
 }

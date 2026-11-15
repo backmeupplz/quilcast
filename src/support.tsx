@@ -26,9 +26,10 @@ const okTip = (v: string) => /^\d{1,5}(\.\d{1,2})?$/.test(v.trim()) && Number(v)
 
 /** A cast about supporting `who`, with their profile's Supporters tab as its link. */
 const shareCast = (who: User, text: string) => shell.compose({ text, embeds: [`${location.origin}${userPath(who)}?tab=supporters`] })
-const supportLine = (who: User, r: Pick<Row, 'tier' | 'tips_cents'>) => r.tier
-  ? t('I support @{name} 👏', { name: handle(who) })
-  : t('I tipped @{name} {amount} 👏', { name: handle(who), amount: dollars(r.tips_cents / 100) })
+// says the tier, and tells readers they can do the same for anyone
+const supportLine = (who: User, r: Pick<Row, 'tier' | 'tips_cents' | 'monthly_cents'>) => `${r.tier
+  ? t('I support @{name} as a {tier} ({price}/mo) 👏', { name: handle(who), tier: tierName(r.tier), price: dollars(r.monthly_cents / 100) })
+  : t('I tipped @{name} {amount} 👏', { name: handle(who), amount: dollars(r.tips_cents / 100) })}\n\n${t('You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.')}`
 
 export function SupportTab({ u, self }: { u: User; self: boolean }) {
   const [info, setInfo] = useState<Info | null | false>(null)
@@ -86,7 +87,7 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
   const rank = (tier: string | null) => info.tiers.findIndex((x) => x.name === tier)
   const tip = (amount: number, key: string, idle: string, cls: string) => btn(key, idle, t('Send {amount}?', { amount: dollars(amount) }),
     () => wm().then((m) => m.support(u, { type: 'tip', amount }, t('Tip @{name} {amount}', { name, amount: dollars(amount) }))),
-    t('Tipped @{name} {amount}', { name, amount: dollars(amount) }), cls, supportLine(u, { tier: null, tips_cents: amount * 100 }))
+    t('Tipped @{name} {amount}', { name, amount: dollars(amount) }), cls, supportLine(u, { tier: null, tips_cents: amount * 100, monthly_cents: 0 }))
 
   const row = (r: Row, own: boolean) => {
     const p = users.get(r.fid)!
@@ -150,7 +151,7 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
                       () => wm().then(async (m) => {
                         await m.support(u, { type: 'membership', tier: tier.name }, t('Join @{name}', { name }))
                         if (mine?.sub_id) await m.cancelSupport(contract, mine.sub_id, mine.wallet)
-                      }), t('You support @{name} now.', { name }), 'btn small', supportLine(u, { tier: tier.name, tips_cents: 0 }))}
+                      }), t('You support @{name} now.', { name }), 'btn small', supportLine(u, { tier: tier.name, tips_cents: 0, monthly_cents: tier.price * 100 }))}
                   </div>
                 )
               })}
@@ -165,17 +166,21 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
             </div>
           </>
         )}
-        <p class="sp-fine">
-          {t('USDC on Base, straight to their wallet. Sendclap keeps 1%.')}
-          {info.page && <> · <a href={info.page} target="_blank" rel="noopener noreferrer">{t('@{name} on Sendclap', { name })}</a></>}
-        </p>
+        {(!self || info.page) && (
+          <p class="sp-fine">
+            {!self && t('USDC on Base, straight to their wallet. Sendclap keeps 1%.')}
+            {!self && info.page && ' · '}
+            {info.page && <a href={info.page} target="_blank" rel="noopener noreferrer">{t('@{name} on Sendclap', { name })}</a>}
+          </p>
+        )}
       </section>
       <h3 class="sp-h">{t('Supporters')}<span>{info.supporters.length || ''}</span></h3>
       {info.supporters.filter((r) => users.has(r.fid)).map((r) => row(r, false))}
       {!info.supporters.length && <p class="sp-empty">{self ? t('No supporters yet.') : t('Be the first to support @{name}.', { name })}</p>}
       <h3 class="sp-h">{t('Supporting')}<span>{info.supporting.length || ''}</span></h3>
       {info.supporting.filter((r) => users.has(r.fid)).map((r) => row(r, self && account?.fid === u.fid))}
-      {!info.supporting.length && <p class="sp-empty">{t('Not supporting anyone yet.')}</p>}
+      {self ? <p class="sp-empty">{t('To support someone, open their profile and pick Supporters.')}</p>
+        : !info.supporting.length && <p class="sp-empty">{t('Not supporting anyone yet.')}</p>}
     </div>
   )
 }
