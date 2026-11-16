@@ -774,6 +774,21 @@ small.warn { color: var(--warn); }
 }
 
 .toast { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 40; background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: calc(99px * var(--rs, 1)); font-size: 14px; font-weight: 550; max-width: calc(100vw - 32px); box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); animation: fade 0.2s; }
+/* the train button's choo choo (choochoo.ts runTrain): a train crossing the screen right to left, steam puffing
+   from its chimney and drifting back, "Choo choo!" bobbing over it; never in the way of a tap */
+.choo { position: fixed; inset: 0; z-index: 45; pointer-events: none; overflow: hidden; direction: ltr; }
+.choo-train { position: absolute; left: 0; top: 38%; display: flex; flex-direction: column; align-items: flex-start; width: max-content; transform: translateX(100vw); animation: choo-run 2.4s linear forwards; }
+.choo-cars { font: 44px/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; white-space: nowrap; animation: choo-rock 0.18s ease-in-out infinite alternate; }
+.choo-say { margin: 0 0 34px 4px; padding: 5px 12px; border-radius: calc(99px * var(--rs, 1)); background: var(--accent); color: var(--on-accent, #fff); font-size: 16px; font-weight: 750; white-space: nowrap; box-shadow: 0 6px 18px rgb(0 0 0 / 0.2); animation: choo-bob 0.4s ease-in-out infinite alternate; }
+.choo-steam { position: relative; height: 0; width: 0; left: 10px; }
+.choo-steam i { position: absolute; left: 0; top: -14px; width: 16px; height: 16px; border-radius: 50%; background: rgb(205 205 215 / 0.85); opacity: 0; animation: choo-puff 0.75s ease-out infinite; }
+.choo-steam i:nth-child(2) { animation-delay: 0.25s; }
+.choo-steam i:nth-child(3) { animation-delay: 0.5s; }
+@keyframes choo-run { to { transform: translateX(-100%); } }
+@keyframes choo-rock { to { transform: translateY(-2px); } }
+@keyframes choo-bob { to { transform: translateY(-4px) rotate(-3deg); } }
+@keyframes choo-puff { 0% { opacity: 0.9; transform: translate(0, 0) scale(0.4); } 100% { opacity: 0; transform: translate(34px, -34px) scale(1.8); } }
+@media (prefers-reduced-motion: reduce) { .choo { display: none; } }
 /* "↑ 3 new posts" over a feed scrolled down (#640); NewPosts in app.tsx sets where */
 .new-posts { position: fixed; z-index: 6; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 5px 14px 5px 10px; border: 0; border-radius: calc(99px * var(--rs, 1)); background: var(--accent); color: var(--on-accent, #fff); font-size: 14px; font-weight: 650; white-space: nowrap; box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); cursor: pointer; animation: fade 0.2s; }
 .new-posts .faces { display: flex; }

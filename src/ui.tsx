@@ -10,6 +10,7 @@ import { lang, t, t as tr, tn } from './i18n.ts'
 import { blockOf, hides, muteOf, setMute } from './mutes.ts'
 import { spamAccountOf, spamOf } from './spam.ts'
 import { swoosh } from './swoosh.ts'
+import { choochoo, runTrain } from './choochoo.ts'
 import { pinKey, pinnedCast, setPinnedCast, usePinnedCast } from './castpin.ts'
 import { base, detect } from './lang.ts'
 import { bound, FIT, TAP_ZOOM, zoomAt, type Zoom } from './zoom.ts'
@@ -1322,10 +1323,14 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
   }
   // let go (or scrolled away) early: just a tap
   const release = () => (clearTimeout(timer.current), sound.current?.stop(), (sound.current = undefined), charge === ' hold' && setCharge(''))
-  // a train cast's button quotes it at once with its own text (write.ts trainCar); one car per tap until it went out
+  // a train cast's button quotes it at once with its own text (write.ts trainCar); one car per tap until it went out.
+  // The tap blows the whistle and sends a train across the screen (choochoo.ts) right away, not waiting on the cast.
   const [boarding, setBoarding] = useState(false)
   const board = () => {
     if (!requireAccount()) return
+    choochoo()
+    runTrain(t('Choo choo!'))
+    navigator.vibrate?.([40, 60, 40])
     setBoarding(true)
     w().then((m) => m.trainCar(c)).then(() => toast('Joined the train'), (e) => toast(e.message)).finally(() => setBoarding(false))
   }

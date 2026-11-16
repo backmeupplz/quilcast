@@ -4,14 +4,22 @@
 let ctx: AudioContext | undefined
 const quiet = { stop() {}, done() {} }
 
-export function swoosh(ms: number) {
+/** The app's one AudioContext (the train's whistle uses it too, choochoo.ts), made on the first sound; undefined
+ *  where there's no Web Audio. Call it in a tap so iOS lets it play. */
+export function audio(): AudioContext | undefined {
   try {
     ctx ||= new AudioContext()
   } catch {
-    return quiet
+    return undefined
   }
-  const a = ctx, t = a.currentTime, end = t + ms / 1000
-  void a.resume()
+  void ctx.resume()
+  return ctx
+}
+
+export function swoosh(ms: number) {
+  const a = audio()
+  if (!a) return quiet
+  const t = a.currentTime, end = t + ms / 1000
   const out = a.createGain()
   out.connect(a.destination)
   out.gain.setValueAtTime(0.0001, t)
