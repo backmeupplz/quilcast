@@ -1362,5 +1362,9 @@
   "Send link": "傳送連結",
   "Check {email} for a link to claim your Sendclap page.": "請查看 {email}，裡面有認領你的 Sendclap 頁面的連結。",
   "Your Sendclap page is yours to edit.": "你的 Sendclap 頁面歸你編輯。",
-  "Open the dashboard": "開啟控制台"
+  "Open the dashboard": "開啟控制台",
+  "Join the train": "上車",
+  "Joined the train": "你已上車",
+  "Train": "火車",
+  "Train: anyone can tap the train button to quote this cast with the same text": "火車：任何人都可以點火車按鈕，用相同文字引用這則動態"
 }

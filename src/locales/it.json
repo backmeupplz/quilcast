@@ -1362,5 +1362,9 @@
   "Send link": "Invia link",
   "Check {email} for a link to claim your Sendclap page.": "Controlla {email}: troverai un link per rivendicare la tua pagina Sendclap.",
   "Your Sendclap page is yours to edit.": "La tua pagina Sendclap è tua, puoi modificarla.",
-  "Open the dashboard": "Apri la dashboard"
+  "Open the dashboard": "Apri la dashboard",
+  "Join the train": "Sali sul treno",
+  "Joined the train": "Sei salito sul treno",
+  "Train": "Treno",
+  "Train: anyone can tap the train button to quote this cast with the same text": "Treno: chiunque può toccare il pulsante del treno per citare questo cast con lo stesso testo"
 }

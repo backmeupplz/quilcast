@@ -1362,5 +1362,9 @@
   "Send link": "Gửi liên kết",
   "Check {email} for a link to claim your Sendclap page.": "Hãy kiểm tra {email} để lấy liên kết nhận trang Sendclap của bạn.",
   "Your Sendclap page is yours to edit.": "Trang Sendclap của bạn giờ là của bạn, bạn có thể chỉnh sửa.",
-  "Open the dashboard": "Mở bảng điều khiển"
+  "Open the dashboard": "Mở bảng điều khiển",
+  "Join the train": "Lên tàu",
+  "Joined the train": "Bạn đã lên tàu",
+  "Train": "Tàu",
+  "Train: anyone can tap the train button to quote this cast with the same text": "Tàu: ai cũng có thể nhấn nút tàu để trích dẫn cast này với cùng nội dung"
 }

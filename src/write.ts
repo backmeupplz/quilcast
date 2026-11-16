@@ -9,7 +9,7 @@ import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { search } from './pow.worker.ts'
 import { ARTICLE, type Outgoing, type Part } from './article.ts'
 import { waitingToPost } from './signout.ts'
-import { castEmbeds, queue } from './shared.ts'
+import { castEmbeds, queue, TRAIN } from './shared.ts'
 
 /** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
  *  can remove it), from one the person types in for this one action, which isn't kept, not even in memory. */
@@ -284,8 +284,8 @@ const fidByName = (name: string) =>
   )
 
 /** A cast can carry MAX_EMBEDS embeds: uploads and a quoted cast first, then links from the text (castEmbeds). */
-export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: string[]; as?: Account } = {}) {
-  const m = await mentions(text, fidByName)
+export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: string[]; as?: Account; said?: Awaited<ReturnType<typeof mentions>> } = {}) {
+  const m = o.said || await mentions(text, fidByName)
   const embeds = castEmbeds(m.text, o.media || [], o.quote)
   const as = o.as || account!
   const hash = await send(MT.CAST_ADD, castBody({ ...m, parent: o.parent || o.channel, embeds }), as)
@@ -303,6 +303,15 @@ export async function post(text: string, o: { parent?: CastRef; channel?: string
   const up = o.parent && posting.get(o.parent.hash)
   if (up) up.direct_replies = [...(up.direct_replies || []), c]
   return hash
+}
+
+/** A train car (shared.ts TRAIN): `c` quoted with its own text and mentions, byte for byte (not looked up again by name). */
+export const trainCar = (c: Cast) => post(c.text || '', { quote: { fid: c.author.fid, hash: c.hash }, media: [TRAIN], said: saidOf(c) })
+/** A cast's text and mentions as they went out: Hypersnap leaves the names out of `text` and gives their byte offsets
+ *  as empty ranges (shared.ts castText). */
+export function saidOf(c: Pick<Cast, 'text' | 'mentioned_profiles' | 'mentioned_profiles_ranges'>) {
+  const at = (c.mentioned_profiles_ranges || []).flatMap((r, i) => (r.start === r.end && c.mentioned_profiles?.[i] ? [{ at: r.start, u: c.mentioned_profiles[i] }] : []))
+  return { text: c.text || '', mentions: at.map((x) => x.u.fid), positions: at.map((x) => x.at), names: at.map((x) => x.u.username || '') }
 }
 
 /** Where a thread goes out: its first post replies to `parent` (or goes into `channel`) and quotes `quote`. */
@@ -777,7 +786,7 @@ export const savePrefs = (p: object) => keyFetch(`/api/prefs/${account!.fid}`, '
 // ponytail: a smart-contract wallet may sign differently each time; its drafts then open only in the browser that saved them
 // `pfid` is the fid of the author of the cast it replies to, so the draft can still go out as that reply when the node
 // can't serve the cast (draftParent)
-export type Draft = { id: string; at: number; parts: { text: string; media: string[] }[]; channel?: string; parent?: string; pfid?: number; quote?: string; as?: number }
+export type Draft = { id: string; at: number; parts: { text: string; media: string[] }[]; channel?: string; parent?: string; pfid?: number; quote?: string; as?: number; train?: boolean }
 
 /** Where a draft goes: a reply to `parent` (or, with `lost`, to a cast that couldn't be loaded), else into `channel`. */
 export const draftTarget = (parent: Cast | undefined, lost: string | undefined, channel: string | undefined): Pick<Draft, 'channel' | 'parent' | 'pfid'> =>

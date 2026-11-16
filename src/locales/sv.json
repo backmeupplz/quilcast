@@ -1362,5 +1362,9 @@
   "Send link": "Skicka länk",
   "Check {email} for a link to claim your Sendclap page.": "Kolla {email} efter en länk för att göra anspråk på din Sendclap-sida.",
   "Your Sendclap page is yours to edit.": "Din Sendclap-sida är din att redigera.",
-  "Open the dashboard": "Öppna instrumentpanelen"
+  "Open the dashboard": "Öppna instrumentpanelen",
+  "Join the train": "Hoppa på tåget",
+  "Joined the train": "Du hoppade på tåget",
+  "Train": "Tåg",
+  "Train: anyone can tap the train button to quote this cast with the same text": "Tåg: vem som helst kan trycka på tågknappen för att citera denna cast med samma text"
 }

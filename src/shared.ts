@@ -607,8 +607,12 @@ export const urlsOf = (c: { text?: string; embeds?: { url?: string }[] }) => {
   // less the pictures and [label](url) links the text already shows with Markdown (other clients still get them as embeds)
   const shown = new Set([...imagesIn(c.text || ''), ...linksIn(c.text || '')])
   const urls = c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : typed(c.text || '').filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
-  return urls.filter((u) => !shown.has(u))
+  return urls.filter((u) => !shown.has(u) && u !== TRAIN)
 }
+/** A train cast carries this embed (other clients show it as a link): its train button quotes it at once with the same
+ *  text and the same embed, so every car is a train cast too (ui.tsx CastCard, the composer's train toggle). */
+export const TRAIN = 'https://quilcast.com/train'
+export const isTrain = (c: { embeds?: { url?: string }[] }) => !!c.embeds?.some((e) => e?.url === TRAIN)
 /** A new cast's embeds (write.ts post), at most MAX_EMBEDS: its media and a quoted cast first, then links from its text,
  *  less the pictures the text shows with Markdown. Readers' Quilcast hides those (urlsOf), so they'd only take a slot. */
 export const castEmbeds = <Q>(text: string, media: string[], quote?: Q) => {
@@ -734,6 +738,8 @@ export const P = {
   sticker: 'M21 12V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7zM21 12h-5a4 4 0 0 0-4 4v5M8 13.5s1.2 1.5 3 1.5M9 9h.01M15 9h.01',
   markdown: 'M3 6h18v12H3zM6 15V9l3 3 3-3v6M17 9v6M14.5 12.5 17 15l2.5-2.5',
   article: 'M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5',
+  // a locomotive from the front: train casts
+  train: 'M7 3h10a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM4 11h16M12 3v8M8 15h.01M16 15h.01M9 18l-2 3M15 18l2 3',
   link: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
   code: 'M16 18l6-6-6-6M8 6l-6 6 6 6',
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',

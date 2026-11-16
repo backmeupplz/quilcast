@@ -89,3 +89,22 @@ test('a node whose queue is full is asked again with the same message; still ful
     globalThis.setTimeout = later
   }
 })
+
+test('a train car keeps the cast\'s own text and mentions, and readers never see the train embed', async () => {
+  Object.assign(globalThis, { addEventListener: () => {}, dispatchEvent: () => true })
+  ;(globalThis as any).localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+  const { saidOf } = await import('./write.ts')
+  const { mentions } = await import('./fc.ts')
+  const { castText, isTrain, TRAIN, urlsOf } = await import('./shared.ts')
+  // Hypersnap's shape: names out of the text, their byte offsets as empty ranges; a non-empty range isn't a mention
+  const c = { text: 'gm  and ✨ ', mentioned_profiles: [{ fid: 2, username: 'v' }, { fid: 3, username: 'dwr' }, { fid: 4, username: 'x' }], mentioned_profiles_ranges: [{ start: 3, end: 3 }, { start: 12, end: 12 }, { start: 0, end: 2 }] }
+  const said = saidOf(c)
+  assert.deepEqual(said, { text: 'gm  and ✨ ', mentions: [2, 3], positions: [3, 12], names: ['v', 'dwr'] })
+  // the same as typing the cast again and looking each name up
+  const ids: Record<string, number> = { v: 2, dwr: 3 }
+  assert.deepEqual(await mentions(castText(c), async (n) => ids[n]), said)
+  const car = { text: 'gm', embeds: [{ cast_id: { fid: 1, hash: '0x' + 'a'.repeat(40) } }, { url: TRAIN }, { url: 'https://example.com/' }] }
+  assert.ok(isTrain(car))
+  assert.ok(!isTrain({ embeds: [{ url: 'https://quilcast.com/trains' }] }))
+  assert.deepEqual(urlsOf(car), ['https://example.com/'])
+})

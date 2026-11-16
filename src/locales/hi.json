@@ -1362,5 +1362,9 @@
   "Send link": "लिंक भेजें",
   "Check {email} for a link to claim your Sendclap page.": "अपना Sendclap पेज क्लेम करने के लिंक के लिए {email} देखें।",
   "Your Sendclap page is yours to edit.": "आपका Sendclap पेज अब आपका है, आप इसे एडिट कर सकते हैं।",
-  "Open the dashboard": "डैशबोर्ड खोलें"
+  "Open the dashboard": "डैशबोर्ड खोलें",
+  "Join the train": "ट्रेन में चढ़ें",
+  "Joined the train": "आप ट्रेन में चढ़ गए",
+  "Train": "ट्रेन",
+  "Train: anyone can tap the train button to quote this cast with the same text": "ट्रेन: कोई भी ट्रेन बटन दबाकर इस कास्ट को उसी टेक्स्ट के साथ कोट कर सकता है"
 }

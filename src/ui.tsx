@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, articleNow, articleOf, back, follow, get, go, LINK_RE, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
-import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, isTrain, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -1322,6 +1322,13 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
   }
   // let go (or scrolled away) early: just a tap
   const release = () => (clearTimeout(timer.current), sound.current?.stop(), (sound.current = undefined), charge === ' hold' && setCharge(''))
+  // a train cast's button quotes it at once with its own text (write.ts trainCar); one car per tap until it went out
+  const [boarding, setBoarding] = useState(false)
+  const board = () => {
+    if (!requireAccount()) return
+    setBoarding(true)
+    w().then((m) => m.trainCar(c)).then(() => toast('Joined the train'), (e) => toast(e.message)).finally(() => setBoarding(false))
+  }
   const share = () => {
     const url = `${location.origin}/c/${c.hash}`
     navigator.share ? navigator.share({ url }).catch(() => {}) : navigator.clipboard.writeText(url).then(() => toast('Link copied'))
@@ -1370,6 +1377,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
         )}
       </span>
       {!settings.quorum && like}
+      {isTrain(c) && <button class="act" aria-label={t('Join the train')} title={t('Join the train')} disabled={boarding} onClick={board}><Icon d={P.train} /></button>}
       <button class="act cl" aria-label={t('Collect')} title={t('Collect')} onClick={(e) => (sparkle(e.currentTarget), launchApp(COLLECT(c.hash)))}><Icon d={P.collect} /></button>
       <button class="act" aria-label={t('Share')} onClick={share}><Icon d={P.share} /></button>
       <span class="wrap-menu">

@@ -1362,5 +1362,9 @@
   "Send link": "Bağlantı gönder",
   "Check {email} for a link to claim your Sendclap page.": "Sendclap sayfanı sahiplenme bağlantısı için {email} adresine bak.",
   "Your Sendclap page is yours to edit.": "Sendclap sayfan artık senin, istediğin gibi düzenleyebilirsin.",
-  "Open the dashboard": "Panoyu aç"
+  "Open the dashboard": "Panoyu aç",
+  "Join the train": "Trene bin",
+  "Joined the train": "Trene bindin",
+  "Train": "Tren",
+  "Train: anyone can tap the train button to quote this cast with the same text": "Tren: herkes tren düğmesine dokunarak bu cast'i aynı metinle alıntılayabilir"
 }

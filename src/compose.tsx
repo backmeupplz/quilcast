@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, posting, users, type Account, type Cast, type User } from './api.ts'
 import { lang, t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
+import { castText, embedRoom, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
 import { ago, Avatar, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
 import type { Draft, Scheduled, ThreadStart } from './write.ts'
 import { findChannels, getChannel, isMember, urlOf, type Channel } from './channels.ts'
@@ -200,7 +200,7 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
         <div class="md-preview" aria-label={t('Preview')}><span class="md-label">{t('Preview')}</span><RichText text={part.text.trim()} /></div>
       )}
       {first && quote && <div class="embed-preview"><QuoteCard c={quote} /></div>}
-      {first && embeds.map((u) => <div class="embed-preview">{isImg(u) || isVid(u) ? <Media urls={[u]} /> : <LinkCard u={u} />}</div>)}
+      {first && embeds.filter((u) => u !== TRAIN).map((u) => <div class="embed-preview">{isImg(u) || isVid(u) ? <Media urls={[u]} /> : <LinkCard u={u} />}</div>)}
       {links.slice(0, slots).map((u) => <div class="embed-preview"><LinkCard u={u} /></div>)}
     </div>
   )
@@ -275,8 +275,10 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   // out instead of forking from the start again, and `root` is the thread's first cast. Opening a draft or a scheduled
   // cast starts over.
   const [cont, setCont] = useState<{ next: ThreadStart; root: string }>()
-  // a mini app's links went out with the first post
-  const embeds = cont ? [] : given
+  // train mode (shared.ts TRAIN): the first post carries the train embed, so it gets a train button
+  const [train, setTrain] = useState(false)
+  // a mini app's links and the train embed went out with the first post
+  const embeds = cont ? [] : train ? [...given, TRAIN] : given
   // a mini app hears of its cast once that went out, even when the rest of the thread didn't
   // a page to open once the composer is closed (the sticker picker's "Manage"; the composer sits over the page)
   const then = useRef('')
@@ -324,7 +326,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
     try {
       const media = (p: Part) => p.files.flatMap((f) => (f.url ? [f.url] : []))
       const m = await w()
-      await m.saveDraft({ id: draft || crypto.randomUUID(), at: Date.now(), parts: parts.map((p) => ({ text: p.text, media: media(p) })), ...m.draftTarget(parent, lost, channel), quote: quote?.hash, as: as.fid })
+      await m.saveDraft({ id: draft || crypto.randomUUID(), at: Date.now(), parts: parts.map((p) => ({ text: p.text, media: media(p) })), ...m.draftTarget(parent, lost, channel), quote: quote?.hash, as: as.fid, train: train || undefined })
       toast('Draft saved')
       onClose()
     } catch (e: any) {
@@ -344,6 +346,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
     setGone(undefined)
     setParts(ps)
     setChannel(d.channel)
+    setTrain(!!d.train)
     setAs(accounts.find((a) => a.done && a.fid === d.as) || account!)
     setDraft(d.id)
     setActive(0)
@@ -554,7 +557,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
         channel: !parent && channel ? await urlOf(channel) : undefined,
         quote: quote && { fid: quote.author.fid, hash: quote.hash },
         as,
-        draft: { parts: parts.map((p) => ({ text: p.text, media: media(p) })), ...m.draftTarget(parent, lost, channel), quote: quote?.hash, as: as.fid },
+        draft: { parts: parts.map((p) => ({ text: p.text, media: media(p) })), ...m.draftTarget(parent, lost, channel), quote: quote?.hash, as: as.fid, train: train || undefined },
       }, at, same ? editing!.id : undefined)
       if (editing && !same) await unschedule(m, editing)
       if (draft) m.dropDraft(draft).catch(() => {})
@@ -644,6 +647,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
           <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
           {canDraft && <button class={`icon-btn${timing ? ' on' : ''}`} aria-label={t('Schedule')} title={t('Schedule')} aria-pressed={timing} disabled={busy} onClick={() => (timing ? (setTiming(false), setWhen(undefined)) : (setTiming(true), setWhen((x) => x || Math.ceil((Date.now() + 3600e3) / 300e3) * 300e3)))}><Icon d={P.clock} /></button>}
+          {!cont && <button class={`icon-btn${train ? ' on' : ''}`} aria-label={t('Train')} title={t('Train: anyone can tap the train button to quote this cast with the same text')} aria-pressed={train} disabled={busy} onClick={() => setTrain(!train)}><Icon d={P.train} /></button>}
           {!parent && !lost && <ChannelPicker value={channel} set={setChannel} fid={as.fid} />}
           <span class={`count${left < 50 ? ' warn' : ''}`} title={used(cur) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
             {used(cur) > 280 ? left : ''}

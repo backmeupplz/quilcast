@@ -1362,5 +1362,9 @@
   "Send link": "Отправить ссылку",
   "Check {email} for a link to claim your Sendclap page.": "Проверь {email}: там ссылка, чтобы забрать твою страницу Sendclap.",
   "Your Sendclap page is yours to edit.": "Твоя страница Sendclap теперь твоя, её можно редактировать.",
-  "Open the dashboard": "Открыть панель"
+  "Open the dashboard": "Открыть панель",
+  "Join the train": "Сесть в поезд",
+  "Joined the train": "Вы в поезде",
+  "Train": "Поезд",
+  "Train: anyone can tap the train button to quote this cast with the same text": "Поезд: любой может нажать кнопку поезда, чтобы процитировать этот каст с тем же текстом"
 }

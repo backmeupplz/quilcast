@@ -1362,5 +1362,9 @@
   "Send link": "링크 보내기",
   "Check {email} for a link to claim your Sendclap page.": "{email}에서 Sendclap 페이지를 받아 갈 수 있는 링크를 확인해 주세요.",
   "Your Sendclap page is yours to edit.": "이제 Sendclap 페이지를 직접 편집할 수 있어요.",
-  "Open the dashboard": "대시보드 열기"
+  "Open the dashboard": "대시보드 열기",
+  "Join the train": "기차 타기",
+  "Joined the train": "기차에 탔어요",
+  "Train": "기차",
+  "Train: anyone can tap the train button to quote this cast with the same text": "기차: 누구나 기차 버튼을 눌러 같은 텍스트로 이 캐스트를 인용할 수 있어요"
 }

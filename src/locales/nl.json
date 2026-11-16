@@ -1362,5 +1362,9 @@
   "Send link": "Link versturen",
   "Check {email} for a link to claim your Sendclap page.": "Check {email} voor een link om je Sendclap-pagina te claimen.",
   "Your Sendclap page is yours to edit.": "Je Sendclap-pagina is van jou om te bewerken.",
-  "Open the dashboard": "Dashboard openen"
+  "Open the dashboard": "Dashboard openen",
+  "Join the train": "Stap in de trein",
+  "Joined the train": "Je bent ingestapt",
+  "Train": "Trein",
+  "Train: anyone can tap the train button to quote this cast with the same text": "Trein: iedereen kan op de treinknop tikken om deze cast met dezelfde tekst te citeren"
 }

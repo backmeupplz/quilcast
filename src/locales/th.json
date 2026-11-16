@@ -1362,5 +1362,9 @@
   "Send link": "ส่งลิงก์",
   "Check {email} for a link to claim your Sendclap page.": "ตรวจสอบ {email} เพื่อดูลิงก์รับสิทธิ์เพจ Sendclap ของคุณ",
   "Your Sendclap page is yours to edit.": "เพจ Sendclap ของคุณเป็นของคุณแล้ว แก้ไขได้เลย",
-  "Open the dashboard": "เปิดแดชบอร์ด"
+  "Open the dashboard": "เปิดแดชบอร์ด",
+  "Join the train": "ขึ้นรถไฟ",
+  "Joined the train": "คุณขึ้นรถไฟแล้ว",
+  "Train": "รถไฟ",
+  "Train: anyone can tap the train button to quote this cast with the same text": "รถไฟ: ใครก็กดปุ่มรถไฟเพื่ออ้างอิงแคสต์นี้ด้วยข้อความเดียวกันได้"
 }

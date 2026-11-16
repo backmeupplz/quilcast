@@ -1362,5 +1362,9 @@
   "Send link": "Надіслати посилання",
   "Check {email} for a link to claim your Sendclap page.": "Перевір {email}: там посилання, щоб забрати твою сторінку Sendclap.",
   "Your Sendclap page is yours to edit.": "Твоя сторінка Sendclap тепер твоя, її можна редагувати.",
-  "Open the dashboard": "Відкрити панель"
+  "Open the dashboard": "Відкрити панель",
+  "Join the train": "Сісти в потяг",
+  "Joined the train": "Ви в потязі",
+  "Train": "Потяг",
+  "Train: anyone can tap the train button to quote this cast with the same text": "Потяг: будь-хто може натиснути кнопку потяга, щоб процитувати цей каст із тим самим текстом"
 }
