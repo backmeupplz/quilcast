@@ -9,7 +9,7 @@ import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { search } from './pow.worker.ts'
 import { ARTICLE, type Outgoing, type Part } from './article.ts'
 import { waitingToPost } from './signout.ts'
-import { castEmbeds, queue, TRAIN } from './shared.ts'
+import { carMedia, castEmbeds, queue } from './shared.ts'
 
 /** The custody key of a phrase account: from the phrase in the vault, or, when this browser doesn't keep it (Settings
  *  can remove it), from one the person types in for this one action, which isn't kept, not even in memory. */
@@ -305,8 +305,9 @@ export async function post(text: string, o: { parent?: CastRef; channel?: string
   return hash
 }
 
-/** A train car (shared.ts TRAIN): `c` quoted with its own text and mentions, byte for byte (not looked up again by name). */
-export const trainCar = (c: Cast) => post(c.text || '', { quote: { fid: c.author.fid, hash: c.hash }, media: [TRAIN], said: saidOf(c) })
+/** A train car (shared.ts TRAIN): `c` quoted with its own text and mentions, byte for byte (not looked up again by name),
+ *  and its uploads and links (carMedia). */
+export const trainCar = (c: Cast) => post(c.text || '', { quote: { fid: c.author.fid, hash: c.hash }, media: carMedia(c), said: saidOf(c) })
 /** A cast's text and mentions as they went out: Hypersnap leaves the names out of `text` and gives their byte offsets
  *  as empty ranges (shared.ts castText). */
 export function saidOf(c: Pick<Cast, 'text' | 'mentioned_profiles' | 'mentioned_profiles_ranges'>) {

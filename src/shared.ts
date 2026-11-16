@@ -612,7 +612,28 @@ export const urlsOf = (c: { text?: string; embeds?: { url?: string }[] }) => {
 /** A train cast carries this embed (other clients show it as a link): its train button quotes it at once with the same
  *  text and the same embed, so every car is a train cast too (ui.tsx CastCard, the composer's train toggle). */
 export const TRAIN = 'https://quilcast.com/train'
+/** The longest URL embed the hub takes, in bytes. */
+export const EMBED_BYTES = 256
 export const isTrain = (c: { embeds?: { url?: string }[] }) => !!c.embeds?.some((e) => e?.url === TRAIN)
+/** A train car's media embeds (write.ts trainCar), so the car looks like the cast it joins: that cast's URL embeds
+ *  (uploads, links, mini apps), pictures and videos first, then TRAIN. Not its quoted cast (the car quotes the cast
+ *  itself), not TRAIN twice, not links its text has (castEmbeds adds those after the quote, as for any post) and not the
+ *  pictures and links its text shows with Markdown (readers' Quilcast hides those, urlsOf). Each goes out as the cast had
+ *  it, not as safeUrl rewrites it: percent-encoding can take a URL the hub took past its EMBED_BYTES. Only as many as
+ *  leave room for TRAIN and the quote, so the cast stays within MAX_EMBEDS. */
+export const carMedia = (c: { text?: string; embeds?: { url?: string }[] }) => {
+  const text = c.text || ''
+  const inText = new Set([...textLinks(text).map((u) => safeUrl(u) ?? u), ...imagesIn(text), ...linksIn(text)])
+  const seen = new Set<string>()
+  const urls = (c.embeds || []).flatMap((e) => {
+    const u = e?.url, safe = safeUrl(u)
+    if (!u || !safe || u === TRAIN || inText.has(safe) || seen.has(safe) || new TextEncoder().encode(u).length > EMBED_BYTES) return []
+    seen.add(safe)
+    return [u]
+  })
+  const media = (u: string) => isImg(u) || isVid(u)
+  return [...urls.filter(media), ...urls.filter((u) => !media(u))].slice(0, MAX_EMBEDS - 2).concat(TRAIN)
+}
 /** A new cast's embeds (write.ts post), at most MAX_EMBEDS: its media and a quoted cast first, then links from its text,
  *  less the pictures the text shows with Markdown. Readers' Quilcast hides those (urlsOf), so they'd only take a slot. */
 export const castEmbeds = <Q>(text: string, media: string[], quote?: Q) => {

@@ -108,3 +108,27 @@ test('a train car keeps the cast\'s own text and mentions, and readers never see
   assert.ok(!isTrain({ embeds: [{ url: 'https://quilcast.com/trains' }] }))
   assert.deepEqual(urlsOf(car), ['https://example.com/'])
 })
+
+test('a train car carries the cast\'s uploads and links, within the embed cap', async () => {
+  const { carMedia, castEmbeds, MAX_EMBEDS, TRAIN } = await import('./shared.ts')
+  const q = { fid: 1, hash: '0x' + 'a'.repeat(40) }, other = { cast_id: { fid: 9, hash: '0x' + 'b'.repeat(40) } }
+  const pic = 'https://imagedelivery.net/x/pic/original', vid = 'https://stream.example/v.m3u8', app = 'https://app.example/'
+  const car = (c: { text: string; embeds: object[] }) => castEmbeds(c.text, carMedia(c), q)
+  // an upload and a link added in the composer follow; the cast's own quote and TRAIN don't come twice
+  assert.deepEqual(car({ text: 'gm', embeds: [{ url: app }, other, { url: pic }, { url: TRAIN }] }), [pic, app, TRAIN, q])
+  // a car of a car: its quote of the cast before is skipped, its picture follows, and a link typed in the text comes
+  // once, after the quote, as castEmbeds puts text links
+  assert.deepEqual(car({ text: 'see youtube.com/watch?v=1', embeds: [{ cast_id: q }, { url: TRAIN }, { url: pic }, { url: 'https://youtube.com/watch?v=1' }] }), [pic, TRAIN, q, 'https://youtube.com/watch?v=1'])
+  // too many: TRAIN and the quote stay, then as many media as fit, then links
+  const full = car({ text: 'a.com', embeds: [{ url: app }, { url: vid }, { url: pic }, { url: TRAIN }] })
+  assert.deepEqual(full, [vid, pic, TRAIN, q])
+  assert.equal(full.length, MAX_EMBEDS)
+  // unsafe URLs aren't copied
+  assert.deepEqual(carMedia({ embeds: [{ url: 'javascript:alert(1)' }, { url: 'http://127.0.0.1/x.png' }, { url: TRAIN }] }), [TRAIN])
+  // a URL goes out as the cast had it: percent-encoded, this one would be far past the hub's 256 bytes
+  const wiki = 'https://ru.wikipedia.org/wiki/' + 'Железная_дорога_'.repeat(5)
+  assert.ok(new TextEncoder().encode(wiki).length <= 256 && new TextEncoder().encode(new URL(wiki).href).length > 256)
+  assert.deepEqual(carMedia({ embeds: [{ url: wiki }, { url: 'https://a.example/' + 'x'.repeat(250) }] }), [wiki, TRAIN])
+  // pictures and links the text shows with Markdown are hidden embeds, so they don't take the car's slots
+  assert.deepEqual(carMedia({ text: `![](${pic}) [app](${app})`, embeds: [{ url: pic }, { url: app }, { url: vid }] }), [vid, TRAIN])
+})
