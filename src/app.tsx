@@ -2399,6 +2399,15 @@ function Settings() {
           <label class="lk-row"><span>{t('Spam threshold')}</span><span class="lk-ctl"><input type="range" min={50} max={99} value={spamAt()} onInput={(e) => ((settings.spamAt = Number(e.currentTarget.value)), saveSettings(), spamChanged(), force((x) => x + 1))} /><output>{spamAt()}%</output></span></label>
           <p class="hint">{t('Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.')} {t('Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.')}</p>
         </section>
+        <section>
+          <div class="setting">
+            <h2>{t('Train casts')}</h2>
+            <div class="seg">
+              {(['show', 'hide'] as const).map((v) => <button class={(settings.trains || 'show') === v ? 'on' : ''} onClick={() => ((settings.trains = v), saveSettings(), spamChanged(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
+            </div>
+          </div>
+          <p class="hint">{t('Anyone can join a train with one tap, so one train can fill your feed with the same cast. Hiding trains takes them out of feeds, replies and notifications; your own still show, and so does one you open.')}</p>
+        </section>
         {account && (
           <section>
             <h2>{t('Keys')}</h2>

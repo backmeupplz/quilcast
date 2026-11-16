@@ -2,7 +2,7 @@
 // quotes, likes, recasts and follows reach this device with Quilcast closed. Each account is signed up with its own
 // key, so nobody can sign up for someone else's, and picks its own kinds. What's on is kept here (api.ts alertsKept)
 // with the subscription it was signed up with and the settings last sent, so a subscription the browser replaced, a
-// changed language or spam setting, or a sign-up the server lost is sent again on the next start. Signing out turns it
+// changed language, spam or train setting, or a sign-up the server lost is sent again on the next start. Signing out turns it
 // off (api.ts forgetAlerts).
 import { accounts, ALERTS, alertsKept, flushAlertsOff, forgetAlerts, read, save, settings, type Account } from './api.ts'
 import { lang } from './i18n.ts'
@@ -23,8 +23,9 @@ export async function alertsOn() {
   return new Map(Object.entries(alertsKept().on).flatMap(([fid, v]): [number, Kind[]][] => (sub && v.endpoint === sub.endpoint ? [[Number(fid), kindsOf(v.kinds)]] : [])))
 }
 
-// what the server is told besides the subscription; the spam this browser hides (Settings → Spam) stays out too
-const settingsFor = (kinds: Kind[]) => ({ kinds, lang, spam: { casts: settings.spam === 'hide', accounts: settings.spamAccounts === 'hide', at: spamAt() } })
+// what the server is told besides the subscription; the spam and train casts this browser hides (Settings → Spam, Train
+// casts) stay out too. `trains` is there only when they're hidden, so sign-ups from before it aren't all sent again
+const settingsFor = (kinds: Kind[]) => ({ kinds, lang, spam: { casts: settings.spam === 'hide', accounts: settings.spamAccounts === 'hide', at: spamAt() }, ...(settings.trains === 'hide' ? { trains: true } : {}) })
 
 async function signUp(a: Account, sub: PushSubscription, kinds: Kind[], background: boolean) {
   const s = settingsFor(kinds)
@@ -49,7 +50,7 @@ export async function setKinds(a: Account, kinds: Kind[]) {
 }
 
 let spamTimer: ReturnType<typeof setTimeout> | undefined
-/** The spam settings changed: every account on here is told, once the slider stops. */
+/** The spam or train settings changed: every account on here is told, once the slider stops. */
 export const spamChanged = () => {
   clearTimeout(spamTimer)
   spamTimer = setTimeout(() => refreshAlerts().catch(() => {}), 1500)

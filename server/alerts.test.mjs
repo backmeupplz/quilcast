@@ -113,6 +113,21 @@ test('each browser gets the kinds it asked for, in its language, past its own sp
   assert.deepEqual(asked.sort(), ['casts', 'users'])
 })
 
+test('a browser that hides train casts gets no train replies, mentions or quotes, but still likes on your own train', async () => {
+  const TRAIN = 'https://quilcast.com/train'
+  _db({ fids: { 7: fresh([sub('https://push.example/a'), sub('https://push.example/b', undefined, { trains: true })]) } })
+  const myTrain = { ...mine, hash: 'ab'.repeat(20), embeds: [{ url: TRAIN }] }
+  const car = (fid, type, hash) => ({ type, cast: { hash, text: 'choo choo', embeds: [{ cast_id: { fid: 7, hash: myTrain.hash } }, { url: TRAIN }], author: { fid } }, user: user(fid), timestamp: at(1) })
+  notes[7] = [car(40, 'quote', 'c1'.repeat(20)), car(41, 'mention', 'c2'.repeat(20)), { ...car(42, 'reply', 'c3'.repeat(20)), cast: { hash: 'c3'.repeat(20), text: 'no train here', embeds: [{ url: 'https://quilcast.com/trainspotting' }], author: { fid: 42 } } }, like(43, 1, myTrain)]
+  const sent = await run(7)
+  assert.deepEqual(titles(sent.filter(([e]) => e.endsWith('/a'))), ['User 40 quoted your cast', 'User 41 mentioned you', 'User 42 replied', 'User 43 liked your cast'])
+  assert.deepEqual(titles(sent.filter(([e]) => e.endsWith('/b'))), ['User 42 replied', 'User 43 liked your cast'])
+  // its state says so, in the order and shape src/alerts.ts sends (`trains` only when they're hidden)
+  const state = (endpoint) => alertState(Readable.from([JSON.stringify({ endpoint })]), 7)
+  assert.equal(JSON.stringify(await state('https://push.example/b')), JSON.stringify({ kinds: sub('x').kinds, lang: 'en', spam: { casts: false, accounts: false, at: 70 }, trains: true }))
+  assert.equal(JSON.stringify(await state('https://push.example/a')), JSON.stringify({ kinds: sub('x').kinds, lang: 'en', spam: { casts: false, accounts: false, at: 70 } }))
+})
+
 test('a new reply the spam service has not scored yet waits, for browsers that hide spam', async () => {
   _db({ fids: { 7: fresh([sub('https://push.example/a', undefined, { spam: { casts: true, accounts: false, at: 70 } })]) } })
   spam.casts = {}

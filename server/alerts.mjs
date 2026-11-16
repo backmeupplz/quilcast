@@ -3,9 +3,9 @@
 // account's key, handing over its Web Push subscription and what it wants. Every minute the server reads each
 // signed-up account's notifications from the node and pushes what's new through server/push.mjs: likes and recasts
 // grouped per cast and follows together ("@a and 4 others liked your cast"), past the account's mutes, blocks and
-// muted words (server/mutes.mjs), casts taken down for everyone, and spam when that browser hides it.
-//   PUT  /api/alerts/<fid>        sign up, signed "quilcast-alerts:<fid>:<ts>:<body>", body {subscription, kinds, lang, spam}
-//   POST /api/alerts/<fid>/state  {endpoint}: what that browser gets for the account ({kinds, lang, spam}), or null
+// muted words (server/mutes.mjs), casts taken down for everyone, and spam and train casts when that browser hides them.
+//   PUT  /api/alerts/<fid>        sign up, signed "quilcast-alerts:<fid>:<ts>:<body>", body {subscription, kinds, lang, spam, trains?}
+//   POST /api/alerts/<fid>/state  {endpoint}: what that browser gets for the account ({kinds, lang, spam, trains?}), or null
 //   POST /api/alerts/<fid>/off    {endpoint}: that browser stops getting them (signing out; the endpoint is the browser's secret)
 // Kept per FID in <data>/alerts/<fid>.json: its browsers' subscriptions with the kinds, language and spam settings
 // each picked. Every change reads that file and writes it back at once, so during a deploy, while the old and the new
@@ -17,7 +17,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { castText, PLURALS, proxied, wordsRe } from '../src/shared.ts'
+import { castText, isTrain, PLURALS, proxied, wordsRe } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { keySigned } from './looks.mjs'
 import { readMutes } from './mutes.mjs'
@@ -202,7 +202,8 @@ const sharing = () => {
   for (const a of Object.values(db.fids)) for (const s of a.subs) n.set(s.endpoint, (n.get(s.endpoint) || 0) + 1)
   return n
 }
-const settingsOf = (s) => ({ kinds: s.kinds, lang: s.lang, spam: s.spam })
+// `trains` only when that browser hides them, as src/alerts.ts sends it
+const settingsOf = (s) => ({ kinds: s.kinds, lang: s.lang, spam: s.spam, ...(s.trains ? { trains: true } : {}) })
 
 export async function putAlerts(req, fid, node) {
   const body = await readText(req, 8000)
@@ -223,6 +224,8 @@ export async function putAlerts(req, fid, node) {
     lang: LANGS.has(b.lang) ? b.lang : 'en',
     // the browser's own spam settings (src/spam.ts), so spam it hides doesn't reach it either
     spam: { casts: b.spam?.casts === true, accounts: b.spam?.accounts === true, at: Number.isInteger(at) && at >= 50 && at <= 99 ? at : 70 },
+    // and Settings → Train casts → Hide: other people's train casts (src/mutes.ts hidesTrain) don't reach it
+    ...(b.trains === true ? { trains: true } : {}),
   }
   // new settings (a kind ticked, spam shown) count from the account's last look: what was judged before stays as it
   // was, and what came after (or still waits for its spam score) goes by the new ones
@@ -315,8 +318,11 @@ const NONE = { casts: {}, users: {} }
 const spammy = (n, spam, scores) =>
   (spam.accounts && (!scores.users || scores.users[n.user.fid] * 100 >= spam.at)) ||
   (spam.casts && ofCast(n) && !!n.cast && (!scores.casts || scores.casts[n.cast.hash] * 100 >= spam.at))
-/** Whether `sub` gets `n`: a kind it asked for, after its settings last changed, past its spam settings. */
-const gets = (sub, n, scores) => sub.kinds.includes(kindOf(n.type)) && timeOf(n) > (sub.since || 0) && !spammy(n, sub.spam, scores)
+// a reply, mention or quote that is a train cast (a car quoting your cast too), for a browser that hides them; a like
+// or recast of your own train still goes
+const train = (n, sub) => !!sub.trains && ofCast(n) && !!n.cast && isTrain(n.cast)
+/** Whether `sub` gets `n`: a kind it asked for, after its settings last changed, past its spam and train settings. */
+const gets = (sub, n, scores) => sub.kinds.includes(kindOf(n.type)) && timeOf(n) > (sub.since || 0) && !spammy(n, sub.spam, scores) && !train(n, sub)
 
 /** Likes and recasts per cast and follows together; replies, mentions and quotes one by one. Newest first. */
 export function group(notes) {

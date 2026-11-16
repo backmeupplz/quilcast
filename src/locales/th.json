@@ -1367,6 +1367,8 @@
   "Choo choo!": "ปู๊น ปู๊น!",
   "Train": "รถไฟ",
   "Train: anyone can tap the train button to quote this cast with the same text": "รถไฟ: ใครก็กดปุ่มรถไฟเพื่ออ้างอิงแคสต์นี้ด้วยข้อความเดียวกันได้",
+  "Train casts": "แคสต์รถไฟ",
+  "Anyone can join a train with one tap, so one train can fill your feed with the same cast. Hiding trains takes them out of feeds, replies and notifications; your own still show, and so does one you open.": "ใครก็ขึ้นรถไฟได้ด้วยการแตะครั้งเดียว รถไฟขบวนเดียวจึงอาจทำให้ฟีดของคุณเต็มไปด้วยแคสต์เดียวกัน การซ่อนรถไฟจะนำออกจากฟีด การตอบกลับ และการแจ้งเตือน ส่วนของคุณเองยังแสดงอยู่ รวมถึงขบวนที่คุณเปิดดู",
   "Join the train?": "ขึ้นรถไฟไหม?",
   "Start a train?": "เริ่มรถไฟไหม?",
   "Joining posts a quote of this cast, with the same text, from your account right away.": "การขึ้นรถไฟจะโพสต์การอ้างอิงแคสต์นี้ด้วยข้อความเดียวกันจากบัญชีของคุณทันที",
