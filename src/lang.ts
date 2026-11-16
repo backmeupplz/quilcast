@@ -56,3 +56,32 @@ export function detect(text: string): string | null {
 
 /** The language Quilcast is in (en, es, ja…), as detect() names it. */
 export const base = (l: string) => l.split('-')[0]
+
+/** Every language detect() can name, for the "Don't translate from" picks ('zh' is Chinese in either script). */
+export const DETECTED = ['en', 'es', 'pt', 'fr', 'de', 'it', 'nl', 'tr', 'id', 'pl', 'sv', 'vi', 'ru', 'uk', 'ar', 'fa', 'he', 'th', 'hi', 'bn', 'ta', 'el', 'ka', 'hy', 'ja', 'ko', 'zh']
+
+/** The languages the reader reads, so casts in them offer no translation: the ones picked in Settings and always
+ *  the language Quilcast is in. (What's kept in Settings is checked here: it's whatever localStorage had.) */
+export const noTranslate = (app: string, picked?: unknown) =>
+  new Set([base(app), ...(Array.isArray(picked) ? picked.filter((l): l is string => typeof l === 'string').map(base) : [])])
+
+/** The picks after `code` is tapped: on or off, except the app's own language, which stays on. */
+export const togglePick = (app: string, picked: unknown, code: string): string[] => {
+  const now = [...noTranslate(app, picked)].filter((l) => l !== base(app))
+  return base(code) === base(app) ? now : now.includes(code) ? now.filter((l) => l !== code) : [...now, code]
+}
+
+/** The picks once the app switches from `old` to another language: the old one stays picked, now one that can go. */
+export const keepOld = (old: string, picked: unknown): string[] => [...noTranslate(old, picked)]
+
+/** The language a cast could be translated from, or null for none (no Translate button, no kept translation looked
+ *  up): what detect() says, unless the reader reads it. */
+export const translatableFrom = (text: string, reads: Set<string>) => {
+  const l = detect(text)
+  return l && !reads.has(l) ? l : null
+}
+
+/** Whether a cast shows anything of a translation: it's in a language to translate from, and the model, when it kept
+ *  one, didn't find it's in a language the reader reads after all. */
+export const offersTranslation = (from: string | null, keptFrom: string | undefined, reads: Set<string>) =>
+  !!from && !(keptFrom && reads.has(base(keptFrom)))

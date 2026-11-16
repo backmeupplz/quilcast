@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "上車會立即從你的帳號發布一則引用這則動態的動態，文字相同。",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "你的動態會有一個火車按鈕。任何人點它，都會立即從自己的帳號發布一則引用你這則動態的動態，文字相同。",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "火車裡的每則引用也帶有火車按鈕，所以任何人都可以用同樣的方式上車。",
-  "Quotes in the train are casts like any other, so you can delete yours.": "火車裡的引用和其他動態一樣，你可以刪除自己的。"
+  "Quotes in the train are casts like any other, so you can delete yours.": "火車裡的引用和其他動態一樣，你可以刪除自己的。",
+  "Don't translate from": "不翻譯的語言",
+  "Quilcast is in this language": "Quilcast 目前使用此語言",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "這些語言的貼文不顯示「翻譯」按鈕，也不會為你翻譯。Quilcast 目前使用的語言總在其中。"
 }

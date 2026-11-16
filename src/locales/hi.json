@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "सवार होने पर इसी टेक्स्ट के साथ इस कास्ट का कोट आपके अकाउंट से तुरंत पोस्ट हो जाता है।",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "आपके कास्ट पर ट्रेन बटन आ जाएगा। जो भी उसे टैप करेगा, उसके अपने अकाउंट से इसी टेक्स्ट के साथ आपके कास्ट का कोट तुरंत पोस्ट हो जाएगा।",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "ट्रेन के हर कोट पर भी ट्रेन बटन होता है, इसलिए कोई भी इसी तरह सवार हो सकता है।",
-  "Quotes in the train are casts like any other, so you can delete yours.": "ट्रेन के कोट भी दूसरे कास्ट जैसे ही हैं, इसलिए आप अपने कोट डिलीट कर सकते हैं।"
+  "Quotes in the train are casts like any other, so you can delete yours.": "ट्रेन के कोट भी दूसरे कास्ट जैसे ही हैं, इसलिए आप अपने कोट डिलीट कर सकते हैं।",
+  "Don't translate from": "इनसे अनुवाद न करें",
+  "Quilcast is in this language": "Quilcast इसी भाषा में है",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "इन भाषाओं के कास्ट में अनुवाद बटन नहीं दिखता और उनका आपके लिए कभी अनुवाद नहीं होता। Quilcast जिस भाषा में है, वह हमेशा इनमें शामिल रहती है।"
 }

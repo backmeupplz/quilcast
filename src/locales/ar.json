@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "ركوب القطار ينشر فورًا من حسابك اقتباسًا لهذا المنشور بالنص نفسه.",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "سيحصل منشورك على زر القطار. كل من يضغط عليه ينشر فورًا من حسابه اقتباسًا لمنشورك بالنص نفسه.",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "كل اقتباس في القطار يحمل زر القطار أيضًا، لذا يمكن لأي شخص الركوب بالطريقة نفسها.",
-  "Quotes in the train are casts like any other, so you can delete yours.": "الاقتباسات في القطار منشورات مثل أي منشورات أخرى، لذا يمكنك حذف اقتباسك."
+  "Quotes in the train are casts like any other, so you can delete yours.": "الاقتباسات في القطار منشورات مثل أي منشورات أخرى، لذا يمكنك حذف اقتباسك.",
+  "Don't translate from": "لا تترجم من",
+  "Quilcast is in this language": "Quilcast بهذه اللغة",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "المنشورات بهذه اللغات لا يظهر فيها زر الترجمة ولا تُترجم لك أبدًا. اللغة التي يعمل بها Quilcast من بينها دائمًا."
 }

@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "Lên tàu sẽ đăng ngay từ tài khoản của bạn một bài trích dẫn cast này với cùng nội dung.",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "Cast của bạn sẽ có nút tàu. Bất kỳ ai nhấn vào sẽ đăng ngay từ tài khoản của họ một bài trích dẫn cast của bạn với cùng nội dung.",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "Mỗi bài trích dẫn trong đoàn tàu cũng có nút tàu, nên ai cũng có thể lên tàu theo cách tương tự.",
-  "Quotes in the train are casts like any other, so you can delete yours.": "Các bài trích dẫn trong đoàn tàu là cast như mọi cast khác, nên bạn có thể xóa bài của mình."
+  "Quotes in the train are casts like any other, so you can delete yours.": "Các bài trích dẫn trong đoàn tàu là cast như mọi cast khác, nên bạn có thể xóa bài của mình.",
+  "Don't translate from": "Không dịch từ",
+  "Quilcast is in this language": "Quilcast đang dùng ngôn ngữ này",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Các cast bằng những ngôn ngữ này không có nút Dịch và sẽ không bao giờ được dịch cho bạn. Ngôn ngữ Quilcast đang dùng luôn nằm trong số đó."
 }

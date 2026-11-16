@@ -47,6 +47,13 @@ const artPart = cast(31, { hash: ART.part, parent_hash: ART.root, parent_author:
 const artReply = cast(32, { hash: ART.reply, parent_hash: ART.root, parent_author: { fid: 31 }, text: 'what a read', author: { fid: 32, username: 'fan' } })
 const v1 = (c, body) => ({ hash: '0x' + c.hash, data: { type: 'MESSAGE_TYPE_CAST_ADD', fid: c.author.fid, timestamp: 185079816, castAddBody: { text: c.text, embeds: c.embeds, mentions: [], mentionsPositions: [], formatVersion: 1, ...body } } })
 const artMessages = [v1(artRoot, { chain: { index: 0, count: 2 } }), v1(artPart, { parentCastId: { fid: 31, hash: '0x' + ART.root }, chain: { root: { fid: 31, hash: '0x' + ART.root }, index: 1, count: 2 } })]
+// #705: casts in Spanish (someone translated the first before) and one in French
+const SPANISH = [
+  cast(41, { hash: '0x' + '41'.repeat(20), text: 'Hoy es un gran día para construir en Farcaster, ¿qué están haciendo ustedes?' }),
+  cast(42, { hash: '0x' + '42'.repeat(20), text: 'Me gusta mucho este cliente, pero no sé cómo se cambia el tema' }),
+  cast(43, { hash: '0x' + '43'.repeat(20), text: "Je pense que c'est une très bonne idée pour la communauté, merci à vous" }),
+]
+const KEPT = { ['0x' + '41'.repeat(20)]: { from: 'es', text: 'Today is a great day to build on Farcaster' } }
 const node = createServer((q, r) => {
   r.setHeader('content-type', 'application/json')
   r.setHeader('access-control-allow-origin', '*')
@@ -73,6 +80,8 @@ const node = createServer((q, r) => {
     const page = JSON.parse(longFeed(at.searchParams, 'long feed cast')), n = liveNews[live] || 0
     return r.end(JSON.stringify({ ...page, casts: [...Array.from({ length: n }, (_, i) => newCast(n - i)), ...page.casts] }))
   }
+  // #705: a channel in Spanish, with one cast in French
+  if (at.pathname === '/v2/farcaster/feed/parent_urls' && at.searchParams.get('parent_urls').endsWith('/espanol')) return r.end(JSON.stringify({ casts: SPANISH }))
   // a long channel feed, and @looky's casts (#502)
   if (at.pathname === '/v2/farcaster/feed/parent_urls') return r.end(longFeed(at.searchParams, 'long feed cast'))
   if (at.pathname === '/v2/farcaster/feed/user/casts' && at.searchParams.get('fid') === '12') return r.end(longFeed(at.searchParams, 'looky cast'))
@@ -817,6 +826,66 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await page.waitForFunction(() => !document.fullscreenElement)
     await dock.click()
     await toggle('Exit full screen').waitFor()
+    await close()
+  })
+
+  // #705: the server can translate, and has kept a translation of the first Spanish cast; the hashes asked for are noted
+  const translator = async (ctx) => {
+    const asked = []
+    await ctx.route('**/api/translate', (r) => r.fulfill({ body: JSON.stringify({ on: true }), contentType: 'application/json' }))
+    await ctx.route('**/api/translations', (r) => {
+      const hs = JSON.parse(r.request().postData()).hashes
+      asked.push(...hs)
+      r.fulfill({ body: JSON.stringify(Object.fromEntries(hs.filter((h) => KEPT[h]).map((h) => [h, KEPT[h]]))), contentType: 'application/json' })
+    })
+    return asked
+  }
+  // (by its author: a translated cast's words are the translation's)
+  const castOf = (page, n) => page.locator('#app article.cast', { hasText: SPANISH[n].author.username }).first()
+
+  test('in English, Spanish casts offer a translation, or show the one kept', async () => {
+    const { page, errors, ctx, close } = await open({ 'quilcast:settings': JSON.stringify({ ...nodeAt, lang: 'en' }) }, { path: '/channel/espanol' })
+    await translator(ctx)
+    await castOf(page, 0).locator('.tr-note', { hasText: 'Auto-translated from Spanish' }).waitFor({ timeout: 30e3 })
+    assert.match(await castOf(page, 0).innerText(), /Today is a great day to build on Farcaster/)
+    await castOf(page, 1).getByRole('button', { name: 'Translate from Spanish' }).waitFor()
+    await castOf(page, 2).getByRole('button', { name: 'Translate from French' }).waitFor()
+    assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test("with Spanish under Don't translate from, Spanish casts show no translation at all and none is looked up", async () => {
+    const { page, errors, ctx, close } = await open({ 'quilcast:settings': JSON.stringify({ ...nodeAt, lang: 'en', noTranslate: ['es'] }) }, { path: '/channel/espanol' })
+    const asked = await translator(ctx)
+    // French still offers one
+    await castOf(page, 2).getByRole('button', { name: 'Translate from French' }).waitFor({ timeout: 30e3 })
+    for (const n of [0, 1]) {
+      assert.equal(await castOf(page, n).locator('.tr-note').count(), 0, `cast ${n} shows no translation note or button`)
+      assert.match(await castOf(page, n).innerText(), new RegExp(SPANISH[n].text.slice(0, 20)), 'the original words')
+    }
+    // (the lookups go out together, a moment after the casts draw)
+    for (let i = 0; !asked.length && i < 50; i++) await new Promise((ok) => setTimeout(ok, 100))
+    assert.deepEqual(asked, [SPANISH[2].hash], 'only the French cast is looked up')
+    assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test("Settings: the app's language is on Don't translate from for good; the others can be picked and unpicked", async () => {
+    const { page, errors, close } = await open({ 'quilcast:settings': JSON.stringify({ ...nodeAt, lang: 'en', noTranslate: ['es'] }) }, { path: '/settings' })
+    const group = page.getByRole('group', { name: "Don't translate from" })
+    const english = group.getByRole('button', { name: 'English', exact: true })
+    await english.waitFor({ timeout: 30e3 })
+    assert.equal(await english.getAttribute('aria-pressed'), 'true')
+    assert.equal(await english.isDisabled(), true, "the app's language can't be taken off")
+    const spanish = group.getByRole('button', { name: 'Spanish', exact: true })
+    assert.equal(await spanish.getAttribute('aria-pressed'), 'true')
+    await spanish.click()
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('quilcast:settings')).noTranslate.length === 0)
+    assert.equal(await spanish.getAttribute('aria-pressed'), 'false')
+    await group.getByRole('button', { name: 'Japanese', exact: true }).click()
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('quilcast:settings')).noTranslate), ['ja'])
+    assert.equal(await english.getAttribute('aria-pressed'), 'true')
+    assert.deepEqual(errors, [])
     await close()
   })
 

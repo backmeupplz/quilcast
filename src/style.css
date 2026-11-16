@@ -752,6 +752,9 @@ small.warn { color: var(--warn); }
 .settings .searchbox { margin: 0; }
 .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
 .chips .chip { flex: none; }
+/* Settings → Don't translate from: every language, wrapping; the app's own is on for good */
+.chips.wrap { flex-wrap: wrap; overflow: visible; margin: 8px 0 0; padding: 0; }
+.chips.wrap .chip:disabled { opacity: 1; cursor: default; }
 .app-row.listed { padding: 4px 6px 4px 10px; }
 .app-row.listed .app-main { color: var(--ink); }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }

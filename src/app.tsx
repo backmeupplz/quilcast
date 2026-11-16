@@ -7,10 +7,11 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, newOnTop, peekOf, quotedOf, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
+import { base, DETECTED, keepOld, noTranslate, togglePick } from './lang.ts'
 import { blockOf, hides, muteOf, mutes, setMute, silenced, syncMutes } from './mutes.ts'
 import { checkAccounts, spamAccountOf, spamAt } from './spam.ts'
 import { alertsOn, canPush, KINDS, refreshAlerts, setAlerts, setKinds, spamChanged, type Kind } from './alerts.ts'
@@ -2370,10 +2371,22 @@ function Settings() {
           <div class="setting">
             <h2>{t('Language')}</h2>
             {/* every string is picked when the page loads, so a switch reloads it */}
-            <select class="pick" value={lang} onChange={(e) => ((settings.lang = e.currentTarget.value), saveSettings(), location.reload())}>
+            {/* (the language it's leaving stays on Don't translate from, as a pick that can go now) */}
+            <select class="pick" value={lang} onChange={(e) => ((settings.noTranslate = keepOld(lang, settings.noTranslate)), (settings.lang = e.currentTarget.value), saveSettings(), location.reload())}>
               {Object.entries(LANGS).map(([k, name]) => <option value={k}>{name}</option>)}
             </select>
           </div>
+        </section>
+        <section>
+          <h2>{t("Don't translate from")}</h2>
+          {/* the app's own language is always on and can't be turned off */}
+          <div class="chips wrap" role="group" aria-label={t("Don't translate from")}>
+            {DETECTED.map((l) => [l, langName(l)] as const).sort((a, b) => a[1].localeCompare(b[1], lang)).map(([l, name]) => {
+              const app = l === base(lang), on = noTranslate(lang, settings.noTranslate).has(l)
+              return <button key={l} class={`chip${on ? ' on' : ''}`} aria-pressed={on} disabled={app} title={app ? t('Quilcast is in this language') : undefined} onClick={() => ((settings.noTranslate = togglePick(lang, settings.noTranslate, l)), saveSettings(), force((x) => x + 1))}>{name}</button>
+            })}
+          </div>
+          <p class="hint">{t("Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.")}</p>
         </section>
         <section>
           <div class="setting">

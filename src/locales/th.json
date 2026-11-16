@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "การขึ้นรถไฟจะโพสต์การอ้างอิงแคสต์นี้ด้วยข้อความเดียวกันจากบัญชีของคุณทันที",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "แคสต์ของคุณจะมีปุ่มรถไฟ ใครก็ตามที่แตะปุ่มนี้จะโพสต์การอ้างอิงแคสต์ของคุณด้วยข้อความเดียวกันจากบัญชีของตัวเองทันที",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "ทุกการอ้างอิงในขบวนรถไฟก็มีปุ่มรถไฟด้วย ใครๆ จึงขึ้นรถไฟได้ด้วยวิธีเดียวกัน",
-  "Quotes in the train are casts like any other, so you can delete yours.": "การอ้างอิงในขบวนรถไฟก็เป็นแคสต์เหมือนแคสต์อื่นๆ คุณจึงลบของคุณได้"
+  "Quotes in the train are casts like any other, so you can delete yours.": "การอ้างอิงในขบวนรถไฟก็เป็นแคสต์เหมือนแคสต์อื่นๆ คุณจึงลบของคุณได้",
+  "Don't translate from": "ไม่ต้องแปลจาก",
+  "Quilcast is in this language": "Quilcast ใช้ภาษานี้อยู่",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "แคสต์ในภาษาเหล่านี้จะไม่มีปุ่มแปลและจะไม่ถูกแปลให้คุณ ภาษาที่ Quilcast ใช้อยู่จะรวมอยู่ด้วยเสมอ"
 }

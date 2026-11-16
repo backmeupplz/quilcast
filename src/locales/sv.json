@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "Att hoppa på publicerar direkt ett citat av den här casten med samma text från ditt konto.",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "Din cast får en tågknapp. Alla som trycker på den publicerar direkt ett citat av din cast med samma text från sitt eget konto.",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "Varje citat i tåget har också tågknappen, så vem som helst kan hoppa på på samma sätt.",
-  "Quotes in the train are casts like any other, so you can delete yours.": "Citat i tåget är casts som alla andra, så du kan ta bort dina."
+  "Quotes in the train are casts like any other, so you can delete yours.": "Citat i tåget är casts som alla andra, så du kan ta bort dina.",
+  "Don't translate from": "Översätt inte från",
+  "Quilcast is in this language": "Quilcast är på det här språket",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Casts på de här språken visar ingen Översätt-knapp och översätts aldrig åt dig. Språket som Quilcast är på är alltid ett av dem."
 }

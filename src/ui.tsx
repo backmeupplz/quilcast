@@ -13,7 +13,7 @@ import { swoosh } from './swoosh.ts'
 import { choochoo, runTrain } from './choochoo.ts'
 import { trainOk, trainSheet, trainTold } from './trainask.ts'
 import { pinKey, pinnedCast, setPinnedCast, usePinnedCast } from './castpin.ts'
-import { base, detect } from './lang.ts'
+import { noTranslate, offersTranslation, translatableFrom } from './lang.ts'
 import { bound, FIT, TAP_ZOOM, zoomAt, type Zoom } from './zoom.ts'
 
 // keys and crypto load only when someone signs in or writes
@@ -267,7 +267,8 @@ function known(hash: string): Promise<Tr | null> {
 // whether the server can translate at all (it needs an OpenRouter key), asked once
 let canTranslate: Promise<boolean> | undefined
 const translates = () => (canTranslate ||= fetch('/api/translate').then((r) => r.json()).then((j) => !!j.on, () => false))
-const langName = (code: string) => {
+/** A language's name in the app's language (Spanish, Español…). */
+export const langName = (code: string) => {
   try {
     return new Intl.DisplayNames([lang], { type: 'language' }).of(code) || code
   } catch {
@@ -278,10 +279,9 @@ const langName = (code: string) => {
 /** A cast's words, translated when it's in another language and the reader asked (or someone did before). */
 function Said({ c, full }: { c: Cast; full?: boolean }) {
   const text = castText(c)
-  const from = useMemo(() => {
-    const l = detect(text)
-    return l && l !== base(lang) ? l : null
-  }, [text])
+  // the languages the reader reads (Settings → Don't translate from, and the app's own) get no translation at all
+  const reads = noTranslate(lang, settings.noTranslate)
+  const from = useMemo(() => translatableFrom(text, reads), [text, [...reads].join()])
   const [tr, setTr] = useState<Tr | null>(translated.get(c.hash) || null)
   const [orig, setOrig] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -307,15 +307,15 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
     }
     setBusy(false)
   }
-  // the model can find it's in the reader's language after all
-  const same = tr && base(tr.from) === base(lang)
-  const words = tr && !orig && !same ? tr.text : castText(c, true)
+  // (the model can find it's in a language the reader reads after all)
+  const shown = offersTranslation(from, tr?.from, reads)
+  const words = tr && shown && !orig ? tr.text : castText(c, true)
   const tags = taggable(c.text || '')
   const fromName = langName(tr && tr.from !== 'und' ? tr.from : from || 'und')
   return (
     <>
       {full ? <RichText text={words} tags={tags} /> : <Folded text={words} tags={tags} />}
-      {from && !same && (tr || on) && (
+      {shown && (tr || on) && (
         <div class="tr-note" onClick={stop}>
           {tr && !orig ? <>{t('Auto-translated from {language}', { language: fromName })} · <button class="link-btn" onClick={() => setOrig(true)}>{t('View original')}</button></>
             : tr ? <button class="link-btn" onClick={() => setOrig(false)}>{t('View translation')}</button>

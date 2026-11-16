@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "Al subirte, se publica al instante desde tu cuenta una cita de este cast con el mismo texto.",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "Tu cast tendrá un botón de tren. Quien lo toque publicará al instante desde su propia cuenta una cita de tu cast con el mismo texto.",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "Cada cita del tren lleva también el botón de tren, así que cualquiera puede subirse de la misma manera.",
-  "Quotes in the train are casts like any other, so you can delete yours.": "Las citas del tren son casts como cualquier otro, así que puedes borrar las tuyas."
+  "Quotes in the train are casts like any other, so you can delete yours.": "Las citas del tren son casts como cualquier otro, así que puedes borrar las tuyas.",
+  "Don't translate from": "No traducir desde",
+  "Quilcast is in this language": "Quilcast está en este idioma",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Los casts en estos idiomas no muestran el botón Traducir y nunca se traducen para ti. El idioma en el que está Quilcast siempre es uno de ellos."
 }

@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "Trene binmek, bu cast'in aynı metinle bir alıntısını hesabından hemen paylaşır.",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "Cast'in bir tren düğmesi alır. Ona dokunan herkes, cast'inin aynı metinle bir alıntısını kendi hesabından hemen paylaşır.",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "Trendeki her alıntıda da tren düğmesi olur, böylece herkes aynı şekilde trene binebilir.",
-  "Quotes in the train are casts like any other, so you can delete yours.": "Trendeki alıntılar diğerleri gibi birer cast'tir, yani kendi alıntılarını silebilirsin."
+  "Quotes in the train are casts like any other, so you can delete yours.": "Trendeki alıntılar diğerleri gibi birer cast'tir, yani kendi alıntılarını silebilirsin.",
+  "Don't translate from": "Şu dillerden çevirme",
+  "Quilcast is in this language": "Quilcast bu dilde",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Bu dillerdeki cast'lerde Çevir düğmesi görünmez ve senin için asla çevrilmezler. Quilcast'in dili her zaman bunlardan biridir."
 }

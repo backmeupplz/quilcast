@@ -1374,5 +1374,8 @@
   "Joining posts a quote of this cast, with the same text, from your account right away.": "Якщо сісти в потяг, з вашого акаунта одразу буде опубліковано цитату цього касту з тим самим текстом.",
   "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "Ваш каст отримає кнопку потяга. Будь-хто, хто її натисне, одразу опублікує зі свого акаунта цитату вашого касту з тим самим текстом.",
   "Every quote in the train carries the train button too, so anyone can join the same way.": "Кожна цитата в потязі теж має кнопку потяга, тож будь-хто може приєднатися так само.",
-  "Quotes in the train are casts like any other, so you can delete yours.": "Цитати в потязі — такі самі касти, як будь-які інші, тож свої можна видалити."
+  "Quotes in the train are casts like any other, so you can delete yours.": "Цитати в потязі — такі самі касти, як будь-які інші, тож свої можна видалити.",
+  "Don't translate from": "Не перекладати з мов",
+  "Quilcast is in this language": "Quilcast цією мовою",
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Касти цими мовами не мають кнопки «Перекласти» і ніколи не перекладаються для вас. Мова, якою працює Quilcast, завжди є серед них."
 }
