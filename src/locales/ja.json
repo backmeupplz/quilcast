@@ -1366,5 +1366,11 @@
   "Joined the train": "列車に乗りました",
   "Choo choo!": "シュッシュッポッポ！",
   "Train": "列車",
-  "Train: anyone can tap the train button to quote this cast with the same text": "列車：誰でも列車ボタンをタップして、同じテキストでこのキャストを引用できます"
+  "Train: anyone can tap the train button to quote this cast with the same text": "列車：誰でも列車ボタンをタップして、同じテキストでこのキャストを引用できます",
+  "Join the train?": "列車に乗りますか？",
+  "Start a train?": "列車を走らせますか？",
+  "Joining posts a quote of this cast, with the same text, from your account right away.": "乗車すると、このキャストを同じテキストで引用したキャストがあなたのアカウントからすぐに投稿されます。",
+  "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "あなたのキャストに列車ボタンが付きます。誰かがそれをタップすると、あなたのキャストを同じテキストで引用したキャストがその人のアカウントからすぐに投稿されます。",
+  "Every quote in the train carries the train button too, so anyone can join the same way.": "列車の引用キャストにもすべて列車ボタンが付くので、誰でも同じように乗車できます。",
+  "Quotes in the train are casts like any other, so you can delete yours.": "列車の引用キャストは普通のキャストと同じなので、自分のものは削除できます。"
 }

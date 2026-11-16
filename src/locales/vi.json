@@ -1366,5 +1366,11 @@
   "Joined the train": "Bạn đã lên tàu",
   "Choo choo!": "Xình xịch!",
   "Train": "Tàu",
-  "Train: anyone can tap the train button to quote this cast with the same text": "Tàu: ai cũng có thể nhấn nút tàu để trích dẫn cast này với cùng nội dung"
+  "Train: anyone can tap the train button to quote this cast with the same text": "Tàu: ai cũng có thể nhấn nút tàu để trích dẫn cast này với cùng nội dung",
+  "Join the train?": "Lên tàu?",
+  "Start a train?": "Bắt đầu một đoàn tàu?",
+  "Joining posts a quote of this cast, with the same text, from your account right away.": "Lên tàu sẽ đăng ngay từ tài khoản của bạn một bài trích dẫn cast này với cùng nội dung.",
+  "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "Cast của bạn sẽ có nút tàu. Bất kỳ ai nhấn vào sẽ đăng ngay từ tài khoản của họ một bài trích dẫn cast của bạn với cùng nội dung.",
+  "Every quote in the train carries the train button too, so anyone can join the same way.": "Mỗi bài trích dẫn trong đoàn tàu cũng có nút tàu, nên ai cũng có thể lên tàu theo cách tương tự.",
+  "Quotes in the train are casts like any other, so you can delete yours.": "Các bài trích dẫn trong đoàn tàu là cast như mọi cast khác, nên bạn có thể xóa bài của mình."
 }

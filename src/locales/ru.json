@@ -1366,5 +1366,11 @@
   "Joined the train": "Вы в поезде",
   "Choo choo!": "Чух-чух!",
   "Train": "Поезд",
-  "Train: anyone can tap the train button to quote this cast with the same text": "Поезд: любой может нажать кнопку поезда, чтобы процитировать этот каст с тем же текстом"
+  "Train: anyone can tap the train button to quote this cast with the same text": "Поезд: любой может нажать кнопку поезда, чтобы процитировать этот каст с тем же текстом",
+  "Join the train?": "Сесть в поезд?",
+  "Start a train?": "Запустить поезд?",
+  "Joining posts a quote of this cast, with the same text, from your account right away.": "Если сесть в поезд, с вашего аккаунта сразу же будет опубликована цитата этого каста с тем же текстом.",
+  "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "У вашего каста появится кнопка поезда. Любой, кто нажмёт её, сразу опубликует со своего аккаунта цитату вашего каста с тем же текстом.",
+  "Every quote in the train carries the train button too, so anyone can join the same way.": "У каждой цитаты в поезде тоже есть кнопка поезда, поэтому любой может присоединиться так же.",
+  "Quotes in the train are casts like any other, so you can delete yours.": "Цитаты в поезде — такие же касты, как любые другие, поэтому свои можно удалить."
 }

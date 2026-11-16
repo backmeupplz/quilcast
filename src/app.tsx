@@ -7,7 +7,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, newOnTop, peekOf, quotedOf, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
@@ -2798,6 +2798,7 @@ function App() {
       <CarryFollows hidden={r0 === 'join'} />
       <ReportSheet />
       <LinkSheet />
+      <TrainSheet />
       <Toast />
     </div>
     </>

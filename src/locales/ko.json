@@ -1366,5 +1366,11 @@
   "Joined the train": "기차에 탔어요",
   "Choo choo!": "칙칙폭폭!",
   "Train": "기차",
-  "Train: anyone can tap the train button to quote this cast with the same text": "기차: 누구나 기차 버튼을 눌러 같은 텍스트로 이 캐스트를 인용할 수 있어요"
+  "Train: anyone can tap the train button to quote this cast with the same text": "기차: 누구나 기차 버튼을 눌러 같은 텍스트로 이 캐스트를 인용할 수 있어요",
+  "Join the train?": "기차에 탈까요?",
+  "Start a train?": "기차를 출발시킬까요?",
+  "Joining posts a quote of this cast, with the same text, from your account right away.": "타면 같은 텍스트로 이 캐스트를 인용한 캐스트가 내 계정에서 바로 게시돼요.",
+  "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "내 캐스트에 기차 버튼이 생겨요. 누구든 그 버튼을 누르면 같은 텍스트로 내 캐스트를 인용한 캐스트가 그 사람의 계정에서 바로 게시돼요.",
+  "Every quote in the train carries the train button too, so anyone can join the same way.": "기차의 모든 인용에도 기차 버튼이 있어서 누구나 같은 방법으로 탈 수 있어요.",
+  "Quotes in the train are casts like any other, so you can delete yours.": "기차의 인용도 다른 캐스트와 똑같아서 내 인용은 삭제할 수 있어요."
 }

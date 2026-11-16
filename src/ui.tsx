@@ -11,6 +11,7 @@ import { blockOf, hides, muteOf, setMute } from './mutes.ts'
 import { spamAccountOf, spamOf } from './spam.ts'
 import { swoosh } from './swoosh.ts'
 import { choochoo, runTrain } from './choochoo.ts'
+import { trainOk, trainSheet, trainTold } from './trainask.ts'
 import { pinKey, pinnedCast, setPinnedCast, usePinnedCast } from './castpin.ts'
 import { base, detect } from './lang.ts'
 import { bound, FIT, TAP_ZOOM, zoomAt, type Zoom } from './zoom.ts'
@@ -1108,6 +1109,49 @@ export function LinkSheet() {
   )
 }
 
+/** How trains work, the first time someone joins one or switches on the composer's train toggle (trainask.ts):
+ *  Continue goes on, Cancel (or Escape, or a tap outside) posts nothing. */
+export function TrainSheet() {
+  const [q, setQ] = useState<{ kind: 'join' | 'start'; from: Element | null } | null>(null)
+  // the open ask's answer; a second ask while it's open answers the first with Cancel
+  const done = useRef<((ok: boolean) => void) | undefined>(undefined)
+  const button = useRef<HTMLButtonElement>(null)
+  trainSheet.ask = (kind) => new Promise((d) => (done.current?.(false), (done.current = d), setQ({ kind, from: document.activeElement })))
+  // it takes the focus, so Escape and Enter reach it and not the composer under it
+  useEffect(() => void (q && button.current?.focus()), [q])
+  if (!q) return null
+  const close = (ok: boolean) => {
+    const d = done.current
+    done.current = undefined
+    setQ(null)
+    ;(q.from as HTMLElement | null)?.focus?.()
+    d?.(ok)
+  }
+  const join = q.kind === 'join'
+  // Escape cancels; Tab goes round its two buttons and never into the composer under it
+  const keys = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') return e.stopPropagation(), close(false)
+    if (e.key !== 'Tab') return
+    e.preventDefault()
+    const b = [...(e.currentTarget as HTMLElement).querySelectorAll('button')]
+    b[(b.indexOf(document.activeElement as HTMLButtonElement) + (e.shiftKey ? b.length - 1 : 1)) % b.length]?.focus()
+  }
+  return (
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && close(false)} onKeyDown={keys}>
+      <div class="sheet wallet-form link-sheet" role="alertdialog" aria-modal="true" aria-labelledby="train-sheet-h" tabIndex={-1}>
+        <h2 id="train-sheet-h">{join ? t('Join the train?') : t('Start a train?')}</h2>
+        <p>{join ? t('Joining posts a quote of this cast, with the same text, from your account right away.') : t('Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.')}</p>
+        <p>{t('Every quote in the train carries the train button too, so anyone can join the same way.')}</p>
+        <p class="muted">{t('Quotes in the train are casts like any other, so you can delete yours.')}</p>
+        <div class="link-actions">
+          <button class="btn ghost" onClick={() => close(false)}>{t('Cancel')}</button>
+          <button class="btn" ref={button} onClick={() => close(true)}>{t('Continue')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ReportSheet() {
   const [q, setQ] = useState<{ u: User; c?: Cast } | null>(null)
   const [reason, setReason] = useState('')
@@ -1325,9 +1369,11 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
   const release = () => (clearTimeout(timer.current), sound.current?.stop(), (sound.current = undefined), charge === ' hold' && setCharge(''))
   // a train cast's button quotes it at once with its own text (write.ts trainCar); one car per tap until it went out.
   // The tap blows the whistle and sends a train across the screen (choochoo.ts) right away, not waiting on the cast.
+  // The first time in this browser, TrainSheet explains first that the car goes out from your account (trainask.ts).
   const [boarding, setBoarding] = useState(false)
-  const board = () => {
+  const board = async () => {
     if (!requireAccount()) return
+    if (!trainTold() && !(await trainOk('join'))) return
     choochoo()
     runTrain(t('Choo choo!'))
     navigator.vibrate?.([40, 60, 40])

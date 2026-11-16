@@ -1366,5 +1366,11 @@
   "Joined the train": "คุณขึ้นรถไฟแล้ว",
   "Choo choo!": "ปู๊น ปู๊น!",
   "Train": "รถไฟ",
-  "Train: anyone can tap the train button to quote this cast with the same text": "รถไฟ: ใครก็กดปุ่มรถไฟเพื่ออ้างอิงแคสต์นี้ด้วยข้อความเดียวกันได้"
+  "Train: anyone can tap the train button to quote this cast with the same text": "รถไฟ: ใครก็กดปุ่มรถไฟเพื่ออ้างอิงแคสต์นี้ด้วยข้อความเดียวกันได้",
+  "Join the train?": "ขึ้นรถไฟไหม?",
+  "Start a train?": "เริ่มรถไฟไหม?",
+  "Joining posts a quote of this cast, with the same text, from your account right away.": "การขึ้นรถไฟจะโพสต์การอ้างอิงแคสต์นี้ด้วยข้อความเดียวกันจากบัญชีของคุณทันที",
+  "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "แคสต์ของคุณจะมีปุ่มรถไฟ ใครก็ตามที่แตะปุ่มนี้จะโพสต์การอ้างอิงแคสต์ของคุณด้วยข้อความเดียวกันจากบัญชีของตัวเองทันที",
+  "Every quote in the train carries the train button too, so anyone can join the same way.": "ทุกการอ้างอิงในขบวนรถไฟก็มีปุ่มรถไฟด้วย ใครๆ จึงขึ้นรถไฟได้ด้วยวิธีเดียวกัน",
+  "Quotes in the train are casts like any other, so you can delete yours.": "การอ้างอิงในขบวนรถไฟก็เป็นแคสต์เหมือนแคสต์อื่นๆ คุณจึงลบของคุณได้"
 }

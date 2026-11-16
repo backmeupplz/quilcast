@@ -1366,5 +1366,11 @@
   "Joined the train": "ركبت القطار",
   "Choo choo!": "تشو تشو!",
   "Train": "قطار",
-  "Train: anyone can tap the train button to quote this cast with the same text": "قطار: يمكن لأي شخص الضغط على زر القطار لاقتباس هذا المنشور بالنص نفسه"
+  "Train: anyone can tap the train button to quote this cast with the same text": "قطار: يمكن لأي شخص الضغط على زر القطار لاقتباس هذا المنشور بالنص نفسه",
+  "Join the train?": "ركوب القطار؟",
+  "Start a train?": "إطلاق قطار؟",
+  "Joining posts a quote of this cast, with the same text, from your account right away.": "ركوب القطار ينشر فورًا من حسابك اقتباسًا لهذا المنشور بالنص نفسه.",
+  "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "سيحصل منشورك على زر القطار. كل من يضغط عليه ينشر فورًا من حسابه اقتباسًا لمنشورك بالنص نفسه.",
+  "Every quote in the train carries the train button too, so anyone can join the same way.": "كل اقتباس في القطار يحمل زر القطار أيضًا، لذا يمكن لأي شخص الركوب بالطريقة نفسها.",
+  "Quotes in the train are casts like any other, so you can delete yours.": "الاقتباسات في القطار منشورات مثل أي منشورات أخرى، لذا يمكنك حذف اقتباسك."
 }

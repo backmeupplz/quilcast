@@ -1366,5 +1366,11 @@
   "Joined the train": "Sei salito sul treno",
   "Choo choo!": "Ciuf ciuf!",
   "Train": "Treno",
-  "Train: anyone can tap the train button to quote this cast with the same text": "Treno: chiunque può toccare il pulsante del treno per citare questo cast con lo stesso testo"
+  "Train: anyone can tap the train button to quote this cast with the same text": "Treno: chiunque può toccare il pulsante del treno per citare questo cast con lo stesso testo",
+  "Join the train?": "Salire sul treno?",
+  "Start a train?": "Far partire un treno?",
+  "Joining posts a quote of this cast, with the same text, from your account right away.": "Salire pubblica subito dal tuo account una citazione di questo cast con lo stesso testo.",
+  "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "Il tuo cast avrà un pulsante treno. Chi lo tocca pubblica subito dal proprio account una citazione del tuo cast con lo stesso testo.",
+  "Every quote in the train carries the train button too, so anyone can join the same way.": "Ogni citazione del treno ha anch'essa il pulsante treno, quindi chiunque può salire allo stesso modo.",
+  "Quotes in the train are casts like any other, so you can delete yours.": "Le citazioni del treno sono cast come gli altri, quindi puoi eliminare le tue."
 }

@@ -1366,5 +1366,11 @@
   "Joined the train": "आप ट्रेन में चढ़ गए",
   "Choo choo!": "छुक-छुक!",
   "Train": "ट्रेन",
-  "Train: anyone can tap the train button to quote this cast with the same text": "ट्रेन: कोई भी ट्रेन बटन दबाकर इस कास्ट को उसी टेक्स्ट के साथ कोट कर सकता है"
+  "Train: anyone can tap the train button to quote this cast with the same text": "ट्रेन: कोई भी ट्रेन बटन दबाकर इस कास्ट को उसी टेक्स्ट के साथ कोट कर सकता है",
+  "Join the train?": "ट्रेन में सवार हों?",
+  "Start a train?": "ट्रेन शुरू करें?",
+  "Joining posts a quote of this cast, with the same text, from your account right away.": "सवार होने पर इसी टेक्स्ट के साथ इस कास्ट का कोट आपके अकाउंट से तुरंत पोस्ट हो जाता है।",
+  "Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.": "आपके कास्ट पर ट्रेन बटन आ जाएगा। जो भी उसे टैप करेगा, उसके अपने अकाउंट से इसी टेक्स्ट के साथ आपके कास्ट का कोट तुरंत पोस्ट हो जाएगा।",
+  "Every quote in the train carries the train button too, so anyone can join the same way.": "ट्रेन के हर कोट पर भी ट्रेन बटन होता है, इसलिए कोई भी इसी तरह सवार हो सकता है।",
+  "Quotes in the train are casts like any other, so you can delete yours.": "ट्रेन के कोट भी दूसरे कास्ट जैसे ही हैं, इसलिए आप अपने कोट डिलीट कर सकते हैं।"
 }
