@@ -3,10 +3,11 @@
 // server keeps those bytes and submits them to the node once that time comes. It holds no key: it can't change a
 // cast's text, embeds, reply target or time, nor post anything else as anyone. The most it could do is send one up to
 // ten minutes early (a node takes nothing further ahead) or not at all.
-//   GET    /api/scheduled/<fid>   the account's list, signed "quilcast-scheduled-read:<fid>:<ts>:" (empty body)
+//   GET    /api/scheduled/<fid>   the account's list, signed "quilcast-scheduled-read:<fid>:<ts>:" (empty body): what's
+//                                 still waiting, being sent or failed (a posted one is off it as soon as it went out)
 //   PUT    /api/scheduled/<fid>   { id, msgs: [base64 Message…], draft }, signed "quilcast-scheduled:<fid>:<ts>:<body>"
 //   DELETE /api/scheduled/<fid>   { id }, signed "quilcast-scheduled-cancel:<fid>:<ts>:<body>": cancels a cast still
-//                                 waiting (or takes a posted or failed one off the list); answers what it was
+//                                 waiting (or takes a failed one off the list); answers what it was
 // msgs are one cast, or a thread: each next cast replying to the one before it, a second or so later. `draft` is what
 // the composer had (its text with @names as typed, attachments, channel), so the list can show it and Edit can open it
 // again. Unlike drafts (server/drafts.mjs), none of this is sealed: the server has to read the messages to send them,
@@ -32,8 +33,12 @@ export const LATEST = 30 * 86400e3
 // a thread's casts go out together, so they must all fit in the node's ten minutes ahead
 const SPREAD = 300
 const EPOCH = 1609459200
-// what's done stays on the list for a while: posted ones 3 days, failed ones until the account takes them off (or 30 days)
+// a posted one leaves the list at once, but its file stays a few days, unlisted: an Edit of it that was open while it
+// went out is refused (409) rather than scheduled a second time, and a cancel hears it was posted. Failed ones stay on
+// the list until the account takes them off (or 30 days). A posted one's file is slim (not its bytes or draft), and an
+// account keeps at most KEEP_FILES of them all: past that, the oldest posted ones go first.
 const KEEP_POSTED = 3 * 86400e3
+const KEEP_FILES = MAX * 4
 const KEEP_FAILED = 30 * 86400e3
 // a node that's down or busy is tried again, every minute or so, for up to an hour past the time
 const RETRY = 60e3
@@ -175,8 +180,10 @@ const shown = ({ id, at, hashes, status, posted, error, draft, done }) => ({ id,
 
 export async function getScheduled(req, fid, node) {
   await keySigned(req, 'quilcast-scheduled-read', fid, '', node)
-  return (await listOf(fid)).sort((a, b) => a.at - b.at).map(shown)
+  return (await listOf(fid)).filter(listed).sort((a, b) => a.at - b.at).map(shown)
 }
+// what the list shows, and what counts toward its MAX: everything but the posted
+const listed = (item) => item.status !== 'posted'
 
 export async function putScheduled(req, fid, node, now = Date.now()) {
   const body = await readText(req, 300e3)
@@ -191,7 +198,12 @@ export async function putScheduled(req, fid, node, now = Date.now()) {
   // the same id again replaces it (Edit), only while none of it went out yet (a thread's first posts may have, before a
   // node error it's being retried for)
   if (sending.has(k) || (old && (old.status !== 'scheduled' || old.posted > 0))) throw fail(409, 'That cast was already sent.')
-  if (!old && (await idsOf(fid)).length >= MAX) throw fail(400, 'Too many scheduled casts. Cancel some first.')
+  if (!old) {
+    const all = await listOf(fid)
+    if (all.filter(listed).length >= MAX) throw fail(400, 'Too many scheduled casts. Cancel some first.')
+    const posted = all.filter((x) => !listed(x)).sort((a, b) => a.done - b.done)
+    for (const x of posted.slice(0, Math.max(0, all.length + 1 - KEEP_FILES))) await rm(fileOf(fid, x.id), { force: true })
+  }
   const item = { id, fid, at: casts[0].at, msgs, hashes: casts.map((c) => c.hash), text: casts[0].text.slice(0, 300), draft, status: 'scheduled', posted: 0, created: now }
   // claimed while it's written, so a round coming due now doesn't send the old one over it
   sending.add(k)
@@ -293,7 +305,8 @@ async function send(fid, id, submit, notify, clock) {
     }
     // removed meanwhile (by the other server during a deploy, which can't see this one's claim): gone
     if (!(await readOne(fid, id))) return
-    await write(item)
+    // a posted one is off the list: it keeps only what an Edit or a cancel racing it needs, not its bytes or draft
+    await write(item.status === 'posted' ? { id, fid, at: item.at, hashes: item.hashes, status: 'posted', posted: item.posted, created: item.created, done: item.done } : item)
     if (item.status === 'failed') await notify(item).catch((e) => console.error('scheduled', fid, 'notify', e.message))
   } finally {
     sending.delete(key)

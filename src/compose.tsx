@@ -233,7 +233,8 @@ const whenOf = (at: number) => new Date(at).toLocaleString(lang, { weekday: 'sho
 /** "2026-11-13T14:05" in this timezone, as a datetime-local input takes it. */
 const localInput = (at: number) => new Date(at - new Date(at).getTimezoneOffset() * 60e3).toISOString().slice(0, 16)
 
-/** The account's scheduled casts (server/scheduled.mjs): waiting ones to edit or cancel, posted and failed ones to see. */
+/** The account's scheduled casts (server/scheduled.mjs): waiting ones to edit or cancel, failed ones to see and sign
+ *  again. A posted one is off the list as soon as it went out. */
 function ScheduledList({ as, open, close }: { as: Account; open: (s: Scheduled) => void; close: () => void }) {
   const [list, setList] = useState<Scheduled[] | null>(null)
   useEffect(() => void w().then((m) => m.listScheduled(as)).then(setList, (e) => (toast(e.message), close())), [as.fid])
@@ -244,16 +245,16 @@ function ScheduledList({ as, open, close }: { as: Account; open: (s: Scheduled) 
     )
   if (!list) return <div class="drafts"><span class="spinner" /></div>
   const state = (s: Scheduled) =>
-    s.status === 'posted' ? t('Posted') : s.status === 'failed' ? t('Failed: {reason}', { reason: s.error || '' }) : s.status === 'posting' ? t('Sending…') : s.error ? t('Trying again: {reason}', { reason: s.error }) : ''
+    s.status === 'failed' ? t('Failed: {reason}', { reason: s.error || '' }) : s.status === 'posting' ? t('Sending…') : s.error ? t('Trying again: {reason}', { reason: s.error }) : ''
   // a thread whose first posts went out before it stopped (or while the node is tried again) says how far it got
-  const part = (s: Scheduled) => s.status !== 'posted' && s.posted > 0 && t('{posted} of {total} posted', { posted: s.posted, total: s.hashes.length })
+  const part = (s: Scheduled) => s.posted > 0 && t('{posted} of {total} posted', { posted: s.posted, total: s.hashes.length })
   return (
     <div class="drafts">
       {!list.length && <p class="muted">{t('No scheduled casts.')}</p>}
       {list.map((s) => (
         <div class={`draft${s.status === 'failed' ? ' failed' : ''}`}>
           {/* one the server is still sending, or trying again after its first posts went out, can't be changed */}
-          <button class="draft-open" disabled={s.status === 'posting' || (s.status === 'scheduled' && s.posted > 0)} onClick={() => (s.status === 'posted' ? (close(), go(`/c/${s.hash}`)) : open(s))}>
+          <button class="draft-open" disabled={s.status === 'posting' || (s.status === 'scheduled' && s.posted > 0)} onClick={() => open(s)}>
             <span class="clamp">{s.draft?.parts[0]?.text.trim() || '…'}</span>
             <small class="muted">{[whenOf(s.at), (s.draft?.parts.length || 1) > 1 && t('Thread'), s.draft?.parent ? t('Reply') : s.draft?.quote ? t('Quote cast') : '', s.draft?.channel && `/${s.draft.channel}`, part(s), state(s)].filter(Boolean).join(' · ')}</small>
           </button>

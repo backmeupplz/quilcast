@@ -1222,7 +1222,6 @@
   "Pick a time within the next 30 days.": "今後30日以内の時刻を選んでください。",
   "Post at": "投稿日時",
   "Post now instead": "今すぐ投稿する",
-  "Posted": "投稿済み",
   "Remove from the list": "リストから削除",
   "Scheduled": "予約済み",
   "Scheduled casts are signed on this device and wait on Quilcast’s server until their time. The server can read them but can’t change them or post anything else as you.": "予約したキャストはこの端末で署名され、その時刻まで Quilcast のサーバーで待機します。サーバーは内容を読めますが、変更したり、あなたとして別の投稿をしたりすることはできません。",

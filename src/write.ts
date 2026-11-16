@@ -897,9 +897,10 @@ export async function schedule(posts: ScheduledPost[], o: { parent?: CastRef; ch
   }
   return keyFetch(url, 'quilcast-scheduled', 'PUT', JSON.stringify({ id, msgs, draft: o.draft }), 1, as)
 }
-/** The account's scheduled casts, soonest first: waiting, being sent, posted (for a few days) and failed. */
+/** The account's scheduled casts, soonest first: waiting, being sent and failed (a posted one is off the list). */
 export const listScheduled = (as = account!): Promise<Scheduled[]> => keyFetch(`/api/scheduled/${as.fid}`, 'quilcast-scheduled-read', 'GET', '', 3, as)
-/** Cancel one still waiting, or take a posted or failed one off the list. Answers what it was (null: gone already). */
+/** Cancel one still waiting, or take a failed one off the list. Answers what it was (null: gone already; 'posted':
+ *  it went out meanwhile). */
 export const cancelScheduled = (id: string, as = account!): Promise<{ id: string; was: Scheduled['status'] | null }> =>
   keyFetch(`/api/scheduled/${as.fid}`, 'quilcast-scheduled-cancel', 'DELETE', JSON.stringify({ id }), 3, as)
 /** The ids of the account's scheduled casts still waiting to go out, quietly: only with the key it has, never asking

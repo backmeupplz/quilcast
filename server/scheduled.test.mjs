@@ -111,11 +111,12 @@ test('a round sends what is due, in order, and leaves the rest', async () => {
   const sent = []
   await tick({ now: NOW, submit: async (b) => (sent.push(readCast(b, 7).text), 'ok'), notify: () => assert.fail('nothing failed') })
   assert.deepEqual(sent, ['first', 'second'])
-  assert.equal((await get(7, uuid(1))).status, 'posted')
+  // posted: kept slim, only what an Edit or a cancel racing it needs
+  assert.deepEqual(await get(7, uuid(1)), { id: uuid(1), fid: 7, at: due.at, hashes: due.hashes, status: 'posted', posted: 2, created: NOW, done: NOW })
   assert.equal((await get(7, uuid(2))).status, 'scheduled')
   // nothing goes twice
   await tick({ now: NOW + 1000, submit: async () => assert.fail('sent again'), notify: () => {} })
-  // posted ones leave the list after a few days
+  // a posted one's file (kept off the list, for an Edit or cancel racing it) goes after a few days
   await tick({ now: NOW + 4 * 86400e3, submit: async () => 'ok', notify: () => {} })
   assert.equal(await get(7, uuid(1)), null)
 })
@@ -193,7 +194,7 @@ test('submitTo: the node already having the message counts as sent, in any of it
 })
 
 test('an item being sent is neither cancelled nor replaced; one removed while it is sent stays gone', async () => {
-  const { cancelScheduled, putScheduled } = await import('./scheduled.mjs')
+  const { cancelScheduled, getScheduled, putScheduled } = await import('./scheduled.mjs')
   // a node that lists fid 12's key, for the handlers' key check
   const srv = createServer((q, r) => r.end(JSON.stringify({ signers: q.url.includes('fid=12') ? [{ key: keyHex }] : [] })))
   await new Promise((ok) => srv.listen(0, '127.0.0.1', ok))
@@ -218,12 +219,18 @@ test('an item being sent is neither cancelled nor replaced; one removed while it
     release()
     await round
     assert.equal((await get(12, uuid(7))).status, 'posted')
+    // posted: off the list at once, but an Edit opened before it went out is still refused, and a cancel hears it was posted
+    const listed = async () => (await getScheduled(req('quilcast-scheduled-read', ''), 12, node)).map((s) => s.id)
+    assert.deepEqual(await listed(), [])
+    await assert.rejects(putScheduled(req('quilcast-scheduled', again), 12, node), (e) => e.status === 409)
+    assert.deepEqual(await cancelScheduled(req('quilcast-scheduled-cancel', cancel), 12, node), { id: uuid(7), was: 'posted' })
     // one still waiting is replaced in place (Edit), keeping its id
     const waiting = await item(uuid(9), Date.now() + 3600e3, ['first version'], 12)
     await put(waiting)
     const edited = await thread(['second version'], Date.now() + 7200e3, { fid: 12 })
     const r = await putScheduled(req('quilcast-scheduled', JSON.stringify({ id: uuid(9), msgs: edited.map(b64) })), 12, node)
     assert.deepEqual([r.id, r.hash, (await get(12, uuid(9))).text], [uuid(9), edited[0].hash, 'second version'])
+    assert.deepEqual(await listed(), [uuid(9)])
     assert.deepEqual(await cancelScheduled(req('quilcast-scheduled-cancel', JSON.stringify({ id: uuid(9) })), 12, node), { id: uuid(9), was: 'scheduled' })
     // a thread half sent before a node error: no longer replaced; cancelling stops the rest and says part went out
     await put({ ...(await item(uuid(10), NOW - 1000, ['one', 'two'], 12)), posted: 1, error: 'node busy', next: NOW + 60e3 })
@@ -231,6 +238,20 @@ test('an item being sent is neither cancelled nor replaced; one removed while it
     await assert.rejects(putScheduled(req('quilcast-scheduled', redo), 12, node), (e) => e.status === 409)
     assert.deepEqual(await cancelScheduled(req('quilcast-scheduled-cancel', JSON.stringify({ id: uuid(10) })), 12, node), { id: uuid(10), was: 'posted' })
     assert.equal(await get(12, uuid(10)), null)
+    // a failed one stays listed; posted ones neither show nor count toward the list's 50
+    await put({ ...(await item(uuid(11), NOW - 1000, ['nope'], 12)), status: 'failed', done: NOW, error: 'invalid signer' })
+    for (let n = 100; n < 150; n++) await put({ id: uuid(n), fid: 12, at: NOW - 3600e3, msgs: [], hashes: ['00'], text: '', status: 'posted', posted: 1, created: NOW, done: NOW })
+    const room = await thread(['room'], Date.now() + 3600e3, { fid: 12 })
+    assert.equal((await putScheduled(req('quilcast-scheduled', JSON.stringify({ id: uuid(12), msgs: room.map(b64) })), 12, node)).id, uuid(12))
+    assert.deepEqual(await listed(), [uuid(11), uuid(12)])
+    // an account keeps at most 200 files: past that, the oldest posted ones go to make room
+    for (let n = 150; n < 300; n++) await put({ id: uuid(n), fid: 12, at: NOW - 3600e3, hashes: ['00'], status: 'posted', posted: 1, created: NOW, done: NOW + n })
+    const more = await thread(['more'], Date.now() + 3600e3, { fid: 12 })
+    assert.equal((await putScheduled(req('quilcast-scheduled', JSON.stringify({ id: uuid(13), msgs: more.map(b64) })), 12, node)).id, uuid(13))
+    const files = (await readdir(join(dir, 'scheduled', '12'))).filter((f) => f.endsWith('.json'))
+    assert.equal(files.length, 200)
+    assert.ok(files.includes(`${uuid(150)}.json`) && files.includes(`${uuid(299)}.json`))
+    assert.deepEqual(await listed(), [uuid(11), uuid(12), uuid(13)])
   } finally {
     srv.close()
   }

@@ -1381,8 +1381,12 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
   ahead = await later(95e3)
   for (let i = 0; i < 50 && submitted.length < 2; i++) await new Promise((ok) => setTimeout(ok, 100))
   assert.deepEqual(submitted.map((b) => b.toString('hex')), ms.map((m) => Buffer.from(m.msg).toString('hex')))
-  const posted = (await (await call('GET', 7)).json()).find((s) => s.id === id)
-  assert.deepEqual([posted.status, posted.posted], ['posted', 2])
+  // once all of it went out it's off the list (only what's waiting, being sent or failed shows), and an Edit of it is refused
+  let shown = [id]
+  for (let i = 0; i < 50 && shown.includes(id); i++) shown = (await (await call('GET', 7)).json()).map((s) => s.id)
+  assert.deepEqual(shown, [])
+  const edit = await thread(['edited after it went out'], Math.ceil((now() + 90e3) / 1000) * 1000)
+  assert.equal((await call('PUT', 7, JSON.stringify({ id, msgs: edit.map(b64) }))).status, 409)
   // a signer revoked before its time: the node refuses, and the list says why
   refuse = 'invalid signer'
   const doomed = crypto.randomUUID()

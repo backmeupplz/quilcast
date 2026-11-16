@@ -1222,7 +1222,6 @@
   "Pick a time within the next 30 days.": "请选择未来 30 天内的时间。",
   "Post at": "发布时间",
   "Post now instead": "改为立即发布",
-  "Posted": "已发布",
   "Remove from the list": "从列表中移除",
   "Scheduled": "已预约",
   "Scheduled casts are signed on this device and wait on Quilcast’s server until their time. The server can read them but can’t change them or post anything else as you.": "预约的 cast 在这台设备上签名，并在 Quilcast 的服务器上等到预定时间。服务器能读取它们，但无法修改，也无法以你的身份发布其他内容。",
