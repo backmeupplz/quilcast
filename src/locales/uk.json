@@ -93,7 +93,7 @@
   "Couldn't load messages: {error}": "Не вдалося завантажити повідомлення: {error}",
   "Couldn't load: {error}": "Не вдалося завантажити: {error}",
   "Couldn't reach the Farcaster node. Try again.": "Не вдалося зв’язатися з вузлом Farcaster. Спробуйте ще раз.",
-  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "Цей акаунт зареєстровано у Farcaster після 12 листопада 2026 року, коли Hypersnap відокремився від нього, тому Hypersnap його не знає. Увійдіть зі старішим акаунтом або створіть новий акаунт Hypersnap.",
+  "This account was registered on Farcaster after Hypersnap split from it on November 12, 2026, so Hypersnap can show the account but can't accept anything from it. Sign in with an older account or create a new Hypersnap account.": "Цей акаунт зареєстровано у Farcaster після того, як Hypersnap відокремився від нього 12 листопада 2026 року, тому Hypersnap може показати акаунт, але не може нічого від нього прийняти. Увійдіть зі старішим акаунтом або створіть новий акаунт Hypersnap.",
   "Couldn't read that image": "Не вдалося прочитати це зображення",
   "Couldn't send: {error}": "Не вдалося надіслати: {error}",
   "Courier": "Courier",

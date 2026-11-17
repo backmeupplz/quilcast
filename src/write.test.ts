@@ -94,7 +94,7 @@ test('a FID Hypersnap never heard of (registered on Optimism after the split) sa
   const { follow } = await import('./write.ts')
   ;(globalThis as any).fetch = async () =>
     new Response(JSON.stringify({ error: 'Failed to submit message', error_detail: 'status: InvalidArgument, message: "bad_request.validation_failure/unknown fid", details: []' }), { status: 400 })
-  await assert.rejects(follow(3, true), /registered on Farcaster after November 12, 2026/)
+  await assert.rejects(follow(3, true), /can't accept anything from it/)
 })
 
 test('a train car keeps the cast\'s own text and mentions, and readers never see the train embed', async () => {

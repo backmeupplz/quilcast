@@ -93,7 +93,7 @@
   "Couldn't load messages: {error}": "メッセージを読み込めませんでした：{error}",
   "Couldn't load: {error}": "読み込めませんでした：{error}",
   "Couldn't reach the Farcaster node. Try again.": "Farcaster ノードに接続できませんでした。もう一度お試しください。",
-  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "このアカウントは、Hypersnap が Farcaster から分かれた 2026年11月12日より後に Farcaster で登録されたため、Hypersnap はこのアカウントを認識していません。それより前のアカウントでサインインするか、新しい Hypersnap アカウントを作成してください。",
+  "This account was registered on Farcaster after Hypersnap split from it on November 12, 2026, so Hypersnap can show the account but can't accept anything from it. Sign in with an older account or create a new Hypersnap account.": "このアカウントは、Hypersnap が 2026年11月12日に Farcaster から分かれた後に Farcaster で登録されたため、Hypersnap はアカウントを表示できても、そこからの操作を受け付けられません。それより前のアカウントでサインインするか、新しい Hypersnap アカウントを作成してください。",
   "Couldn't read that image": "その画像を読み込めませんでした",
   "Couldn't send: {error}": "送信できませんでした：{error}",
   "Courier": "Courier",

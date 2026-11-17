@@ -164,7 +164,7 @@
   "Couldn't load: {error}": "Không tải được: {error}",
   "Couldn't reach Quorum's theme gallery.": "Không kết nối được với thư viện chủ đề của Quorum.",
   "Couldn't reach the Farcaster node. Try again.": "Không kết nối được với node Farcaster. Hãy thử lại.",
-  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "Tài khoản này được đăng ký trên Farcaster sau ngày 12 tháng 11 năm 2026, khi Hypersnap tách khỏi Farcaster, nên Hypersnap không biết tài khoản này. Hãy đăng nhập bằng một tài khoản cũ hơn hoặc tạo tài khoản Hypersnap mới.",
+  "This account was registered on Farcaster after Hypersnap split from it on November 12, 2026, so Hypersnap can show the account but can't accept anything from it. Sign in with an older account or create a new Hypersnap account.": "Tài khoản này được đăng ký trên Farcaster sau khi Hypersnap tách khỏi Farcaster vào ngày 12 tháng 11 năm 2026, nên Hypersnap có thể hiển thị tài khoản nhưng không thể nhận bất cứ thứ gì từ nó. Hãy đăng nhập bằng một tài khoản cũ hơn hoặc tạo tài khoản Hypersnap mới.",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "Không kết nối được với trình khám phá của {chains}, nên token trên đó có thể bị thiếu. Hãy làm mới để thử lại.",
   "Couldn't read that image": "Không đọc được ảnh đó",
   "Couldn't send: {error}": "Không gửi được: {error}",

@@ -164,7 +164,7 @@
   "Couldn't load: {error}": "Impossibile caricare: {error}",
   "Couldn't reach Quorum's theme gallery.": "Impossibile raggiungere la galleria di temi di Quorum.",
   "Couldn't reach the Farcaster node. Try again.": "Impossibile raggiungere il nodo Farcaster. Riprova.",
-  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "Questo account è stato registrato su Farcaster dopo il 12 novembre 2026, quando Hypersnap se ne è separato, quindi Hypersnap non lo conosce. Accedi con un account più vecchio o crea un nuovo account Hypersnap.",
+  "This account was registered on Farcaster after Hypersnap split from it on November 12, 2026, so Hypersnap can show the account but can't accept anything from it. Sign in with an older account or create a new Hypersnap account.": "Questo account è stato registrato su Farcaster dopo che Hypersnap se ne è separato il 12 novembre 2026, quindi Hypersnap può mostrare l'account ma non può accettare nulla da esso. Accedi con un account più vecchio o crea un nuovo account Hypersnap.",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "Impossibile raggiungere l'explorer di {chains}, quindi potrebbero mancare dei token. Aggiorna per riprovare.",
   "Couldn't read that image": "Impossibile leggere l'immagine",
   "Couldn't send: {error}": "Impossibile inviare: {error}",

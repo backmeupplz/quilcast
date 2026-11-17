@@ -60,9 +60,10 @@ async function submit(m: { msg: Uint8Array; hash: string }, wait = [1000, 2000, 
       if (wait.length) return sleep(wait[0]).then(() => submit(m, wait.slice(1)))
       throw new Error("Couldn't reach the Farcaster node. Try again.")
     }
-    // Hypersnap stopped reading Optimism on November 12, 2026, so FIDs registered there after that are unknown to it
+    // Hypersnap stopped reading Optimism on November 12, 2026: an FID registered there after that can still have a
+    // profile on the node, but no registration, so the node turns down everything it signs
     if (/unknown fid/i.test(said))
-      throw new Error('This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn\'t know it. Sign in with an older account or create a new Hypersnap account.')
+      throw new Error('This account was registered on Farcaster after Hypersnap split from it on November 12, 2026, so Hypersnap can show the account but can\'t accept anything from it. Sign in with an older account or create a new Hypersnap account.')
     throw new Error(said)
   }
   forget()
