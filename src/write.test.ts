@@ -90,6 +90,13 @@ test('a node whose queue is full is asked again with the same message; still ful
   }
 })
 
+test('a FID Hypersnap never heard of (registered on Optimism after the split) says why instead of the raw node error', async () => {
+  const { follow } = await import('./write.ts')
+  ;(globalThis as any).fetch = async () =>
+    new Response(JSON.stringify({ error: 'Failed to submit message', error_detail: 'status: InvalidArgument, message: "bad_request.validation_failure/unknown fid", details: []' }), { status: 400 })
+  await assert.rejects(follow(3, true), /registered on Farcaster after November 12, 2026/)
+})
+
 test('a train car keeps the cast\'s own text and mentions, and readers never see the train embed', async () => {
   Object.assign(globalThis, { addEventListener: () => {}, dispatchEvent: () => true })
   ;(globalThis as any).localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} }

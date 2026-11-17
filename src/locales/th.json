@@ -164,6 +164,7 @@
   "Couldn't load: {error}": "โหลดไม่ได้: {error}",
   "Couldn't reach Quorum's theme gallery.": "เชื่อมต่อแกลเลอรีธีมของ Quorum ไม่ได้",
   "Couldn't reach the Farcaster node. Try again.": "เชื่อมต่อโหนด Farcaster ไม่ได้ ลองอีกครั้ง",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "บัญชีนี้ลงทะเบียนบน Farcaster หลังวันที่ 12 พฤศจิกายน 2026 ซึ่งเป็นวันที่ Hypersnap แยกตัวออกมา Hypersnap จึงไม่รู้จักบัญชีนี้ ลงชื่อเข้าใช้ด้วยบัญชีที่เก่ากว่า หรือสร้างบัญชี Hypersnap ใหม่",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "เชื่อมต่อ Explorer ของ {chains} ไม่ได้ โทเค็นบนเชนนั้นจึงอาจไม่แสดง รีเฟรชเพื่อลองอีกครั้ง",
   "Couldn't read that image": "อ่านรูปภาพนั้นไม่ได้",
   "Couldn't send: {error}": "ส่งไม่ได้: {error}",

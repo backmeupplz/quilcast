@@ -164,6 +164,7 @@
   "Couldn't load: {error}": "تعذّر التحميل: {error}",
   "Couldn't reach Quorum's theme gallery.": "تعذّر الوصول إلى معرض سمات Quorum.",
   "Couldn't reach the Farcaster node. Try again.": "تعذّر الوصول إلى عقدة Farcaster. حاول مرة أخرى.",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "سُجّل هذا الحساب على Farcaster بعد 12 نوفمبر 2026، حين انفصلت Hypersnap عنه، لذلك لا تعرفه Hypersnap. سجّل الدخول بحساب أقدم أو أنشئ حسابًا جديدًا على Hypersnap.",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "تعذّر الوصول إلى مستكشف {chains}، لذا قد تكون بعض الرموز هناك مفقودة. حدّث الصفحة لتحاول مرة أخرى.",
   "Couldn't read that image": "تعذّرت قراءة هذه الصورة",
   "Couldn't send: {error}": "تعذّر الإرسال: {error}",

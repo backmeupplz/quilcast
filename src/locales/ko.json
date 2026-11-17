@@ -164,6 +164,7 @@
   "Couldn't load: {error}": "불러오지 못했어요: {error}",
   "Couldn't reach Quorum's theme gallery.": "Quorum 테마 갤러리에 연결하지 못했어요.",
   "Couldn't reach the Farcaster node. Try again.": "Farcaster 노드에 연결하지 못했어요. 다시 시도하세요.",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "이 계정은 Hypersnap이 Farcaster에서 갈라져 나온 2026년 11월 12일 이후에 Farcaster에 등록되어서 Hypersnap이 알지 못해요. 더 오래된 계정으로 로그인하거나 새 Hypersnap 계정을 만드세요.",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "{chains} 익스플로러에 연결하지 못해서 해당 토큰이 빠져 있을 수 있어요. 새로고침해서 다시 시도하세요.",
   "Couldn't read that image": "이미지를 읽지 못했어요",
   "Couldn't send: {error}": "보내지 못했어요: {error}",

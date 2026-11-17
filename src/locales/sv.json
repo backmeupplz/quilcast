@@ -164,6 +164,7 @@
   "Couldn't load: {error}": "Det gick inte att läsa in: {error}",
   "Couldn't reach Quorum's theme gallery.": "Det gick inte att nå Quorums temagalleri.",
   "Couldn't reach the Farcaster node. Try again.": "Det gick inte att nå Farcaster-noden. Försök igen.",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "Det här kontot registrerades på Farcaster efter den 12 november 2026, när Hypersnap delades av från det, så Hypersnap känner inte till det. Logga in med ett äldre konto eller skapa ett nytt Hypersnap-konto.",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "Det gick inte att nå utforskaren för {chains}, så tokens där kan saknas. Uppdatera för att försöka igen.",
   "Couldn't read that image": "Det gick inte att läsa bilden",
   "Couldn't send: {error}": "Det gick inte att skicka: {error}",

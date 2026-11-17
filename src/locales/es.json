@@ -93,6 +93,7 @@
   "Couldn't load messages: {error}": "No se pudieron cargar los mensajes: {error}",
   "Couldn't load: {error}": "No se pudo cargar: {error}",
   "Couldn't reach the Farcaster node. Try again.": "No se pudo conectar con el nodo de Farcaster. Inténtalo de nuevo.",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "Esta cuenta se registró en Farcaster después del 12 de noviembre de 2026, cuando Hypersnap se separó de él, así que Hypersnap no la conoce. Inicia sesión con una cuenta más antigua o crea una cuenta nueva de Hypersnap.",
   "Couldn't read that image": "No se pudo leer esa imagen",
   "Couldn't send: {error}": "No se pudo enviar: {error}",
   "Courier": "Courier",

@@ -164,6 +164,7 @@
   "Couldn't load: {error}": "Tidak bisa memuat: {error}",
   "Couldn't reach Quorum's theme gallery.": "Tidak bisa menghubungi galeri tema Quorum.",
   "Couldn't reach the Farcaster node. Try again.": "Tidak bisa menghubungi node Farcaster. Coba lagi.",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "Akun ini didaftarkan di Farcaster setelah 12 November 2026, saat Hypersnap memisahkan diri darinya, jadi Hypersnap tidak mengenalnya. Masuk dengan akun yang lebih lama atau buat akun Hypersnap baru.",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "Tidak bisa menghubungi explorer untuk {chains}, jadi token di sana mungkin tidak muncul. Muat ulang untuk mencoba lagi.",
   "Couldn't read that image": "Tidak bisa membaca gambar itu",
   "Couldn't send: {error}": "Tidak bisa mengirim: {error}",

@@ -164,6 +164,7 @@
   "Couldn't load: {error}": "Nie udało się wczytać: {error}",
   "Couldn't reach Quorum's theme gallery.": "Nie udało się połączyć z galerią motywów Quorum.",
   "Couldn't reach the Farcaster node. Try again.": "Nie udało się połączyć z węzłem Farcaster. Spróbuj ponownie.",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "To konto zostało zarejestrowane w Farcasterze po 12 listopada 2026, kiedy Hypersnap się od niego odłączył, więc Hypersnap go nie zna. Zaloguj się starszym kontem albo załóż nowe konto Hypersnap.",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "Nie udało się połączyć z eksploratorem dla {chains}, więc może brakować tokenów z tych sieci. Odśwież, aby spróbować ponownie.",
   "Couldn't read that image": "Nie udało się odczytać tego obrazu",
   "Couldn't send: {error}": "Nie udało się wysłać: {error}",

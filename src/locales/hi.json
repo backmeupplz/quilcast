@@ -164,6 +164,7 @@
   "Couldn't load: {error}": "लोड नहीं हो सका: {error}",
   "Couldn't reach Quorum's theme gallery.": "Quorum की थीम गैलरी से कनेक्ट नहीं हो सका।",
   "Couldn't reach the Farcaster node. Try again.": "Farcaster नोड से कनेक्ट नहीं हो सका। फिर से कोशिश करें।",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "यह खाता 12 नवंबर 2026 के बाद Farcaster पर बनाया गया था, जब Hypersnap उससे अलग हुआ, इसलिए Hypersnap इसे नहीं जानता। किसी पुराने खाते से साइन इन करें या नया Hypersnap खाता बनाएँ।",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "{chains} के एक्सप्लोरर से कनेक्ट नहीं हो सका, इसलिए वहाँ के कुछ टोकन नहीं दिख रहे होंगे। फिर से कोशिश करने के लिए रिफ़्रेश करें।",
   "Couldn't read that image": "वह इमेज पढ़ी नहीं जा सकी",
   "Couldn't send: {error}": "भेजा नहीं जा सका: {error}",

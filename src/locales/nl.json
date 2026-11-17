@@ -164,6 +164,7 @@
   "Couldn't load: {error}": "Laden mislukt: {error}",
   "Couldn't reach Quorum's theme gallery.": "De themagalerij van Quorum is niet bereikbaar.",
   "Couldn't reach the Farcaster node. Try again.": "De Farcaster-node is niet bereikbaar. Probeer het opnieuw.",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "Dit account is na 12 november 2026 op Farcaster geregistreerd, toen Hypersnap zich ervan afsplitste, dus Hypersnap kent het niet. Log in met een ouder account of maak een nieuw Hypersnap-account aan.",
   "Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.": "De explorer voor {chains} is niet bereikbaar, dus tokens daar kunnen ontbreken. Vernieuw om het opnieuw te proberen.",
   "Couldn't read that image": "Kon die afbeelding niet lezen",
   "Couldn't send: {error}": "Versturen mislukt: {error}",

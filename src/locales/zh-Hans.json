@@ -93,6 +93,7 @@
   "Couldn't load messages: {error}": "无法加载私信：{error}",
   "Couldn't load: {error}": "加载失败：{error}",
   "Couldn't reach the Farcaster node. Try again.": "无法连接 Farcaster 节点，请重试。",
+  "This account was registered on Farcaster after November 12, 2026, when Hypersnap split from it, so Hypersnap doesn't know it. Sign in with an older account or create a new Hypersnap account.": "这个账号是在 2026 年 11 月 12 日 Hypersnap 从 Farcaster 分出之后才在 Farcaster 注册的，所以 Hypersnap 不认识它。请用更早的账号登录，或创建新的 Hypersnap 账号。",
   "Couldn't read that image": "无法读取这张图片",
   "Couldn't send: {error}": "发送失败：{error}",
   "Courier": "Courier",
