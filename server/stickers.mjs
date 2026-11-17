@@ -14,12 +14,13 @@
 // both into img2webp.
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, open, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { fail, gate, imageInfo, keep, parseJson, readText } from './net.mjs'
 import { keySigned } from './looks.mjs'
+import { renderAsync } from '@resvg/resvg-js'
 
 const run = promisify(execFile)
 const TELEGRAM = process.env.TELEGRAM_API || 'https://api.telegram.org'
@@ -37,7 +38,9 @@ let dir = ''
 export async function loadStickers(dataDir) {
   dir = join(dataDir, 'stickers')
   await Promise.all(['packs', 'files', 'saved'].map((d) => mkdir(join(dir, d), { recursive: true })))
+  pruning = pruneCroppedStills()
 }
+export let pruning = Promise.resolve(0)
 const packFile = (id) => join(dir, 'packs', `${id}.json`)
 const savedFile = (fid) => join(dir, 'saved', `${fid}.json`)
 export const stickerFile = (h) => join(dir, 'files', `${h}.webp`)
@@ -112,18 +115,75 @@ async function keepFile({ webp, still }) {
 const stillFile = (h) => join(dir, 'files', `${h}.png`)
 /** A sticker's first frame as a PNG data URI for a share card or NFT (resvg draws no WebP), or null. */
 export async function stickerStill(h) {
-  const png = await readFile(stillFile(h)).catch(() => (HASH.test(h) ? firstFrame(h).catch(() => null) : null))
+  if (!HASH.test(h)) return null
+  const png = await readFile(stillFile(h)).catch(() => stills.get(h) || keep(stills, 100, h, firstFrame(h).catch(() => null).finally(() => stills.delete(h))))
   return png && `data:image/png;base64,${png.toString('base64')}`
 }
-/** An animated WebP that came in as it is has no still until one is asked for: its first frame, kept from then on. */
+// a still being made, by hash, so two asks at once make it once
+const stills = new Map()
+// two at a time across the server, out of the way of conversions (convert); each is a frame of 512 px at most
+const stillGate = gate(2, 200)
+/** An animated WebP's canvas size and its first frame's place on it (VP8X and the first ANMF chunk), or null. */
+export function firstFrameBox(webp) {
+  if (webp.length < 30) return null
+  const u24 = (o) => webp.readUIntLE(o, 3)
+  const box = { cw: u24(24) + 1, ch: u24(27) + 1 }
+  for (let o = 12; o + 8 <= webp.length; o += 8 + webp.readUInt32LE(o + 4) + (webp.readUInt32LE(o + 4) & 1)) {
+    if (webp.toString('latin1', o, o + 4) !== 'ANMF') continue
+    if (o + 20 > webp.length) return null
+    return { ...box, x: u24(o + 8) * 2, y: u24(o + 11) * 2, w: u24(o + 14) + 1, h: u24(o + 17) + 1 }
+  }
+  return null
+}
+const head = (f, n) => open(f).then((fd) => fd.read(Buffer.alloc(n), 0, n, 0).then(({ buffer, bytesRead }) => buffer.subarray(0, bytesRead)).finally(() => fd.close()))
+/** Stills made of an animated sticker's cropped first frame alone (before they went back on the whole canvas) are
+ *  smaller than their WebP's canvas: they go, and are made again the next time they're asked for. */
+async function pruneCroppedStills() {
+  let n = 0
+  const files = join(dir, 'files')
+  try {
+    for (const f of await readdir(files)) {
+      const h = f.slice(0, -4)
+      if (!f.endsWith('.png') || !HASH.test(h)) continue
+      // a PNG's width and height are at 16 and 20 (IHDR); one that isn't really a PNG goes too, and is made again
+      const [png, webp] = await Promise.all([head(join(files, f), 24), head(join(files, `${h}.webp`), 30)]).catch(() => [])
+      if (png?.length !== 24 || webp?.length !== 30 || webp.toString('latin1', 12, 16) !== 'VP8X' || !(webp[20] & 2)) continue
+      if (png.readUInt32BE(16) === webp.readUIntLE(24, 3) + 1 && png.readUInt32BE(20) === webp.readUIntLE(27, 3) + 1) continue
+      await rm(join(files, f), { force: true })
+      n++
+    }
+  } catch (e) {
+    console.error('sticker stills', e.message)
+  }
+  if (n) console.log(`sticker stills: ${n} cropped ones go, to be made again`)
+  return n
+}
+/** A sticker without a still (an animated WebP that came in as it is) gets one when it's first asked for: its first
+ *  frame on the whole canvas, kept from then on. */
 async function firstFrame(h) {
   const tmp = await mkdtemp(join(tmpdir(), 'still-'))
   try {
-    await run(WEBPMUX, ['-get', 'frame', '1', stickerFile(h), '-o', join(tmp, 'f.webp')], { timeout: 10e3 })
-    await run(DWEBP, [join(tmp, 'f.webp'), '-o', join(tmp, 'f.png')], { timeout: 10e3 })
-    const png = await readFile(join(tmp, 'f.png'))
-    await write(stillFile(h), png)
-    return png
+    return await stillGate(async () => {
+      // read once it's this one's turn, so a full queue holds no WebPs
+      const webp = await readFile(stickerFile(h)).catch(() => null)
+      if (!webp) return null
+      const animated = webp.toString('latin1', 12, 16) === 'VP8X' && (webp[20] & 2) > 0
+      const box = animated && firstFrameBox(webp)
+      if (animated && !box) throw new Error('no first frame')
+      let from = stickerFile(h)
+      if (animated) await run(WEBPMUX, ['-get', 'frame', '1', from, '-o', (from = join(tmp, 'frame.webp'))], { timeout: 10e3 })
+      await run(DWEBP, ['-quiet', from, '-o', join(tmp, 'still.png')], { timeout: 10e3 })
+      let png = await readFile(join(tmp, 'still.png'))
+      // the encoder crops a frame to what changed (webpmux hands back just that), so it's put back in its place on
+      // the whole canvas
+      if (box && (box.x || box.y || box.w !== box.cw || box.h !== box.ch))
+        png = (await renderAsync(`<svg xmlns="http://www.w3.org/2000/svg" width="${box.cw}" height="${box.ch}"><image href="data:image/png;base64,${png.toString('base64')}" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/></svg>`)).asPng()
+      await write(stillFile(h), png)
+      return png
+    })
+  } catch (e) {
+    console.error('sticker still', h, e.message)
+    return null
   } finally {
     await rm(tmp, { recursive: true, force: true })
   }
