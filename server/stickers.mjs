@@ -25,6 +25,8 @@ const run = promisify(execFile)
 const TELEGRAM = process.env.TELEGRAM_API || 'https://api.telegram.org'
 const FFMPEG = process.env.FFMPEG || 'ffmpeg'
 const IMG2WEBP = process.env.IMG2WEBP || 'img2webp'
+const WEBPMUX = process.env.WEBPMUX || 'webpmux'
+const DWEBP = process.env.DWEBP || 'dwebp'
 export const MAX_STICKERS = 120
 const MAX_PACKS = 100
 const SIDE = 320
@@ -108,8 +110,24 @@ async function keepFile({ webp, still }) {
   return h
 }
 const stillFile = (h) => join(dir, 'files', `${h}.png`)
-/** A sticker's first frame as a PNG for a share card, or null (an animated WebP that came in as it is). */
-export const stickerStill = (h) => readFile(stillFile(h)).catch(() => null)
+/** A sticker's first frame as a PNG data URI for a share card or NFT (resvg draws no WebP), or null. */
+export async function stickerStill(h) {
+  const png = await readFile(stillFile(h)).catch(() => (HASH.test(h) ? firstFrame(h).catch(() => null) : null))
+  return png && `data:image/png;base64,${png.toString('base64')}`
+}
+/** An animated WebP that came in as it is has no still until one is asked for: its first frame, kept from then on. */
+async function firstFrame(h) {
+  const tmp = await mkdtemp(join(tmpdir(), 'still-'))
+  try {
+    await run(WEBPMUX, ['-get', 'frame', '1', stickerFile(h), '-o', join(tmp, 'f.webp')], { timeout: 10e3 })
+    await run(DWEBP, [join(tmp, 'f.webp'), '-o', join(tmp, 'f.png')], { timeout: 10e3 })
+    const png = await readFile(join(tmp, 'f.png'))
+    await write(stillFile(h), png)
+    return png
+  } finally {
+    await rm(tmp, { recursive: true, force: true })
+  }
+}
 
 /** The pack name in a Telegram link: t.me/addstickers/<name>, t.me/addemoji/<name>, tg://addstickers?set=<name>, or the bare name. */
 export function tgName(url) {

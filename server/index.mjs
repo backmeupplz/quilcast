@@ -212,6 +212,9 @@ async function visualOf(c) {
   const urls = urlsOf(c)
   // a picture the text shows with Markdown counts too
   const img = urls.find(isImg) || imagesIn(c.text || '')[0]
+  // a sticker (shared.ts stickerPack) is drawn whole and frameless, from its still: resvg draws no animated WebP
+  const st = img?.match(/^https:\/\/quilcast\.com\/st\/([\w-]{8})\/([0-9a-f]{24})\.webp$/)
+  if (st && isSticker(st[1], st[2])) return { src: img, sticker: st[2] }
   if (img) return { src: img }
   // a shared design shows its own card
   const design = urls.map((u) => u.match(/^https:\/\/quilcast\.com\/design\/([\w-]{10})$/)?.[1]).find(Boolean)
@@ -233,7 +236,8 @@ async function visualOf(c) {
 /** The visual as a data URI: a shared design's or theme's own card, else the picture (`w`: the CDN size asked for). */
 const pictureOf = (v, w) =>
   v?.design ? designPng(v.design, v.d).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null)
-    : v?.theme ? themePng(v.theme, v.th).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null) : v?.src ? dataUri(sized(v.src, w)) : null
+    : v?.theme ? themePng(v.theme, v.th).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null)
+    : v?.sticker ? stickerStill(v.sticker) : v?.src ? dataUri(sized(v.src, w)) : null
 
 // card text's colors: words, links and mentions, code, quotes
 const INK = { fill: '#edebf3', accent: '#a99bff', code: '#f0c48a', muted: '#9893a5' }
@@ -269,8 +273,8 @@ async function card(c) {
   ${textSvg([wrap(name, 34, (tile ? 680 : 1100) - 196, 1)[0] || ''], { x: 196, y: 112, size: 34, bold: true, fill: '#edebf3' })}
   ${textSvg([`@${cut(a.username || a.fid, 40)}`], { x: 196, y: 150, size: 26, fill: '#9893a5' })}
   ${richSvg(lines, { x: 84, y: 232, lh: size * 1.32, size, ...INK })}
-  ${tile ? `<rect x="712" y="${ty}" width="420" height="${th}" rx="28" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>` : ''}
-  ${pic ? `<image href="${pic}" x="712" y="${ty}" width="420" height="${th}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pic)"/>` : ''}
+  ${tile && !v?.sticker ? `<rect x="712" y="${ty}" width="420" height="${th}" rx="28" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>` : ''}
+  ${pic ? `<image href="${pic}" x="712" y="${ty}" width="420" height="${th}" preserveAspectRatio="xMidYMid ${v?.sticker ? 'meet' : 'slice'}" clip-path="url(#pic)"/>` : ''}
   ${v?.video ? `<circle cx="922" cy="282" r="46" fill="#000" fill-opacity="0.55"/><path d="M908 258v48l40-24z" fill="#fff"/>` : ''}
   ${v?.label ? `<rect x="728" y="${ty + th - 48}" width="${Math.min(388, Math.round(width(v.label, 20) + 28))}" height="34" rx="17" fill="#000" fill-opacity="0.6"/><text x="742" y="${ty + th - 25}" font-family="Inter" font-weight="700" font-size="20" fill="#fff">${esc(wrap(v.label, 20, 360, 1)[0] || '')}</text>` : ''}
   ${v?.tweet ? `<g transform="translate(744 104) scale(1.4)"><path d="${X_LOGO}" fill="#edebf3"/></g>
@@ -364,7 +368,7 @@ async function packCard(p, tall = false) {
     const x = gx + (i % 3) * (cell + gap), y = gy + Math.floor(i / 3) * (cell + gap)
     const b = stills[i]
     return `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="26" fill="#fff" fill-opacity="${b ? 0.06 : 0.03}"/>` +
-      (b ? `<image href="data:image/png;base64,${b.toString('base64')}" x="${x + 12}" y="${y + 12}" width="${cell - 24}" height="${cell - 24}" preserveAspectRatio="xMidYMid meet"/>` : '')
+      (b ? `<image href="${b}" x="${x + 12}" y="${y + 12}" width="${cell - 24}" height="${cell - 24}" preserveAspectRatio="xMidYMid meet"/>` : '')
   }).join('')
   const title = wrap(p.title, 58, gx - 64 - 48, 3, { bold: true })
   const ty = H / 2 - ((title.length - 1) * 66) / 2 + 6
@@ -654,7 +658,11 @@ async function collectible(c) {
     body += richSvg(lines, { x: X, y: top + size, lh, size, ...INK })
     y = top + h + 36
   }
-  if (box) {
+  if (v?.sticker && pic) {
+    // on the background, as the app shows it, no larger than twice its 320 px
+    const s = Math.min(BOTTOM - y, 640)
+    body += `<image href="${pic}" x="${X + (W - s) / 2}" y="${y + (BOTTOM - y - s) / 2}" width="${s}" height="${s}" preserveAspectRatio="xMidYMid meet"/>`
+  } else if (box) {
     const h = BOTTOM - y
     body += `<clipPath id="nft-pic"><rect x="${X}" y="${y}" width="${W}" height="${h}" rx="32"/></clipPath>
   <rect x="${X}" y="${y}" width="${W}" height="${h}" rx="32" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>`

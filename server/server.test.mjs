@@ -39,6 +39,7 @@ const fid7 = { casts: [], profile: [] }
 const orAsked = []
 const submitted = []
 let refuse = ''
+const stickerCasts = {}
 const hookHits = []
 // a sticker of each kind: a Lottie square spinning for a second (.tgs is it gzipped), and a still PNG
 const TGS = gzipSync(JSON.stringify({ v: '5.5.2', fr: 60, ip: 0, op: 60, w: 512, h: 512, layers: [{ ty: 4, ip: 0, op: 60, st: 0, ks: { o: { a: 0, k: 100 }, r: { a: 1, k: [{ t: 0, s: [0], i: { x: [0.5], y: [0.5] }, o: { x: [0.5], y: [0.5] } }, { t: 60, s: [90] }] }, p: { a: 0, k: [256, 256] }, a: { a: 0, k: [0, 0] }, s: { a: 0, k: [100, 100] } }, shapes: [{ ty: 'rc', p: { a: 0, k: [0, 0] }, s: { a: 0, k: [300, 300] }, r: { a: 0, k: 40 } }, { ty: 'fl', c: { a: 0, k: [1, 0.3, 0.2, 1] }, o: { a: 0, k: 100 } }] }] }))
@@ -135,6 +136,10 @@ const node = createServer(async (q, r) => {
   if (u.pathname === '/v1/userDataByFid' && u.searchParams.get('fid') === '7') return r.end(JSON.stringify({ messages: fid7.profile }))
   // the node failing on a cast the Collect mini app is asked for
   if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === 'c5'.repeat(20)) return (r.statusCode = 500), r.end('{}')
+  // casts of just a sticker (the sticker test fills them in)
+  const sticker = stickerCasts[u.searchParams.get('identifier')]
+  if (u.pathname === '/v2/farcaster/cast' && sticker)
+    return r.end(JSON.stringify({ cast: { hash: u.searchParams.get('identifier'), text: '', timestamp: '2026-01-01T00:00:00Z', embeds: [{ url: sticker }], author: { fid: 7, username: 'seven' }, reactions: {}, replies: {} } }))
   // a cast and a profile with characters XML can't hold (a bell, NUL, U+FFFF) in the name, bio and text
   if (u.pathname === '/v2/farcaster/cast' && u.searchParams.get('identifier') === '07'.repeat(20))
     return r.end(JSON.stringify({ cast: { hash: '07'.repeat(20), text: 'ring\u0007 the bell\u0000\uffff', timestamp: '2026-01-01T00:00:00Z', embeds: [], author: { fid: 77, username: 'bell', display_name: '\u0007Bell' }, reactions: {}, replies: {} } }))
@@ -849,6 +854,20 @@ test('sticker packs: made, filled from a picture and from Telegram, shared, adde
   assert.deepEqual(full.stickers.map((s) => s.e), ['🟣', '🙂', '🔥'])
   const anim = Buffer.from(await (await fetch(`${base}/st/${pack.id}/${full.stickers[1].h}.webp`)).arrayBuffer())
   assert.ok(anim.includes('ANIM'))
+  // a cast of just a sticker is collected with the sticker in the middle of its NFT, on the background: the Lottie
+  // one from its still, and an animated WebP added as it is (no still) from its first frame
+  const odd = Buffer.from(anim)
+  odd[odd.indexOf('ANIM') + 8] ^= 1 // another background color: other bytes, so another sticker
+  const kept = (await (await call(7, { op: 'add', pack: pack.id, image: odd.toString('base64'), emoji: '🟠' })).json()).pack.stickers.at(-1).h
+  for (const [hash, h] of [['e7'.repeat(20), full.stickers[1].h], ['e8'.repeat(20), kept]]) {
+    stickerCasts[hash] = `https://quilcast.com/st/${pack.id}/${h}.webp`
+    const png = Buffer.from(await (await fetch(`${base}/nft/0x${hash}.png`)).arrayBuffer())
+    const px = (x, y) => renderAsync(`<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="${x} ${y} 1 1"><image href="data:image/png;base64,${png.toString('base64')}" width="1200" height="1200"/></svg>`).then((i) => [...i.pixels.subarray(0, 3)])
+    const [r, g, b] = await px(600, 650)
+    assert.ok(r > 200 && g < 120 && b < 100, `the sticker's red in the middle, not ${[r, g, b]}`)
+    // no box around it: the background shows beside it
+    assert.deepEqual(await px(100, 650), [13, 12, 17])
+  }
   // or into a new pack named after Telegram's
   const { pack: fresh, job: job2 } = await (await call(7, { op: 'import', url: 'tg://addstickers?set=demo' })).json()
   assert.equal(fresh.title, 'Demo pack')
