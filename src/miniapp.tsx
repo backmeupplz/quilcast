@@ -19,6 +19,7 @@ import { APP_PUSH, askPush, channelOf, Choose, pushSubscription, fetchCast, hand
 import { custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
 import { awake, sleepers } from './sleep.ts'
+import { isSaved, shareHome } from './appsaved.ts'
 
 const QUILCAST_FID = 3356316
 // viem's default Polygon RPC now wants a key, so Polygon reads and sends go through publicnode
@@ -695,7 +696,7 @@ const inboxSecret = () => {
 }
 const notifying = (origin: string) => !!account?.notify?.includes(origin)
 const savedApps = () => read<AppMeta[]>('quilcast:apps', [])
-export const manifestOf = (origin: string): Promise<{ name?: string; iconUrl?: string; webhook?: boolean } | null> =>
+export const manifestOf = (origin: string): Promise<{ name?: string; iconUrl?: string; homeUrl?: string; webhook?: boolean } | null> =>
   fetch(`/api/manifest?origin=${encodeURIComponent(origin)}`).then((r) => r.json(), () => null)
 const details = (m: AppMeta) => api('/api/notify/token', { inbox: inboxSecret(), origin: new URL(m.url).origin, name: m.name, icon: m.icon }) as Promise<{ token: string; url: string }>
 
@@ -739,7 +740,7 @@ const inApp = navigator.userAgent.includes('QuilcastApp/')
 
 const context = async (app: App) => ({
   client: {
-    platformType: narrow() || inApp ? 'mobile' : 'web', clientFid: QUILCAST_FID, added: savedApps().some((s) => s.url === app.url),
+    platformType: narrow() || inApp ? 'mobile' : 'web', clientFid: QUILCAST_FID, added: isSaved(savedApps(), app),
     notificationDetails: notifying(app.origin) ? await details(app).catch(() => undefined) : undefined, safeAreaInsets: { top: 0, bottom: 0, left: 0, right: 0 },
   },
   user: userCtx(myUser()!),
@@ -782,8 +783,9 @@ async function addApp(app: App) {
   // the spec has hosts check the domain's manifest before adding
   const m = await manifestOf(app.origin)
   if (!m) return { error: { type: 'invalid_domain_manifest' } }
-  const meta = { url: app.url, name: app.name, icon: app.icon }
-  const saved = savedApps().some((s) => s.url === app.url)
+  // a cast action is saved once, at its home rather than at this cast (appsaved.ts)
+  const meta = { url: app.share ? shareHome(app.url, m.homeUrl) : app.url, name: app.name, icon: app.icon }
+  const saved = isSaved(savedApps(), app)
   let d: { url: string; token: string } | undefined
   if (saved && (notifying(app.origin) || !m.webhook)) d = notifying(app.origin) ? await details(meta).catch(() => undefined) : undefined
   else {
