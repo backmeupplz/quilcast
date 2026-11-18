@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "已將 {name} 從 ⋯ 選單中移除",
   "That isn't a link.": "這不是連結。",
   "The action's site, like example.com": "操作的網站，例如 example.com",
-  "{host} has no cast action.": "{host} 沒有 cast 操作。"
+  "{host} has no cast action.": "{host} 沒有 cast 操作。",
+  "Add “{name}” to the ⋯ menu?": "要將「{name}」加入 ⋯ 選單嗎？",
+  "Could not check who you are.": "無法確認你的身分。",
+  "Couldn't find that cast.": "找不到該貼文。",
+  "Open Remind me once and turn its notifications on.": "請先開啟一次 Remind me 並開啟它的通知。",
+  "That request is not for this action.": "該請求不適用於此操作。",
+  "Try something like 3 hours, 2 days or 1 week.": "試試類似 3 小時、2 天或 1 週的說法。",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "在每則貼文下方點一下，會向 {host} 傳送這是哪則貼文以及你的 FID，並顯示 {host} 的回覆。你可以在 Cast 操作中移除。",
+  "{name} didn't work.": "{name} 沒有成功。",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} 無法載入。它的網站可能已當機，或在此網路上被封鎖。",
+  "{name}: done": "{name}：完成"
 }

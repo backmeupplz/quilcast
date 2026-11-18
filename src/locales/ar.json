@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "تمت إزالة {name} من قائمة ⋯",
   "That isn't a link.": "هذا ليس رابطًا.",
   "The action's site, like example.com": "موقع الإجراء، مثل example.com",
-  "{host} has no cast action.": "لا يوجد إجراء كاست في {host}."
+  "{host} has no cast action.": "لا يوجد إجراء كاست في {host}.",
+  "Add “{name}” to the ⋯ menu?": "هل تريد إضافة «{name}» إلى قائمة ⋯؟",
+  "Could not check who you are.": "تعذّر التحقق من هويتك.",
+  "Couldn't find that cast.": "تعذّر العثور على هذا الكاست.",
+  "Open Remind me once and turn its notifications on.": "افتح Remind me مرة واحدة وفعّل إشعاراته.",
+  "That request is not for this action.": "هذا الطلب ليس لهذا الإجراء.",
+  "Try something like 3 hours, 2 days or 1 week.": "جرّب شيئًا مثل 3 ساعات أو يومين أو أسبوع.",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "أسفل كل كاست، تؤدي الضغطة عليه إلى إرسال أي كاست كان وFID الخاص بك إلى {host}، ثم يعرض ما يرد به {host}. يمكنك إزالته من إجراءات الكاست.",
+  "{name} didn't work.": "لم يعمل {name}.",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "لا يتم تحميل {name}. قد يكون موقعه متوقفًا أو محظورًا على هذه الشبكة.",
+  "{name}: done": "{name}: تم"
 }

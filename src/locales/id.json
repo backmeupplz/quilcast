@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name} dihapus dari menu ⋯",
   "That isn't a link.": "Itu bukan tautan.",
   "The action's site, like example.com": "Situs aksi, misalnya example.com",
-  "{host} has no cast action.": "{host} tidak punya aksi cast."
+  "{host} has no cast action.": "{host} tidak punya aksi cast.",
+  "Add “{name}” to the ⋯ menu?": "Tambahkan “{name}” ke menu ⋯?",
+  "Could not check who you are.": "Tidak dapat memeriksa siapa Anda.",
+  "Couldn't find that cast.": "Cast itu tidak ditemukan.",
+  "Open Remind me once and turn its notifications on.": "Buka Remind me sekali dan aktifkan notifikasinya.",
+  "That request is not for this action.": "Permintaan itu bukan untuk aksi ini.",
+  "Try something like 3 hours, 2 days or 1 week.": "Coba seperti 3 jam, 2 hari, atau 1 minggu.",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Di bawah setiap cast, mengetuknya akan mengirim cast mana itu dan FID Anda ke {host}, lalu menampilkan jawaban {host}. Anda bisa menghapusnya di Aksi cast.",
+  "{name} didn't work.": "{name} tidak berhasil.",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} tidak dapat dimuat. Situsnya mungkin sedang down atau diblokir di jaringan ini.",
+  "{name}: done": "{name}: selesai"
 }

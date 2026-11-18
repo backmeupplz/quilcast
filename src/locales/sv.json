@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name} togs bort från ⋯-menyn",
   "That isn't a link.": "Det där är ingen länk.",
   "The action's site, like example.com": "Åtgärdens webbplats, som example.com",
-  "{host} has no cast action.": "{host} har ingen cast-åtgärd."
+  "{host} has no cast action.": "{host} har ingen cast-åtgärd.",
+  "Add “{name}” to the ⋯ menu?": "Lägga till ”{name}” i ⋯-menyn?",
+  "Could not check who you are.": "Det gick inte att kontrollera vem du är.",
+  "Couldn't find that cast.": "Kunde inte hitta den casten.",
+  "Open Remind me once and turn its notifications on.": "Öppna Remind me en gång och slå på dess notiser.",
+  "That request is not for this action.": "Den begäran är inte för den här åtgärden.",
+  "Try something like 3 hours, 2 days or 1 week.": "Prova något som 3 timmar, 2 dagar eller 1 vecka.",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Under varje cast skickar ett tryck på den till {host} vilken cast det var och ditt FID, och visar vad {host} svarar. Du kan ta bort den under Cast-åtgärder.",
+  "{name} didn't work.": "{name} fungerade inte.",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} laddas inte. Webbplatsen kan vara nere eller blockerad på det här nätverket.",
+  "{name}: done": "{name}: klart"
 }

@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name}을(를) ⋯ 메뉴에서 제거했어요",
   "That isn't a link.": "링크가 아니에요.",
   "The action's site, like example.com": "액션의 사이트 (예: example.com)",
-  "{host} has no cast action.": "{host}에는 캐스트 액션이 없어요."
+  "{host} has no cast action.": "{host}에는 캐스트 액션이 없어요.",
+  "Add “{name}” to the ⋯ menu?": "“{name}”을(를) ⋯ 메뉴에 추가할까요?",
+  "Could not check who you are.": "사용자를 확인하지 못했어요.",
+  "Couldn't find that cast.": "해당 캐스트를 찾을 수 없어요.",
+  "Open Remind me once and turn its notifications on.": "Remind me를 한 번 열고 알림을 켜세요.",
+  "That request is not for this action.": "이 요청은 이 액션용이 아니에요.",
+  "Try something like 3 hours, 2 days or 1 week.": "3시간, 2일, 1주처럼 입력해 보세요.",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "각 캐스트 아래에서 누르면 어떤 캐스트인지와 내 FID가 {host}에 전송되고, {host}의 응답이 표시돼요. 캐스트 액션에서 제거할 수 있어요.",
+  "{name} didn't work.": "{name}이(가) 작동하지 않았어요.",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name}을(를) 불러오지 못했어요. 사이트가 다운됐거나 이 네트워크에서 차단됐을 수 있어요.",
+  "{name}: done": "{name}: 완료"
 }

@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name} удалено из меню ⋯",
   "That isn't a link.": "Это не ссылка.",
   "The action's site, like example.com": "Сайт действия, например example.com",
-  "{host} has no cast action.": "У {host} нет действия для кастов."
+  "{host} has no cast action.": "У {host} нет действия для кастов.",
+  "Add “{name}” to the ⋯ menu?": "Добавить «{name}» в меню ⋯?",
+  "Could not check who you are.": "Не удалось проверить, кто вы.",
+  "Couldn't find that cast.": "Не удалось найти этот каст.",
+  "Open Remind me once and turn its notifications on.": "Один раз откройте Remind me и включите его уведомления.",
+  "That request is not for this action.": "Этот запрос не для этого действия.",
+  "Try something like 3 hours, 2 days or 1 week.": "Попробуйте что-то вроде 3 часа, 2 дня или 1 неделя.",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Под каждым кастом нажатие отправляет {host}, какой это был каст, и ваш FID, и показывает ответ {host}. Убрать это можно в разделе Действия для кастов.",
+  "{name} didn't work.": "{name} не сработало.",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} не загружается. Возможно, сайт не работает или заблокирован в этой сети.",
+  "{name}: done": "{name}: готово"
 }

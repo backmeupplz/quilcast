@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "已将 {name} 从 ⋯ 菜单中移除",
   "That isn't a link.": "这不是链接。",
   "The action's site, like example.com": "操作的网站，例如 example.com",
-  "{host} has no cast action.": "{host} 没有 cast 操作。"
+  "{host} has no cast action.": "{host} 没有 cast 操作。",
+  "Add “{name}” to the ⋯ menu?": "要将“{name}”添加到 ⋯ 菜单吗？",
+  "Could not check who you are.": "无法确认你的身份。",
+  "Couldn't find that cast.": "找不到该 Cast。",
+  "Open Remind me once and turn its notifications on.": "请先打开一次 Remind me 并开启它的通知。",
+  "That request is not for this action.": "该请求不适用于此操作。",
+  "Try something like 3 hours, 2 days or 1 week.": "试试类似 3 小时、2 天或 1 周的说法。",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "在每条 Cast 下方点按它，会向 {host} 发送这是哪条 Cast 以及你的 FID，并显示 {host} 的回复。你可以在 Cast 操作中将其移除。",
+  "{name} didn't work.": "{name} 没有成功。",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} 无法加载。它的网站可能已宕机，或在此网络上被屏蔽。",
+  "{name}: done": "{name}：已完成"
 }

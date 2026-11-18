@@ -28,7 +28,7 @@ import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { alertState, flushAlerts, loadAlerts, offAlerts, putAlerts, watchAlerts } from './alerts.mjs'
 import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
-import { addReminder, loadRemind, watchRemind } from './remind.mjs'
+import { addReminder, loadRemind, oneClickReminder, watchRemind } from './remind.mjs'
 import { cancelScheduled, getScheduled, loadScheduled, putScheduled, watchScheduled } from './scheduled.mjs'
 import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
 import { getPin, loadPins, putPin } from './pins.mjs'
@@ -42,6 +42,8 @@ import { cardArt, cardMeta, tierOf } from './cards.mjs'
 import { cut, ends, esc, exactly, FONTS, initial, layout, pictures, richSvg, textSvg, width, wrap } from './text.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
+// a public Snapchain node, for keys added on Optimism since Hypersnap's fork (Remind me's one-click check); '' turns it off
+const SNAPCHAIN = process.env.SNAPCHAIN_URL ?? 'https://crackle.farcaster.xyz:3381'
 const SITE = process.env.SITE_URL || 'https://quilcast.com'
 const DIST = new URL('../dist/', import.meta.url).pathname
 // The standalone pages (About, the legal pages) carry their small stylesheet inline, so they paint without waiting
@@ -1221,6 +1223,17 @@ const server = createServer(async (req, res) => {
 
     const actionHost = String(req.headers.host || '').split(':')[0]
     const action = ACTION_HOSTS[actionHost]
+    // Remind me's one-click entries POST here from people's browsers (any client's), so it answers CORS
+    if (action === 'remindme' && path === '/api/action') {
+      const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST' }
+      if (req.method === 'OPTIONS') return res.writeHead(204, cors).end()
+      const reply = (code, body) => send(req, res, code, { 'content-type': 'application/json', 'cache-control': 'no-store', ...cors }, Buffer.from(JSON.stringify(body)))
+      if (req.method !== 'POST') return reply(405, { message: 'POST a signed tap here.' })
+      if (limited(`remind:action:${ipGroup(ip)}`, 30)) return reply(429, { message: 'Slow down a little.' })
+      const r = await readJson(req, 8000).then((b) => oneClickReminder(b, actionHost, { nodes: [NODE, SNAPCHAIN].filter(Boolean), node: NODE })).catch((e) => e)
+      if (r instanceof Error && !r.status) console.error('remind action', r)
+      return r instanceof Error ? reply(r.status || 500, { message: r.status ? r.message : 'Something went wrong.' }) : reply(200, r)
+    }
     // Remind me also keeps reminders (server/remind.mjs) and takes its manifest's webhook events (not kept)
     if (action === 'remindme' && req.method === 'POST' && (path === '/api/remind' || path === '/webhook')) {
       // IPv6 counted by its /64; a day's reminders are capped too, so no one fills the store

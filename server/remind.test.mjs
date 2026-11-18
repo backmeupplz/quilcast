@@ -3,7 +3,8 @@ import { mkdtemp, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { addReminder, cut, deliver, loadRemind, PER_TOKEN, remindRound } from './remind.mjs'
+import { ed25519 } from '@noble/curves/ed25519.js'
+import { addReminder, cut, deliver, duration, human, loadRemind, oneClickReminder, PER_TOKEN, remindRound } from './remind.mjs'
 
 const data = await mkdtemp(join(tmpdir(), 'qc-remind-'))
 await loadRemind(data, 'https://quilcast.test')
@@ -109,4 +110,59 @@ test('another host’s address that can’t be reached for good drops the remind
   const n = { notificationId: 'x', title: 'Reminder', body: 'b', targetUrl: 'https://remind.quilcast.com/', tokens: ['t'] }
   assert.equal(await deliver('https://127.0.0.1/notify', n), 'invalid')
   assert.equal(await deliver('https://nothing-here.invalid/notify', n), 'invalid')
+})
+
+test('a one-click duration: "1d", "3 days", "a week", "90 min"; anything else is null', () => {
+  assert.equal(duration('1d'), 86400e3)
+  assert.equal(duration('3 days'), 3 * 86400e3)
+  assert.equal(duration(' a Week '), 604800e3)
+  assert.equal(duration('90 min'), 90 * 60e3)
+  assert.equal(duration('2.5h'), 2.5 * 3600e3)
+  for (const bad of ['', 'soon', '0 days', '-1d', '3 fortnights', null]) assert.equal(duration(bad), null, String(bad))
+  assert.deepEqual([human(90 * 60e3), human(86400e3), human(2 * 604800e3)], ['90 minutes', '1 day', '2 weeks'])
+})
+
+test('a one-click tap: signed by a key the fid holds, for this action, now; anything else is refused', async () => {
+  const now = 1_800_000_000_000
+  const host = 'remind.quilcast.com'
+  const priv = ed25519.utils.randomSecretKey(), key = '0x' + Buffer.from(ed25519.getPublicKey(priv)).toString('hex')
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url')
+  const tap = (payload, { fid = 9, k = key, sign = priv } = {}) => {
+    const header = b64({ fid, type: 'app_key', key: k }), body = b64(payload)
+    return { header, payload: body, signature: Buffer.from(ed25519.sign(Buffer.from(`${header}.${body}`), sign)).toString('base64url') }
+  }
+  const hash = '0x' + 'cd'.repeat(20)
+  const good = { type: 'cast_action', url: `https://${host}/api/action?in=1d`, cast: { hash, fid: 5 }, notificationDetails: { url: 'https://other.example/notify', token: 'tok' }, timestamp: now }
+  const asked = []
+  const isKey = async (fid, k) => (asked.push([fid, k]), fid === 9 && k === key)
+  const real = globalThis.fetch
+  globalThis.fetch = async (u) => (String(u).startsWith('https://node.test/v2/farcaster/cast') ? new Response(JSON.stringify({ cast: { hash: hash.slice(2), text: 'gm', author: { fid: '4294967296', username: 'bob' } } })) : real(u))
+  const run = (b) => oneClickReminder(b, host, { nodes: ['https://node.test'], node: 'https://node.test', isKey, now }).catch((e) => e)
+  try {
+    const before = (await files()).length
+    assert.deepEqual(await run(tap(good)), { message: "I'll remind you in 1 day." })
+    assert.equal((await files()).length, before + 1)
+    assert.deepEqual(asked, [[9, key]])
+    // what was typed, when the entry asks
+    assert.deepEqual(await run(tap({ ...good, url: `https://${host}/api/action`, input: '3 hours' })), { message: "I'll remind you in 3 hours." })
+    const refused = async (b, status, msg) => {
+      const e = await run(b)
+      assert.ok(e instanceof Error, msg)
+      assert.equal(e.status, status, msg)
+    }
+    const other = ed25519.utils.randomSecretKey()
+    await refused({ ...tap(good), signature: tap(good, { sign: other }).signature }, 401, 'signed by another key')
+    await refused(tap(good, { fid: 10 }), 401, "a key the fid doesn't hold")
+    await refused(tap({ event: 'notifications_enabled', notificationDetails: good.notificationDetails }), 401, 'a webhook event')
+    await refused(tap({ ...good, url: 'https://evil.example/api/action?in=1d' }), 401, 'meant for another action')
+    await refused(tap({ ...good, timestamp: now - 600e3 }), 401, 'too old')
+    await refused(tap({ ...good, notificationDetails: undefined }), 400, 'notifications off')
+    await refused(tap({ ...good, url: `https://${host}/api/action`, input: 'whenever' }), 400, 'a time it can’t read')
+    // past a year: addReminder's short code comes back worded for the toast
+    const far = await run(tap({ ...good, url: `https://${host}/api/action`, input: '13 months' }))
+    assert.deepEqual([far.status, far.message], [400, 'Pick a time from a minute to a year away.'])
+    await refused({ header: 'x', payload: 'y', signature: 'z' }, 401, 'garbage')
+  } finally {
+    globalThis.fetch = real
+  }
 })

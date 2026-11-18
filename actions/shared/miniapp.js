@@ -67,3 +67,6 @@ export const sendToken = (o) => apply('sendToken', o)
 export const close = () => apply('close').catch(() => {})
 export const viewProfile = (fid) => apply('viewProfile', { fid }).catch(() => {})
 export const viewCast = (hash) => apply('viewCast', { hash })
+export const capabilities = () => apply('getCapabilities').catch(() => [])
+// one-click cast actions (quilcast.com/developers/cast-actions#one-click): { added } or { added: false, reason }
+export const addCastAction = (o) => apply('addCastAction', o).catch(() => ({ added: false, reason: 'unsupported' }))

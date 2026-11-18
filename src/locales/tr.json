@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name} ⋯ menüsünden kaldırıldı",
   "That isn't a link.": "Bu bir bağlantı değil.",
   "The action's site, like example.com": "Eylemin sitesi, örneğin example.com",
-  "{host} has no cast action.": "{host} sitesinde cast eylemi yok."
+  "{host} has no cast action.": "{host} sitesinde cast eylemi yok.",
+  "Add “{name}” to the ⋯ menu?": "“{name}” ⋯ menüsüne eklensin mi?",
+  "Could not check who you are.": "Kim olduğunuz doğrulanamadı.",
+  "Couldn't find that cast.": "Bu cast bulunamadı.",
+  "Open Remind me once and turn its notifications on.": "Remind me’ı bir kez açın ve bildirimlerini etkinleştirin.",
+  "That request is not for this action.": "Bu istek bu eylem için değil.",
+  "Try something like 3 hours, 2 days or 1 week.": "3 saat, 2 gün veya 1 hafta gibi bir şey deneyin.",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Her cast’in altında dokunmak, {host} sitesine hangi cast olduğunu ve FID’nizi gönderir, {host} sitesinin yanıtını gösterir. Bunu Cast eylemleri sayfasından kaldırabilirsiniz.",
+  "{name} didn't work.": "{name} çalışmadı.",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} yüklenmiyor. Sitesi kapalı olabilir veya bu ağda engellenmiş olabilir.",
+  "{name}: done": "{name}: tamam"
 }

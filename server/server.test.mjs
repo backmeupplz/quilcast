@@ -219,7 +219,7 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200', REMIND_EVERY_MS: '100' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200', REMIND_EVERY_MS: '100', SNAPCHAIN_URL: '' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] })
   // the last of what it says on stderr, to show if it never comes up (kept short, and drained so it never blocks)
   let stderr = ''
   srv.stderr.setEncoding('utf8').on('data', (s) => (stderr = (stderr + s).slice(-8192)))
@@ -1485,6 +1485,24 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
 })
 
 // last: it moves the server's clock three minutes on, past what other tests' signed timestamps allow
+test("Remind me's one-click endpoint answers CORS, and refuses a tap it can't check in words the toast can show", async () => {
+  const call = (method, body) => new Promise((ok, no) => {
+    const r = request({ host: '127.0.0.1', port, path: '/api/action', method, headers: { host: 'remind.quilcast.com', 'content-type': 'application/json' } }, (res) => {
+      const parts = []
+      res.on('data', (d) => parts.push(d)).on('end', () => ok({ status: res.statusCode, headers: res.headers, body: Buffer.concat(parts).toString() }))
+    })
+    r.on('error', no).end(body && JSON.stringify(body))
+  })
+  const pre = await call('OPTIONS')
+  assert.equal(pre.status, 204)
+  assert.equal(pre.headers['access-control-allow-origin'], '*')
+  assert.match(pre.headers['access-control-allow-headers'], /content-type/)
+  const bad = await call('POST', { header: 'x', payload: 'y', signature: 'z' })
+  assert.equal(bad.status, 401)
+  assert.equal(bad.headers['access-control-allow-origin'], '*')
+  assert.equal(JSON.parse(bad.body).message, 'Could not check who you are.')
+})
+
 test('Remind me: a reminder is kept with its notification token and sent to the Mini apps inbox when due', async () => {
   const ahead = await later(0)
   const now = () => Date.now() + ahead

@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name} rimossa dal menu ⋯",
   "That isn't a link.": "Questo non è un link.",
   "The action's site, like example.com": "Il sito dell'azione, ad esempio example.com",
-  "{host} has no cast action.": "{host} non ha nessuna azione cast."
+  "{host} has no cast action.": "{host} non ha nessuna azione cast.",
+  "Add “{name}” to the ⋯ menu?": "Aggiungere “{name}” al menu ⋯?",
+  "Could not check who you are.": "Impossibile verificare chi sei.",
+  "Couldn't find that cast.": "Impossibile trovare quel cast.",
+  "Open Remind me once and turn its notifications on.": "Apri Remind me una volta e attiva le sue notifiche.",
+  "That request is not for this action.": "Quella richiesta non è per questa azione.",
+  "Try something like 3 hours, 2 days or 1 week.": "Prova qualcosa come 3 ore, 2 giorni o 1 settimana.",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Sotto ogni cast, toccarlo invia a {host} quale cast era e il tuo FID, e mostra la risposta di {host}. Puoi rimuoverlo in Azioni cast.",
+  "{name} didn't work.": "{name} non ha funzionato.",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} non si carica. Il suo sito potrebbe essere down o bloccato su questa rete.",
+  "{name}: done": "{name}: fatto"
 }

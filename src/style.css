@@ -712,6 +712,9 @@ small.warn { color: var(--warn); }
 .mini-body iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
 .splash { position: absolute; inset: 0; display: grid; place-items: center; background: var(--card); }
 .splash img { width: 96px; height: 96px; border-radius: calc(22px * var(--rs, 1)); object-fit: cover; }
+.splash { grid-auto-flow: row; align-content: center; gap: 16px; }
+.splash .stuck { display: grid; justify-items: center; gap: 10px; max-width: 280px; padding: 0 16px; text-align: center; color: var(--muted); }
+.splash .stuck p { margin: 0; }
 .mini-wait { position: absolute; inset-inline-start: 12px; inset-inline-end: 12px; top: 12px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: calc(12px * var(--rs, 1)); background: var(--ink); color: var(--bg); font-size: 14px; font-weight: 600; box-shadow: 0 8px 24px rgb(0 0 0 / 0.2); }
 .mini-wait .grow { flex: 1; }
 .mini-wait .btn.ghost { color: inherit; box-shadow: inset 0 0 0 1px currentColor; }
@@ -731,6 +734,10 @@ small.warn { color: var(--warn); }
 .wallet-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: calc(99px * var(--rs, 1)); border: var(--bw, 1px) var(--bs, solid) var(--line); background: none; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .menu .wname { flex: 1; }
 .menu .app-icon { width: 18px; height: 18px; font-size: 11px; border-radius: 5px; }
+.menu-prompt { display: grid; gap: 8px; padding: 4px; width: 240px; max-width: calc(100vw - 48px); }
+/* .menu button would make it a plain row (no background: white on white) */
+.menu .menu-prompt .btn { justify-content: center; background: var(--accent); color: var(--on-accent, #fff); border-radius: calc(99px * var(--rs, 1)); }
+.menu .menu-prompt .btn:disabled { opacity: 0.5; }
 .wallet-icon { width: 18px; height: 18px; border-radius: calc(4px * var(--rs, 1)); flex: none; }
 .dock { position: fixed; z-index: 9; inset-inline-end: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); max-width: calc(100vw - 32px); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; display: flex; gap: 6px; padding: 6px; background: var(--card); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); box-shadow: 0 8px 24px rgb(0 0 0 / 0.16); }
 .dock button { flex: none; padding: 2px; border: 2px solid transparent; border-radius: calc(12px * var(--rs, 1)); background: none; display: grid; }

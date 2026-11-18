@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name} verwijderd uit het ⋯-menu",
   "That isn't a link.": "Dat is geen link.",
   "The action's site, like example.com": "De site van de actie, zoals example.com",
-  "{host} has no cast action.": "{host} heeft geen cast-actie."
+  "{host} has no cast action.": "{host} heeft geen cast-actie.",
+  "Add “{name}” to the ⋯ menu?": "“{name}” toevoegen aan het ⋯-menu?",
+  "Could not check who you are.": "Kon niet controleren wie je bent.",
+  "Couldn't find that cast.": "Die cast is niet gevonden.",
+  "Open Remind me once and turn its notifications on.": "Open Remind me één keer en zet de meldingen ervan aan.",
+  "That request is not for this action.": "Dat verzoek hoort niet bij deze actie.",
+  "Try something like 3 hours, 2 days or 1 week.": "Probeer iets als 3 uur, 2 dagen of 1 week.",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Onder elke cast stuurt tikken erop naar {host} welke cast het was en je FID, en toont het wat {host} antwoordt. Je kunt het verwijderen bij Cast-acties.",
+  "{name} didn't work.": "{name} werkte niet.",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} laadt niet. De site ligt mogelijk plat of is op dit netwerk geblokkeerd.",
+  "{name}: done": "{name}: klaar"
 }

@@ -135,6 +135,60 @@ app.post('/webhook', (req, res) =&gt; res.json({ ok: true }))</code></pre>
       <h3>A mini app you already have</h3>
       <p>An existing mini app becomes a cast action once its manifest has a <code>castShareUrl</code>, with no separate app needed. Everyone who has added it in Quilcast finds the action in their ⋯ menu without doing anything, and anyone who adds it later gets the action along with it. Notification tokens belong to your domain, so the token someone gave your mini app already works for notifications about what they did in the action, and the other way round.</p>
 
+      <h2 id="one-click">5. One-click actions</h2>
+      <p>Some jobs don't need a window. "Remind me in 1 day" or "Save to my reading list" should just happen, with a short confirmation. A one-click action is a ⋯ menu entry that runs your server instead of opening your app: the client sends a signed request to your URL and shows your reply as a toast. Add a <code>placeholder</code> and the client first asks for one line of text, so "Remind me in…" with <code>1 week</code> as its placeholder lets people type how long, without opening anything.</p>
+      <p>Your mini app adds them, and the person confirms each one. Remind me, for example, offers "Add to the ⋯ menu" next to its durations:</p>
+<pre><code>import { sdk, miniAppHost } from '@farcaster/miniapp-sdk'
+
+if ((await sdk.getCapabilities()).includes('actions.addCastAction')) {
+  const r = await miniAppHost.addCastAction({
+    name: 'Remind me in 1 day',                          // the menu label, up to 30 characters
+    url: 'https://remind.example.com/api/action?in=1d',  // https, on your app's own origin
+    // placeholder: '1 week',                            // ask for one line of text first
+  })
+  // r: { added: true } or { added: false, reason: 'rejected_by_user' | 'invalid' | 'limit' }
+}</code></pre>
+      <p><code>miniAppHost</code> is the SDK's own channel to the client, so this needs nothing beyond <code>@farcaster/miniapp-sdk</code>. In TypeScript, cast it to <code>any</code> first, because the call isn't in the SDK's types yet. A client that doesn't have one-click actions doesn't list the capability, and then your app works as before.</p>
+      <p>When someone taps the entry, the client POSTs to your <code>url</code> with a JSON Farcaster Signature as the body, the same format as webhook events, signed with one of the person's Farcaster keys. Its payload is:</p>
+<pre><code>{
+  "type": "cast_action",                   // never a webhook event
+  "url": "https://remind.example.com/api/action?in=1d",   // the URL this was meant for
+  "cast": { "hash": "0x5415e243853e…", "fid": 2417 },
+  "input": "1 week",                       // only with a placeholder: what they typed
+  "notificationDetails": { "url": "…", "token": "…" },   // only when notifications from you are on
+  "timestamp": 1795038000000               // milliseconds
+}</code></pre>
+      <p>Check it with <code>@farcaster/miniapp-node</code> and the Hypersnap-aware <a href="/developers/mini-apps#notifications"><code>verifyAppKey</code></a>, then reply with <code>{ message }</code>:</p>
+<pre><code>import { verifyJsonFarcasterSignature } from '@farcaster/miniapp-node'
+
+const URL_OF_THIS = 'https://remind.example.com/api/action'
+
+app.options('/api/action', (req, res) =&gt; res.set(CORS).sendStatus(204))
+app.post('/api/action', async (req, res) =&gt; {
+  res.set(CORS)   // { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' }
+  let fid, p
+  try {
+    const v = await verifyJsonFarcasterSignature(req.body, verifyAppKey)
+    fid = v.fid
+    p = JSON.parse(Buffer.from(v.payload).toString())
+  } catch {
+    return res.status(401).json({ message: 'Could not check who you are.' })
+  }
+  if (p.type !== 'cast_action' || new URL(p.url).origin + new URL(p.url).pathname !== URL_OF_THIS || Math.abs(Date.now() - p.timestamp) &gt; 300e3)
+    return res.status(401).json({ message: 'That request is not for this action.' })
+  if (!p.notificationDetails) return res.status(400).json({ message: 'Turn notifications on for Remind me first.' })
+  const days = new URL(p.url).searchParams.get('in') === '1d' ? 1 : parseDays(p.input)
+  await saveReminder({ fid, cast: p.cast, at: Date.now() + days * 86400e3, notify: p.notificationDetails })
+  res.json({ message: `I'll remind you in ${days} day${days === 1 ? '' : 's'}.` })
+})</code></pre>
+      <ul>
+        <li><strong>Reply within 10 seconds</strong>, with JSON. The <code>message</code> is plain text: the client shows it as a toast after your action's name and cuts it at 80 characters. Any status other than 2xx is shown as a failure, with your <code>message</code> when there is one.</li>
+        <li><strong>Answer CORS.</strong> A client may send the request straight from the person's browser, as Quilcast does, so allow any origin and the <code>content-type</code> header, and answer the <code>OPTIONS</code> preflight.</li>
+        <li><strong>Check all three</strong>: the <code>type</code>, the <code>url</code> and the <code>timestamp</code>. That way a request signed for another action, or a webhook event, is refused even though its signature is valid.</li>
+        <li>People can remove an entry from the client's list of actions at any time, and removing your app removes all of its entries.</li>
+      </ul>
+      <p>One-click actions are Quilcast's addition to mini apps, not part of the Farcaster spec. They're small on purpose, so that any Hypersnap client can support them (see <a href="#clients">For client developers</a>), and they're built only from things clients already do: the mini app channel, the cast menu, and JSON Farcaster Signatures.</p>
+
       <h2>Examples</h2>
       <p>Quilcast's own actions are small, framework-free pages that you can read and copy. Their source is in <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/actions"><code>actions/</code></a> in the Quilcast repo.</p>
 
@@ -163,7 +217,17 @@ if (r.success) { /* r.send.transaction is the hash */ }</code></pre>
         <li><strong>The context isn't proof.</strong> Anyone can open your URL with any <code>castHash</code> or <code>viewerFid</code>, and <code>sdk.context.user</code> is whatever the host says. Before you spend, store or post anything for someone, have them sign in with <code>sdk.actions.signIn({ nonce })</code> and verify the result on your server: check the Sign In With Ethereum signature and your nonce, then check that the signing address is the FID's custody address on Hypersnap. <a href="/developers/mini-apps#sign-in">Build for Hypersnap</a> has the whole check, which works for accounts created on Hypersnap too.</li>
         <li><strong>Read the cast from the network when it matters.</strong> The cast in the context is a convenience. If your action depends on what it says, fetch it by hash from a Hypersnap node, for example <code>https://haatz.quilibrium.com/v2/farcaster/cast?type=hash&amp;identifier=0x…</code>.</li>
         <li><strong>What Quilcast guards.</strong> Your app runs in a sandboxed frame on your own origin. Adding an action only reads your manifest, through Quilcast's server, so nothing about a person or a cast reaches you until they tap it. Every wallet request is shown to the person before their wallet sees it, and Quilcast refuses requests that could take over a Farcaster account. Quilcast reviews the actions on its official list, but not the ones people add by link, and it tells them so.</li>
+        <li><strong>What a one-click action can and can't do.</strong> The signed request says only that this account tapped this entry on this cast at this time, with this text. The client writes it, and your app only chose the URL when the entry was added. It isn't a Farcaster message, so it can't post, like, follow or move money for anyone, and a one-click action never opens a window or reaches a wallet. To do more, open your mini app. What a tap shares with your server is the account's FID, the cast, the text typed, your own notification token (when notifications from you are on) and the device's IP address.</li>
       </ul>
+
+      <h2 id="clients">For client developers</h2>
+      <p>Any Hypersnap or Farcaster client can run the same cast actions. The open kind is the standard share extension: open the mini app at its <code>castShareUrl</code> with <code>castHash</code>, <code>castFid</code> and <code>viewerFid</code>, and set <code>location</code> to <code>{ type: 'cast_share', cast }</code>. One-click actions take four more things:</p>
+      <ol>
+        <li><strong>Answer <code>addCastAction({ name, url, placeholder })</code></strong> on the mini app channel, the way the client answers <code>addMiniApp</code>, and list <code>actions.addCastAction</code> in <code>getCapabilities</code>. Accept the call only from the app on screen, with a <code>url</code> on https and on the app's own origin, a <code>name</code> of 1 to 30 characters and a <code>placeholder</code> of at most 40. Ask the person in your own UI, showing the name and the host, and keep at most 10 entries per app.</li>
+        <li><strong>List the entries in the cast menu.</strong> On a tap, ask for one line of text if the entry has a placeholder.</li>
+        <li><strong>Send the request.</strong> Build the payload above, with the person's notification token for that origin when they have notifications on. Sign it as a JSON Farcaster Signature (<code>{ fid, type: 'app_key', key }</code> header) with a key the network lists for the account. Quilcast uses the account's gasless signer. Then POST it to the URL.</li>
+        <li><strong>Show the reply</strong> as a toast: the entry's name, then the <code>message</code> cut to 80 characters, as plain text. Give up after 10 seconds, and remove an app's entries when the app is removed.</li>
+      </ol>
 
       <h2>Test it</h2>
       <ol>

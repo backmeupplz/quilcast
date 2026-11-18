@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name} を ⋯ メニューから削除しました",
   "That isn't a link.": "これはリンクではありません。",
   "The action's site, like example.com": "アクションのサイト（例：example.com）",
-  "{host} has no cast action.": "{host} にはキャストアクションがありません。"
+  "{host} has no cast action.": "{host} にはキャストアクションがありません。",
+  "Add “{name}” to the ⋯ menu?": "「{name}」を⋯メニューに追加しますか？",
+  "Could not check who you are.": "ユーザーを確認できませんでした。",
+  "Couldn't find that cast.": "そのキャストが見つかりませんでした。",
+  "Open Remind me once and turn its notifications on.": "Remind me を一度開いて、通知をオンにしてください。",
+  "That request is not for this action.": "このリクエストはこのアクション用ではありません。",
+  "Try something like 3 hours, 2 days or 1 week.": "「3時間」「2日」「1週間」のように入力してください。",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "各キャストの下でタップすると、どのキャストかとあなたのFIDが{host}に送信され、{host}の返答が表示されます。キャストアクションから削除できます。",
+  "{name} didn't work.": "{name}は動作しませんでした。",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name}を読み込めません。サイトがダウンしているか、このネットワークでブロックされている可能性があります。",
+  "{name}: done": "{name}：完了"
 }

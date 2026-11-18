@@ -15,11 +15,11 @@ import { choices, pair, qr, WC, wcChoice, wcLive } from './wallet.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
 import { castText, LOGO, proxied } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
-import { addAppAction, APP_PUSH, askPush, channelOf, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
+import { addAppAction, APP_PUSH, askPush, castActions, channelOf, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, saveActions, shell, toast, togglePin, unfurl, WalletIcon, type CastAction } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
 import { awake, sleepers } from './sleep.ts'
-import { isSaved, shareHome } from './appsaved.ts'
+import { isSaved, oneClick, oneClickPayload, shareHome } from './appsaved.ts'
 
 const QUILCAST_FID = 3356316
 // viem's default Polygon RPC now wants a key, so Polygon reads and sends go through publicnode
@@ -114,6 +114,8 @@ type App = {
   // full: the window covers the page; monitor: set while the browser itself is full screen for it ("Fill the monitor"),
   // to whether it was full before
   full: boolean; monitor?: boolean
+  // stuck: its frame hasn't loaded in STUCK (watch); tries: how many new frames Try again put in (retry)
+  stuck?: boolean; tries?: number
   // asleep: its frame is unloaded (sleep.ts); hidAt: when it last went into the dock
   asleep?: boolean; hidAt?: number; calls: number
 }
@@ -213,7 +215,13 @@ const src = (app: App) => {
   u.searchParams.set('in', app.uuid.slice(0, 8))
   return u.href
 }
-const reload = (app: App) => app.frame && ((app.ready = false), (app.frame.src = src(app)), update())
+const reload = (app: App) => app.frame && ((app.ready = false), (app.stuck = false), (app.frame.src = src(app)), watch(app, app.frame), update())
+// a frame that never loads (its address doesn't resolve, the browser blocks it, the request hangs) fires no load event,
+// so the splash would stay forever: past STUCK from the frame's start, the splash says so and offers to try again
+const STUCK = 15_000
+const watch = (app: App, f: HTMLIFrameElement) => setTimeout(() => void (app.frame === f && !app.ready && ((app.stuck = true), update())), STUCK)
+// Try again puts in a new frame: Firefox leaves one whose load failed blank, and setting the same src doesn't reload it
+const retry = (app: App) => ((app.tries = (app.tries || 0) + 1), (app.ready = false), (app.stuck = false), update())
 
 const post = (app: App, m: unknown) => {
   try {
@@ -822,6 +830,45 @@ async function addApp(app: App) {
   return { result: d ? { notificationDetails: d } : {} }
 }
 
+/** addCastAction({ name, url, placeholder }): the app on screen asks to put a one-click action in every cast's ⋯ menu.
+ *  Only a URL on its own origin, only once the person says yes, and at most 10 per app. */
+async function addCastAction(app: App, o: any = {}) {
+  foreground(app)
+  const a = oneClick(o, app.origin)
+  if (!a) return { added: false, reason: 'invalid' }
+  const all = castActions(), mine = all.filter((x) => x.post && new URL(x.url).origin === app.origin)
+  if (mine.some((x) => x.url === a.url && x.name === a.name && x.placeholder === a.placeholder)) return { added: true }
+  // the list keeps 30 (ui.tsx saveActions): past that a new one would be dropped
+  if (mine.length >= 10 || all.length >= 30) return { added: false, reason: 'limit' }
+  const ok = await ask(app, {
+    title: t('Add “{name}” to the ⋯ menu?', { name: a.name }), yes: t('Add'),
+    body: t('Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.', { host: app.host }),
+  })
+  if (!ok) return { added: false, reason: 'rejected_by_user' }
+  saveActions([...castActions().filter((x) => !(x.post && x.url === a.url)), { ...a, icon: app.icon, post: true }])
+  toast(t('Added {name} to the ⋯ menu', { name: a.name }))
+  return { added: true }
+}
+
+/** A one-click action on cast `c`: a JSON Farcaster Signature of the tap (appsaved.ts oneClickPayload), signed with the
+ *  account's signer, POSTed straight to the action's URL; its answer's `message` is the toast. */
+export async function runOneClick(a: CastAction, c: Cast, input?: string) {
+  const name = a.name || new URL(a.url).host
+  try {
+    const origin = new URL(a.url).origin
+    const notify = notifying(origin) ? await details({ url: a.url, name: a.name, icon: a.icon }).catch(() => undefined) : undefined
+    const body = await signEvent(oneClickPayload(a.url, { hash: c.hash, fid: c.author.fid }, input, notify))
+    const r = await fetch(a.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10e3) })
+    const j = await r.json().catch(() => null)
+    const said = typeof j?.message === 'string' ? j.message.replace(/\s+/g, ' ').trim() : ''
+    const msg = [...said].length > 80 ? [...said].slice(0, 79).join('') + '…' : said
+    // an answer that's one of ours (Remind me's) is shown in the person's language; anyone else's as it came
+    toast(msg ? `${name}: ${t(msg)}` : r.ok ? t('{name}: done', { name }) : t("{name} didn't work.", { name }))
+  } catch {
+    toast(t("{name} didn't work.", { name }))
+  }
+}
+
 async function media(app: App) {
   foreground(app)
   if (app.media) return
@@ -846,7 +893,7 @@ function openUrl(app: App, raw: unknown) {
 }
 
 const capabilities = () => [
-  'wallet.getEthereumProvider', 'actions.ready', 'actions.openUrl', 'actions.close', 'actions.setPrimaryButton', 'actions.addMiniApp', 'actions.signIn', 'actions.viewCast',
+  'wallet.getEthereumProvider', 'actions.ready', 'actions.openUrl', 'actions.close', 'actions.setPrimaryButton', 'actions.addMiniApp', 'actions.addCastAction', 'actions.signIn', 'actions.viewCast',
   'actions.viewProfile', 'actions.composeCast', 'actions.openMiniApp', 'actions.viewToken', 'actions.sendToken', 'actions.swapToken', 'actions.requestCameraAndMicrophoneAccess', 'back',
   ...(solWallets.length ? ['wallet.getSolanaProvider'] : []), ...(haptics ? ['haptics.impactOccurred', 'haptics.notificationOccurred', 'haptics.selectionChanged'] : []),
 ]
@@ -878,6 +925,7 @@ const calls: Record<string, (app: App, ...a: any[]) => unknown> = {
   signIn,
   addMiniApp: addApp,
   addFrame: addApp,
+  addCastAction,
   setPrimaryButton: (app, o) => {
     app.button = typeof o?.text === 'string' ? { text: o.text.slice(0, 40), loading: !!o.loading, disabled: !!o.disabled, hidden: !!o.hidden } : undefined
     update()
@@ -1035,12 +1083,17 @@ function Window({ app }: { app: App }) {
       </header>
       <div class="mini-body">
         {/* its own origin (never ours, see launch), no top navigation or location; camera and mic only once allowed */}
-        {!app.asleep && <iframe ref={(el) => void (el && (app.frame = el))} src={src(app)} title={app.name} allow={`clipboard-write; web-share${app.media ? '; camera; microphone' : ''}`}
+        {!app.asleep && <iframe key={app.tries || 0} ref={(el) => void (el && app.frame !== el && ((app.frame = el), (app.stuck = false), watch(app, el)))} src={src(app)} title={app.name} allow={`clipboard-write; web-share${app.media ? '; camera; microphone' : ''}`}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
           // apps that never call ready() still show up after a while
           // (only while that frame is still the app's: one put to sleep meanwhile shows its splash again when it wakes)
           onLoad={(e) => { const f = e.currentTarget; setTimeout(() => void (app.frame === f && !app.ready && ((app.ready = true), update())), 5000) }} />}
-        {!app.ready && <div class="splash" style={{ background: app.bg }}>{app.icon ? <Img src={app.icon} /> : <span class="spinner" />}</div>}
+        {!app.ready && (
+          <div class="splash" style={{ background: app.bg }}>
+            {app.icon ? <Img src={app.icon} /> : <span class="spinner" />}
+            {app.stuck && <div class="stuck" role="status"><p>{t("{name} isn't loading. Its site may be down or blocked on this network.", { name: app.name })}</p><button class="btn small" onClick={() => retry(app)}>{t('Try again')}</button></div>}
+          </div>
+        )}
         {app.waiting && <div class="mini-wait" role="status"><span class="spinner small" /><span class="grow">{app.waiting}</span>{app.stop && <button class="btn ghost small" onClick={app.stop}>{t('Cancel')}</button>}</div>}
         {app.ask && <AskCard app={app} />}
         {app.pair && (

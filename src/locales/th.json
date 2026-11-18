@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "นำ {name} ออกจากเมนู ⋯ แล้ว",
   "That isn't a link.": "นี่ไม่ใช่ลิงก์",
   "The action's site, like example.com": "เว็บไซต์ของแอ็กชัน เช่น example.com",
-  "{host} has no cast action.": "{host} ไม่มีแอ็กชันแคสต์"
+  "{host} has no cast action.": "{host} ไม่มีแอ็กชันแคสต์",
+  "Add “{name}” to the ⋯ menu?": "เพิ่ม “{name}” ในเมนู ⋯ ไหม",
+  "Could not check who you are.": "ตรวจสอบไม่ได้ว่าคุณคือใคร",
+  "Couldn't find that cast.": "ไม่พบแคสต์นั้น",
+  "Open Remind me once and turn its notifications on.": "เปิด Remind me สักครั้งแล้วเปิดการแจ้งเตือนของแอป",
+  "That request is not for this action.": "คำขอนั้นไม่ได้มีไว้สำหรับแอ็กชันนี้",
+  "Try something like 3 hours, 2 days or 1 week.": "ลองพิมพ์เช่น 3 ชั่วโมง, 2 วัน หรือ 1 สัปดาห์",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "ใต้ทุกแคสต์ การแตะจะส่งให้ {host} ว่าเป็นแคสต์ไหนพร้อม FID ของคุณ และแสดงสิ่งที่ {host} ตอบกลับ คุณลบออกได้ที่แอ็กชันแคสต์",
+  "{name} didn't work.": "{name} ใช้ไม่ได้",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} โหลดไม่ขึ้น ไซต์อาจล่มหรือถูกบล็อกในเครือข่ายนี้",
+  "{name}: done": "{name}: เรียบร้อย"
 }

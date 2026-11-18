@@ -1399,5 +1399,15 @@
   "Removed {name} from the ⋯ menu": "{name} को ⋯ मेन्यू से हटाया गया",
   "That isn't a link.": "यह लिंक नहीं है।",
   "The action's site, like example.com": "एक्शन की साइट, जैसे example.com",
-  "{host} has no cast action.": "{host} पर कोई कास्ट एक्शन नहीं है।"
+  "{host} has no cast action.": "{host} पर कोई कास्ट एक्शन नहीं है।",
+  "Add “{name}” to the ⋯ menu?": "क्या “{name}” को ⋯ मेन्यू में जोड़ें?",
+  "Could not check who you are.": "यह जाँच नहीं हो सकी कि आप कौन हैं।",
+  "Couldn't find that cast.": "वह कास्ट नहीं मिला।",
+  "Open Remind me once and turn its notifications on.": "Remind me को एक बार खोलें और उसके नोटिफ़िकेशन चालू करें।",
+  "That request is not for this action.": "यह अनुरोध इस एक्शन के लिए नहीं है।",
+  "Try something like 3 hours, 2 days or 1 week.": "कुछ ऐसा आज़माएँ: 3 घंटे, 2 दिन या 1 सप्ताह।",
+  "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "हर कास्ट के नीचे इसे टैप करने पर {host} को भेजा जाता है कि वह कौन-सा कास्ट था और आपका FID, और {host} जो जवाब दे वह दिखता है। आप इसे कास्ट एक्शन में हटा सकते हैं।",
+  "{name} didn't work.": "{name} काम नहीं किया।",
+  "{name} isn't loading. Its site may be down or blocked on this network.": "{name} लोड नहीं हो रहा। हो सकता है उसकी साइट बंद हो या इस नेटवर्क पर ब्लॉक हो।",
+  "{name}: done": "{name}: हो गया"
 }

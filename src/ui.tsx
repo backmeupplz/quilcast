@@ -73,8 +73,9 @@ export async function pushSubscription() {
 /** Open a mini app (src/miniapp.tsx, loaded on first use). */
 export const launchApp = (m: AppMeta, ctx?: { cast?: Cast; embed?: string; share?: boolean }) => requireAccount() && import('./miniapp.tsx').then((x) => x.launch(m, ctx))
 /** Cast actions (/actions, public/developers/cast-actions.html): mini apps with a castShareUrl, listed in every cast's
- *  ⋯ menu. `url` is the castShareUrl. */
-export type CastAction = AppMeta & { description?: string }
+ *  ⋯ menu. `url` is the castShareUrl. A one-click action (`post`, added by its app with addCastAction in miniapp.tsx)
+ *  instead gets a signed POST at `url`, after one line of text when it has a `placeholder`, and its answer is a toast. */
+export type CastAction = AppMeta & { description?: string; post?: boolean; placeholder?: string }
 export const castActions = () => read<CastAction[]>('quilcast:actions', [])
 export const saveActions = (l: CastAction[]) => save('quilcast:actions', l.slice(0, 30))
 /** An installed mini app's cast action (its manifest's castShareUrl) joins the ⋯ menu with it, unless the menu has one
@@ -82,7 +83,7 @@ export const saveActions = (l: CastAction[]) => save('quilcast:actions', l.slice
  *  the menu at /actions stays off), or when its manifest last had none (looked at again a day later). */
 export function addAppAction(origin: string, m: { castShareUrl?: string; name?: string; iconUrl?: string; description?: string } | null, app: AppMeta) {
   save('quilcast:app-actions', { ...appActions(), [origin]: m?.castShareUrl ? 0 : Date.now() })
-  if (!m?.castShareUrl || castActions().some((a) => safeOrigin(a.url) === origin)) return
+  if (!m?.castShareUrl || castActions().some((a) => !a.post && safeOrigin(a.url) === origin)) return
   saveActions([...castActions(), { url: m.castShareUrl, name: m.name || app.name, icon: m.iconUrl || app.icon, description: m.description }])
 }
 const appActions = () => read<Record<string, number>>('quilcast:app-actions', {})
@@ -107,8 +108,10 @@ export async function syncAppActions() {
     addAppAction(o, await r.json().catch(() => null), apps.find((a) => safeOrigin(a.url) === o)!)
   }
 }
-/** Run an action on a cast: its castShareUrl with the share extension's query, and location cast_share in its context. */
-export function runAction(a: CastAction, c: Cast) {
+/** Run an action on a cast: its castShareUrl with the share extension's query, and location cast_share in its context;
+ *  a one-click one is a signed POST (miniapp.tsx runOneClick), with what was typed when it asks for text. */
+export function runAction(a: CastAction, c: Cast, input?: string) {
+  if (a.post) return requireAccount() && import('./miniapp.tsx').then((x) => x.runOneClick(a, c, input))
   const u = new URL(a.url)
   u.searchParams.set('castHash', '0x' + c.hash.replace(/^0x/, ''))
   u.searchParams.set('castFid', String(c.author.fid))
@@ -1236,6 +1239,19 @@ export function ReportSheet() {
 
 /** Menu items that mute or block someone, or lift it; picking one asks how long, in the same menu. Report emails us
  *  the person (or cast `c`), for everyone, signed in or not (App Store guideline 1.2). */
+/** A one-click action's line of text, asked inside the ⋯ menu: Enter or the button runs it, Escape gives up. */
+function ActionPrompt({ a, done }: { a: CastAction; done: (input?: string) => void }) {
+  const [v, setV] = useState('')
+  const send = () => v.trim() && done(v.trim().slice(0, 256))
+  return (
+    <form class="menu-prompt" onSubmit={(e) => (e.preventDefault(), send())}>
+      <div class="menu-label muted">{a.name}</div>
+      <input autoFocus value={v} onInput={(e) => setV(e.currentTarget.value)} onKeyDown={(e) => e.key === 'Escape' && done()} placeholder={a.placeholder} aria-label={a.name || ''} enterKeyHint="go" maxLength={256} />
+      <button type="submit" class="btn small" disabled={!v.trim()}>{t('Send')}</button>
+    </form>
+  )
+}
+
 export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => void }) {
   const [kind, setKind] = useState<'users' | 'blocks' | null>(null)
   const set = (k: 'users' | 'blocks', until?: number | false) => {
@@ -1376,6 +1392,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
   const [recast, recasts] = tapped(2, c.hash, was[1], c.reactions.recasts_count)
   const [menu, setMenu] = useState(false)
   const [more, setMore] = useState(false)
+  const [asking, setAsking] = useState<CastAction | null>(null)
   const [sure, setSure] = useState(false)
   const [gone, setGone] = useState(false)
   const toggle = (type: 1 | 2, on: boolean, count: number) => {
@@ -1475,17 +1492,19 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
       <button class="act cl" aria-label={t('Collect')} title={t('Collect')} onClick={(e) => (sparkle(e.currentTarget), launchApp(COLLECT(c.hash)))}><Icon d={P.collect} /></button>
       <button class="act" aria-label={t('Share')} onClick={share}><Icon d={P.share} /></button>
       <span class="wrap-menu">
-        <button class="act" aria-label={t('More')} aria-haspopup="menu" onClick={() => (setMore(!more), setSure(false))}><Icon d={P.more} /></button>
+        <button class="act" aria-label={t('More')} aria-haspopup="menu" onClick={() => (setMore(!more), setSure(false), setAsking(null))}><Icon d={P.more} /></button>
         {more && (
           <Menu class="right" close={() => setMore(false)}>
-            {own
+            {/* a one-click action that asks for a line of text asks right here */}
+            {asking ? <ActionPrompt a={asking} done={(input) => (setMore(false), input != null && runAction(asking, c, input))} /> : <>{own
               ? <>
                   {!sending && (!c.parent_hash || isPin) && <button role="menuitem" onClick={pinIt} disabled={pin === undefined}><Icon d={P.pin} />{isPin ? t('Unpin from profile') : t('Pin to profile')}</button>}
                   <button role="menuitem" class="danger" onClick={del}><Icon d={P.trash} />{sure ? t('Delete this cast?') : t('Delete')}</button>
                 </>
               : <SilenceItems u={c.author} c={c} done={() => setMore(false)} />}
-            {castActions().map((a) => <button role="menuitem" onClick={() => (setMore(false), runAction(a, c))}><AppIcon src={a.icon} name={a.name} />{a.name}</button>)}
+            {castActions().map((a) => <button role="menuitem" onClick={() => (a.post && a.placeholder ? setAsking(a) : (setMore(false), runAction(a, c)))}><AppIcon src={a.icon} name={a.name} />{a.name}</button>)}
             <button role="menuitem" onClick={() => (setMore(false), go('/actions'))}><Icon d={P.plus} />{t('Cast actions…')}</button>
+            </>}
           </Menu>
         )}
       </span>
