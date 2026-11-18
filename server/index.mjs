@@ -1773,6 +1773,17 @@ const server = createServer(async (req, res) => {
       return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
     }
 
+    // the link every train cast carries (TRAIN in src/shared.ts): Quilcast hides it, other Farcaster clients show it as a
+    // card, so it says what the cast is and opens Quilcast; only this exact path, /trains and the like are other pages
+    if (path === '/train') {
+      return html(page({
+        title: 'Join the train on Quilcast',
+        desc: 'This cast is a train. In Quilcast anyone can join it with one tap, which posts a quote of it with the same text from their own account as the next car.',
+        path, image: `${SITE}/og-train.png`, embed: `${SITE}/embed-train.png`, type: 'website',
+        alt: 'A Quilcast train: casts with the same text coupled like train cars, with the words "Join the train"',
+        launch: { title: 'Join the train on Quilcast', url: `${SITE}/` },
+      }))
+    }
     // browsing as someone (src/browse.ts) shows their feed, not the signed-out one the home page draws
     if (path === '/') return url.searchParams.has('as') ? app() : homePage()
     const file = normalize(join(DIST, PAGES[path] || (TRANSLATED.test(path) ? path.slice(1) + '.html' : path)))

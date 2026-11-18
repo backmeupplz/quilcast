@@ -546,6 +546,38 @@ test('any page opens itself as a mini app', async () => {
   assert.equal(JSON.parse(meta.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))).button.action.url, 'https://quilcast.test/search')
 })
 
+test("a train cast's quilcast.com/train link is a train card whose button joins the train, and only that exact path is", async () => {
+  const unq = (s) => s.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)).replace(/&quot;/g, '"').replace(/&amp;/g, '&')
+  const tag = (h, re) => unq(h.match(re)?.[1] ?? '')
+  const train = await (await fetch(`${base}/train`)).text()
+  for (const k of ['fc:miniapp', 'fc:frame']) {
+    const e = JSON.parse(tag(train, new RegExp(`<meta name="${k}" content="([^"]*)"`)))
+    assert.equal(e.imageUrl, 'https://quilcast.test/embed-train.png')
+    assert.equal(e.button.title, 'Join the train on Quilcast')
+    assert.ok(e.button.title.length <= 32)
+    assert.equal(e.button.action.url, 'https://quilcast.test/')
+  }
+  assert.equal(tag(train, /<meta property="og:image" content="([^"]*)"/), 'https://quilcast.test/og-train.png')
+  assert.equal(tag(train, /<meta name="twitter:image" content="([^"]*)"/), 'https://quilcast.test/og-train.png')
+  assert.match(tag(train, /<meta property="og:image:alt" content="([^"]*)"/), /train/i)
+  assert.match(train, /<title>Join the train on Quilcast<\/title>/)
+  assert.match(tag(train, /<meta property="og:description" content="([^"]*)"/), /train/)
+  assert.match(train, /<link rel="canonical" href="https:\/\/quilcast\.test\/train"/)
+  // the pictures it names are there
+  for (const f of ['og-train.png', 'embed-train.png']) {
+    const r = await fetch(`${base}/${f}`)
+    assert.equal(r.status, 200)
+    assert.equal(r.headers.get('content-type'), 'image/png')
+  }
+  for (const p of ['/trains', '/trainspotting', '/train/x']) {
+    const h = await (await fetch(base + p)).text()
+    const e = JSON.parse(tag(h, /<meta name="fc:miniapp" content="([^"]*)"/))
+    assert.equal(e.button.title, 'Open in Quilcast', p)
+    assert.equal(e.imageUrl, 'https://quilcast.test/embed.png', p)
+    assert.doesNotMatch(h, /og-train\.png/, p)
+  }
+})
+
 test('card images never reach private addresses', async () => {
   internalHits = 0
   const r = await fetch(`${base}/og/c/${'cd'.repeat(20)}.png`)

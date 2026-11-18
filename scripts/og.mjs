@@ -1,6 +1,7 @@
 // Share cards (1200×630) for the standalone pages (About and the legal pages), in Quilcast's look: the dark page
 // with the purple glow, the feather icon, the page's title and one line about it. Renders each card with headless
 // Chrome's own --screenshot and writes public/og-<page>.png; each page's og:image and twitter:image point at it.
+// It also draws the train card (public/og-train.png and the 3:2 public/embed-train.png) that /train's tags name.
 // Usage: node scripts/og.mjs   (Chrome from CHROME_PATH or the usual places; commit the images it writes)
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -56,9 +57,45 @@ const card = (p) => `<!doctype html><meta charset="utf-8"><style>
   <div class="url">quilcast.com/${p.file}</div>
 </main>${p.glyph ? `<div class="glyph">${p.glyph}</div>` : casts}`
 
-for (const p of PAGES) {
-  const out = resolve(`public/og-${p.file}.png`)
-  execFileSync(chrome, ['--headless=new', '--hide-scrollbars', '--force-device-scale-factor=1', '--window-size=1200,630',
-    `--screenshot=${out}`, `data:text/html;base64,${Buffer.from(card(p)).toString('base64')}`], { stdio: 'ignore' })
-  console.log(`public/og-${p.file}.png`)
+const shot = (file, html, h = 630) => {
+  execFileSync(chrome, ['--headless=new', '--hide-scrollbars', '--force-device-scale-factor=1', `--window-size=1200,${h}`,
+    `--screenshot=${resolve(file)}`, `data:text/html;base64,${Buffer.from(html).toString('base64')}`], { stdio: 'ignore' })
+  console.log(file)
 }
+for (const p of PAGES) shot(`public/og-${p.file}.png`, card(p))
+
+// the card other Farcaster clients show under a train cast (its quilcast.com/train link): the same cast three times,
+// coupled like train cars behind the tram, and what joining does. og-train.png is 1200×630, embed-train.png the 3:2
+// mini app embed
+const car = (name, bg, tilt) => `<div class="car" style="transform:rotate(${tilt}deg)"><i style="background:${bg}"></i><div><b>${name}</b> <span>@${name}</span>
+  <p>All aboard! Next stop: Hypersnap</p></div></div>`
+const train = (h) => `<!doctype html><meta charset="utf-8"><style>
+  * { box-sizing: border-box; margin: 0 }
+  html, body { width: 1200px; height: ${h}px; overflow: hidden }
+  body { color: #f3f2f8; font-family: Inter, -apple-system, "SF Pro Display", system-ui, sans-serif;
+    background: radial-gradient(720px 540px at 88% 8%, rgba(91,61,245,.42), transparent 70%), radial-gradient(620px 520px at 0% 105%, rgba(91,61,245,.22), transparent 70%), #0b0a10 }
+  main { position: absolute; left: 80px; right: 80px; top: ${h > 700 ? 72 : 60}px }
+  .top { display: flex; align-items: center; gap: 20px; font-size: 30px; font-weight: 700; color: #bdbacb }
+  .icon { width: 72px; height: 72px; border-radius: 20px; box-shadow: 0 0 64px rgba(91,61,245,.6) }
+  h1 { margin-top: ${h > 700 ? 44 : 30}px; font-size: ${h > 700 ? 96 : 84}px; line-height: 1; letter-spacing: -3px; font-weight: 800 }
+  main p { margin-top: 20px; font-size: 31px; line-height: 1.35; color: #bdbacb; max-width: 1000px }
+  .rail { position: absolute; left: 0; right: 0; bottom: ${h > 700 ? 70 : 44}px; height: 150px }
+  .rail::after { content: ""; position: absolute; left: 0; right: 0; bottom: -14px; height: 6px; border-radius: 3px;
+    background: repeating-linear-gradient(90deg, #5b3df5 0 46px, transparent 46px 64px); opacity: .7 }
+  .cars { position: absolute; left: 60px; bottom: 0; display: flex; align-items: flex-end; gap: 0 }
+  .tram { font-size: 128px; line-height: 1; margin-right: 18px; filter: drop-shadow(0 18px 30px rgba(0,0,0,.5)) }
+  .car { position: relative; display: flex; gap: 14px; width: 280px; padding: 18px 20px; border-radius: 20px; background: #17151f;
+    border: 1px solid #2b2839; box-shadow: 0 20px 50px rgba(0,0,0,.45); margin-left: 34px }
+  .car::before { content: ""; position: absolute; left: -36px; top: 50%; width: 36px; height: 6px; margin-top: -3px; background: #6e5cff; border-radius: 3px }
+  .car i { flex: none; width: 40px; height: 40px; border-radius: 50% }
+  .car b { font-size: 19px } .car span { color: #8f8ca0; font-size: 17px }
+  .car p { margin-top: 6px; font-size: 20px; line-height: 1.3; font-weight: 650 }
+</style><main>
+  <div class="top"><img class="icon" src="${icon}" alt="">quilcast.com</div>
+  <h1>Join the train</h1>
+  <p>This cast is a train. One tap in Quilcast posts the same words from your account as the next car.</p>
+</main><div class="rail"><div class="cars"><div class="tram">🚊</div>
+  ${car('ada', 'linear-gradient(135deg,#ff9a6b,#ff5f8a)', -1.5)}${car('quill', 'linear-gradient(135deg,#6bc5ff,#5b3df5)', 1)}${car('you', 'linear-gradient(135deg,#7cf0b0,#2fb6a0)', -1)}
+</div></div>`
+shot('public/og-train.png', train(630))
+shot('public/embed-train.png', train(800), 800)
