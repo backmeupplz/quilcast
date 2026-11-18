@@ -103,7 +103,7 @@ export async function addReminder(b, host, now = Date.now()) {
 
 // --- one-click: "Remind me in 1 day", or "Remind me in…" with what was typed ---
 
-const UNITS = { m: 60e3, min: 60e3, minute: 60e3, h: 3600e3, hr: 3600e3, hour: 3600e3, d: 86400e3, day: 86400e3, w: 604800e3, wk: 604800e3, week: 604800e3, mo: 2592000e3, month: 2592000e3 }
+const UNITS = { m: 60e3, min: 60e3, minute: 60e3, h: 3600e3, hr: 3600e3, hour: 3600e3, d: 86400e3, day: 86400e3, w: 604800e3, wk: 604800e3, week: 604800e3, mo: 2592000e3, month: 2592000e3, y: 31536000e3, yr: 31536000e3, year: 31536000e3 }
 /** "1d", "3 days", "a week", "90 min", "2.5h": how long, in ms, or null. */
 export function duration(s) {
   const m = String(s ?? '').trim().toLowerCase().match(/^(\d+(?:\.\d+)?|an?)?\s*([a-z]+?)s?$/)
@@ -167,6 +167,7 @@ export async function oneClickReminder(body, host, { nodes, node, isKey = holdsK
   // native Hypersnap FIDs (2^32 and up) come from the node as strings
   await addReminder({ token: d.token, url: d.url, hash, fid: Number(c.author?.fid), author: c.author?.username, text: c.text, at: now + ms }, host, now)
     .catch((e) => {
+      if (!e.status) console.error('remind action', e)
       throw fail(e.status || 500, WORDS[e.message] || 'The reminder wasn’t saved. Try again.')
     })
   return { message: `I'll remind you in ${human(ms)}.` }

@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Под каждым кастом нажатие отправляет {host}, какой это был каст, и ваш FID, и показывает ответ {host}. Убрать это можно в разделе Действия для кастов.",
   "{name} didn't work.": "{name} не сработало.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} не загружается. Возможно, сайт не работает или заблокирован в этой сети.",
-  "{name}: done": "{name}: готово"
+  "{name}: done": "{name}: готово",
+  "Pick a time from a minute to a year away.": "Выберите время от минуты до года.",
+  "Too many reminders right now. Try again later.": "Сейчас слишком много напоминаний. Попробуйте позже.",
+  "The reminder wasn’t saved. Try again.": "Напоминание не сохранилось. Попробуйте ещё раз.",
+  "Something went wrong.": "Что-то пошло не так."
 }

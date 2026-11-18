@@ -114,8 +114,9 @@ type App = {
   // full: the window covers the page; monitor: set while the browser itself is full screen for it ("Fill the monitor"),
   // to whether it was full before
   full: boolean; monitor?: boolean
-  // stuck: its frame hasn't loaded in STUCK (watch); tries: how many new frames Try again put in (retry)
-  stuck?: boolean; tries?: number
+  // stuck: its frame hasn't loaded in STUCK (watch); tries: how many new frames Try again put in (retry);
+  // loaded: the frame that fired load, so a slow one that never calls ready() isn't called stuck; watching: watch's timer
+  stuck?: boolean; tries?: number; loaded?: HTMLIFrameElement; watching?: ReturnType<typeof setTimeout>
   // asleep: its frame is unloaded (sleep.ts); hidAt: when it last went into the dock
   asleep?: boolean; hidAt?: number; calls: number
 }
@@ -159,7 +160,7 @@ const busy = (app: App) => !!(app.calls || app.ask || app.pair || app.waiting ||
 function nap(all = false) {
   const tired = sleepers(apps, shown, Date.now(), awake(narrow() || inApp), busy, all)
   // a sleeping app's page is gone: messages from its old frame are ignored, and it shows its splash when it wakes
-  for (const app of tired) (app.asleep = true), (app.frame = undefined), (app.ready = false), (app.button = undefined), (app.back = false)
+  for (const app of tired) (app.asleep = true), (app.frame = undefined), (app.ready = false), (app.stuck = false), (app.loaded = undefined), (app.button = undefined), (app.back = false)
   tired.length && update()
 }
 // a phone may kill a page in the background that holds too much, so everything waiting in the dock sleeps first
@@ -215,11 +216,16 @@ const src = (app: App) => {
   u.searchParams.set('in', app.uuid.slice(0, 8))
   return u.href
 }
-const reload = (app: App) => app.frame && ((app.ready = false), (app.stuck = false), (app.frame.src = src(app)), watch(app, app.frame), update())
+const reload = (app: App) => app.frame && ((app.ready = false), (app.loaded = undefined), (app.frame.src = src(app)), watch(app, app.frame), update())
 // a frame that never loads (its address doesn't resolve, the browser blocks it, the request hangs) fires no load event,
 // so the splash would stay forever: past STUCK from the frame's start, the splash says so and offers to try again
 const STUCK = 15_000
-const watch = (app: App, f: HTMLIFrameElement) => setTimeout(() => void (app.frame === f && !app.ready && ((app.stuck = true), update())), STUCK)
+// (one timer per app: a new frame or a reload starts it over)
+const watch = (app: App, f: HTMLIFrameElement) => {
+  clearTimeout(app.watching)
+  app.stuck = false
+  app.watching = setTimeout(() => void (app.frame === f && !app.ready && app.loaded !== f && ((app.stuck = true), update())), STUCK)
+}
 // Try again puts in a new frame: Firefox leaves one whose load failed blank, and setting the same src doesn't reload it
 const retry = (app: App) => ((app.tries = (app.tries || 0) + 1), (app.ready = false), (app.stuck = false), update())
 
@@ -836,10 +842,11 @@ async function addCastAction(app: App, o: any = {}) {
   foreground(app)
   const a = oneClick(o, app.origin)
   if (!a) return { added: false, reason: 'invalid' }
-  const all = castActions(), mine = all.filter((x) => x.post && new URL(x.url).origin === app.origin)
-  if (mine.some((x) => x.url === a.url && x.name === a.name && x.placeholder === a.placeholder)) return { added: true }
-  // the list keeps 30 (ui.tsx saveActions): past that a new one would be dropped
-  if (mine.length >= 10 || all.length >= 30) return { added: false, reason: 'limit' }
+  const same = (x: CastAction) => !!x.post && x.url === a.url
+  if (castActions().some((x) => same(x) && x.name === a.name && x.placeholder === a.placeholder)) return { added: true }
+  // the list keeps 30 (ui.tsx saveActions): past that a new one would be dropped; the entry it replaces doesn't count
+  const rest = castActions().filter((x) => !same(x))
+  if (rest.filter((x) => x.post && new URL(x.url).origin === app.origin).length >= 10 || rest.length >= 30) return { added: false, reason: 'limit' }
   const ok = await ask(app, {
     title: t('Add “{name}” to the ⋯ menu?', { name: a.name }), yes: t('Add'),
     body: t('Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.', { host: app.host }),
@@ -903,7 +910,7 @@ const buzz = (app: App, pattern: number | number[]) => void (shown === app.id &&
 const IMPACT: Record<string, number> = { light: 10, soft: 10, medium: 20, rigid: 25, heavy: 35 }
 
 const calls: Record<string, (app: App, ...a: any[]) => unknown> = {
-  ready: (app) => void ((app.ready = true), update()),
+  ready: (app) => void ((app.ready = true), (app.stuck = false), update()),
   close: (app) => close(app),
   openUrl,
   openMiniApp: async (app, o) => {
@@ -1083,11 +1090,16 @@ function Window({ app }: { app: App }) {
       </header>
       <div class="mini-body">
         {/* its own origin (never ours, see launch), no top navigation or location; camera and mic only once allowed */}
-        {!app.asleep && <iframe key={app.tries || 0} ref={(el) => void (el && app.frame !== el && ((app.frame = el), (app.stuck = false), watch(app, el)))} src={src(app)} title={app.name} allow={`clipboard-write; web-share${app.media ? '; camera; microphone' : ''}`}
+        {!app.asleep && <iframe key={app.tries || 0} ref={(el) => void (el && app.frame !== el && ((app.frame = el), watch(app, el)))} src={src(app)} title={app.name} allow={`clipboard-write; web-share${app.media ? '; camera; microphone' : ''}`}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
           // apps that never call ready() still show up after a while
-          // (only while that frame is still the app's: one put to sleep meanwhile shows its splash again when it wakes)
-          onLoad={(e) => { const f = e.currentTarget; setTimeout(() => void (app.frame === f && !app.ready && ((app.ready = true), update())), 5000) }} />}
+          // (only while that frame is still the app's and loaded: one put to sleep meanwhile shows its splash again when it
+          // wakes, and a Reload still loading keeps its splash)
+          onLoad={(e) => {
+            const f = (app.loaded = e.currentTarget)
+            if (app.frame === f && app.stuck) (app.stuck = false), update()
+            setTimeout(() => void (app.frame === f && app.loaded === f && !app.ready && ((app.ready = true), update())), 5000)
+          }} />}
         {!app.ready && (
           <div class="splash" style={{ background: app.bg }}>
             {app.icon ? <Img src={app.icon} /> : <span class="spinner" />}

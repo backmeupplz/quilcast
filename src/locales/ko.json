@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "각 캐스트 아래에서 누르면 어떤 캐스트인지와 내 FID가 {host}에 전송되고, {host}의 응답이 표시돼요. 캐스트 액션에서 제거할 수 있어요.",
   "{name} didn't work.": "{name}이(가) 작동하지 않았어요.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name}을(를) 불러오지 못했어요. 사이트가 다운됐거나 이 네트워크에서 차단됐을 수 있어요.",
-  "{name}: done": "{name}: 완료"
+  "{name}: done": "{name}: 완료",
+  "Pick a time from a minute to a year away.": "지금부터 1분에서 1년 사이의 시간을 고르세요.",
+  "Too many reminders right now. Try again later.": "지금은 리마인더가 너무 많아요. 나중에 다시 시도하세요.",
+  "The reminder wasn’t saved. Try again.": "리마인더가 저장되지 않았어요. 다시 시도해 주세요.",
+  "Something went wrong.": "문제가 발생했어요."
 }

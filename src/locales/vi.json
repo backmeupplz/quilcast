@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Dưới mỗi cast, chạm vào nó sẽ gửi cho {host} biết đó là cast nào cùng FID của bạn, và hiển thị phản hồi của {host}. Bạn có thể gỡ nó tại Hành động cast.",
   "{name} didn't work.": "{name} không hoạt động.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} không tải được. Trang của nó có thể đang sập hoặc bị chặn trên mạng này.",
-  "{name}: done": "{name}: xong"
+  "{name}: done": "{name}: xong",
+  "Pick a time from a minute to a year away.": "Hãy chọn thời điểm từ một phút đến một năm kể từ bây giờ.",
+  "Too many reminders right now. Try again later.": "Hiện có quá nhiều lời nhắc. Hãy thử lại sau.",
+  "The reminder wasn’t saved. Try again.": "Lời nhắc chưa được lưu. Hãy thử lại.",
+  "Something went wrong.": "Đã xảy ra lỗi."
 }

@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "ใต้ทุกแคสต์ การแตะจะส่งให้ {host} ว่าเป็นแคสต์ไหนพร้อม FID ของคุณ และแสดงสิ่งที่ {host} ตอบกลับ คุณลบออกได้ที่แอ็กชันแคสต์",
   "{name} didn't work.": "{name} ใช้ไม่ได้",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} โหลดไม่ขึ้น ไซต์อาจล่มหรือถูกบล็อกในเครือข่ายนี้",
-  "{name}: done": "{name}: เรียบร้อย"
+  "{name}: done": "{name}: เรียบร้อย",
+  "Pick a time from a minute to a year away.": "เลือกเวลาตั้งแต่หนึ่งนาทีถึงหนึ่งปีนับจากนี้",
+  "Too many reminders right now. Try again later.": "ขณะนี้มีการเตือนความจำมากเกินไป โปรดลองอีกครั้งภายหลัง",
+  "The reminder wasn’t saved. Try again.": "ไม่ได้บันทึกการเตือนความจำ ลองอีกครั้ง",
+  "Something went wrong.": "เกิดข้อผิดพลาด"
 }

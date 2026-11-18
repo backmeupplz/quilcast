@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Di bawah setiap cast, mengetuknya akan mengirim cast mana itu dan FID Anda ke {host}, lalu menampilkan jawaban {host}. Anda bisa menghapusnya di Aksi cast.",
   "{name} didn't work.": "{name} tidak berhasil.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} tidak dapat dimuat. Situsnya mungkin sedang down atau diblokir di jaringan ini.",
-  "{name}: done": "{name}: selesai"
+  "{name}: done": "{name}: selesai",
+  "Pick a time from a minute to a year away.": "Pilih waktu antara satu menit dan satu tahun dari sekarang.",
+  "Too many reminders right now. Try again later.": "Terlalu banyak pengingat saat ini. Coba lagi nanti.",
+  "The reminder wasn’t saved. Try again.": "Pengingat tidak tersimpan. Coba lagi.",
+  "Something went wrong.": "Terjadi kesalahan."
 }

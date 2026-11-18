@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Under varje cast skickar ett tryck på den till {host} vilken cast det var och ditt FID, och visar vad {host} svarar. Du kan ta bort den under Cast-åtgärder.",
   "{name} didn't work.": "{name} fungerade inte.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} laddas inte. Webbplatsen kan vara nere eller blockerad på det här nätverket.",
-  "{name}: done": "{name}: klart"
+  "{name}: done": "{name}: klart",
+  "Pick a time from a minute to a year away.": "Välj en tid mellan en minut och ett år från nu.",
+  "Too many reminders right now. Try again later.": "Just nu finns det för många påminnelser. Försök igen senare.",
+  "The reminder wasn’t saved. Try again.": "Påminnelsen sparades inte. Försök igen.",
+  "Something went wrong.": "Något gick fel."
 }

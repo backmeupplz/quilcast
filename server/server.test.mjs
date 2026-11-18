@@ -1545,3 +1545,24 @@ test('Remind me: a reminder is kept with its notification token and sent to the 
   await until(async () => (await items()).length === 2 && (await files()).length === 0)
   assert.equal((await items())[0].notificationId, `remind-${two.body.id}`)
 })
+
+// last: it uses up this address's day of reminders and moves the clock on a few minutes
+test("Remind me's one-click taps count toward the same 200-a-day cap as /api/remind", async () => {
+  const call = (path) => new Promise((ok, no) => {
+    const r = request({ host: '127.0.0.1', port, path, method: 'POST', headers: { host: 'remind.quilcast.com', 'content-type': 'application/json' } }, (res) => {
+      const parts = []
+      res.on('data', (d) => parts.push(d)).on('end', () => ok({ status: res.statusCode, body: JSON.parse(Buffer.concat(parts).toString() || 'null') }))
+    })
+    r.on('error', no).end(JSON.stringify({ header: 'x', payload: 'y', signature: 'z' }))
+  })
+  let capped = false
+  // past 30 a minute the minute's limit answers first, so the clock moves on a minute every 30
+  for (let i = 1; i <= 201 && !capped; i++) {
+    const r = await call('/api/action')
+    capped = r.status === 429 && r.body.message === 'Too many reminders right now. Try again later.'
+    if (!capped) assert.equal(r.status, 401)
+    if (i % 30 === 0) await later(61e3)
+  }
+  assert.ok(capped)
+  assert.deepEqual(await call('/api/remind'), { status: 429, body: { error: 'too many reminders' } })
+})

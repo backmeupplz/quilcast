@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Під кожним кастом дотик надсилає {host}, який це був каст, і ваш FID, і показує відповідь {host}. Прибрати це можна в розділі Дії для кастів.",
   "{name} didn't work.": "{name} не спрацювало.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} не завантажується. Можливо, сайт не працює або заблокований у цій мережі.",
-  "{name}: done": "{name}: готово"
+  "{name}: done": "{name}: готово",
+  "Pick a time from a minute to a year away.": "Виберіть час від хвилини до року.",
+  "Too many reminders right now. Try again later.": "Зараз забагато нагадувань. Спробуйте пізніше.",
+  "The reminder wasn’t saved. Try again.": "Нагадування не збереглося. Спробуйте ще раз.",
+  "Something went wrong.": "Щось пішло не так."
 }

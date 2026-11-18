@@ -166,18 +166,20 @@ const URL_OF_THIS = 'https://remind.example.com/api/action'
 app.options('/api/action', (req, res) =&gt; res.set(CORS).sendStatus(204))
 app.post('/api/action', async (req, res) =&gt; {
   res.set(CORS)   // { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type' }
-  let fid, p
+  let fid, p, url
   try {
     const v = await verifyJsonFarcasterSignature(req.body, verifyAppKey)
     fid = v.fid
     p = JSON.parse(Buffer.from(v.payload).toString())
+    url = new URL(p.url)
   } catch {
     return res.status(401).json({ message: 'Could not check who you are.' })
   }
-  if (p.type !== 'cast_action' || new URL(p.url).origin + new URL(p.url).pathname !== URL_OF_THIS || Math.abs(Date.now() - p.timestamp) &gt; 300e3)
+  // written as "not within 5 minutes", so a missing timestamp (NaN) is refused too
+  if (p.type !== 'cast_action' || url.origin + url.pathname !== URL_OF_THIS || !(Math.abs(Date.now() - p.timestamp) &lt; 300e3))
     return res.status(401).json({ message: 'That request is not for this action.' })
   if (!p.notificationDetails) return res.status(400).json({ message: 'Turn notifications on for Remind me first.' })
-  const days = new URL(p.url).searchParams.get('in') === '1d' ? 1 : parseDays(p.input)
+  const days = url.searchParams.get('in') === '1d' ? 1 : parseDays(p.input)
   await saveReminder({ fid, cast: p.cast, at: Date.now() + days * 86400e3, notify: p.notificationDetails })
   res.json({ message: `I'll remind you in ${days} day${days === 1 ? '' : 's'}.` })
 })</code></pre>

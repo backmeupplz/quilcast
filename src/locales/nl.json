@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Onder elke cast stuurt tikken erop naar {host} welke cast het was en je FID, en toont het wat {host} antwoordt. Je kunt het verwijderen bij Cast-acties.",
   "{name} didn't work.": "{name} werkte niet.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} laadt niet. De site ligt mogelijk plat of is op dit netwerk geblokkeerd.",
-  "{name}: done": "{name}: klaar"
+  "{name}: done": "{name}: klaar",
+  "Pick a time from a minute to a year away.": "Kies een tijd tussen een minuut en een jaar vanaf nu.",
+  "Too many reminders right now. Try again later.": "Er zijn nu te veel herinneringen. Probeer het later nog eens.",
+  "The reminder wasn’t saved. Try again.": "De herinnering is niet opgeslagen. Probeer het opnieuw.",
+  "Something went wrong.": "Er ging iets mis."
 }

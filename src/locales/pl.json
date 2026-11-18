@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "Pod każdym castem dotknięcie tego wysyła do {host} informację, który to cast, oraz Twój FID, i pokazuje odpowiedź {host}. Możesz to usunąć w Akcje castów.",
   "{name} didn't work.": "{name} nie zadziałało.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} się nie ładuje. Jego strona może nie działać lub być zablokowana w tej sieci.",
-  "{name}: done": "{name}: gotowe"
+  "{name}: done": "{name}: gotowe",
+  "Pick a time from a minute to a year away.": "Wybierz czas od minuty do roku od teraz.",
+  "Too many reminders right now. Try again later.": "Za dużo przypomnień w tej chwili. Spróbuj później.",
+  "The reminder wasn’t saved. Try again.": "Nie zapisano przypomnienia. Spróbuj ponownie.",
+  "Something went wrong.": "Coś poszło nie tak."
 }

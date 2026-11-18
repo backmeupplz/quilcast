@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "各キャストの下でタップすると、どのキャストかとあなたのFIDが{host}に送信され、{host}の返答が表示されます。キャストアクションから削除できます。",
   "{name} didn't work.": "{name}は動作しませんでした。",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name}を読み込めません。サイトがダウンしているか、このネットワークでブロックされている可能性があります。",
-  "{name}: done": "{name}：完了"
+  "{name}: done": "{name}：完了",
+  "Pick a time from a minute to a year away.": "1分後から1年後までの時間を選んでください。",
+  "Too many reminders right now. Try again later.": "現在、リマインダーが多すぎます。しばらくしてからもう一度お試しください。",
+  "The reminder wasn’t saved. Try again.": "リマインダーを保存できませんでした。もう一度お試しください。",
+  "Something went wrong.": "問題が発生しました。"
 }

@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "हर कास्ट के नीचे इसे टैप करने पर {host} को भेजा जाता है कि वह कौन-सा कास्ट था और आपका FID, और {host} जो जवाब दे वह दिखता है। आप इसे कास्ट एक्शन में हटा सकते हैं।",
   "{name} didn't work.": "{name} काम नहीं किया।",
   "{name} isn't loading. Its site may be down or blocked on this network.": "{name} लोड नहीं हो रहा। हो सकता है उसकी साइट बंद हो या इस नेटवर्क पर ब्लॉक हो।",
-  "{name}: done": "{name}: हो गया"
+  "{name}: done": "{name}: हो गया",
+  "Pick a time from a minute to a year away.": "अभी से एक मिनट से एक साल के बीच का समय चुनें।",
+  "Too many reminders right now. Try again later.": "अभी बहुत सारे रिमाइंडर हैं। बाद में फिर कोशिश करें।",
+  "The reminder wasn’t saved. Try again.": "रिमाइंडर सेव नहीं हुआ। फिर से कोशिश करें।",
+  "Something went wrong.": "कुछ गलत हो गया।"
 }

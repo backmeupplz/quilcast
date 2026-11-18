@@ -16,19 +16,19 @@ const hash = cast && '0x' + String(cast.hash).replace(/^0x/, '')
 let notify = ctx?.client?.notificationDetails
 
 // a host with one-click cast actions can put a reminder in the ⋯ menu itself (server/remind.mjs oneClickReminder):
-// the settings below, on their own when Remind me is opened from Mini apps, or under the picker on a cast
-const oneClicks = framed && (await capabilities()).includes?.('actions.addCastAction')
+// the settings below, on their own when Remind me is opened from Mini apps, or under the picker on a cast. Not
+// awaited, so a host that never answers getCapabilities doesn't keep the buttons below from working.
+const menu = () => capabilities().then((c) => c?.includes?.('actions.addCastAction') && ($('#menu').hidden = false), () => {})
 if (!cast) {
   if (!framed) status('Open this from a cast’s ⋯ menu in Quilcast.', true)
-  else $('#intro').hidden = false
-  $('#menu').hidden = !oneClicks
+  else ($('#intro').hidden = false), menu()
 } else if (new URLSearchParams(location.search).has('reminder') || ctx?.location?.type === 'notification') {
   status('Here’s the cast you asked to be reminded about.')
   $('#view').hidden = !framed
 } else if (!framed) status('Open this from a cast’s ⋯ menu in Quilcast to set a reminder.', true)
 else {
   $('#pick').hidden = false
-  $('#menu').hidden = !oneClicks
+  menu()
 }
 
 /** Notification details, asking to turn them on (addMiniApp) when they aren't yet; null when they stay off. */

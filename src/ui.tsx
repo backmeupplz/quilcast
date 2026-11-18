@@ -1237,8 +1237,6 @@ export function ReportSheet() {
   )
 }
 
-/** Menu items that mute or block someone, or lift it; picking one asks how long, in the same menu. Report emails us
- *  the person (or cast `c`), for everyone, signed in or not (App Store guideline 1.2). */
 /** A one-click action's line of text, asked inside the ⋯ menu: Enter or the button runs it, Escape gives up. */
 function ActionPrompt({ a, done }: { a: CastAction; done: (input?: string) => void }) {
   const [v, setV] = useState('')
@@ -1252,6 +1250,8 @@ function ActionPrompt({ a, done }: { a: CastAction; done: (input?: string) => vo
   )
 }
 
+/** Menu items that mute or block someone, or lift it; picking one asks how long, in the same menu. Report emails us
+ *  the person (or cast `c`), for everyone, signed in or not (App Store guideline 1.2). */
 export function SilenceItems({ u, c, done }: { u: User; c?: Cast; done: () => void }) {
   const [kind, setKind] = useState<'users' | 'blocks' | null>(null)
   const set = (k: 'users' | 'blocks', until?: number | false) => {

@@ -1229,7 +1229,10 @@ const server = createServer(async (req, res) => {
       if (req.method === 'OPTIONS') return res.writeHead(204, cors).end()
       const reply = (code, body) => send(req, res, code, { 'content-type': 'application/json', 'cache-control': 'no-store', ...cors }, Buffer.from(JSON.stringify(body)))
       if (req.method !== 'POST') return reply(405, { message: 'POST a signed tap here.' })
-      if (limited(`remind:action:${ipGroup(ip)}`, 30)) return reply(429, { message: 'Slow down a little.' })
+      // the same daily cap as /api/remind, on the same count, so no one fills the store with made-up tokens
+      const who = ipGroup(ip)
+      if (limited(`remind:action:${who}`, 30)) return reply(429, { message: 'Slow down a little.' })
+      if (limited(`remind:day:${who}`, 200, 86400e3)) return reply(429, { message: 'Too many reminders right now. Try again later.' })
       const r = await readJson(req, 8000).then((b) => oneClickReminder(b, actionHost, { nodes: [NODE, SNAPCHAIN].filter(Boolean), node: NODE })).catch((e) => e)
       if (r instanceof Error && !r.status) console.error('remind action', r)
       return r instanceof Error ? reply(r.status || 500, { message: r.status ? r.message : 'Something went wrong.' }) : reply(200, r)

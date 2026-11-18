@@ -118,6 +118,8 @@ test('a one-click duration: "1d", "3 days", "a week", "90 min"; anything else is
   assert.equal(duration(' a Week '), 604800e3)
   assert.equal(duration('90 min'), 90 * 60e3)
   assert.equal(duration('2.5h'), 2.5 * 3600e3)
+  // "up to a year" reads as one too
+  assert.equal(duration('1 year'), 365 * 86400e3)
   for (const bad of ['', 'soon', '0 days', '-1d', '3 fortnights', null]) assert.equal(duration(bad), null, String(bad))
   assert.deepEqual([human(90 * 60e3), human(86400e3), human(2 * 604800e3)], ['90 minutes', '1 day', '2 weeks'])
 })

@@ -1409,5 +1409,9 @@
   "Under every cast, tapping it sends {host} which cast it was and your FID, and shows what {host} answers. You can remove it at Cast actions.": "أسفل كل كاست، تؤدي الضغطة عليه إلى إرسال أي كاست كان وFID الخاص بك إلى {host}، ثم يعرض ما يرد به {host}. يمكنك إزالته من إجراءات الكاست.",
   "{name} didn't work.": "لم يعمل {name}.",
   "{name} isn't loading. Its site may be down or blocked on this network.": "لا يتم تحميل {name}. قد يكون موقعه متوقفًا أو محظورًا على هذه الشبكة.",
-  "{name}: done": "{name}: تم"
+  "{name}: done": "{name}: تم",
+  "Pick a time from a minute to a year away.": "اختر وقتًا بين دقيقة وسنة من الآن.",
+  "Too many reminders right now. Try again later.": "هناك تذكيرات كثيرة جدًا الآن. حاول مرة أخرى لاحقًا.",
+  "The reminder wasn’t saved. Try again.": "لم يُحفظ التذكير. حاول مرة أخرى.",
+  "Something went wrong.": "حدث خطأ ما."
 }

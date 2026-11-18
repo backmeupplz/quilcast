@@ -28,6 +28,8 @@ for (const s of server) {
 const LABELS = [
   // server/translate.mjs's messages, shown by toast()
   'Too many translations at once, try again in a few minutes.', "Translation isn't set up on this server yet.", 'That cast has no words to translate.', 'The free translator is busy. Try again in a minute.',
+  // Remind me's one-click answers that aren't fail() literals (server/remind.mjs WORDS, server/index.mjs /api/action)
+  'Pick a time from a minute to a year away.', 'Too many reminders right now. Try again later.', 'The reminder wasn’t saved. Try again.', 'Something went wrong.',
   // the Winamp (amp.tsx): side buttons, visualizations, equalizer presets, playlist buttons
   'Options', 'Always on top', 'Track info on YouTube', 'Double size', 'Visualization', 'Spectrum analyzer', 'Oscilloscope', 'No visualization',
   'Flat', 'Classical', 'Club', 'Dance', 'Full bass', 'Full treble', 'Pop', 'Rock', 'Techno', 'Add', 'Remove', 'Select', 'Misc', 'List',
