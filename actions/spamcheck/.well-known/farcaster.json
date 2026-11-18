@@ -1,4 +1,9 @@
 {
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMzNTYzMTYsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhhRDI4MDQxNTMxNzJDYTE0MTA1NTA2Mzg2YzkwNzg1Mzc1ODhEZDVkIn0",
+    "payload": "eyJkb21haW4iOiJzcGFtY2hlY2sucXVpbGNhc3QuY29tIn0",
+    "signature": "LiJUdahYWOF8wKu1LSuSjFTvD4jfLpN76jSob_F-NLhbGlBOiEaQkyzXNviqZb5n5vFce1wHydq2HvnhYQAKQRw"
+  },
   "miniapp": {
     "version": "1",
     "name": "Spam check",

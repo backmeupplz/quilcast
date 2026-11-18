@@ -1,4 +1,9 @@
 {
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMzNTYzMTYsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhhRDI4MDQxNTMxNzJDYTE0MTA1NTA2Mzg2YzkwNzg1Mzc1ODhEZDVkIn0",
+    "payload": "eyJkb21haW4iOiJ0aXAucXVpbGNhc3QuY29tIn0",
+    "signature": "4DS7J7Jdt5ORr3E356ScWVjoet37Yt70P8w3S4kGpIVVd1JnylO_GP9IblA6rsGj7Qe6sufqdJSF-WEUgqNoGBw"
+  },
   "miniapp": {
     "version": "1",
     "name": "Tip",
