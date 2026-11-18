@@ -77,6 +77,36 @@ export const launchApp = (m: AppMeta, ctx?: { cast?: Cast; embed?: string; share
 export type CastAction = AppMeta & { description?: string }
 export const castActions = () => read<CastAction[]>('quilcast:actions', [])
 export const saveActions = (l: CastAction[]) => save('quilcast:actions', l.slice(0, 30))
+/** An installed mini app's cast action (its manifest's castShareUrl) joins the ⋯ menu with it, unless the menu has one
+ *  from that origin already. quilcast:app-actions keeps, per origin, 0 once its action was offered (so one taken off
+ *  the menu at /actions stays off), or when its manifest last had none (looked at again a day later). */
+export function addAppAction(origin: string, m: { castShareUrl?: string; name?: string; iconUrl?: string; description?: string } | null, app: AppMeta) {
+  save('quilcast:app-actions', { ...appActions(), [origin]: m?.castShareUrl ? 0 : Date.now() })
+  if (!m?.castShareUrl || castActions().some((a) => safeOrigin(a.url) === origin)) return
+  saveActions([...castActions(), { url: m.castShareUrl, name: m.name || app.name, icon: m.iconUrl || app.icon, description: m.description }])
+}
+const appActions = () => read<Record<string, number>>('quilcast:app-actions', {})
+/** Removing an installed app takes its cast action off the ⋯ menu too. */
+export const dropAppAction = (origin: string) => saveActions(castActions().filter((a) => safeOrigin(a.url) !== origin))
+const safeOrigin = (u: string) => {
+  try {
+    return new URL(u).origin
+  } catch {
+    return ''
+  }
+}
+/** Installed apps whose manifests have (or since got) a castShareUrl: their actions join the ⋯ menu (addAppAction). */
+export async function syncAppActions() {
+  const seen = appActions()
+  const apps = read<AppMeta[]>('quilcast:apps', [])
+  for (const o of new Set(apps.map((a) => safeOrigin(a.url)))) {
+    if (!o.startsWith('https://') || (Object.hasOwn(seen, o) && (seen[o] === 0 || seen[o] > Date.now() - 86400e3))) continue
+    // a failure is tried again next time
+    const r = await fetch(`/api/manifest?origin=${encodeURIComponent(o)}`).catch(() => null)
+    if (!r?.ok) continue
+    addAppAction(o, await r.json().catch(() => null), apps.find((a) => safeOrigin(a.url) === o)!)
+  }
+}
 /** Run an action on a cast: its castShareUrl with the share extension's query, and location cast_share in its context. */
 export function runAction(a: CastAction, c: Cast) {
   const u = new URL(a.url)

@@ -49,6 +49,9 @@ const origin = (o) => {
 const str = (v, n) => (typeof v === 'string' && v.length <= n ? v : undefined)
 const tokensOf = (inbox) => Object.entries(db.tokens).filter(([, t]) => t.inbox === inbox)
 
+/** True when `token` is one of this server's, for the app at origin `o` (Remind me checks a token before keeping it). */
+export const known = (token, o) => typeof token === 'string' && Object.hasOwn(db.tokens, token) && db.tokens[token].origin === o
+
 /** POST /api/notify/token {inbox, origin, name, icon}: this browser's token for an app (one per app). */
 async function token(req, site) {
   const b = await readJson(req)
@@ -109,8 +112,12 @@ async function subscribe(req) {
 const inbox = (req) => ({ items: db.inboxes[hash(req.headers['x-inbox'])]?.items || [] })
 
 /** POST /api/notify: what mini apps call, as the Farcaster spec has it. */
-async function deliver(req) {
-  const b = await readJson(req, 64e3)
+const deliver = async (req) => send(await readJson(req, 64e3))
+
+/** A notification request ({notificationId, title, body, targetUrl, tokens}) as POST /api/notify takes it; this
+ *  server's own cast actions (server/remind.mjs) call it directly rather than over the network. */
+export function send(b) {
+  if (!b || typeof b !== 'object') throw fail(400, 'bad notification')
   const id = str(b.notificationId, 128)
   const title = str(b.title, 32)
   const body = str(b.body, 128)
@@ -147,7 +154,8 @@ async function deliver(req) {
     const item = { id: randomBytes(9).toString('base64url'), app: t.origin, name: t.name, icon: t.icon, notificationId: id, title, body, targetUrl: target, at: now }
     box.items = [item, ...box.items].slice(0, MAX_ITEMS)
     // the icon through /api/img, so the app's host doesn't see who got its notification (shared.ts proxied)
-    if (box.push) pushes.push([box, { title: `${t.name}: ${title}`, body, icon: t.icon && proxied(t.icon), url: `/apps?n=${item.id}` }])
+    // a tap lands on the Mini apps tab of Notifications, which opens it (src/app.tsx Notifications)
+    if (box.push) pushes.push([box, { title: `${t.name}: ${title}`, body, icon: t.icon && proxied(t.icon), url: `/notifications?tab=apps&n=${item.id}` }])
     result.successfulTokens.push(tk)
   }
   persist()

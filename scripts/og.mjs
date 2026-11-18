@@ -14,6 +14,7 @@ const PAGES = [
   { file: 'safety', title: 'Child Safety Standards', line: 'Zero tolerance for child sexual abuse and exploitation on Quilcast.', glyph: '🛡️' },
   { file: 'delete', title: 'Delete your account', line: 'Delete it from Settings: what it removes from Farcaster, our server and your device.', glyph: '🗑️' },
   { file: 'actions', title: 'Cast actions', line: 'Buttons in the ⋯ menu under every cast, built as Farcaster mini apps.', glyph: '⚡' },
+  { file: 'hypersnap', title: 'Mini apps on Hypersnap', line: 'Sign in and notifications that work for every Hypersnap account.', glyph: '🧩', url: 'quilcast.com/developers/mini-apps' },
 ]
 
 const chrome = [
@@ -55,7 +56,7 @@ const card = (p) => `<!doctype html><meta charset="utf-8"><style>
   <img class="icon" src="${icon}" alt="">
   <h1>${esc(p.title)}</h1>
   <p>${esc(p.line)}</p>
-  <div class="url">quilcast.com/${p.file}</div>
+  <div class="url">${p.url || `quilcast.com/${p.file}`}</div>
 </main>${p.glyph ? `<div class="glyph">${p.glyph}</div>` : casts}`
 
 const shot = (file, html, h = 630) => {

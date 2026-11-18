@@ -20,6 +20,10 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .other { display: flex; gap: 10px; }
 .other input { flex: 1; min-width: 0; min-height: 52px; padding: 0 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--fg); font: inherit; }
 .other button { width: auto; padding: 0 20px; }
+.other select { min-height: 52px; padding: 0 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--fg); font: inherit; }
+.small { font-size: 14px; }
+button.ghost { margin-top: 10px; background: var(--card); border: 1px solid var(--line); }
+button.ghost:hover:not(:disabled) { background: var(--line); }
 #status { min-height: 1.5em; margin: 12px 0 0; }
 #status.err { color: var(--bad); }
 a { color: #b3a6ff; }

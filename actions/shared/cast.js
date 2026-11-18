@@ -17,7 +17,7 @@ export async function start() {
   if (!cast && hash) cast = await fetch(`${NODE}/v2/farcaster/cast?type=hash&identifier=0x${hash}`).then((r) => r.json()).then((j) => j.cast && { hash: j.cast.hash, text: j.cast.text, author: { fid: j.cast.author.fid, username: j.cast.author.username, pfpUrl: j.cast.author.pfp_url } }, () => null)
   if (!cast && hash && fid) cast = { hash: '0x' + hash, text: '', author: { fid } }
   if (cast) show(cast)
-  return { cast, viewer: ctx?.user?.fid || Number(q.get('viewerFid')) || 0, framed: !!ctx }
+  return { cast, viewer: ctx?.user?.fid || Number(q.get('viewerFid')) || 0, framed: !!ctx, ctx }
 }
 
 function show(c) {

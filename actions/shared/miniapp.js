@@ -1,4 +1,4 @@
-// Copied from collect/miniapp.js (itself from backmeupplz/poidh public/miniapp.js), plus sendToken and close.
+// Copied from collect/miniapp.js (itself from backmeupplz/poidh public/miniapp.js), plus sendToken, close and viewCast.
 // Your own cast action can use the official @farcaster/miniapp-sdk instead; this is the same wire, minus the bundle.
 // Farcaster mini app guest side, without @farcaster/miniapp-sdk: the host speaks Comlink over postMessage
 // (an iframe on web, window.ReactNativeWebView in the mobile apps). Loaded only when framed.
@@ -66,3 +66,4 @@ export const addMiniApp = () => apply('addMiniApp').catch(() => null)
 export const sendToken = (o) => apply('sendToken', o)
 export const close = () => apply('close').catch(() => {})
 export const viewProfile = (fid) => apply('viewProfile', { fid }).catch(() => {})
+export const viewCast = (hash) => apply('viewCast', { hash })

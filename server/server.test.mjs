@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, stat, writeFile } from 'node:fs/promises'
 import { createServer, request } from 'node:http'
 import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -219,7 +219,7 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200', REMIND_EVERY_MS: '100' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] })
   // the last of what it says on stderr, to show if it never comes up (kept short, and drained so it never blocks)
   let stderr = ''
   srv.stderr.setEncoding('utf8').on('data', (s) => (stderr = (stderr + s).slice(-8192)))
@@ -431,8 +431,7 @@ test('the cast action hosts: each its own page and manifest with a castShareUrl,
     const parts = []
     r.on('data', (d) => parts.push(d)).on('end', () => ok({ status: r.statusCode, headers: r.headers, body: Buffer.concat(parts).toString() }))
   }).on('error', no).end())
-  for (const name of ['spamcheck', 'tip']) {
-    const host = `${name}.quilcast.com`
+  for (const [name, host] of [['spamcheck', 'spamcheck.quilcast.com'], ['tip', 'tip.quilcast.com'], ['remindme', 'remind.quilcast.com']]) {
     const page = await get(host, `/?castHash=0x${'ab'.repeat(20)}&castFid=3`)
     assert.equal(page.status, 200, host)
     assert.match(page.headers['content-security-policy'], /frame-ancestors \*/)
@@ -444,6 +443,8 @@ test('the cast action hosts: each its own page and manifest with a castShareUrl,
     assert.equal((await get(host, '/icon.png')).headers['content-type'], 'image/png')
     for (const path of ['/../server/index.mjs', '/nope', `/${name === 'tip' ? 'spamcheck' : 'tip'}/app.js`]) assert.equal((await get(host, path)).status, 404, host + path)
   }
+  // Remind me's manifest names its webhook, so hosts offer it notifications
+  assert.equal(JSON.parse((await get('remind.quilcast.com', '/.well-known/farcaster.json')).body).miniapp.webhookUrl, 'https://remind.quilcast.com/webhook')
 })
 
 test('collect.quilcast.com finds a pasted cast link: a full hash anywhere in it, or a farcaster.xyz link by its first digits', async () => {
@@ -1481,4 +1482,48 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
   assert.equal(submitted.length, 2)
   // taken off the list
   assert.deepEqual(await (await call('DELETE', 7, JSON.stringify({ id: doomed }))).json(), { id: doomed, was: 'failed' })
+})
+
+// last: it moves the server's clock three minutes on, past what other tests' signed timestamps allow
+test('Remind me: a reminder is kept with its notification token and sent to the Mini apps inbox when due', async () => {
+  const ahead = await later(0)
+  const now = () => Date.now() + ahead
+  const call = (path, body, host = 'remind.quilcast.com') => new Promise((ok, no) => {
+    const r = request({ host: '127.0.0.1', port, path, method: 'POST', headers: { host, 'content-type': 'application/json' } }, (res) => {
+      const parts = []
+      res.on('data', (d) => parts.push(d)).on('end', () => ok({ status: res.statusCode, body: JSON.parse(Buffer.concat(parts).toString() || 'null') }))
+    })
+    r.on('error', no).end(JSON.stringify(body))
+  })
+  const post = (path, body) => fetch(base + path, { method: 'POST', body: JSON.stringify(body) })
+  // turning notifications on for the action: Quilcast's token for remind.quilcast.com, as addMiniApp hands it over
+  const inbox = 'cd'.repeat(32)
+  const t = await (await post('/api/notify/token', { inbox, origin: 'https://remind.quilcast.com', name: 'Remind me' })).json()
+  const hash = '0x' + 'ef'.repeat(20)
+  const ask = (extra) => call('/api/remind', { token: t.token, url: t.url, hash, fid: 3, author: 'alice', text: 'see\nyou   later', at: now() + 120e3, ...extra })
+  for (const bad of [{ at: now() + 5e3 }, { at: now() + 400 * 86400e3 }, { url: 'http://quilcast.test/api/notify' }, { hash: '0x12' }, { fid: 0 }, { token: '' }]) assert.equal((await ask(bad)).status, 400, JSON.stringify(bad))
+  const one = await ask({})
+  assert.equal(one.status, 200)
+  // a second one for the same token and time is held back by Quilcast's 30 s limit, then sent a minute on
+  const two = await ask({ text: 'second' })
+  // a token Quilcast didn't give this action isn't kept
+  assert.equal((await ask({ token: 'not-a-token', text: 'nobody' })).status, 400)
+  assert.equal((await call('/webhook', { header: 'x', payload: 'y', signature: 'z' })).status, 200)
+  const items = async () => (await (await fetch(base + '/api/notify/inbox', { headers: { 'x-inbox': inbox } })).json()).items
+  const files = () => readdir(join(media, 'remind'))
+  assert.deepEqual(await items(), [])
+  assert.equal((await files()).length, 2)
+  await later(121e3)
+  const until = async (f) => {
+    for (let i = 0; i < 100 && !(await f()); i++) await new Promise((r) => setTimeout(r, 50))
+    assert.ok(await f())
+  }
+  await until(async () => (await items()).length === 1 && (await files()).length === 1)
+  const [got] = await items()
+  assert.deepEqual([got.app, got.name, got.notificationId, got.title, got.body, got.targetUrl], ['https://remind.quilcast.com', 'Remind me', `remind-${one.body.id}`, 'Reminder', '@alice: see you later', `https://remind.quilcast.com/?castHash=${hash}&castFid=3&reminder=1`])
+  // the one held back is still there, and goes out a minute later
+  assert.match((await files())[0], new RegExp(`-${two.body.id}-q[\\w-]{10}\\.json$`))
+  await later(61e3)
+  await until(async () => (await items()).length === 2 && (await files()).length === 0)
+  assert.equal((await items())[0].notificationId, `remind-${two.body.id}`)
 })

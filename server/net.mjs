@@ -24,6 +24,19 @@ export function clientIp(req) {
   return cf && isIP(cf) ? cf : hop
 }
 
+/** Who an address counts as for rate limits: an IPv4 address itself, an IPv6 one by its /64 (one connection's worth). */
+export function ipGroup(ip) {
+  if (isIP(ip) !== 6) return ip
+  const v = ip.toLowerCase().replace(/%.*$/, '')
+  const mapped = v.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
+  if (mapped) return mapped[1]
+  const [head, tail = ''] = v.split('::')
+  const a = head ? head.split(':') : []
+  const b = v.includes('::') ? (tail ? tail.split(':') : []) : []
+  const full = v.includes('::') ? [...a, ...Array(8 - a.length - b.length).fill('0'), ...b] : a
+  return full.slice(0, 4).map((x) => x.replace(/^0+(?=.)/, '')).join(':') + '::/64'
+}
+
 export const UA = 'Mozilla/5.0 (compatible; QuilcastBot/1.0; +https://quilcast.com) facebookexternalhit/1.1'
 
 /** True for loopback, private, link-local, CGNAT/Tailscale, multicast, reserved and the IPv6 forms of them. */

@@ -1,0 +1,22 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "Remind me",
+    "iconUrl": "https://remind.quilcast.com/icon.png",
+    "homeUrl": "https://remind.quilcast.com/",
+    "castShareUrl": "https://remind.quilcast.com/",
+    "splashImageUrl": "https://remind.quilcast.com/icon.png",
+    "splashBackgroundColor": "#0d0c11",
+    "webhookUrl": "https://remind.quilcast.com/webhook",
+    "subtitle": "A cast, back later",
+    "description": "Pick how long to wait, and a notification brings the cast back then. Open it from a cast's share or ⋯ menu.",
+    "primaryCategory": "productivity",
+    "tags": [
+      "reminder",
+      "notifications",
+      "later",
+      "quilcast"
+    ],
+    "canonicalDomain": "remind.quilcast.com"
+  }
+}

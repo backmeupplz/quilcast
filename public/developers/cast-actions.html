@@ -30,7 +30,7 @@
       <h1>Build a cast action</h1>
       <p class="muted">For developers. Quilcast, November 2026.</p>
       <p>A cast action is a button in the ⋯ menu under every cast in <a href="/">Quilcast</a>. People pick the actions they want, and each one does something with the cast it's tapped on: it can check it, tip its author, remind you about it later, reply to it, or anything else a small web app can do.</p>
-      <p>An action is a <a href="https://miniapps.farcaster.xyz">Farcaster mini app</a> that declares a <code>castShareUrl</code> in its manifest. That is the same <a href="https://miniapps.farcaster.xyz/docs/guides/share-extension">share extension</a> other Farcaster clients show in their share sheet, so a single app works as a Quilcast cast action and as a share target everywhere else, and a mini app that already has a share extension is already a cast action.</p>
+      <p>An action is a <a href="https://miniapps.farcaster.xyz">Farcaster mini app</a> that declares a <code>castShareUrl</code> in its manifest. That is the same <a href="https://miniapps.farcaster.xyz/docs/guides/share-extension">share extension</a> other Farcaster clients show in their share sheet, so a single app works as a Quilcast cast action and as a share target everywhere else, and a mini app that already has a share extension is already a cast action. To make sign-in and notifications work for accounts created on Hypersnap too, see <a href="/developers/mini-apps">Build mini apps for Hypersnap</a>.</p>
 
       <h2>How it works</h2>
       <ol>
@@ -61,7 +61,7 @@
         <li><code>name</code> is the menu label, so keep it short: two words is ideal, and the mini app spec allows 32 characters. <code>iconUrl</code> is a square PNG (1024×1024 without transparency is what Farcaster clients want), drawn at 18 px in the menu.</li>
         <li><code>subtitle</code> (or <code>description</code>) is the line shown under the name when someone adds your action by link.</li>
         <li>Quilcast doesn't require <code>accountAssociation</code>, but other Farcaster clients do, so <a href="https://miniapps.farcaster.xyz/docs/guides/publishing">sign your domain</a> anyway.</li>
-        <li><code>webhookUrl</code> is only needed if you send notifications (see Remind me below).</li>
+        <li><code>webhookUrl</code> is only needed if you send notifications (see <a href="#notifications">Send notifications</a> below).</li>
       </ul>
 
       <h2>2. Read the cast</h2>
@@ -92,6 +92,49 @@ if (ctx.location?.type === 'cast_share') {
       </ul>
       <p>Close when you're done (<code>sdk.actions.close()</code>), so a quick action feels like a menu item rather than a separate app.</p>
 
+      <h2 id="notifications">4. Send notifications</h2>
+      <p>An action that comes back later, such as a reminder, a price alert or a watch on a thread, uses the same <a href="https://miniapps.farcaster.xyz/docs/guides/notifications">mini app notifications</a> as any Farcaster mini app. A cast action only needs a small part of that flow, though: there's no home screen to build and no user database to keep, just a token, the thing you'll say, and a time.</p>
+      <ol>
+        <li><strong>Add a <code>webhookUrl</code> to your manifest.</strong> Quilcast only offers notifications for apps whose manifest has one, and so do other clients. It has to answer <code>200</code>, but a cast action can leave the events it receives alone (see step 4).</li>
+        <li><strong>Get a token when someone uses the action.</strong> If they already turned notifications on for your app, the context has it. If not, <code>sdk.actions.addMiniApp()</code> asks them to add your app with notifications, and its result has the token once they're on. Ask from a tap, at the moment the action needs it.</li>
+        <li><strong>Hand the token to your server</strong> with whatever the notification needs, such as the cast's hash and when to send it.</li>
+        <li><strong>Send it.</strong> When the time comes, your server POSTs to the token's <code>url</code>. The answer says which tokens worked. Stop using one that comes back in <code>invalidTokens</code>, because that's how a client tells you notifications were turned off or the app was removed, which means a cast action doesn't need to read or verify webhook events at all. Send one in <code>rateLimitedTokens</code> again later: Quilcast takes one notification per token every 30 seconds and 100 a day.</li>
+        <li><strong>Handle the tap.</strong> Tapping the notification opens its <code>targetUrl</code> in your app, with <code>location.type</code> set to <code>notification</code> in the context, and from there <code>sdk.actions.viewCast({ hash })</code> takes the person to the cast.</li>
+      </ol>
+<pre><code>// in the action, when someone picks a time
+const ctx = await sdk.context
+let notify = ctx.client.notificationDetails       // { url, token } once they're on
+if (!notify) notify = (await sdk.actions.addMiniApp()).notificationDetails
+if (!notify) return show('Reminders come as notifications, so they need to be on.')
+await fetch('/api/remind', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ token: notify.token, url: notify.url, hash: ctx.location.cast.hash, at: Date.now() + 3 * 3600e3 }),
+})
+
+// on your server, when it's due
+const r = await fetch(reminder.url, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    notificationId: `remind-${reminder.id}`,   // the same id twice within a day is shown once, so retries are safe
+    title: 'Reminder',                          // at most 32 characters
+    body: '@dwr: the cast you asked about',     // at most 128
+    targetUrl: `https://remind.example.com/?castHash=${reminder.hash}`,   // on your own domain
+    tokens: [reminder.token],                   // up to 100 per request
+  }),
+})
+const { result } = await r.json()   // { successfulTokens, invalidTokens, rateLimitedTokens }
+
+// the webhook: acknowledge the events; an invalid token tells you the rest
+app.post('/webhook', (req, res) =&gt; res.json({ ok: true }))</code></pre>
+      <p>If you'd rather learn about tokens from the webhook, for example to notify people who added your app without using the action, verify each event first with <a href="https://www.npmjs.com/package/@farcaster/miniapp-node"><code>@farcaster/miniapp-node</code></a>'s <code>parseWebhookEvent</code>. Pass it the Hypersnap-aware key check from <a href="/developers/mini-apps#notifications">Build for Hypersnap</a>, though, not the stock one: the stock check only knows keys added on Optimism, so it refuses events from Quilcast and from every account created on Hypersnap.</p>
+      <p>In Quilcast, notifications from cast actions land in the Mini apps tab of Notifications, and they also arrive as a push when the person has turned push on for mini apps on the Mini apps page. Tapping one opens your app on its <code>targetUrl</code>.</p>
+      <p>Quilcast signs those events with the person's own Farcaster signer, so turning notifications on costs nothing and works for every account, including ones created on Hypersnap. A webhook that checks keys on Hypersnap (and, optionally, Snapchain) accepts them. If your webhook refuses the event because it only accepts keys added on Optimism, Quilcast sends it again signed with an on-chain app key, which it adds with a small transaction the first time. Accounts created on Hypersnap don't have one, so check keys on Hypersnap if you want to reach them.</p>
+
+      <h3>A mini app you already have</h3>
+      <p>An existing mini app becomes a cast action once its manifest has a <code>castShareUrl</code>, with no separate app needed. Everyone who has added it in Quilcast finds the action in their ⋯ menu without doing anything, and anyone who adds it later gets the action along with it. Notification tokens belong to your domain, so the token someone gave your mini app already works for notifications about what they did in the action, and the other way round.</p>
+
       <h2>Examples</h2>
       <p>Quilcast's own actions are small, framework-free pages that you can read and copy. Their source is in <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/actions"><code>actions/</code></a> in the Quilcast repo.</p>
 
@@ -113,34 +156,11 @@ const r = await sdk.actions.sendToken({
 if (r.success) { /* r.send.transaction is the hash */ }</code></pre>
 
       <h3>Remind me</h3>
-      <p>An action that asks a question and comes back later has three parts: its own small UI for the question, a notification token, and a server that sends the notification when the time comes.</p>
-<pre><code>// in the app: "Remind me in…" buttons, then
-const added = ctx.client.added ? null : await sdk.actions.addMiniApp()
-const notify = added?.notificationDetails ?? ctx.client.notificationDetails
-if (!notify) return show('Turn on notifications to get the reminder.')
-await fetch('/remind', {
-  method: 'POST',
-  body: JSON.stringify({ hash: cast.hash, at: Date.now() + 3 * 864e5, notify }),
-})
-await sdk.actions.close()
-
-// on your server, when it's due:
-await fetch(notify.url, {
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({
-    notificationId: `remind-${id}`,
-    title: 'Reminder',
-    body: 'The cast you asked about',
-    targetUrl: `https://remind.example.com/open?cast=${hash}`,  // on your own domain
-    tokens: [notify.token],
-  }),
-})</code></pre>
-      <p>Tapping the notification opens <code>targetUrl</code> inside your app, which can then call <code>sdk.actions.viewCast({ hash })</code>. Your <code>webhookUrl</code> receives <code>notifications_disabled</code> and <code>miniapp_removed</code> events, after which you should stop sending to that token. In Quilcast, the first time someone turns on mini app notifications, Quilcast adds an app key to their Farcaster account with a small transaction from their custody address on Optimism, because that key is how your webhook can tell the events really came from them. Accounts created on Hypersnap since its November 2026 fork aren't registered on Optimism, so they can't turn notifications on yet. If your action has to reach everyone, offer another way back as well, such as a reply that mentions them.</p>
+      <p><a href="https://remind.quilcast.com">remind.quilcast.com</a> is the notifications flow above, end to end. It offers 1 hour to 30 days or any number of minutes, hours, days or weeks, and asks to turn notifications on the first time someone uses it. When the reminder is due, the Quilcast server sends it to the token's URL, and tapping it opens the action again with the cast and an Open the cast button. The page is <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/actions/remindme"><code>actions/remindme/</code></a> and the server part, which keeps the reminders and sends them, is <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/server/remind.mjs"><code>server/remind.mjs</code></a>.</p>
 
       <h2>Trust</h2>
       <ul>
-        <li><strong>The context isn't proof.</strong> Anyone can open your URL with any <code>castHash</code> or <code>viewerFid</code>, and <code>sdk.context.user</code> is whatever the host says. Before you spend, store or post anything for someone, have them sign in with <code>sdk.actions.signIn({ nonce })</code> and verify the result on your server: check the Sign In With Ethereum signature and your nonce, then check that the signing address is the FID's custody address. <a href="https://www.npmjs.com/package/@farcaster/auth-client"><code>@farcaster/auth-client</code></a>'s <code>verifySignInMessage</code> does both, but its usual setup looks the custody up on Optimism, which doesn't know accounts created on Hypersnap since its fork. Look the custody up on a Hypersnap node instead (<code>custody_address</code> in <code>https://haatz.quilibrium.com/v2/farcaster/user?fid=…</code>), which knows every account.</li>
+        <li><strong>The context isn't proof.</strong> Anyone can open your URL with any <code>castHash</code> or <code>viewerFid</code>, and <code>sdk.context.user</code> is whatever the host says. Before you spend, store or post anything for someone, have them sign in with <code>sdk.actions.signIn({ nonce })</code> and verify the result on your server: check the Sign In With Ethereum signature and your nonce, then check that the signing address is the FID's custody address on Hypersnap. <a href="/developers/mini-apps#sign-in">Build for Hypersnap</a> has the whole check, which works for accounts created on Hypersnap too.</li>
         <li><strong>Read the cast from the network when it matters.</strong> The cast in the context is a convenience. If your action depends on what it says, fetch it by hash from a Hypersnap node, for example <code>https://haatz.quilibrium.com/v2/farcaster/cast?type=hash&amp;identifier=0x…</code>.</li>
         <li><strong>What Quilcast guards.</strong> Your app runs in a sandboxed frame on your own origin. Adding an action only reads your manifest, through Quilcast's server, so nothing about a person or a cast reaches you until they tap it. Every wallet request is shown to the person before their wallet sees it, and Quilcast refuses requests that could take over a Farcaster account. Quilcast reviews the actions on its official list, but not the ones people add by link, and it tells them so.</li>
       </ul>

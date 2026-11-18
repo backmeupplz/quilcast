@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { test } from 'node:test'
 import { PassThrough } from 'node:stream'
-import { blocked, clientIp, imageInfo, lru, picInfo, proxiedPic, readBody, safeGet, sendOn } from './net.mjs'
+import { blocked, clientIp, imageInfo, ipGroup, lru, picInfo, proxiedPic, readBody, safeGet, sendOn } from './net.mjs'
 import { scan } from './unfurl.mjs'
 import { looksLike } from './upload.mjs'
 
@@ -224,4 +224,13 @@ test('proxiedPic: a picture by its head, nothing for what is not one, a throw (n
   const c = lru({ bytes: 100, count: 10, big: 50, ttl: 1e6, miss: 1e6 })
   await c.get('cold', async () => proxiedPic({ status: 200, body: Buffer.alloc(0), rest: new PassThrough(), late: true }, opts))
   assert.equal(c.has('cold'), false)
+})
+
+test('rate limits count an IPv6 address by its /64', () => {
+  assert.equal(ipGroup('203.0.113.7'), '203.0.113.7')
+  assert.equal(ipGroup('::ffff:203.0.113.7'), '203.0.113.7')
+  assert.equal(ipGroup('2a01:4f8:1:2:aaaa::1'), '2a01:4f8:1:2::/64')
+  assert.equal(ipGroup('2a01:04f8:0001:0002:ffff:1:2:3'), '2a01:4f8:1:2::/64')
+  assert.equal(ipGroup('2a01::1'), '2a01:0:0:0::/64')
+  assert.equal(ipGroup('2a01:4f8::'), '2a01:4f8:0:0::/64')
 })

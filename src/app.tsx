@@ -7,7 +7,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, n, newOnTop, peekOf, quotedOf, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, dropAppAction, syncAppActions, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
@@ -845,8 +845,18 @@ function AppNotes() {
 }
 
 function Notifications() {
-  const [tab, setTab] = useState<'all' | 'replies' | 'apps'>('all')
+  // a tapped mini app push lands here as ?tab=apps&n=<id> (server/notify.mjs), and that notification opens
+  const [tab, setTab] = useState<'all' | 'replies' | 'apps'>(() => (new URLSearchParams(location.search).get('tab') === 'apps' && account?.inbox ? 'apps' : 'all'))
   const [round, reload] = useReload()
+  useEffect(() => {
+    const n = new URLSearchParams(location.search).get('n')
+    if (!n) return
+    history.replaceState(null, '', '/notifications')
+    appNotes().then((all) => {
+      const hit = all.find((x) => x.id === n)
+      hit && openNote(hit)
+    })
+  }, [])
   useEffect(() => {
     // opening or refreshing the page marks everything up to now as seen
     localStorage.setItem(seenKey(), String(Date.now()))
@@ -1633,6 +1643,8 @@ function Apps() {
       if (on(a)) await (await m()).setNotify(a, false, 'miniapp_removed').catch(() => {})
       const next = read<AppMeta[]>('quilcast:apps', []).filter((x) => x.url !== a.url)
       save('quilcast:apps', next)
+      // and its cast action leaves the ⋯ menu
+      dropAppAction(origin(a))
       setList(next)
       // Quorum mode's Apps card lists these too
       dispatchEvent(new Event('dock'))
@@ -2700,6 +2712,12 @@ function App() {
     syncMutes()
     refreshAlerts().catch(() => {})
     settings.syncThemes && import('./prefs.ts').then((m) => m.pull())
+  }, [account?.fid])
+  // installed mini apps' cast actions join the ⋯ menu (ui.tsx syncAppActions), a little after the page is up
+  useEffect(() => {
+    if (!account?.done) return
+    const timer = setTimeout(() => syncAppActions().catch(() => {}), 5000)
+    return () => clearTimeout(timer)
   }, [account?.fid])
   const me = account?.done ? myUser() : null
   shell.me = () => me && <HeaderMe me={me} />

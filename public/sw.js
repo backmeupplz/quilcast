@@ -30,8 +30,8 @@ self.addEventListener('notificationclick', (e) => {
   // only our own pages
   if (url.origin !== self.location.origin) return
   e.waitUntil((async () => {
-    // a mini app's notification opens a new window, as before
-    if (!url.pathname.startsWith('/apps')) {
+    // a mini app's notification (Notifications' Mini apps tab, or /apps from older pushes) opens a new window, as before
+    if (!url.pathname.startsWith('/apps') && url.searchParams.get('tab') !== 'apps') {
       const open = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).filter((c) => new URL(c.url).origin === url.origin)
       const took = open.length ? await withApp(open) : null
       if (took) {

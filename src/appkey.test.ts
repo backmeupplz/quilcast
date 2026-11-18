@@ -82,12 +82,21 @@ test('a new app key is added on chain and is ready once the KeyRegistry holds it
   assert.equal(chain.adds, 1)
   assert.equal(hex(again.pub), hex(key.pub))
 
-  // and webhook events are signed with it
-  const e = await signEvent({ event: 'notifications_disabled' })
+  // and webhook events that ask for it are signed with it
+  const e = await signEvent({ event: 'notifications_disabled' }, true)
   const header = JSON.parse(Buffer.from(e.header, 'base64url').toString())
   assert.deepEqual(header, { fid: 7, type: 'app_key', key: '0x' + hex(key.pub) })
   assert.ok(ed25519.verify(Buffer.from(e.signature, 'base64url'), Buffer.from(`${e.header}.${e.payload}`), key.pub))
   assert.equal(chain.hypersnap, 0)
+})
+
+test("by default webhook events are signed with the account's own signer: no transaction, no app key", async () => {
+  const adds = chain.adds, txs = chain.txs.length
+  const e = await signEvent({ event: 'notifications_enabled' })
+  const signer = ed25519.getPublicKey(new Uint8Array(32).fill(3))
+  assert.deepEqual(JSON.parse(Buffer.from(e.header, 'base64url').toString()), { fid: 7, type: 'app_key', key: '0x' + hex(signer) })
+  assert.ok(ed25519.verify(Buffer.from(e.signature, 'base64url'), Buffer.from(`${e.header}.${e.payload}`), signer))
+  assert.deepEqual([chain.adds, chain.txs.length], [adds, txs])
 })
 
 test('a kept key that was removed on chain since is replaced with a new one', async () => {

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Remind me</title>
+  <meta name="description" content="A Quilcast cast action: a notification brings a Farcaster cast back after as long as you choose." />
+  <link rel="icon" href="/icon.png" />
+  <meta name="theme-color" content="#0d0c11" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Quilcast" />
+  <meta property="og:url" content="https://remind.quilcast.com/" />
+  <meta property="og:title" content="Remind me" />
+  <meta property="og:description" content="A Quilcast cast action: a notification brings a Farcaster cast back after as long as you choose." />
+  <meta property="og:image" content="https://quilcast.com/og-actions.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@quilcast" />
+  <meta name="twitter:title" content="Remind me" />
+  <meta name="twitter:description" content="A Quilcast cast action: a notification brings a Farcaster cast back after as long as you choose." />
+  <meta name="twitter:image" content="https://quilcast.com/og-actions.png" />
+  <link rel="stylesheet" href="/style.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Remind me</h1>
+    <div id="cast" class="cast" hidden><img alt="" /><div><b></b><p></p></div></div>
+    <div id="pick" hidden>
+      <p class="muted">How long should I wait before bringing this cast back?</p>
+      <div class="amounts">
+        <button type="button" data-min="60">1 hour</button>
+        <button type="button" data-min="180">3 hours</button>
+        <button type="button" data-min="1440">1 day</button>
+        <button type="button" data-min="4320">3 days</button>
+        <button type="button" data-min="10080">1 week</button>
+        <button type="button" data-min="43200">30 days</button>
+      </div>
+      <form id="other" class="other">
+        <input id="count" type="number" min="1" step="1" inputmode="numeric" placeholder="Or enter how long" aria-label="How long to wait" />
+        <select id="unit" aria-label="Unit">
+          <option value="1">minutes</option>
+          <option value="60" selected>hours</option>
+          <option value="1440">days</option>
+          <option value="10080">weeks</option>
+        </select>
+        <button type="submit">Set</button>
+      </form>
+      <p class="muted small">The reminder comes as a notification from Remind me, so it asks to turn those on the first time.</p>
+    </div>
+    <p id="status" role="status"></p>
+    <button id="view" type="button" hidden>Open the cast</button>
+    <button id="done" type="button" class="ghost" hidden>Done</button>
+  </main>
+</body>
+</html>

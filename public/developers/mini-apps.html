@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Build mini apps for Hypersnap</title>
+    <meta name="description" content="How to build Farcaster mini apps and cast actions that work in Hypersnap clients like Quilcast, for accounts created on Hypersnap too, with Snapchain support as an option." />
+    <link rel="canonical" href="https://quilcast.com/developers/mini-apps" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Quilcast" />
+    <meta property="og:url" content="https://quilcast.com/developers/mini-apps" />
+    <meta property="og:title" content="Build mini apps for Hypersnap" />
+    <meta property="og:description" content="Sign in, notifications and data for Farcaster mini apps on Hypersnap, with Snapchain support as an option." />
+    <meta property="og:image" content="https://quilcast.com/og-hypersnap.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Build mini apps for Hypersnap: sign in, notifications and data, with Snapchain as an option" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@quilcast" />
+    <meta name="twitter:title" content="Build mini apps for Hypersnap" />
+    <meta name="twitter:description" content="Sign in, notifications and data for Farcaster mini apps on Hypersnap, with Snapchain support as an option." />
+    <meta name="twitter:image" content="https://quilcast.com/og-hypersnap.png" />
+    <meta name="twitter:image:alt" content="Build mini apps for Hypersnap: sign in, notifications and data, with Snapchain as an option" />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Build mini apps for Hypersnap</h1>
+      <p class="muted">For developers. Quilcast, November 2026.</p>
+      <p><a href="https://hypersnap.org">Hypersnap</a> is the Farcaster network that Quilibrium runs, and Hypersnap clients such as <a href="/">Quilcast</a> run standard <a href="https://miniapps.farcaster.xyz">Farcaster mini apps</a>. The SDK, the manifest and the notification format are all the same as elsewhere. What differs is how your server checks who someone is. The usual checks look things up on Optimism, and accounts created on Hypersnap were never registered there, so this page shows checks that ask a Hypersnap node instead, with Snapchain (the network the Farcaster app uses) as an optional second place to look. Cast actions are mini apps too, so all of this applies to them as well, and <a href="/developers/cast-actions">Build a cast action</a> covers what's specific to them.</p>
+
+      <h2>What's different on Hypersnap</h2>
+      <ul>
+        <li><strong>New accounts live only on Hypersnap.</strong> Since Hypersnap forked from Snapchain on November 12, 2026, accounts are registered on Hypersnap itself, with no Optimism transaction and no ETH. Their FIDs start at 2<sup>32</sup> (4,294,967,296), so store FIDs as 64-bit integers or JavaScript numbers, never as 32-bit ones. Accounts registered on Optimism before the fork exist on both networks.</li>
+        <li><strong>Keys are added without gas.</strong> Apps add signers with a Hypersnap message instead of a KeyRegistry transaction on Optimism. Hypersnap's shuttle relays those key changes, and casts, to Snapchain for accounts that exist on both networks.</li>
+        <li><strong>Anyone can read the network.</strong> A Hypersnap node answers the usual hub API under <code>/v1</code> and Neynar-shaped reads under <code>/v2/farcaster</code>, with CORS open, so your page can call it straight from the browser. Quilcast uses <code>https://haatz.quilibrium.com</code>, and you can too.</li>
+      </ul>
+<pre><code>const NODE = 'https://haatz.quilibrium.com'
+const { user } = await fetch(`${NODE}/v2/farcaster/user?fid=${fid}`).then((r) =&gt; r.json())
+const { cast } = await fetch(`${NODE}/v2/farcaster/cast?type=hash&amp;identifier=${hash}`).then((r) =&gt; r.json())</code></pre>
+
+      <h2 id="sign-in">Sign in</h2>
+      <p><code>sdk.actions.signIn({ nonce })</code> works as it does in any client, and returns a Sign In With Farcaster message and its signature. On your server, check the signature and your nonce, and then check that the address that signed is the FID's custody address. <code>@farcaster/auth-client</code>'s usual setup does that last step on Optimism, which can't see accounts created on Hypersnap. This version checks Hypersnap first and Snapchain after it, and needs only <a href="https://viem.sh">viem</a>:</p>
+<pre><code>import { createPublicClient, http } from 'viem'
+import { optimism } from 'viem/chains'
+import { parseSiweMessage } from 'viem/siwe'
+
+const HYPERSNAP = 'https://haatz.quilibrium.com'
+const SNAPCHAIN = 'https://crackle.farcaster.xyz:3381'   // optional: Optimism accounts registered after the fork
+const client = createPublicClient({ chain: optimism, transport: http() })
+
+/** Whether `address` is the custody address of `fid`. */
+async function ownsFid(address, fid) {
+  address = address.toLowerCase()
+  const u = await fetch(`${HYPERSNAP}/v2/farcaster/user?fid=${fid}`).then((r) =&gt; (r.ok ? r.json() : null), () =&gt; null)
+  if (u?.user?.custody_address?.toLowerCase() === address) return true
+  const e = await fetch(`${SNAPCHAIN}/v1/onChainIdRegistryEventByAddress?address=${address}`).then((r) =&gt; (r.ok ? r.json() : null), () =&gt; null)
+  return Number(e?.fid) === fid &amp;&amp; e?.idRegisterEventBody?.to?.toLowerCase() === address
+}
+
+/** The FID a sign-in proves, or null. `nonce` is the one you gave the app, `domain` your host. */
+export async function verifySignIn({ message, signature }, { nonce, domain }) {
+  const m = parseSiweMessage(message)
+  const fid = Number(m.resources?.find((r) =&gt; r.startsWith('farcaster://fid/'))?.slice('farcaster://fid/'.length))
+  if (!fid || m.nonce !== nonce || m.domain !== domain || (m.expirationTime &amp;&amp; m.expirationTime &lt; new Date())) return null
+  if (!(await client.verifyMessage({ address: m.address, message, signature }))) return null
+  return (await ownsFid(m.address, fid)) ? fid : null
+}</code></pre>
+      <p>Quilcast signs in with the custody address. Some Snapchain clients sign with an "auth address" instead, a key the account adds on Optimism for this purpose. If you need those too, check them with <code>@farcaster/auth-client</code> as well.</p>
+
+      <h2 id="notifications">Notifications</h2>
+      <p>Notifications use the standard flow. Your manifest has a <code>webhookUrl</code>, the client POSTs signed events to it when someone turns notifications on or off, each <code>notifications_enabled</code> or <code>miniapp_added</code> event carries a <code>{ url, token }</code>, and you POST notifications to that <code>url</code>. Sending is the same everywhere, and only the webhook needs care.</p>
+      <p>Each event is a JSON Farcaster Signature: it names an FID and a key, and is signed by that key. <code>@farcaster/miniapp-node</code>'s <code>parseWebhookEvent</code> checks the signature, then asks you whether that key belongs to that FID. The verifiers it ships with only accept keys added on Optimism through the KeyRegistry. Quilcast signs events with the account's own gasless signer instead, so that every account can turn notifications on for free, and accounts created on Hypersnap have no other kind of key. So hand <code>parseWebhookEvent</code> a check that reads the account's signers from a Hypersnap node, which lists gasless keys and keys added on Optimism alike:</p>
+<pre><code>import { parseWebhookEvent } from '@farcaster/miniapp-node'
+
+const NODES = [
+  'https://haatz.quilibrium.com',          // Hypersnap: every account, and keys from both kinds
+  'https://crackle.farcaster.xyz:3381',    // Snapchain (optional): app keys added on Optimism after the fork
+]
+
+/** Whether `appKey` is one of `fid`'s current keys, the way parseWebhookEvent asks. */
+export async function verifyAppKey(fid, appKey) {
+  for (const node of NODES) {
+    const r = await fetch(`${node}/v1/signersByFid?fid=${fid}`).then((r) =&gt; (r.ok ? r.json() : null), () =&gt; null)
+    const s = r?.signers?.find((s) =&gt; s.key.toLowerCase() === appKey.toLowerCase())
+    if (s &amp;&amp; (!s.expiresAt || s.expiresAt * 1000 &gt; Date.now())) return { valid: true, appFid: Number(s.requestFid || fid) }
+  }
+  return { valid: false }
+}
+
+app.post('/webhook', async (req, res) =&gt; {
+  let data
+  try {
+    data = await parseWebhookEvent(req.body, verifyAppKey)
+  } catch {
+    return res.status(401).json({ error: 'bad event' })   // 401 lets a client retry with another key
+  }
+  const { fid, event } = data
+  if (event.event === 'miniapp_added' || event.event === 'notifications_enabled') {
+    if (event.notificationDetails) saveToken(fid, event.notificationDetails)   // { url, token }
+  } else forgetTokens(fid)   // miniapp_removed, notifications_disabled
+  res.json({ ok: true })
+})</code></pre>
+      <ul>
+        <li><strong>Answer 401 when you refuse a key.</strong> If your webhook refuses an event Quilcast signed with a gasless signer, Quilcast sends it again signed with a key added on Optimism, which it adds with a small transaction the first time. That fallback is how webhooks that only know Optimism keys keep working, but accounts created on Hypersnap can't use it.</li>
+        <li><strong>Gasless keys expire</strong> when they go unused for a while (<code>expiresAt</code>), and the check above treats an expired key as gone. Tokens you already saved keep working: a token is checked by the client that issued it, not by key.</li>
+        <li><strong>Hypersnap only:</strong> remove the Snapchain line. You then still accept every Hypersnap account and every Optimism account registered before the fork, but not app keys that the Farcaster app adds on Optimism after it.</li>
+      </ul>
+      <p>To send, POST <code>{ notificationId, title, body, targetUrl, tokens }</code> to the token's <code>url</code>, exactly as the <a href="https://miniapps.farcaster.xyz/docs/guides/notifications">Farcaster guide</a> describes. In Quilcast, notifications show up in the Mini apps tab of Notifications, and as a push when the person has push turned on. <a href="/developers/cast-actions#notifications">Build a cast action</a> walks through Remind me, which sends notifications end to end and works in any client.</p>
+
+      <h2>Which network knows what</h2>
+      <ul>
+        <li><strong>Accounts created on Hypersnap</strong> (FID 2<sup>32</sup> and up), their keys and their casts exist only on Hypersnap.</li>
+        <li><strong>Accounts registered on Optimism before the fork</strong> exist on both networks. Keys they add without gas, such as Quilcast's, show up on both, because Hypersnap's shuttle relays them.</li>
+        <li><strong>Accounts and keys added on Optimism after the fork</strong>, such as the app keys the Farcaster app adds for notifications, show up only on Snapchain, because Hypersnap no longer reads Optimism.</li>
+      </ul>
+      <p>So a check that reads Hypersnap first and Snapchain second accepts everyone, and a Hypersnap-only check accepts everyone except Farcaster app users who joined, or turned notifications on, after the fork.</p>
+
+      <h2>Test it in Quilcast</h2>
+      <ol>
+        <li>Serve your app over https on a public address (a tunnel such as <code>cloudflared tunnel --url http://localhost:5173</code> works while you build).</li>
+        <li>In Quilcast, open Mini apps, paste the link and tap Open. A cast action can also be added at <code>https://quilcast.com/actions?add=your-host</code>.</li>
+        <li>Turn notifications on from the app (<code>sdk.actions.addMiniApp()</code>) or with the bell next to it on the Mini apps page. Your webhook should receive an event signed by a key that <code>verifyAppKey</code> accepts.</li>
+      </ol>
+
+      <p class="muted"><a href="/developers/cast-actions">Build a cast action</a> · <a href="/about">About Quilcast</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of use</a></p>
+    </main>
+  </body>
+</html>

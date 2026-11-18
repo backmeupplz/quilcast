@@ -15,7 +15,7 @@ import { choices, pair, qr, WC, wcChoice, wcLive } from './wallet.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
 import { castText, LOGO, proxied } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
-import { APP_PUSH, askPush, channelOf, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
+import { addAppAction, APP_PUSH, askPush, channelOf, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, shell, toast, togglePin, unfurl, WalletIcon } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
 import { awake, sleepers } from './sleep.ts'
@@ -696,7 +696,7 @@ const inboxSecret = () => {
 }
 const notifying = (origin: string) => !!account?.notify?.includes(origin)
 const savedApps = () => read<AppMeta[]>('quilcast:apps', [])
-export const manifestOf = (origin: string): Promise<{ name?: string; iconUrl?: string; homeUrl?: string; webhook?: boolean } | null> =>
+export const manifestOf = (origin: string): Promise<{ name?: string; iconUrl?: string; homeUrl?: string; castShareUrl?: string; description?: string; webhook?: boolean } | null> =>
   fetch(`/api/manifest?origin=${encodeURIComponent(origin)}`).then((r) => r.json(), () => null)
 const details = (m: AppMeta) => api('/api/notify/token', { inbox: inboxSecret(), origin: new URL(m.url).origin, name: m.name, icon: m.icon }) as Promise<{ token: string; url: string }>
 
@@ -716,11 +716,20 @@ export async function disablePush() {
 
 /** Turn an app's notifications on or off: a token from our server, handed to the app in a signed webhook event
  *  that our server delivers to the webhook in its manifest. The first time, this adds the on-chain app key. */
+// what a webhook answers when it doesn't accept the key an event was signed with
+const refused = (status: number) => status === 400 || status === 401 || status === 403
+// native Hypersnap FIDs (2^32 and up) were never registered on Optimism, so they can't have an on-chain app key
+const onOptimism = (fid?: number) => !!fid && fid < 2 ** 32
 export async function setNotify(m: AppMeta, on: boolean, event?: 'miniapp_added' | 'miniapp_removed', wait?: (s: string) => void) {
   const origin = new URL(m.url).origin
   const d = on ? await details(m) : undefined
-  const signed = await signEvent(on ? { event: event || 'notifications_enabled', notificationDetails: d } : { event: event || 'notifications_disabled' }, wait)
-  const r = await api('/api/notify/event', { origin, event: signed })
+  const payload = on ? { event: event || 'notifications_enabled', notificationDetails: d } : { event: event || 'notifications_disabled' }
+  const relay = async (appKey: boolean) => api('/api/notify/event', { origin, event: await signEvent(payload, appKey, wait) })
+  // signed with the account's signer first; a webhook that only accepts on-chain app keys refuses it, and then an
+  // Optimism account sends it again with one (added the first time, which costs gas). Native Hypersnap accounts
+  // aren't on Optimism, so for them that app has to check keys on Hypersnap (public/developers/mini-apps.html).
+  let r = await relay(false)
+  if (refused(r.status) && onOptimism(account!.fid)) r = await relay(true)
   if (!on) await api('/api/notify/forget', { inbox: inboxSecret(), origin })
   setAccount({ ...account!, notify: on ? [...new Set([...(account!.notify || []), origin])] : (account!.notify || []).filter((o) => o !== origin) })
   if (on && r.status && (r.status < 200 || r.status >= 300)) toast(t('{name} answered {status} when turning notifications on.', { name: m.name || origin, status: r.status }))
@@ -798,6 +807,8 @@ async function addApp(app: App) {
     // still inside the click, so the browser lets us ask
     const permission = form.notify ? askPush() : null
     saved || save('quilcast:apps', [meta, ...savedApps()])
+    // its cast action, if it has one, goes in every cast's ⋯ menu (ui.tsx addAppAction)
+    saved || addAppAction(app.origin, m, meta)
     if (form.notify) {
       try {
         d = await waitFor(app, t('Turning on notifications…'), () => setNotify(meta, true, 'miniapp_added', (s) => ((app.waiting = s), update())))

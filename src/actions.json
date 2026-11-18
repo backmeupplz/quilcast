@@ -1,5 +1,6 @@
 [
   {"url": "https://spamcheck.quilcast.com/", "name": "Spam check", "icon": "https://spamcheck.quilcast.com/icon.png", "description": "How likely a cast and its author are spam, from spam.quilcast.com"},
+  {"url": "https://remind.quilcast.com/", "name": "Remind me", "icon": "https://remind.quilcast.com/icon.png", "description": "A notification brings the cast back later"},
   {"url": "https://tip.quilcast.com/", "name": "Tip", "icon": "https://tip.quilcast.com/icon.png", "description": "Send the author USDC on Base"},
   {"url": "https://collect.quilcast.com/", "name": "Collect", "icon": "https://collect.quilcast.com/icon.png", "description": "Collect the cast as a free 1/1 NFT on Base"}
 ]

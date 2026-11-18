@@ -220,11 +220,14 @@ export async function ensureAppKey(onWait?: (what: string) => void, pause = 3000
 }
 
 const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-/** A JSON Farcaster Signature over `payload`, signed with the app key: what mini app webhooks receive. */
-export async function signEvent(payload: object, onWait?: (what: string) => void) {
+/** A JSON Farcaster Signature over `payload`: what mini app webhooks receive. It's signed with the account's own
+ *  Farcaster signer, which Hypersnap lists in /v1/signersByFid (and its shuttle brings to Snapchain's), so it needs no
+ *  transaction and works for native Hypersnap accounts. `appKey` signs with the on-chain app key instead, adding it on
+ *  Optimism first: the stock verifier (@farcaster/miniapp-node, /v1/onChainSignersByFid) only accepts those. */
+export async function signEvent(payload: object, appKey = false, onWait?: (what: string) => void) {
   // the account selected now: another one may get selected while the key is being added
   const a = account!
-  const key = await ensureAppKey(onWait, undefined, a)
+  const key = appKey ? await ensureAppKey(onWait, undefined, a) : await signerOf(a)
   const enc = new TextEncoder()
   const header = b64url(enc.encode(JSON.stringify({ fid: a.fid, type: 'app_key', key: '0x' + hex(key.pub) })))
   const body = b64url(enc.encode(JSON.stringify(payload)))

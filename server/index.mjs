@@ -12,7 +12,7 @@ import { brotliCompress, gzip } from 'node:zlib'
 import { castText, imagesIn, queue, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { classify, classifyPart, coverOf, fromV2, headOf, isArticle, maybeArticle, partNow, plainOpening } from '../src/article.ts'
-import { clientIp, fetchJson, gate, imageInfo, keep, lru, parseJson, proxiedPic, readJson, readText, safeGet, sendOn } from './net.mjs'
+import { clientIp, fetchJson, gate, imageInfo, ipGroup, keep, lru, parseJson, proxiedPic, readJson, readText, safeGet, sendOn } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
@@ -28,6 +28,7 @@ import { getMutes, loadMutes, putMutes } from './mutes.mjs'
 import { alertState, flushAlerts, loadAlerts, offAlerts, putAlerts, watchAlerts } from './alerts.mjs'
 import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
+import { addReminder, loadRemind, watchRemind } from './remind.mjs'
 import { cancelScheduled, getScheduled, loadScheduled, putScheduled, watchScheduled } from './scheduled.mjs'
 import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
 import { getPin, loadPins, putPin } from './pins.mjs'
@@ -75,6 +76,8 @@ loadReports(DATA)
 loadDrafts(DATA)
 // scheduled casts, signed in the browser and sent from here at their time (server/scheduled.mjs)
 loadScheduled(DATA).then(() => watchScheduled({ node: NODE, every: Number(process.env.SCHEDULED_EVERY_MS) || 15e3 }))
+// Remind me's reminders (server/remind.mjs), sent as mini app notifications when they're due
+loadRemind(DATA, SITE).then(() => watchRemind(Number(process.env.REMIND_EVERY_MS) || 15e3))
 loadPrefs(DATA)
 loadPins(DATA)
 loadStickers(DATA)
@@ -925,7 +928,7 @@ const collectFiles = new Set(readdirSync(COLLECT_DIR, { recursive: true, withFil
 // Quilcast's own cast actions (src/actions.json), each a mini app on its own host: actions/<name>/, and actions/shared/
 // for what they all load. Static pages; they read the node and spam.quilcast.com themselves.
 const ACTIONS_DIR = new URL('../actions/', import.meta.url).pathname
-const ACTION_HOSTS = { [process.env.SPAMCHECK_HOST || 'spamcheck.quilcast.com']: 'spamcheck', [process.env.TIP_HOST || 'tip.quilcast.com']: 'tip' }
+const ACTION_HOSTS = { [process.env.SPAMCHECK_HOST || 'spamcheck.quilcast.com']: 'spamcheck', [process.env.TIP_HOST || 'tip.quilcast.com']: 'tip', [process.env.REMIND_HOST || 'remind.quilcast.com']: 'remindme' }
 const actionFiles = new Set(readdirSync(ACTIONS_DIR, { recursive: true, withFileTypes: true }).filter((d) => d.isFile()).map((d) => '/' + relative(ACTIONS_DIR, join(d.parentPath, d.name))))
 const ACTION_CSP = `default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ${NODE} https://spam.quilcast.com; img-src 'self' data: https:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *`
 /** The file an action's host serves at `path`, or undefined. */
@@ -1137,7 +1140,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 // static files under a path without their extension: About (plain HTML for crawlers), the legal pages the stores link to, and Apple's universal links file
 // the standalone pages in the app's other languages (public/<lang>/<page>.html), each at its own address
 const TRANSLATED = /^\/(?:ar|de|es|fr|hi|id|it|ja|ko|nl|pl|pt-br|pt-pt|ru|sv|th|tr|uk|vi|zh-hans|zh-hant)\/(?:about|privacy|terms|safety|delete)$/
-const PAGES = { '/about': 'about.html', '/developers/cast-actions': 'developers/cast-actions.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
+const PAGES = { '/about': 'about.html', '/developers/cast-actions': 'developers/cast-actions.html', '/developers/mini-apps': 'developers/mini-apps.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
 
 // dist/ never changes while we run: its files are read once, and compressed once per encoding
 const files = new Map()
@@ -1216,7 +1219,20 @@ const server = createServer(async (req, res) => {
       return send(req, res, 200, { 'content-type': TYPES[extname(path)] || 'application/octet-stream', 'cache-control': 'public, max-age=300', ...(path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' }) }, body, 'collect:' + path)
     }
 
-    const action = ACTION_HOSTS[String(req.headers.host || '').split(':')[0]]
+    const actionHost = String(req.headers.host || '').split(':')[0]
+    const action = ACTION_HOSTS[actionHost]
+    // Remind me also keeps reminders (server/remind.mjs) and takes its manifest's webhook events (not kept)
+    if (action === 'remindme' && req.method === 'POST' && (path === '/api/remind' || path === '/webhook')) {
+      // IPv6 counted by its /64; a day's reminders are capped too, so no one fills the store
+      const who = ipGroup(ip)
+      if (limited(`remind:${path}:${who}`, 30)) return json(429, { error: 'Slow down a little.' })
+      if (path === '/webhook') return json(200, { ok: true })
+      if (limited(`remind:day:${who}`, 200, 86400e3)) return json(429, { error: 'too many reminders' })
+      const r = await readJson(req, 8000).then((b) => addReminder(b, actionHost)).catch((e) => e)
+      const err = r instanceof Error
+      if (err && !r.status) console.error('remind', r)
+      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Something went wrong.' } : r)
+    }
     if (action) {
       const f = actionFile(action, path)
       if (!f) return res.writeHead(404).end()
