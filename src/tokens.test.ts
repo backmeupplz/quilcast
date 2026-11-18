@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { SENDCLAP_PERIOD, sendclapOk, tipAddress } from './tokens.ts'
+import { SENDCLAP_PERIOD, sendclapAllowance, sendclapOk, tipAddress } from './tokens.ts'
 
 test('a tip goes to the primary verified address, then any verified one, then custody', () => {
   const custody_address = '0xc'
@@ -24,4 +24,19 @@ test("a Sendclap checkout must be Sendclap, Base USDC, the amount shown and the 
   assert.ok(!sendclapOk({ ...join, period: undefined }, 3, SENDCLAP_PERIOD.month))
   assert.ok(!sendclapOk(join, 3, -1))
   assert.ok(!sendclapOk(join, 0, SENDCLAP_PERIOD.month))
+})
+
+test('a weekly Sendclap tier pins a 7-day period and approves a year of charges (#724)', () => {
+  assert.equal(SENDCLAP_PERIOD.week, 7 * 86400)
+  const weekly = { contract: '0x3aFF4fa297B7aa8D009281e348E5312d8e93ef9b', usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', amount: '2000000', period: 7 * 86400 }
+  assert.ok(sendclapOk(weekly, 2, SENDCLAP_PERIOD.week))
+  assert.ok(!sendclapOk({ ...weekly, period: 86400 }, 2, SENDCLAP_PERIOD.week))
+  assert.ok(!sendclapOk({ ...weekly, period: SENDCLAP_PERIOD.month }, 2, SENDCLAP_PERIOD.week))
+  assert.ok(!sendclapOk(weekly, 2, SENDCLAP_PERIOD.month))
+  assert.equal(sendclapAllowance(2_000_000n, SENDCLAP_PERIOD.week), 104_000_000n)
+  // monthly and yearly as before #724: 12 months, one year; a tip just itself
+  assert.equal(sendclapAllowance(3_000_000n, SENDCLAP_PERIOD.month), 36_000_000n)
+  assert.equal(sendclapAllowance(3_000_000n, SENDCLAP_PERIOD.year), 3_000_000n)
+  assert.equal(sendclapAllowance(2_550_000n), 2_550_000n)
+  assert.equal(sendclapAllowance(2_550_000n, 0), 2_550_000n)
 })

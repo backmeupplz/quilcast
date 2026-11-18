@@ -16,14 +16,18 @@ export const USDC: Record<number, `0x${string}`> = {
 // wallet approves or calls, paid in Base USDC, so a checkout from a broken or hijacked sendclap.com can't point it
 // anywhere else (#722, reported by Zealynx Security).
 export const SENDCLAP_CONTRACT = '0x3aff4fa297b7aa8d009281e348e5312d8e93ef9b'
-// a tier's billing (Sendclap tiers are monthly or yearly) → seconds between charges
-export const SENDCLAP_PERIOD: Record<string, number> = { month: 30 * 86400, year: 365 * 86400 }
+// a tier's billing (Sendclap tiers are weekly, monthly or yearly) → seconds between charges, as Sendclap's contract counts them
+export const SENDCLAP_PERIOD: Record<string, number> = { week: 7 * 86400, month: 30 * 86400, year: 365 * 86400 }
 /** Whether a Sendclap checkout is what the reader asked for: Sendclap's contract and Base USDC, the `dollars` they
  *  saw, and the tier's `period` between membership charges, none for a tip (a shorter period would let anyone drain
  *  the renewals' allowance at once). */
 export const sendclapOk = (o: { contract?: string; usdc?: string; amount?: string; period?: number }, dollars: number, period?: number) =>
   String(o.contract).toLowerCase() === SENDCLAP_CONTRACT && String(o.usdc).toLowerCase() === USDC[8453] &&
   o.amount === String(BigInt(Math.round(dollars * 100)) * 10_000n) && o.period === period
+/** How much USDC to approve Sendclap for when a checkout of `amount` every `period` seconds needs more: a year of
+ *  charges (52 weekly, 12 monthly, one yearly), or just the tip itself when there's no period. */
+export const sendclapAllowance = (amount: bigint, period?: number) =>
+  amount * BigInt(period ? Math.max(1, Math.floor(SENDCLAP_PERIOD.year / period)) : 1)
 
 /** "eip155:8453/erc20:0x…" (a token) or "eip155:8453/slip44:60" (the chain's own coin). */
 export function parseToken(id: unknown): TokenId {

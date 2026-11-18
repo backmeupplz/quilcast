@@ -7,7 +7,7 @@ import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains'
 import { account, askUser, getUser, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { Icon, P, toast } from './ui.tsx'
-import { allowance, approveTx, quote, SENDCLAP_CONTRACT, SENDCLAP_PERIOD, sendclapOk, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
+import { allowance, approveTx, quote, SENDCLAP_CONTRACT, SENDCLAP_PERIOD, sendclapAllowance, sendclapOk, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
 import { activeWallet, signerOf, type WalletEntry } from './vault.ts'
 import { CHAINS, Coin, type Holding } from './walletui.tsx'
 
@@ -123,12 +123,12 @@ async function payer() {
 
 /** Tips or joins `u` through Sendclap: its contract moves USDC on Base straight to their wallet (1% to Sendclap) and
  *  Sendclap records who supports whom, shown on both profiles' Supporters tab (support.tsx). A membership that needs a
- *  bigger allowance first approves Sendclap for a year of renewals; a tip approves just itself. `tier` is the price and
- *  billing the reader was shown; the checkout must match it (tokens.ts sendclapOk). */
+ *  bigger allowance first approves Sendclap for a year of charges (tokens.ts sendclapAllowance); a tip approves just
+ *  itself. `tier` is the price and billing the reader was shown; the checkout must match it (tokens.ts sendclapOk). */
 export async function support(u: User, what: { type: 'tip'; amount: number } | { type: 'membership'; tier: string }, label: string, tier?: { price: number; interval: string }) {
   const { from, name, go } = await payer()
   const { sendclapCheckout, SENDCLAP } = await import('./write.ts')
-  const o = await sendclapCheckout(u.fid, what), monthly = o.period === SENDCLAP_PERIOD.month
+  const o = await sendclapCheckout(u.fid, what)
   // -1: a membership whose billing isn't known never matches
   const ok = what.type === 'tip' ? sendclapOk(o, what.amount) : sendclapOk(o, tier?.price ?? 0, SENDCLAP_PERIOD[tier?.interval ?? ''] ?? -1)
   if (!ok) throw new Error(t('The Sendclap checkout looks wrong, so Quilcast stopped.'))
@@ -136,7 +136,7 @@ export async function support(u: User, what: { type: 'tip'; amount: number } | {
   if ((await c.readContract({ address: usdc, abi: erc20Abi, functionName: 'balanceOf', args: [from] })) < amount)
     throw new Error(t('This needs {amount} of USDC on Base in {name}.', { amount: usd(Number(amount) / 1e6), name }))
   const allowed = await c.readContract({ address: usdc, abi: erc20Abi, functionName: 'allowance', args: [from, SENDCLAP_CONTRACT] })
-  if (allowed < amount) await mined(8453, await go(usdc, encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [SENDCLAP_CONTRACT, allowed + amount * (monthly ? 12n : 1n)] })))
+  if (allowed < amount) await mined(8453, await go(usdc, encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [SENDCLAP_CONTRACT, allowed + sendclapAllowance(amount, o.period)] })))
   const hash = await go(SENDCLAP_CONTRACT, o.period
     ? encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'subscribe', args: [o.to, amount, o.period, o.id] })
     : encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'pay', args: [o.to, amount, o.id] }))
