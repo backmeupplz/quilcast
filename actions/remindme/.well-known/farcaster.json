@@ -1,4 +1,9 @@
 {
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMzNTYzMTYsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhhRDI4MDQxNTMxNzJDYTE0MTA1NTA2Mzg2YzkwNzg1Mzc1ODhEZDVkIn0",
+    "payload": "eyJkb21haW4iOiJyZW1pbmQucXVpbGNhc3QuY29tIn0",
+    "signature": "mAF4sZqVoT-7jFLOWPOBU3XDoC6R45qeXQ8wxOmVr448qOzZBjv6-zqquS8URHgVwGxIMF3jnFv_LlbhfoIzPRw"
+  },
   "miniapp": {
     "version": "1",
     "name": "Remind me",
