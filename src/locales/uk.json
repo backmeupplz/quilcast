@@ -1378,5 +1378,6 @@
   "Quotes in the train are casts like any other, so you can delete yours.": "Цитати в потязі — такі самі касти, як будь-які інші, тож свої можна видалити.",
   "Don't translate from": "Не перекладати з мов",
   "Quilcast is in this language": "Quilcast цією мовою",
-  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Касти цими мовами не мають кнопки «Перекласти» і ніколи не перекладаються для вас. Мова, якою працює Quilcast, завжди є серед них."
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Касти цими мовами не мають кнопки «Перекласти» і ніколи не перекладаються для вас. Мова, якою працює Quilcast, завжди є серед них.",
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Платіж Sendclap виглядає хибним, тому Quilcast зупинився."
 }

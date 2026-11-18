@@ -7,7 +7,7 @@ import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains'
 import { account, askUser, getUser, type User } from './api.ts'
 import { t } from './i18n.ts'
 import { Icon, P, toast } from './ui.tsx'
-import { allowance, approveTx, quote, tokensOn, tipAddress, transferStatus, transferTx, type ListedToken, type Quote } from './tokens.ts'
+import { allowance, approveTx, quote, SENDCLAP_CONTRACT, SENDCLAP_PERIOD, sendclapOk, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
 import { activeWallet, signerOf, type WalletEntry } from './vault.ts'
 import { CHAINS, Coin, type Holding } from './walletui.tsx'
 
@@ -122,18 +122,22 @@ async function payer() {
 }
 
 /** Tips or joins `u` through Sendclap: its contract moves USDC on Base straight to their wallet (1% to Sendclap) and
- *  Sendclap records who supports whom, shown on both profiles' Supporters tab (support.tsx). A payment that needs a
- *  bigger allowance first approves Sendclap for twelve more of it, so a membership renews for a year. */
-export async function support(u: User, what: { type: 'tip'; amount: number } | { type: 'membership'; tier: string }, label: string) {
+ *  Sendclap records who supports whom, shown on both profiles' Supporters tab (support.tsx). A membership that needs a
+ *  bigger allowance first approves Sendclap for a year of renewals; a tip approves just itself. `tier` is the price and
+ *  billing the reader was shown; the checkout must match it (tokens.ts sendclapOk). */
+export async function support(u: User, what: { type: 'tip'; amount: number } | { type: 'membership'; tier: string }, label: string, tier?: { price: number; interval: string }) {
   const { from, name, go } = await payer()
   const { sendclapCheckout, SENDCLAP } = await import('./write.ts')
-  const o = await sendclapCheckout(u.fid, what)
-  const amount = BigInt(o.amount), c = pub(8453)
-  if ((await c.readContract({ address: o.usdc, abi: erc20Abi, functionName: 'balanceOf', args: [from] })) < amount)
+  const o = await sendclapCheckout(u.fid, what), monthly = o.period === SENDCLAP_PERIOD.month
+  // -1: a membership whose billing isn't known never matches
+  const ok = what.type === 'tip' ? sendclapOk(o, what.amount) : sendclapOk(o, tier?.price ?? 0, SENDCLAP_PERIOD[tier?.interval ?? ''] ?? -1)
+  if (!ok) throw new Error(t('The Sendclap checkout looks wrong, so Quilcast stopped.'))
+  const amount = BigInt(o.amount), c = pub(8453), usdc = USDC[8453]
+  if ((await c.readContract({ address: usdc, abi: erc20Abi, functionName: 'balanceOf', args: [from] })) < amount)
     throw new Error(t('This needs {amount} of USDC on Base in {name}.', { amount: usd(Number(amount) / 1e6), name }))
-  const allowed = await c.readContract({ address: o.usdc, abi: erc20Abi, functionName: 'allowance', args: [from, o.contract] })
-  if (allowed < amount) await mined(8453, await go(o.usdc, encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [o.contract, allowed + amount * 12n] })))
-  const hash = await go(o.contract, o.period
+  const allowed = await c.readContract({ address: usdc, abi: erc20Abi, functionName: 'allowance', args: [from, SENDCLAP_CONTRACT] })
+  if (allowed < amount) await mined(8453, await go(usdc, encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [SENDCLAP_CONTRACT, allowed + amount * (monthly ? 12n : 1n)] })))
+  const hash = await go(SENDCLAP_CONTRACT, o.period
     ? encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'subscribe', args: [o.to, amount, o.period, o.id] })
     : encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'pay', args: [o.to, amount, o.id] }))
   const p = track({ chain: 8453, hash, from, label })
@@ -144,10 +148,10 @@ export async function support(u: User, what: { type: 'tip'; amount: number } | {
 }
 
 /** Ends a Sendclap membership on chain; only the wallet that pays it can. */
-export async function cancelSupport(contract: `0x${string}`, id: number, wallet: string | null) {
+export async function cancelSupport(id: number, wallet: string | null) {
   const { from, go } = await payer()
   if (wallet && wallet.toLowerCase() !== from.toLowerCase()) throw new Error(t('Switch to the wallet that pays it ({address}) to cancel.', { address: short(wallet) }))
-  const hash = await go(contract, encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'cancel', args: [BigInt(id)] }))
+  const hash = await go(SENDCLAP_CONTRACT,encodeFunctionData({ abi: SENDCLAP_ABI, functionName: 'cancel', args: [BigInt(id)] }))
   if ((await mined(8453, hash)).status !== 'success') throw new Error(t('The transaction failed on chain.'))
 }
 

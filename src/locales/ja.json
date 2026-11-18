@@ -1378,5 +1378,6 @@
   "Quotes in the train are casts like any other, so you can delete yours.": "列車の引用キャストは普通のキャストと同じなので、自分のものは削除できます。",
   "Don't translate from": "翻訳しない言語",
   "Quilcast is in this language": "Quilcastはこの言語で表示されています",
-  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "これらの言語のキャストには翻訳ボタンが表示されず、自動で翻訳されることもありません。Quilcastの表示言語は常に含まれます。"
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "これらの言語のキャストには翻訳ボタンが表示されず、自動で翻訳されることもありません。Quilcastの表示言語は常に含まれます。",
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap の支払い内容がおかしいため、Quilcast は処理を中止しました。"
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { tipAddress } from './tokens.ts'
+import { SENDCLAP_PERIOD, sendclapOk, tipAddress } from './tokens.ts'
 
 test('a tip goes to the primary verified address, then any verified one, then custody', () => {
   const custody_address = '0xc'
@@ -8,4 +8,20 @@ test('a tip goes to the primary verified address, then any verified one, then cu
   assert.equal(tipAddress({ custody_address, verified_addresses: { eth_addresses: ['0xv'] } }), '0xv')
   assert.equal(tipAddress({ custody_address, verified_addresses: { eth_addresses: [] } }), '0xc')
   assert.equal(tipAddress({}), undefined)
+})
+
+test("a Sendclap checkout must be Sendclap, Base USDC, the amount shown and the tier's billing period (#722)", () => {
+  const tip = { contract: '0x3aFF4fa297B7aa8D009281e348E5312d8e93ef9b', usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', amount: '2550000' }
+  assert.ok(sendclapOk(tip, 2.55))
+  assert.ok(!sendclapOk({ ...tip, contract: '0x000000000000000000000000000000000000dead' }, 2.55))
+  assert.ok(!sendclapOk({ ...tip, usdc: '0x000000000000000000000000000000000000dead' }, 2.55))
+  assert.ok(!sendclapOk({ ...tip, amount: '255000000' }, 2.55))
+  assert.ok(!sendclapOk({ ...tip, period: 1 }, 2.55))
+  const join = { ...tip, amount: '3000000', period: SENDCLAP_PERIOD.month }
+  assert.ok(sendclapOk(join, 3, SENDCLAP_PERIOD.month))
+  assert.ok(sendclapOk({ ...join, period: SENDCLAP_PERIOD.year }, 3, SENDCLAP_PERIOD.year))
+  assert.ok(!sendclapOk({ ...join, period: 1 }, 3, SENDCLAP_PERIOD.month))
+  assert.ok(!sendclapOk({ ...join, period: undefined }, 3, SENDCLAP_PERIOD.month))
+  assert.ok(!sendclapOk(join, 3, -1))
+  assert.ok(!sendclapOk(join, 0, SENDCLAP_PERIOD.month))
 })

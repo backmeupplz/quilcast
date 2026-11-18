@@ -12,6 +12,19 @@ export const USDC: Record<number, `0x${string}`> = {
   42161: '0xaf88d065e77c8cc2239327c5edb3a432268e5831', 137: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
 }
 
+// Sendclap (support() in walletmove.tsx) gets the same treatment as LI.FI: its contract is the only one a supporter's
+// wallet approves or calls, paid in Base USDC, so a checkout from a broken or hijacked sendclap.com can't point it
+// anywhere else (#722, reported by Zealynx Security).
+export const SENDCLAP_CONTRACT = '0x3aff4fa297b7aa8d009281e348e5312d8e93ef9b'
+// a tier's billing (Sendclap tiers are monthly or yearly) → seconds between charges
+export const SENDCLAP_PERIOD: Record<string, number> = { month: 30 * 86400, year: 365 * 86400 }
+/** Whether a Sendclap checkout is what the reader asked for: Sendclap's contract and Base USDC, the `dollars` they
+ *  saw, and the tier's `period` between membership charges, none for a tip (a shorter period would let anyone drain
+ *  the renewals' allowance at once). */
+export const sendclapOk = (o: { contract?: string; usdc?: string; amount?: string; period?: number }, dollars: number, period?: number) =>
+  String(o.contract).toLowerCase() === SENDCLAP_CONTRACT && String(o.usdc).toLowerCase() === USDC[8453] &&
+  o.amount === String(BigInt(Math.round(dollars * 100)) * 10_000n) && o.period === period
+
 /** "eip155:8453/erc20:0x…" (a token) or "eip155:8453/slip44:60" (the chain's own coin). */
 export function parseToken(id: unknown): TokenId {
   const m = String(id).match(/^eip155:(\d{1,12})\/(?:erc20:(0x[0-9a-fA-F]{40})|slip44:\d{1,10})$/)

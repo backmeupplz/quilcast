@@ -1378,5 +1378,6 @@
   "Quotes in the train are casts like any other, so you can delete yours.": "火車裡的引用和其他動態一樣，你可以刪除自己的。",
   "Don't translate from": "不翻譯的語言",
   "Quilcast is in this language": "Quilcast 目前使用此語言",
-  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "這些語言的貼文不顯示「翻譯」按鈕，也不會為你翻譯。Quilcast 目前使用的語言總在其中。"
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "這些語言的貼文不顯示「翻譯」按鈕，也不會為你翻譯。Quilcast 目前使用的語言總在其中。",
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap 付款資訊看起來不對，所以 Quilcast 已停止。"
 }

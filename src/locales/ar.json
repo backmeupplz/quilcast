@@ -1378,5 +1378,6 @@
   "Quotes in the train are casts like any other, so you can delete yours.": "الاقتباسات في القطار منشورات مثل أي منشورات أخرى، لذا يمكنك حذف اقتباسك.",
   "Don't translate from": "لا تترجم من",
   "Quilcast is in this language": "Quilcast بهذه اللغة",
-  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "المنشورات بهذه اللغات لا يظهر فيها زر الترجمة ولا تُترجم لك أبدًا. اللغة التي يعمل بها Quilcast من بينها دائمًا."
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "المنشورات بهذه اللغات لا يظهر فيها زر الترجمة ولا تُترجم لك أبدًا. اللغة التي يعمل بها Quilcast من بينها دائمًا.",
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "يبدو طلب الدفع من Sendclap خاطئًا، لذا توقف Quilcast."
 }

@@ -1378,5 +1378,6 @@
   "Quotes in the train are casts like any other, so you can delete yours.": "Trendeki alıntılar diğerleri gibi birer cast'tir, yani kendi alıntılarını silebilirsin.",
   "Don't translate from": "Şu dillerden çevirme",
   "Quilcast is in this language": "Quilcast bu dilde",
-  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Bu dillerdeki cast'lerde Çevir düğmesi görünmez ve senin için asla çevrilmezler. Quilcast'in dili her zaman bunlardan biridir."
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Bu dillerdeki cast'lerde Çevir düğmesi görünmez ve senin için asla çevrilmezler. Quilcast'in dili her zaman bunlardan biridir.",
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap ödemesi yanlış göründüğü için Quilcast durdu."
 }

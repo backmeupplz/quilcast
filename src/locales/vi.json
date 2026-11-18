@@ -1378,5 +1378,6 @@
   "Quotes in the train are casts like any other, so you can delete yours.": "Các bài trích dẫn trong đoàn tàu là cast như mọi cast khác, nên bạn có thể xóa bài của mình.",
   "Don't translate from": "Không dịch từ",
   "Quilcast is in this language": "Quilcast đang dùng ngôn ngữ này",
-  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Các cast bằng những ngôn ngữ này không có nút Dịch và sẽ không bao giờ được dịch cho bạn. Ngôn ngữ Quilcast đang dùng luôn nằm trong số đó."
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Các cast bằng những ngôn ngữ này không có nút Dịch và sẽ không bao giờ được dịch cho bạn. Ngôn ngữ Quilcast đang dùng luôn nằm trong số đó.",
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Thanh toán Sendclap có vẻ sai, nên Quilcast đã dừng lại."
 }

@@ -1378,5 +1378,6 @@
   "Quotes in the train are casts like any other, so you can delete yours.": "Cytaty w pociągu to casty jak wszystkie inne, więc możesz usunąć swoje.",
   "Don't translate from": "Nie tłumacz z języków",
   "Quilcast is in this language": "Quilcast działa w tym języku",
-  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Casty w tych językach nie mają przycisku Przetłumacz i nigdy nie są dla Ciebie tłumaczone. Język, w którym działa Quilcast, jest zawsze wśród nich."
+  "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Casty w tych językach nie mają przycisku Przetłumacz i nigdy nie są dla Ciebie tłumaczone. Język, w którym działa Quilcast, jest zawsze wśród nich.",
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Płatność Sendclap wygląda na błędną, więc Quilcast ją przerwał."
 }

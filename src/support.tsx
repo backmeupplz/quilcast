@@ -8,8 +8,8 @@ import { Avatar, handle, Icon, nameOf, P, requireAccount, shell, toast, userPath
 import { SENDCLAP } from './write.ts'
 
 type Row = { fid: number; tier: string | null; monthly_cents: number; tips_cents: number; sub_id: number | null; wallet: string | null }
-type Tier = { name: string; description: string; price: number }
-type Info = { page: string | null; claimed: boolean; contract: `0x${string}`; tiers: Tier[]; supporters: Row[]; supporting: Row[] }
+type Tier = { name: string; description: string; price: number; interval: string }
+type Info = { page: string | null; claimed: boolean; tiers: Tier[]; supporters: Row[]; supporting: Row[] }
 
 /** Your own Sendclap page: claim it with an email (Sendclap mails a link) to log in there and change the page, tiers and
  *  payout wallet; once claimed, a way there. */
@@ -102,8 +102,7 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
 
   if (info === null) return <div class="spinner" />
   if (!info) return <p class="sp-empty">{t("Couldn't load supporters. Try again later.")}</p>
-  const contract = info.contract
-  const cancel = (r: Row, cls = 'link-btn') => r.sub_id && btn(`c${r.sub_id}`, t('Cancel'), t('Cancel it?'), () => wm().then((m) => m.cancelSupport(contract, r.sub_id!, r.wallet)), t('Membership canceled.'), cls)
+  const cancel = (r: Row, cls = 'link-btn') => r.sub_id && btn(`c${r.sub_id}`, t('Cancel'), t('Cancel it?'), () => wm().then((m) => m.cancelSupport(r.sub_id!, r.wallet)), t('Membership canceled.'), cls)
   const mine = !self && account?.fid ? info.supporters.find((r) => r.fid === account!.fid) : undefined
   const monthly = info.supporters.reduce((s, r) => s + r.monthly_cents, 0)
   const summary = [tn(info.supporters.length, '{n} supporter', '{n} supporters'), monthly > 0 && perMonth(monthly)].filter(Boolean).join(' · ')
@@ -175,8 +174,8 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
                     ) : btn(`m${tier.name}`, mine?.tier ? t('Switch') : t('Join'), t('Join for {price} a month?', { price: dollars(tier.price) }),
                       // switching joins the new tier first, then ends the old one, so there's no gap
                       () => wm().then(async (m) => {
-                        await m.support(u, { type: 'membership', tier: tier.name }, t('Join @{name}', { name }))
-                        if (mine?.sub_id) await m.cancelSupport(contract, mine.sub_id, mine.wallet)
+                        await m.support(u, { type: 'membership', tier: tier.name }, t('Join @{name}', { name }), tier)
+                        if (mine?.sub_id) await m.cancelSupport(mine.sub_id, mine.wallet)
                       }), t('You support @{name} now.', { name }), 'btn small', supportLine(u, { tier: tier.name, tips_cents: 0, monthly_cents: tier.price * 100 }))}
                   </div>
                 )
