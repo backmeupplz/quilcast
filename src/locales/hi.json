@@ -1354,7 +1354,7 @@
   "Your supporters": "आपके सपोर्टर",
   "{n} supporter|{n} supporters": "{n} सपोर्टर|{n} सपोर्टर",
   "{price}/mo": "{price}/माह",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "मैं @{name} को {tier} ({price}/माह) के रूप में सपोर्ट करता हूँ 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "मैं @{name} को {tier} ({price}) के रूप में सपोर्ट करता हूँ 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "आप Farcaster पर किसी को भी सपोर्ट कर सकते हैं: Quilcast पर उनकी प्रोफ़ाइल खोलें और सपोर्टर चुनें।",
   "To support someone, open their profile and pick Supporters.": "किसी को सपोर्ट करने के लिए उनकी प्रोफ़ाइल खोलें और सपोर्टर चुनें।",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "अपना Sendclap पेज क्लेम करें, ताकि वहाँ लॉग इन कर सकें, हर पेमेंट देख सकें और अपने टियर या पेमेंट पाने वाला वॉलेट बदल सकें।",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "इनसे अनुवाद न करें",
   "Quilcast is in this language": "Quilcast इसी भाषा में है",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "इन भाषाओं के कास्ट में अनुवाद बटन नहीं दिखता और उनका आपके लिए कभी अनुवाद नहीं होता। Quilcast जिस भाषा में है, वह हमेशा इनमें शामिल रहती है।",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap का भुगतान गलत लग रहा है, इसलिए Quilcast रुक गया।"
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap का भुगतान गलत लग रहा है, इसलिए Quilcast रुक गया।",
+  "{price}/yr": "{price}/वर्ष",
+  "{price}/wk": "{price}/सप्ताह",
+  "Join for {price} a year?": "{price} सालाना में जुड़ें?",
+  "Join for {price} a week?": "{price} साप्ताहिक में जुड़ें?",
+  "Join for {price}?": "{price} में जुड़ें?"
 }

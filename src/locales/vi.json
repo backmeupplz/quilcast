@@ -1354,7 +1354,7 @@
   "Your supporters": "Người ủng hộ bạn",
   "{n} supporter|{n} supporters": "{n} người ủng hộ",
   "{price}/mo": "{price}/tháng",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "Mình ủng hộ @{name} với tư cách {tier} ({price}/tháng) 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "Mình ủng hộ @{name} với tư cách {tier} ({price}) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Bạn cũng có thể ủng hộ bất kỳ ai trên Farcaster: mở hồ sơ của họ trên Quilcast và chọn Người ủng hộ.",
   "To support someone, open their profile and pick Supporters.": "Để ủng hộ ai đó, hãy mở hồ sơ của họ và chọn Người ủng hộ.",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Nhận trang Sendclap của bạn để đăng nhập vào đó, xem mọi khoản thanh toán và thay đổi các bậc hoặc ví nhận tiền.",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "Không dịch từ",
   "Quilcast is in this language": "Quilcast đang dùng ngôn ngữ này",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Các cast bằng những ngôn ngữ này không có nút Dịch và sẽ không bao giờ được dịch cho bạn. Ngôn ngữ Quilcast đang dùng luôn nằm trong số đó.",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Thanh toán Sendclap có vẻ sai, nên Quilcast đã dừng lại."
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Thanh toán Sendclap có vẻ sai, nên Quilcast đã dừng lại.",
+  "{price}/yr": "{price}/năm",
+  "{price}/wk": "{price}/tuần",
+  "Join for {price} a year?": "Tham gia với {price} mỗi năm?",
+  "Join for {price} a week?": "Tham gia với {price} mỗi tuần?",
+  "Join for {price}?": "Tham gia với {price}?"
 }

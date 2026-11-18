@@ -1354,7 +1354,7 @@
   "Your supporters": "Tus mecenas",
   "{n} supporter|{n} supporters": "{n} mecenas|{n} mecenas",
   "{price}/mo": "{price}/mes",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "Apoyo a @{name} como {tier} ({price}/mes) 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "Apoyo a @{name} como {tier} ({price}) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "También puedes apoyar a cualquiera en Farcaster: abre su perfil en Quilcast y elige Mecenas.",
   "To support someone, open their profile and pick Supporters.": "Para apoyar a alguien, abre su perfil y elige Mecenas.",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Reclama tu página de Sendclap para iniciar sesión allí, ver cada pago y cambiar tus niveles o la wallet que recibe los pagos.",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "No traducir desde",
   "Quilcast is in this language": "Quilcast está en este idioma",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Los casts en estos idiomas no muestran el botón Traducir y nunca se traducen para ti. El idioma en el que está Quilcast siempre es uno de ellos.",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "El pago de Sendclap parece incorrecto, así que Quilcast se detuvo."
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "El pago de Sendclap parece incorrecto, así que Quilcast se detuvo.",
+  "{price}/yr": "{price}/año",
+  "{price}/wk": "{price}/sem.",
+  "Join for {price} a year?": "¿Unirte por {price} al año?",
+  "Join for {price} a week?": "¿Unirte por {price} a la semana?",
+  "Join for {price}?": "¿Unirte por {price}?"
 }

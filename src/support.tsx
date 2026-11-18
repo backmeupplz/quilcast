@@ -3,6 +3,7 @@
 // is made on the first payment.
 import { useEffect, useState } from 'preact/hooks'
 import { account, loadUsers, users, type User } from './api.ts'
+import { joinAsk, perPeriod } from './billing.ts'
 import { t, tn } from './i18n.ts'
 import { Avatar, handle, Icon, nameOf, P, requireAccount, shell, toast, userPath } from './ui.tsx'
 import { SENDCLAP } from './write.ts'
@@ -36,7 +37,9 @@ function Claim({ claimed }: { claimed: boolean }) {
 
 const TIPS = [1, 5, 20]
 const dollars = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-const perMonth = (cents: number) => t('{price}/mo', { price: dollars(cents / 100) })
+// Sendclap's supporter rows count `monthly_cents`; a tier's own price is charged once per its `interval`
+const perMonth = (cents: number) => perPeriod(t, dollars(cents / 100), 'month')
+const tierPrice = (tier: Tier) => perPeriod(t, dollars(tier.price), tier.interval)
 // Sendclap's standard tiers, in the reader's language; a tier named otherwise shows as it is
 const STANDARD: Record<string, () => [string, string]> = {
   Fan: () => [t('Fan'), t('A small thank-you every month.')],
@@ -49,9 +52,9 @@ const okTip = (v: string) => /^\d{1,5}(\.\d{1,2})?$/.test(v.trim()) && Number(v)
 
 /** A cast about supporting `who`, with their profile's Supporters tab as its link. */
 const shareCast = (who: User, text: string) => shell.compose({ text, embeds: [`${location.origin}${userPath(who)}?tab=supporters`] })
-// says the tier, and tells readers they can do the same for anyone
-const supportLine = (who: User, r: Pick<Row, 'tier' | 'tips_cents' | 'monthly_cents'>) => `${r.tier
-  ? t('I support @{name} as a {tier} ({price}/mo) 👏', { name: handle(who), tier: tierName(r.tier), price: dollars(r.monthly_cents / 100) })
+// says the tier at `price` (its billing period included), and tells readers they can do the same for anyone
+const supportLine = (who: User, r: Pick<Row, 'tier' | 'tips_cents' | 'monthly_cents'>, price = perMonth(r.monthly_cents)) => `${r.tier
+  ? t('I support @{name} as a {tier} ({price}) 👏', { name: handle(who), tier: tierName(r.tier), price })
   : t('I tipped @{name} {amount} 👏', { name: handle(who), amount: dollars(r.tips_cents / 100) })}\n\n${t('You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.')}`
 
 export function SupportTab({ u, self }: { u: User; self: boolean }) {
@@ -163,20 +166,20 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
                 return (
                   <div class={`sp-tier sp-t${i}${on ? ' on' : ''}`}>
                     <span class="sp-tname">{tierName(tier.name)}</span>
-                    <b class="sp-price">{perMonth(tier.price * 100)}</b>
+                    <b class="sp-price">{tierPrice(tier)}</b>
                     <span class="sp-desc">{tierText(tier)}</span>
                     {on ? (
                       <span class="sp-mine">
                         <span class="sp-joined"><Icon d={P.check} size={16} />{t('Joined')}</span>
-                        <button type="button" class="link-btn" onClick={() => shareCast(u, supportLine(u, mine!))}>{t('Share')}</button>
+                        <button type="button" class="link-btn" onClick={() => shareCast(u, supportLine(u, mine!, tierPrice(tier)))}>{t('Share')}</button>
                         {cancel(mine!)}
                       </span>
-                    ) : btn(`m${tier.name}`, mine?.tier ? t('Switch') : t('Join'), t('Join for {price} a month?', { price: dollars(tier.price) }),
+                    ) : btn(`m${tier.name}`, mine?.tier ? t('Switch') : t('Join'), joinAsk(t, dollars(tier.price), tier.interval),
                       // switching joins the new tier first, then ends the old one, so there's no gap
                       () => wm().then(async (m) => {
                         await m.support(u, { type: 'membership', tier: tier.name }, t('Join @{name}', { name }), tier)
                         if (mine?.sub_id) await m.cancelSupport(mine.sub_id, mine.wallet)
-                      }), t('You support @{name} now.', { name }), 'btn small', supportLine(u, { tier: tier.name, tips_cents: 0, monthly_cents: tier.price * 100 }))}
+                      }), t('You support @{name} now.', { name }), 'btn small', supportLine(u, { tier: tier.name, tips_cents: 0, monthly_cents: 0 }, tierPrice(tier)))}
                   </div>
                 )
               })}

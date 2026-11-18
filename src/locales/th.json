@@ -1354,7 +1354,7 @@
   "Your supporters": "ผู้สนับสนุนของคุณ",
   "{n} supporter|{n} supporters": "ผู้สนับสนุน {n} คน",
   "{price}/mo": "{price}/เดือน",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "ฉันสนับสนุน @{name} ในฐานะ {tier} ({price}/เดือน) 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "ฉันสนับสนุน @{name} ในฐานะ {tier} ({price}) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "คุณก็สนับสนุนใครก็ได้บน Farcaster เช่นกัน: เปิดโปรไฟล์ของเขาบน Quilcast แล้วเลือกผู้สนับสนุน",
   "To support someone, open their profile and pick Supporters.": "หากต้องการสนับสนุนใครสักคน ให้เปิดโปรไฟล์ของเขาแล้วเลือกผู้สนับสนุน",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "รับสิทธิ์เพจ Sendclap ของคุณเพื่อเข้าสู่ระบบที่นั่น ดูทุกการชำระเงิน และเปลี่ยนระดับหรือกระเป๋าเงินที่รับเงิน",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "ไม่ต้องแปลจาก",
   "Quilcast is in this language": "Quilcast ใช้ภาษานี้อยู่",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "แคสต์ในภาษาเหล่านี้จะไม่มีปุ่มแปลและจะไม่ถูกแปลให้คุณ ภาษาที่ Quilcast ใช้อยู่จะรวมอยู่ด้วยเสมอ",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "การชำระเงินของ Sendclap ดูผิดปกติ Quilcast จึงหยุดไว้"
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "การชำระเงินของ Sendclap ดูผิดปกติ Quilcast จึงหยุดไว้",
+  "{price}/yr": "{price}/ปี",
+  "{price}/wk": "{price}/สัปดาห์",
+  "Join for {price} a year?": "เข้าร่วมในราคา {price} ต่อปีไหม?",
+  "Join for {price} a week?": "เข้าร่วมในราคา {price} ต่อสัปดาห์ไหม?",
+  "Join for {price}?": "เข้าร่วมในราคา {price} ไหม?"
 }

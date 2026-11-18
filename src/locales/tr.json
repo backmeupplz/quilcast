@@ -1354,7 +1354,7 @@
   "Your supporters": "Destekçilerin",
   "{n} supporter|{n} supporters": "{n} destekçi|{n} destekçi",
   "{price}/mo": "{price}/ay",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "@{name} kişisini {tier} ({price}/ay) olarak destekliyorum 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "@{name} kişisini {tier} ({price}) olarak destekliyorum 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Farcaster'da herkesi sen de destekleyebilirsin: Quilcast'te profilini aç ve Destekçiler'i seç.",
   "To support someone, open their profile and pick Supporters.": "Birini desteklemek için profilini aç ve Destekçiler'i seç.",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Sendclap sayfanı sahiplen; orada oturum aç, her ödemeyi gör ve kademelerini ya da ödemelerin gittiği cüzdanı değiştir.",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "Şu dillerden çevirme",
   "Quilcast is in this language": "Quilcast bu dilde",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Bu dillerdeki cast'lerde Çevir düğmesi görünmez ve senin için asla çevrilmezler. Quilcast'in dili her zaman bunlardan biridir.",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap ödemesi yanlış göründüğü için Quilcast durdu."
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap ödemesi yanlış göründüğü için Quilcast durdu.",
+  "{price}/yr": "{price}/yıl",
+  "{price}/wk": "{price}/hafta",
+  "Join for {price} a year?": "Yılda {price} karşılığında katılınsın mı?",
+  "Join for {price} a week?": "Haftada {price} karşılığında katılınsın mı?",
+  "Join for {price}?": "{price} karşılığında katılınsın mı?"
 }

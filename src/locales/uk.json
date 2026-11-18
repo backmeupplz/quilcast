@@ -1354,7 +1354,7 @@
   "Your supporters": "Твої підтримувачі",
   "{n} supporter|{n} supporters": "{n} підтримувач|{n} підтримувачі|{n} підтримувачів",
   "{price}/mo": "{price}/міс.",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "Я підтримую @{name} як {tier} ({price}/міс.) 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "Я підтримую @{name} як {tier} ({price}) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Ви теж можете підтримати будь-кого у Farcaster: відкрийте його профіль у Quilcast і виберіть «Підтримують».",
   "To support someone, open their profile and pick Supporters.": "Щоб підтримати когось, відкрийте його профіль і виберіть «Підтримують».",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Забери свою сторінку Sendclap, щоб заходити туди, бачити кожен платіж і змінювати рівні або гаманець, на який надходять платежі.",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "Не перекладати з мов",
   "Quilcast is in this language": "Quilcast цією мовою",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Касти цими мовами не мають кнопки «Перекласти» і ніколи не перекладаються для вас. Мова, якою працює Quilcast, завжди є серед них.",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Платіж Sendclap виглядає хибним, тому Quilcast зупинився."
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Платіж Sendclap виглядає хибним, тому Quilcast зупинився.",
+  "{price}/yr": "{price}/рік",
+  "{price}/wk": "{price}/тиж.",
+  "Join for {price} a year?": "Приєднатися за {price} на рік?",
+  "Join for {price} a week?": "Приєднатися за {price} на тиждень?",
+  "Join for {price}?": "Приєднатися за {price}?"
 }

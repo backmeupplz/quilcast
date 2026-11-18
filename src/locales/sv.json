@@ -1354,7 +1354,7 @@
   "Your supporters": "Dina supportrar",
   "{n} supporter|{n} supporters": "{n} supporter|{n} supportrar",
   "{price}/mo": "{price}/mån",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "Jag stöttar @{name} som {tier} ({price}/mån) 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "Jag stöttar @{name} som {tier} ({price}) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Du kan också stötta vem som helst på Farcaster: öppna profilen i Quilcast och välj Supportrar.",
   "To support someone, open their profile and pick Supporters.": "Om du vill stötta någon, öppna profilen och välj Supportrar.",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Gör anspråk på din Sendclap-sida för att logga in där, se varje betalning och ändra dina nivåer eller plånboken som får betalt.",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "Översätt inte från",
   "Quilcast is in this language": "Quilcast är på det här språket",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Casts på de här språken visar ingen Översätt-knapp och översätts aldrig åt dig. Språket som Quilcast är på är alltid ett av dem.",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap-betalningen ser fel ut, så Quilcast avbröt."
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap-betalningen ser fel ut, så Quilcast avbröt.",
+  "{price}/yr": "{price}/år",
+  "{price}/wk": "{price}/v",
+  "Join for {price} a year?": "Gå med för {price} om året?",
+  "Join for {price} a week?": "Gå med för {price} i veckan?",
+  "Join for {price}?": "Gå med för {price}?"
 }

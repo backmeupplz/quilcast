@@ -1354,7 +1354,7 @@
   "Your supporters": "你的支持者",
   "{n} supporter|{n} supporters": "{n} 位支持者",
   "{price}/mo": "{price}/月",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "我以{tier}（{price}/月）的身分支持 @{name} 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "我以{tier}（{price}）的身分支持 @{name} 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "你也可以支持 Farcaster 上的任何人：在 Quilcast 開啟 TA 的個人檔案並選擇支持者。",
   "To support someone, open their profile and pick Supporters.": "想支持某人，請開啟 TA 的個人檔案並選擇支持者。",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "認領你的 Sendclap 頁面，即可在那裡登入、查看每一筆付款，並變更你的檔位或收款錢包。",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "不翻譯的語言",
   "Quilcast is in this language": "Quilcast 目前使用此語言",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "這些語言的貼文不顯示「翻譯」按鈕，也不會為你翻譯。Quilcast 目前使用的語言總在其中。",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap 付款資訊看起來不對，所以 Quilcast 已停止。"
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Sendclap 付款資訊看起來不對，所以 Quilcast 已停止。",
+  "{price}/yr": "{price}/年",
+  "{price}/wk": "{price}/週",
+  "Join for {price} a year?": "以每年 {price} 加入？",
+  "Join for {price} a week?": "以每週 {price} 加入？",
+  "Join for {price}?": "以 {price} 加入？"
 }

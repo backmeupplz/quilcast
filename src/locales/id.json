@@ -1354,7 +1354,7 @@
   "Your supporters": "Pendukungmu",
   "{n} supporter|{n} supporters": "{n} pendukung",
   "{price}/mo": "{price}/bln",
-  "I support @{name} as a {tier} ({price}/mo) 👏": "Aku mendukung @{name} sebagai {tier} ({price}/bln) 👏",
+  "I support @{name} as a {tier} ({price}) 👏": "Aku mendukung @{name} sebagai {tier} ({price}) 👏",
   "You can support anyone on Farcaster too: open their profile on Quilcast and pick Supporters.": "Kamu juga bisa mendukung siapa saja di Farcaster: buka profilnya di Quilcast dan pilih Pendukung.",
   "To support someone, open their profile and pick Supporters.": "Untuk mendukung seseorang, buka profilnya dan pilih Pendukung.",
   "Claim your Sendclap page to log in there, see every payment and change your tiers or the wallet that gets paid.": "Klaim halaman Sendclap-mu untuk masuk ke sana, melihat setiap pembayaran, dan mengubah tier atau wallet yang menerima pembayaran.",
@@ -1379,5 +1379,10 @@
   "Don't translate from": "Jangan terjemahkan dari",
   "Quilcast is in this language": "Quilcast memakai bahasa ini",
   "Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.": "Cast dalam bahasa-bahasa ini tidak menampilkan tombol Terjemahkan dan tidak pernah diterjemahkan untukmu. Bahasa yang dipakai Quilcast selalu termasuk di dalamnya.",
-  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Pembayaran Sendclap sepertinya salah, jadi Quilcast berhenti."
+  "The Sendclap checkout looks wrong, so Quilcast stopped.": "Pembayaran Sendclap sepertinya salah, jadi Quilcast berhenti.",
+  "{price}/yr": "{price}/thn",
+  "{price}/wk": "{price}/mgg",
+  "Join for {price} a year?": "Gabung seharga {price} per tahun?",
+  "Join for {price} a week?": "Gabung seharga {price} per minggu?",
+  "Join for {price}?": "Gabung seharga {price}?"
 }
