@@ -672,9 +672,11 @@ small.warn { color: var(--warn); }
 .att-err { position: absolute; inset: auto 6px 6px; font-size: 12px; color: #fff; background: rgb(180 30 30 / 0.85); padding: 4px 8px; border-radius: calc(8px * var(--rs, 1)); }
 .att-x { position: absolute; top: 6px; inset-inline-end: 6px; width: 26px; height: 26px; border-radius: calc(99px * var(--rs, 1)); border: 0; display: grid; place-items: center; background: rgb(0 0 0 / 0.6); color: #fff; }
 
-.toolbar { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
+/* a phone too narrow for one row puts the Channel chip, the count and + on a second; it doesn't scroll sideways, which would clip the Channel picker that opens above the chip (#721) */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 6px; margin-top: 10px; padding-top: 8px; border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
 .toolbar .icon-btn, .dm-compose .icon-btn { color: var(--accent); }
 .toolbar .icon-btn.on { background: var(--soft); }
+.toolbar-end { display: flex; align-items: center; gap: 6px; margin-inline-start: auto; }
 .md-tools { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 8px; padding-top: 6px; border-top: var(--bw, 1px) var(--bs, solid) var(--line); }
 .md-tools .icon-btn { width: 34px; height: 34px; color: var(--muted); font-size: 16px; }
 .md-tools .icon-btn:hover { color: var(--ink); background: var(--hover); }
@@ -682,7 +684,7 @@ small.warn { color: var(--warn); }
 .chip.on { color: var(--accent); border-color: var(--accent); }
 .picker { inset-inline-start: 0; top: auto; bottom: 100%; margin-bottom: 6px; width: 240px; }
 .picker input { margin-bottom: 4px; }
-.count { margin-inline-start: auto; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .count.warn { color: var(--warn); }
 /* the GIF search (src/gifs.tsx) takes the posts' place in the composer until one is picked */
 .sheet .lk-gifs { max-height: 65vh; padding: 8px 0 4px; }
@@ -690,7 +692,9 @@ small.warn { color: var(--warn); }
 @media (max-width: 600px) {
   .modal { padding: 0; align-items: stretch; }
   .sheet { border-radius: 0; max-width: none; display: flex; flex-direction: column; }
-  .toolbar { margin-top: auto; }
+  /* the Channel picker opens from the toolbar's start, not the chip's: a chip far along a phone's row would put it past the screen's edge (#721) */
+  .toolbar { margin-top: auto; position: relative; }
+  .toolbar .wrap-menu { position: static; }
   .sheet .lk-gifs { max-height: none; min-height: 0; }
 }
 @keyframes fade { from { opacity: 0; } }

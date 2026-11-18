@@ -153,11 +153,11 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 /**
  * Open the home page through the slow line, with `storage` in localStorage; its errors are collected. `edit` changes
  * the page, `held` holds its body back until `release()` (and its pictures come then), `clock` fakes the page's timers (ctx.clock), `fail` is a glob
- * for requests that fail, `phone` makes it a 390 px phone, and `path` opens another page than the home page.
+ * for requests that fail, `phone` makes it a 390 px phone (or a phone of the size it gives), and `path` opens another page than the home page.
  */
 let gated = 0
 async function open(storage = {}, { edit, held, clock, fail, phone, path = '/' } = {}) {
-  const ctx = await browser.newContext(phone ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } : {})
+  const ctx = await browser.newContext(phone ? { viewport: phone === true ? { width: 390, height: 844 } : phone, isMobile: true, hasTouch: true } : {})
   if (clock) await ctx.clock.install()
   // nothing leaves this machine: the app's node, avatars and pictures elsewhere don't answer
   await ctx.route((u) => !['127.0.0.1', 'localhost'].includes(u.hostname), (r) => r.abort())
@@ -900,6 +900,66 @@ describe('the app in WebKit', { concurrency: true }, () => {
     assert.equal(await win.locator('.mini-full').isVisible(), false)
     const r = await win.boundingBox()
     assert.deepEqual([r.x, r.y, r.width, r.height], [0, 0, 390, 844])
+    await close()
+  })
+
+  // #721: the composer's toolbar on a phone: every control whole, inside the sheet, on the screen and not covered, with
+  // what doesn't fit on a second row and + at its end; the Channel picker opens whole above the chip; a desktop keeps one row
+  const toolbarFits = async (page, where) => {
+    const bar = page.locator('.modal .toolbar')
+    await bar.waitFor({ timeout: 30e3 })
+    const { boxes, sheet, inner, scroll, client } = await bar.evaluate((el) => {
+      const s = el.closest('.sheet'), cs = getComputedStyle(s), r = s.getBoundingClientRect()
+      return {
+        boxes: [...el.querySelectorAll(':scope > button, :scope > .wrap-menu > button, .toolbar-end > button')].map((b) => {
+          const r = b.getBoundingClientRect()
+          // tappable: its middle is its own
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('button') === b
+          return { label: b.getAttribute('aria-label') || b.textContent, hit, ...r.toJSON() }
+        }),
+        sheet: { left: r.left + parseFloat(cs.paddingLeft), right: r.right - parseFloat(cs.paddingRight) },
+        inner: innerWidth, scroll: el.scrollWidth, client: el.clientWidth,
+      }
+    })
+    assert.ok(scroll <= client, `${where}: the toolbar is ${scroll} px wide in ${client} px`)
+    for (const b of boxes) {
+      assert.ok(b.width >= 28 && b.height >= 28, `${where}: ${b.label} is ${b.width}×${b.height}`)
+      assert.ok(b.left >= sheet.left - 0.5 && b.right <= sheet.right + 0.5 && b.right <= inner, `${where}: ${b.label} runs from ${b.left} to ${b.right}, outside the sheet's ${sheet.left}–${sheet.right}`)
+      assert.ok(b.hit, `${where}: ${b.label} is covered`)
+    }
+    // + is last, at the end of its row
+    assert.ok(boxes.at(-1).label === 'Add another post to the thread' && Math.abs(boxes.at(-1).right - sheet.right) < 1, `${where}: + isn't at the end`)
+    return boxes
+  }
+  for (const [w, h, quorum] of [[390, 844, false], [360, 800, false], [360, 800, true], [430, 932, false]]) test(`on a ${w} px phone${quorum ? ' in Quorum mode' : ''}, the composer's toolbar fits the sheet, for a cast and a reply (#721)`, async () => {
+    const { page, close } = await open({ 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify({ ...nodeAt, quorum }) }, { phone: { width: w, height: h } })
+    await drawn(page)
+    await page.locator('#app article.cast footer').first().waitFor({ timeout: 30e3 })
+    await page.locator('.fab').click()
+    const cast = await toolbarFits(page, 'a new cast')
+    const labels = cast.map((b) => b.label)
+    for (const l of ['Schedule', 'Train']) assert.ok(labels.includes(l), `${l} is in ${labels}`)
+    const chip = page.locator('.modal .toolbar .chip')
+    const c = await chip.boundingBox()
+    await chip.click()
+    const menu = page.locator('.modal .menu.picker')
+    await menu.waitFor()
+    const m = await menu.boundingBox()
+    assert.ok(m.x >= 0 && m.x + m.width <= w && m.y >= 0 && m.y + m.height <= c.y, `the Channel picker is at ${JSON.stringify(m)}`)
+    await page.locator('.modal .sheet-top').getByRole('button', { name: 'Cancel' }).click()
+    await page.locator('.modal').waitFor({ state: 'detached' })
+    await page.locator('#app article.cast button.act[aria-label="Reply"]').first().click()
+    const reply = await toolbarFits(page, 'a reply')
+    assert.ok(!reply.some((b) => /Channel/.test(b.label)), 'a reply has no Channel chip')
+    await close()
+  })
+
+  test('on a desktop, the composer\'s toolbar is one row (#721)', async () => {
+    const { page, close } = await open({ 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify(nodeAt) })
+    await drawn(page)
+    await page.locator('#app .cast-btn').click()
+    const boxes = await toolbarFits(page, 'a desktop cast')
+    assert.equal(new Set(boxes.map((b) => Math.round(b.top + b.height / 2))).size, 1, 'one row')
     await close()
   })
 })

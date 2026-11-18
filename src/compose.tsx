@@ -651,10 +651,13 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           {canDraft && <button class={`icon-btn${timing ? ' on' : ''}`} aria-label={t('Schedule')} title={t('Schedule')} aria-pressed={timing} disabled={busy} onClick={() => (timing ? (setTiming(false), setWhen(undefined)) : (setTiming(true), setWhen((x) => x || Math.ceil((Date.now() + 3600e3) / 300e3) * 300e3)))}><Icon d={P.clock} /></button>}
           {!cont && <button class={`icon-btn${train ? ' on' : ''}`} aria-label={t('Train')} title={t('Train: anyone can tap the train button to quote this cast with the same text')} aria-pressed={train} disabled={busy} onClick={() => (train ? setTrain(false) : trainOk('start').then((ok) => ok && setTrain(true)))}><Icon d={P.train} /></button>}
           {!parent && !lost && <ChannelPicker value={channel} set={setChannel} fid={as.fid} />}
-          <span class={`count${left < 50 ? ' warn' : ''}`} title={used(cur) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
-            {used(cur) > 280 ? left : ''}
+          {/* the count and + stay together at the row's end, on a second row with the Channel chip when a phone is too narrow for one (#721) */}
+          <span class="toolbar-end">
+            <span class={`count${left < 50 ? ' warn' : ''}`} title={used(cur) > 320 ? t('Long cast: up to 1024 characters') : t('Up to 320 characters, or 1024 as a long cast')}>
+              {used(cur) > 280 ? left : ''}
+            </span>
+            <button class="icon-btn add-part" aria-label={t('Add another post to the thread')} disabled={!filled(cur, at)} onClick={add}><Icon d={P.plus} /></button>
           </span>
-          <button class="icon-btn add-part" aria-label={t('Add another post to the thread')} disabled={!filled(cur, at)} onClick={add}><Icon d={P.plus} /></button>
         </div>
       </div>
     </div>
