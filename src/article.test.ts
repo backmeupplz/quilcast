@@ -210,6 +210,7 @@ test('article Markdown renders block by block, safely', () => {
   assert.ok(html.includes('<table><thead><tr><th>If you want to</th><th>Use</th></tr></thead><tbody><tr><td>Say gm</td><td>A cast</td></tr></tbody></table>'))
   const md = articleHtml
   assert.equal(md('# Big\n## Small\n### not one'), '<h2>Big</h2><h3>Small</h3><p>### not one</p>')
+  assert.equal(articleHtml('## In the feed', undefined, true), '<p class="md-head md-h3">In the feed</p>')
   assert.equal(md('- a\n  - b\n    - c\n- d\n1. one\n2. two'), '<ul><li>a<ul><li>b<ul><li>c</li></ul></li></ul></li><li>d</li></ul><ol><li>one</li><li>two</li></ol>')
   assert.equal(md('> said\n> more\nafter'), '<blockquote><p>said</p><p>more</p></blockquote><p>after</p>')
   assert.equal(md('a\n\nb'), '<p>a</p><p class="md-gap"></p><p>b</p>')

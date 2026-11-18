@@ -99,7 +99,7 @@ test('a Farcaster Article shows its cover, title and opening', () => {
   const c = { ...cast('d5'.repeat(20), ['https://imagedelivery.net/x/cover/original']), text: 'Introducing <Articles>\n\n## The Basics\n- **Title** and _cover_', replies: { count: 1 } }
   const article = { fid: 3, hash: c.hash, at: 1, text: c.text, mentions: [], positions: [], embeds: c.embeds, format: 1, chain: { index: 0, count: 2 } }
   const html = body({ casts: [{ ...c, article }], got, shapes: {} }, '0.0.0', Date.parse('2026-10-28T12:00:00Z')).html
-  assert.match(html, /<div class="fc-article"><img class="fa-cover"[^>]*src="[^"]*cover\/w=1200[^"]*"[^>]*><div class="fa-text"><b class="fa-title" dir="auto">Introducing &#60;Articles&#62;<\/b><div class="text article-text fa-open" dir="auto"><h3>The Basics<\/h3><ul><li><strong>Title<\/strong> and <em>cover<\/em><\/li><\/ul><\/div><span class="fa-more">Read article<\/span><\/div><\/div>/)
+  assert.match(html, /<div class="fc-article"><img class="fa-cover"[^>]*src="[^"]*cover\/w=1200[^"]*"[^>]*><div class="fa-text"><b class="fa-title" dir="auto">Introducing &#60;Articles&#62;<\/b><div class="text article-text fa-open" dir="auto"><p class="md-head md-h3">The Basics<\/p><ul><li><strong>Title<\/strong> and <em>cover<\/em><\/li><\/ul><\/div><span class="fa-more">Read article<\/span><\/div><\/div>/)
   assert.ok(!html.includes('## The Basics'))
   // a cast that isn't one (or not known yet) is drawn as a cast
   const plain = body({ casts: [{ ...c, article: null }], got, shapes: {} }, '0.0.0', Date.parse('2026-10-28T12:00:00Z')).html
