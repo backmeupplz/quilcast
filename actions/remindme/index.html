@@ -49,14 +49,30 @@
       </form>
       <p class="muted small">The reminder comes as a notification from Remind me, so it asks to turn those on the first time.</p>
     </div>
-    <div id="menu" hidden>
-      <p class="muted small">Next time, skip this window: add one to the ⋯ menu under every cast.</p>
+    <p id="intro" class="muted" hidden>Remind me brings a cast back later as a notification. To set one, open it from a cast’s ⋯ menu.</p>
+    <section id="menu" hidden>
+      <h2>One-click reminders</h2>
+      <p class="muted small">Put a reminder straight into the ⋯ menu under every cast: one tap sets it and a toast says so, with no window to open.</p>
       <div class="amounts">
+        <button type="button" class="ghost" data-add="1h">1 hour</button>
+        <button type="button" class="ghost" data-add="3h">3 hours</button>
         <button type="button" class="ghost" data-add="1d">1 day</button>
+        <button type="button" class="ghost" data-add="3d">3 days</button>
         <button type="button" class="ghost" data-add="1w">1 week</button>
         <button type="button" class="ghost" data-add="ask">Ask how long</button>
       </div>
-    </div>
+      <form id="custom" class="other">
+        <input id="ccount" type="number" min="1" step="1" inputmode="numeric" placeholder="Or any length" aria-label="How long, for a new one-click reminder" />
+        <select id="cunit" aria-label="Unit">
+          <option value="m">minutes</option>
+          <option value="h">hours</option>
+          <option value="d" selected>days</option>
+          <option value="w">weeks</option>
+        </select>
+        <button type="submit">Add</button>
+      </form>
+      <p class="muted small">“Ask how long” asks for the time in the menu itself. To take one off, open Cast actions in Quilcast (the last line of any cast’s ⋯ menu).</p>
+    </section>
     <p id="status" role="status"></p>
     <button id="view" type="button" hidden>Open the cast</button>
     <button id="done" type="button" class="ghost" hidden>Done</button>
