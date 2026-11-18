@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/тиж.",
   "Join for {price} a year?": "Приєднатися за {price} на рік?",
   "Join for {price} a week?": "Приєднатися за {price} на тиждень?",
-  "Join for {price}?": "Приєднатися за {price}?"
+  "Join for {price}?": "Приєднатися за {price}?",
+  "Action link": "Посилання на дію",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "Дії з’являються в меню ⋯ під кожним кастом. Кожна з них — це мінізастосунок, що відкривається разом із кастом.",
+  "Add by link": "Додати за посиланням",
+  "Added by link": "Додано за посиланням",
+  "Added {name} to the ⋯ menu": "{name} додано до меню ⋯",
+  "Cast actions": "Дії для кастів",
+  "Cast actions…": "Дії для кастів…",
+  "Look up": "Знайти",
+  "Make your own cast action": "Створіть власну дію для кастів",
+  "Official": "Офіційні",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast не перевіряв цю дію. Вона бачить каст, до якого ви її застосовуєте, і може попросити ваш гаманець, як і будь-який мінізастосунок.",
+  "Removed {name} from the ⋯ menu": "{name} вилучено з меню ⋯",
+  "That isn't a link.": "Це не посилання.",
+  "The action's site, like example.com": "Сайт дії, наприклад example.com",
+  "{host} has no cast action.": "У {host} немає дії для кастів."
 }

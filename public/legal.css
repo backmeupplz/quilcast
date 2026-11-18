@@ -12,3 +12,7 @@ nav.langs { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 28px 0 0; padd
 nav.langs a { display: inline-block; padding: 5px 8px; min-height: 24px }
 nav.langs a[aria-current] { font-weight: 700; color: inherit; text-decoration: none }
 main ul, main ol { padding-inline-start: 1.5em }
+h3 { font-size: 17px; margin: 20px 0 4px; }
+code { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--muted) 15%, transparent); padding: 1px 4px; border-radius: 4px; }
+pre { overflow-x: auto; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, var(--muted) 15%, transparent); }
+pre code { background: none; padding: 0; }

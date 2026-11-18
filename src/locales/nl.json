@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/wk",
   "Join for {price} a year?": "Lid worden voor {price} per jaar?",
   "Join for {price} a week?": "Lid worden voor {price} per week?",
-  "Join for {price}?": "Lid worden voor {price}?"
+  "Join for {price}?": "Lid worden voor {price}?",
+  "Action link": "Actielink",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "Acties verschijnen in het ⋯-menu onder elke cast. Elke actie is een mini-app die samen met de cast opent.",
+  "Add by link": "Toevoegen via link",
+  "Added by link": "Toegevoegd via link",
+  "Added {name} to the ⋯ menu": "{name} toegevoegd aan het ⋯-menu",
+  "Cast actions": "Cast-acties",
+  "Cast actions…": "Cast-acties…",
+  "Look up": "Opzoeken",
+  "Make your own cast action": "Maak je eigen cast-actie",
+  "Official": "Officieel",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast heeft deze actie niet beoordeeld. Ze ziet de cast waarop je haar gebruikt en kan om je wallet vragen, zoals elke mini-app.",
+  "Removed {name} from the ⋯ menu": "{name} verwijderd uit het ⋯-menu",
+  "That isn't a link.": "Dat is geen link.",
+  "The action's site, like example.com": "De site van de actie, zoals example.com",
+  "{host} has no cast action.": "{host} heeft geen cast-actie."
 }

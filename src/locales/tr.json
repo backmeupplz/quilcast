@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/hafta",
   "Join for {price} a year?": "Yılda {price} karşılığında katılınsın mı?",
   "Join for {price} a week?": "Haftada {price} karşılığında katılınsın mı?",
-  "Join for {price}?": "{price} karşılığında katılınsın mı?"
+  "Join for {price}?": "{price} karşılığında katılınsın mı?",
+  "Action link": "Eylem bağlantısı",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "Eylemler her cast'in altındaki ⋯ menüsünde görünür. Her biri, cast ile birlikte açılan bir mini uygulamadır.",
+  "Add by link": "Bağlantıyla ekle",
+  "Added by link": "Bağlantıyla eklendi",
+  "Added {name} to the ⋯ menu": "{name} ⋯ menüsüne eklendi",
+  "Cast actions": "Cast eylemleri",
+  "Cast actions…": "Cast eylemleri…",
+  "Look up": "Ara",
+  "Make your own cast action": "Kendi cast eylemini oluştur",
+  "Official": "Resmî",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast bu eylemi incelemedi. Eylem, kullandığın cast'i görür ve her mini uygulama gibi cüzdanını isteyebilir.",
+  "Removed {name} from the ⋯ menu": "{name} ⋯ menüsünden kaldırıldı",
+  "That isn't a link.": "Bu bir bağlantı değil.",
+  "The action's site, like example.com": "Eylemin sitesi, örneğin example.com",
+  "{host} has no cast action.": "{host} sitesinde cast eylemi yok."
 }

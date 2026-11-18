@@ -426,6 +426,26 @@ test('collect.quilcast.com: the mini app, a page per cast whose link shows its N
   }
 })
 
+test('the cast action hosts: each its own page and manifest with a castShareUrl, the shared files, nothing else', async () => {
+  const get = (host, path) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path, headers: { host } }, (r) => {
+    const parts = []
+    r.on('data', (d) => parts.push(d)).on('end', () => ok({ status: r.statusCode, headers: r.headers, body: Buffer.concat(parts).toString() }))
+  }).on('error', no).end())
+  for (const name of ['spamcheck', 'tip']) {
+    const host = `${name}.quilcast.com`
+    const page = await get(host, `/?castHash=0x${'ab'.repeat(20)}&castFid=3`)
+    assert.equal(page.status, 200, host)
+    assert.match(page.headers['content-security-policy'], /frame-ancestors \*/)
+    assert.match(page.body, /<script type="module" src="\/app.js">/)
+    const m = await get(host, '/.well-known/farcaster.json')
+    assert.equal(m.headers['access-control-allow-origin'], '*')
+    assert.equal(JSON.parse(m.body).miniapp.castShareUrl, `https://${host}/`)
+    for (const f of ['/miniapp.js', '/cast.js', '/app.js']) assert.equal((await get(host, f)).headers['content-type'], 'text/javascript', host + f)
+    assert.equal((await get(host, '/icon.png')).headers['content-type'], 'image/png')
+    for (const path of ['/../server/index.mjs', '/nope', `/${name === 'tip' ? 'spamcheck' : 'tip'}/app.js`]) assert.equal((await get(host, path)).status, 404, host + path)
+  }
+})
+
 test('collect.quilcast.com finds a pasted cast link: a full hash anywhere in it, or a farcaster.xyz link by its first digits', async () => {
   const find = (link) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path: `/api/find?url=${encodeURIComponent(link)}`, headers: { host: 'collect.quilcast.com' } }, (r) => {
     let b = ''

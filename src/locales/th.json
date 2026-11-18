@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/สัปดาห์",
   "Join for {price} a year?": "เข้าร่วมในราคา {price} ต่อปีไหม?",
   "Join for {price} a week?": "เข้าร่วมในราคา {price} ต่อสัปดาห์ไหม?",
-  "Join for {price}?": "เข้าร่วมในราคา {price} ไหม?"
+  "Join for {price}?": "เข้าร่วมในราคา {price} ไหม?",
+  "Action link": "ลิงก์แอ็กชัน",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "แอ็กชันจะแสดงในเมนู ⋯ ใต้ทุกแคสต์ แต่ละแอ็กชันคือมินิแอปที่เปิดพร้อมกับแคสต์",
+  "Add by link": "เพิ่มด้วยลิงก์",
+  "Added by link": "เพิ่มด้วยลิงก์แล้ว",
+  "Added {name} to the ⋯ menu": "เพิ่ม {name} ในเมนู ⋯ แล้ว",
+  "Cast actions": "แอ็กชันแคสต์",
+  "Cast actions…": "แอ็กชันแคสต์…",
+  "Look up": "ค้นหา",
+  "Make your own cast action": "สร้างแอ็กชันแคสต์ของคุณเอง",
+  "Official": "ทางการ",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast ยังไม่ได้ตรวจสอบแอ็กชันนี้ แอ็กชันจะเห็นแคสต์ที่คุณใช้งานและอาจขอใช้กระเป๋าเงินของคุณได้เหมือนมินิแอปทั่วไป",
+  "Removed {name} from the ⋯ menu": "นำ {name} ออกจากเมนู ⋯ แล้ว",
+  "That isn't a link.": "นี่ไม่ใช่ลิงก์",
+  "The action's site, like example.com": "เว็บไซต์ของแอ็กชัน เช่น example.com",
+  "{host} has no cast action.": "{host} ไม่มีแอ็กชันแคสต์"
 }

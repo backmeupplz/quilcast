@@ -922,6 +922,15 @@ async function fidFromLink(text) {
 // collect/'s files, listed once: nothing else under it is served
 const collectFiles = new Set(readdirSync(COLLECT_DIR, { recursive: true, withFileTypes: true }).filter((d) => d.isFile() && d.name !== 'index.html').map((d) => '/' + relative(COLLECT_DIR, join(d.parentPath, d.name))))
 
+// Quilcast's own cast actions (src/actions.json), each a mini app on its own host: actions/<name>/, and actions/shared/
+// for what they all load. Static pages; they read the node and spam.quilcast.com themselves.
+const ACTIONS_DIR = new URL('../actions/', import.meta.url).pathname
+const ACTION_HOSTS = { [process.env.SPAMCHECK_HOST || 'spamcheck.quilcast.com']: 'spamcheck', [process.env.TIP_HOST || 'tip.quilcast.com']: 'tip' }
+const actionFiles = new Set(readdirSync(ACTIONS_DIR, { recursive: true, withFileTypes: true }).filter((d) => d.isFile()).map((d) => '/' + relative(ACTIONS_DIR, join(d.parentPath, d.name))))
+const ACTION_CSP = `default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ${NODE} https://spam.quilcast.com; img-src 'self' data: https:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *`
+/** The file an action's host serves at `path`, or undefined. */
+const actionFile = (name, path) => [`/${name}${path === '/' ? '/index.html' : path}`, `/shared${path}`].find((f) => actionFiles.has(f))
+
 const render = (svg) => renderAsync(pictures(svg), { font: { fontFiles: FONTS, loadSystemFonts: false, defaultFontFamily: 'Inter' } }).then((img) => img.asPng())
 
 // small caches; failures drop out so they're retried. Rendered PNGs get their own, smaller one.
@@ -1128,7 +1137,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 // static files under a path without their extension: About (plain HTML for crawlers), the legal pages the stores link to, and Apple's universal links file
 // the standalone pages in the app's other languages (public/<lang>/<page>.html), each at its own address
 const TRANSLATED = /^\/(?:ar|de|es|fr|hi|id|it|ja|ko|nl|pl|pt-br|pt-pt|ru|sv|th|tr|uk|vi|zh-hans|zh-hant)\/(?:about|privacy|terms|safety|delete)$/
-const PAGES = { '/about': 'about.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
+const PAGES = { '/about': 'about.html', '/developers/cast-actions': 'developers/cast-actions.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
 
 // dist/ never changes while we run: its files are read once, and compressed once per encoding
 const files = new Map()
@@ -1205,6 +1214,16 @@ const server = createServer(async (req, res) => {
       if (!collectFiles.has(path)) return res.writeHead(404).end()
       const body = await readFile(join(COLLECT_DIR, path))
       return send(req, res, 200, { 'content-type': TYPES[extname(path)] || 'application/octet-stream', 'cache-control': 'public, max-age=300', ...(path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' }) }, body, 'collect:' + path)
+    }
+
+    const action = ACTION_HOSTS[String(req.headers.host || '').split(':')[0]]
+    if (action) {
+      const f = actionFile(action, path)
+      if (!f) return res.writeHead(404).end()
+      return send(req, res, 200, {
+        'content-type': TYPES[extname(f)] || 'application/octet-stream', 'cache-control': 'public, max-age=300', 'content-security-policy': ACTION_CSP,
+        ...(path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' }),
+      }, await readFile(join(ACTIONS_DIR, f)), 'action:' + f)
     }
 
     // stickers.quilcast.com/<pack> is a sticker pack's short link; the packs live in the app (src/stickers.tsx)

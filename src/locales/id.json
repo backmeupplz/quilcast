@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/mgg",
   "Join for {price} a year?": "Gabung seharga {price} per tahun?",
   "Join for {price} a week?": "Gabung seharga {price} per minggu?",
-  "Join for {price}?": "Gabung seharga {price}?"
+  "Join for {price}?": "Gabung seharga {price}?",
+  "Action link": "Tautan aksi",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "Aksi muncul di menu ⋯ di bawah setiap cast. Setiap aksi adalah aplikasi mini yang terbuka bersama cast-nya.",
+  "Add by link": "Tambah lewat tautan",
+  "Added by link": "Ditambahkan lewat tautan",
+  "Added {name} to the ⋯ menu": "{name} ditambahkan ke menu ⋯",
+  "Cast actions": "Aksi cast",
+  "Cast actions…": "Aksi cast…",
+  "Look up": "Cari",
+  "Make your own cast action": "Buat aksi cast-mu sendiri",
+  "Official": "Resmi",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast belum meninjau aksi ini. Aksi ini melihat cast tempat kamu memakainya dan bisa meminta dompetmu, seperti aplikasi mini lainnya.",
+  "Removed {name} from the ⋯ menu": "{name} dihapus dari menu ⋯",
+  "That isn't a link.": "Itu bukan tautan.",
+  "The action's site, like example.com": "Situs aksi, misalnya example.com",
+  "{host} has no cast action.": "{host} tidak punya aksi cast."
 }

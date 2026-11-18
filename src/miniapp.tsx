@@ -105,7 +105,8 @@ type Notice = { notificationId: string; title: string; body: string }
 type Ask = { title: string; body: string; yes: string; extra?: () => ComponentChildren; at: number; done: (ok: boolean) => void }
 type App = {
   id: number; url: string; origin: string; host: string; name: string; icon?: string; bg?: string
-  cast?: Cast; embed?: string; from?: string; notification?: Notice; frame?: HTMLIFrameElement; ready: boolean
+  // share: opened as a cast action (castShareUrl) on `cast`, rather than from its embed
+  cast?: Cast; embed?: string; share?: boolean; from?: string; notification?: Notice; frame?: HTMLIFrameElement; ready: boolean
   wallet?: Wallet; connected: boolean; chain: number; sol?: { wallet: SolWallet; account: { address: string } }; media: boolean
   button?: { text: string; loading: boolean; disabled: boolean; hidden: boolean }; back: boolean
   ask?: Ask; waiting?: string; stop?: () => void; uuid: string; pair?: { uri: string; img: string; cancel: () => void }
@@ -173,7 +174,7 @@ const show = (app: App | null) => {
 }
 
 /** Open a mini app, or bring it forward if it's already open. */
-export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; from?: string; notification?: Notice } = {}) {
+export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; share?: boolean; from?: string; notification?: Notice } = {}) {
   const url = safeUrl(m.url)
   if (!url?.startsWith('https://')) return toast("That mini app isn't on a secure (https) address.")
   const { origin, host } = new URL(url)
@@ -743,7 +744,7 @@ const context = async (app: App) => ({
   },
   user: userCtx(myUser()!),
   location: app.notification ? { type: 'notification', notification: app.notification }
-    : app.cast ? { type: 'cast_embed', embed: app.embed, cast: castCtx(app.cast) }
+    : app.cast ? (app.share ? { type: 'cast_share', cast: castCtx(app.cast) } : { type: 'cast_embed', embed: app.embed, cast: castCtx(app.cast) })
       : app.from ? { type: 'open_miniapp', referrerDomain: app.from } : { type: 'launcher' },
   features: { haptics, cameraAndMicrophoneAccess: true },
 })

@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/أسبوع",
   "Join for {price} a year?": "الانضمام مقابل {price} في السنة؟",
   "Join for {price} a week?": "الانضمام مقابل {price} في الأسبوع؟",
-  "Join for {price}?": "الانضمام مقابل {price}؟"
+  "Join for {price}?": "الانضمام مقابل {price}؟",
+  "Action link": "رابط الإجراء",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "تظهر الإجراءات في قائمة ⋯ تحت كل كاست. كل إجراء هو تطبيق مصغّر يُفتح مع الكاست.",
+  "Add by link": "إضافة برابط",
+  "Added by link": "أُضيف برابط",
+  "Added {name} to the ⋯ menu": "تمت إضافة {name} إلى قائمة ⋯",
+  "Cast actions": "إجراءات الكاست",
+  "Cast actions…": "إجراءات الكاست…",
+  "Look up": "بحث",
+  "Make your own cast action": "أنشئ إجراء الكاست الخاص بك",
+  "Official": "الرسمية",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "لم يراجع Quilcast هذا الإجراء. يرى الكاست الذي تستخدمه عليه ويمكنه طلب محفظتك، مثل أي تطبيق مصغّر.",
+  "Removed {name} from the ⋯ menu": "تمت إزالة {name} من قائمة ⋯",
+  "That isn't a link.": "هذا ليس رابطًا.",
+  "The action's site, like example.com": "موقع الإجراء، مثل example.com",
+  "{host} has no cast action.": "لا يوجد إجراء كاست في {host}."
 }

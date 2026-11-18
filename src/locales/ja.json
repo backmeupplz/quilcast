@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/週",
   "Join for {price} a year?": "年{price}で参加しますか？",
   "Join for {price} a week?": "週{price}で参加しますか？",
-  "Join for {price}?": "{price}で参加しますか？"
+  "Join for {price}?": "{price}で参加しますか？",
+  "Action link": "アクションのリンク",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "アクションは各キャストの下の ⋯ メニューに表示されます。どれもキャストと一緒に開くミニアプリです。",
+  "Add by link": "リンクで追加",
+  "Added by link": "リンクで追加済み",
+  "Added {name} to the ⋯ menu": "{name} を ⋯ メニューに追加しました",
+  "Cast actions": "キャストアクション",
+  "Cast actions…": "キャストアクション…",
+  "Look up": "検索",
+  "Make your own cast action": "自分だけのキャストアクションを作る",
+  "Official": "公式",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast はこのアクションを審査していません。使用したキャストを確認でき、ほかのミニアプリと同じようにウォレットを要求することがあります。",
+  "Removed {name} from the ⋯ menu": "{name} を ⋯ メニューから削除しました",
+  "That isn't a link.": "これはリンクではありません。",
+  "The action's site, like example.com": "アクションのサイト（例：example.com）",
+  "{host} has no cast action.": "{host} にはキャストアクションがありません。"
 }

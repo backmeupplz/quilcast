@@ -158,6 +158,15 @@ async function deliver(req) {
 
 // --- manifests and webhook events ---
 
+/** A manifest's castShareUrl (a cast action, the share extension spec) when it's https on the app's own origin `o`. */
+export function shareUrl(v, o) {
+  try {
+    return typeof v === 'string' && v.length < 1024 && v.startsWith('https://') && new URL(v).origin === o ? v : undefined
+  } catch {
+    return undefined
+  }
+}
+
 const manifests = new Map()
 /** The app's /.well-known/farcaster.json (miniapp or frame part), cached for ten minutes. */
 export function manifest(o) {
@@ -170,7 +179,12 @@ export function manifest(o) {
     const a = j?.miniapp || j?.frame
     if (!a || typeof a !== 'object') return null
     const url = (u) => (typeof u === 'string' && /^https:\/\//.test(u) && u.length < 1024 ? u : undefined)
-    return { name: str(a.name, 60), iconUrl: url(a.iconUrl), homeUrl: url(a.homeUrl), splashImageUrl: url(a.splashImageUrl), splashBackgroundColor: str(a.splashBackgroundColor, 9), webhookUrl: url(a.webhookUrl) }
+    // a cast action (the share extension spec): castShareUrl has to be on the app's own origin
+    const share = shareUrl(a.castShareUrl, o)
+    return {
+      name: str(a.name, 60), iconUrl: url(a.iconUrl), homeUrl: url(a.homeUrl), splashImageUrl: url(a.splashImageUrl), splashBackgroundColor: str(a.splashBackgroundColor, 9), webhookUrl: url(a.webhookUrl),
+      castShareUrl: share, description: str(a.subtitle, 30) || str(a.description, 170),
+    }
   }).catch(() => null)
   keep(manifests, 2000, o, { at: Date.now(), m })
   return m

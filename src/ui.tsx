@@ -71,7 +71,20 @@ export async function pushSubscription() {
   return Promise.race([reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw }), timeout])
 }
 /** Open a mini app (src/miniapp.tsx, loaded on first use). */
-export const launchApp = (m: AppMeta, ctx?: { cast?: Cast; embed?: string }) => requireAccount() && import('./miniapp.tsx').then((x) => x.launch(m, ctx))
+export const launchApp = (m: AppMeta, ctx?: { cast?: Cast; embed?: string; share?: boolean }) => requireAccount() && import('./miniapp.tsx').then((x) => x.launch(m, ctx))
+/** Cast actions (/actions, public/developers/cast-actions.html): mini apps with a castShareUrl, listed in every cast's
+ *  ⋯ menu. `url` is the castShareUrl. */
+export type CastAction = AppMeta & { description?: string }
+export const castActions = () => read<CastAction[]>('quilcast:actions', [])
+export const saveActions = (l: CastAction[]) => save('quilcast:actions', l.slice(0, 30))
+/** Run an action on a cast: its castShareUrl with the share extension's query, and location cast_share in its context. */
+export function runAction(a: CastAction, c: Cast) {
+  const u = new URL(a.url)
+  u.searchParams.set('castHash', '0x' + c.hash.replace(/^0x/, ''))
+  u.searchParams.set('castFid', String(c.author.fid))
+  if (account?.fid) u.searchParams.set('viewerFid', String(account.fid))
+  launchApp({ ...a, url: u.href }, { cast: c, share: true })
+}
 /** Mini apps pinned to the dock, in the order they were pinned. */
 export const pinned = () => read<AppMeta[]>('quilcast:pinned', [])
 // the directory's links and the ones apps open at can differ by a trailing slash
@@ -1441,6 +1454,8 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
                   <button role="menuitem" class="danger" onClick={del}><Icon d={P.trash} />{sure ? t('Delete this cast?') : t('Delete')}</button>
                 </>
               : <SilenceItems u={c.author} c={c} done={() => setMore(false)} />}
+            {castActions().map((a) => <button role="menuitem" onClick={() => (setMore(false), runAction(a, c))}><AppIcon src={a.icon} name={a.name} />{a.name}</button>)}
+            <button role="menuitem" onClick={() => (setMore(false), go('/actions'))}><Icon d={P.plus} />{t('Cast actions…')}</button>
           </Menu>
         )}
       </span>

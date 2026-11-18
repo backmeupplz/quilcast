@@ -1,0 +1,21 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "Tip",
+    "iconUrl": "https://tip.quilcast.com/icon.png",
+    "homeUrl": "https://tip.quilcast.com/",
+    "castShareUrl": "https://tip.quilcast.com/",
+    "splashImageUrl": "https://tip.quilcast.com/icon.png",
+    "splashBackgroundColor": "#0d0c11",
+    "subtitle": "Tip a cast in USDC",
+    "description": "Send a cast's author USDC on Base, $1, $5, $10 or any amount. Open it from a cast's share or ⋯ menu.",
+    "primaryCategory": "finance",
+    "tags": [
+      "tip",
+      "usdc",
+      "base",
+      "quilcast"
+    ],
+    "canonicalDomain": "tip.quilcast.com"
+  }
+}

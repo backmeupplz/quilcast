@@ -1,0 +1,21 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "Spam check",
+    "iconUrl": "https://spamcheck.quilcast.com/icon.png",
+    "homeUrl": "https://spamcheck.quilcast.com/",
+    "castShareUrl": "https://spamcheck.quilcast.com/",
+    "splashImageUrl": "https://spamcheck.quilcast.com/icon.png",
+    "splashBackgroundColor": "#0d0c11",
+    "subtitle": "Is this cast spam?",
+    "description": "How likely a cast and its author are spam, from the Laya model behind spam.quilcast.com. Open it from a cast's share or ⋯ menu.",
+    "primaryCategory": "utility",
+    "tags": [
+      "spam",
+      "moderation",
+      "laya",
+      "quilcast"
+    ],
+    "canonicalDomain": "spamcheck.quilcast.com"
+  }
+}

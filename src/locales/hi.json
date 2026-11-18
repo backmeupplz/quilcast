@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/सप्ताह",
   "Join for {price} a year?": "{price} सालाना में जुड़ें?",
   "Join for {price} a week?": "{price} साप्ताहिक में जुड़ें?",
-  "Join for {price}?": "{price} में जुड़ें?"
+  "Join for {price}?": "{price} में जुड़ें?",
+  "Action link": "एक्शन लिंक",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "एक्शन हर कास्ट के नीचे ⋯ मेन्यू में दिखते हैं। हर एक्शन एक मिनी ऐप है जो कास्ट के साथ खुलता है।",
+  "Add by link": "लिंक से जोड़ें",
+  "Added by link": "लिंक से जोड़ा गया",
+  "Added {name} to the ⋯ menu": "{name} को ⋯ मेन्यू में जोड़ा गया",
+  "Cast actions": "कास्ट एक्शन",
+  "Cast actions…": "कास्ट एक्शन…",
+  "Look up": "खोजें",
+  "Make your own cast action": "अपना खुद का कास्ट एक्शन बनाएँ",
+  "Official": "आधिकारिक",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast ने इस एक्शन की समीक्षा नहीं की है। यह उस कास्ट को देख सकता है जिस पर आप इसे इस्तेमाल करते हैं और किसी भी मिनी ऐप की तरह आपका वॉलेट माँग सकता है।",
+  "Removed {name} from the ⋯ menu": "{name} को ⋯ मेन्यू से हटाया गया",
+  "That isn't a link.": "यह लिंक नहीं है।",
+  "The action's site, like example.com": "एक्शन की साइट, जैसे example.com",
+  "{host} has no cast action.": "{host} पर कोई कास्ट एक्शन नहीं है।"
 }

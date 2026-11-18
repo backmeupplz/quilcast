@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Spam check</title>
+  <meta name="description" content="A Quilcast cast action: how likely a Farcaster cast and its author are spam, from spam.quilcast.com." />
+  <link rel="icon" href="/icon.png" />
+  <meta name="theme-color" content="#0d0c11" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Quilcast" />
+  <meta property="og:url" content="https://spamcheck.quilcast.com/" />
+  <meta property="og:title" content="Spam check" />
+  <meta property="og:description" content="A Quilcast cast action: how likely a Farcaster cast and its author are spam." />
+  <meta property="og:image" content="https://quilcast.com/og-actions.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@quilcast" />
+  <meta name="twitter:title" content="Spam check" />
+  <meta name="twitter:description" content="A Quilcast cast action: how likely a Farcaster cast and its author are spam." />
+  <meta name="twitter:image" content="https://quilcast.com/og-actions.png" />
+  <link rel="stylesheet" href="/style.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Spam check</h1>
+    <div id="cast" class="cast" hidden><img alt="" /><div><b></b><p></p></div></div>
+    <div id="scores" hidden>
+      <div id="cast-score" class="score"><span>This cast<br /><small class="muted"></small></span><b></b></div>
+      <div id="user-score" class="score"><span>The account<br /><small class="muted"></small></span><b></b></div>
+      <p class="muted">Scores come from the Laya model behind <a href="https://spam.quilcast.com" target="_blank" rel="noopener">spam.quilcast.com</a>, which reads every new cast and account.</p>
+    </div>
+    <p id="status" role="status"></p>
+  </main>
+</body>
+</html>

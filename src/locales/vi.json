@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/tuần",
   "Join for {price} a year?": "Tham gia với {price} mỗi năm?",
   "Join for {price} a week?": "Tham gia với {price} mỗi tuần?",
-  "Join for {price}?": "Tham gia với {price}?"
+  "Join for {price}?": "Tham gia với {price}?",
+  "Action link": "Liên kết hành động",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "Các hành động hiện trong menu ⋯ dưới mỗi cast. Mỗi hành động là một ứng dụng mini mở cùng với cast.",
+  "Add by link": "Thêm bằng liên kết",
+  "Added by link": "Đã thêm bằng liên kết",
+  "Added {name} to the ⋯ menu": "Đã thêm {name} vào menu ⋯",
+  "Cast actions": "Hành động cast",
+  "Cast actions…": "Hành động cast…",
+  "Look up": "Tra cứu",
+  "Make your own cast action": "Tạo hành động cast của riêng bạn",
+  "Official": "Chính thức",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast chưa xem xét hành động này. Nó thấy cast bạn dùng nó và có thể yêu cầu ví của bạn, như mọi ứng dụng mini khác.",
+  "Removed {name} from the ⋯ menu": "Đã xóa {name} khỏi menu ⋯",
+  "That isn't a link.": "Đây không phải liên kết.",
+  "The action's site, like example.com": "Trang web của hành động, ví dụ example.com",
+  "{host} has no cast action.": "{host} không có hành động cast nào."
 }

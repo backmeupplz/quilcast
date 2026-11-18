@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/주",
   "Join for {price} a year?": "연 {price}에 가입할까요?",
   "Join for {price} a week?": "주 {price}에 가입할까요?",
-  "Join for {price}?": "{price}에 가입할까요?"
+  "Join for {price}?": "{price}에 가입할까요?",
+  "Action link": "액션 링크",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "액션은 모든 캐스트 아래의 ⋯ 메뉴에 표시돼요. 각 액션은 캐스트와 함께 열리는 미니 앱이에요.",
+  "Add by link": "링크로 추가",
+  "Added by link": "링크로 추가됨",
+  "Added {name} to the ⋯ menu": "{name}을(를) ⋯ 메뉴에 추가했어요",
+  "Cast actions": "캐스트 액션",
+  "Cast actions…": "캐스트 액션…",
+  "Look up": "찾기",
+  "Make your own cast action": "나만의 캐스트 액션 만들기",
+  "Official": "공식",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast는 이 액션을 검토하지 않았어요. 사용하는 캐스트를 볼 수 있고, 다른 미니 앱처럼 지갑을 요청할 수 있어요.",
+  "Removed {name} from the ⋯ menu": "{name}을(를) ⋯ 메뉴에서 제거했어요",
+  "That isn't a link.": "링크가 아니에요.",
+  "The action's site, like example.com": "액션의 사이트 (예: example.com)",
+  "{host} has no cast action.": "{host}에는 캐스트 액션이 없어요."
 }

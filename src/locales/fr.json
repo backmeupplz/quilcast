@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/sem.",
   "Join for {price} a year?": "Rejoindre pour {price} par an ?",
   "Join for {price} a week?": "Rejoindre pour {price} par semaine ?",
-  "Join for {price}?": "Rejoindre pour {price} ?"
+  "Join for {price}?": "Rejoindre pour {price} ?",
+  "Action link": "Lien de l’action",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "Les actions apparaissent dans le menu ⋯ sous chaque cast. Chacune est une mini-app qui s’ouvre avec le cast.",
+  "Add by link": "Ajouter par lien",
+  "Added by link": "Ajoutée par lien",
+  "Added {name} to the ⋯ menu": "{name} ajoutée au menu ⋯",
+  "Cast actions": "Actions de cast",
+  "Cast actions…": "Actions de cast…",
+  "Look up": "Rechercher",
+  "Make your own cast action": "Créez votre propre action de cast",
+  "Official": "Officielles",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast n’a pas examiné cette action. Elle voit le cast sur lequel vous l’utilisez et peut demander votre portefeuille, comme n’importe quelle mini-app.",
+  "Removed {name} from the ⋯ menu": "{name} retirée du menu ⋯",
+  "That isn't a link.": "Ce n’est pas un lien.",
+  "The action's site, like example.com": "Le site de l’action, par exemple example.com",
+  "{host} has no cast action.": "{host} n’a aucune action de cast."
 }

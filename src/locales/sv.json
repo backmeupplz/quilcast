@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/v",
   "Join for {price} a year?": "Gå med för {price} om året?",
   "Join for {price} a week?": "Gå med för {price} i veckan?",
-  "Join for {price}?": "Gå med för {price}?"
+  "Join for {price}?": "Gå med för {price}?",
+  "Action link": "Åtgärdslänk",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "Åtgärder visas i ⋯-menyn under varje cast. Varje åtgärd är en miniapp som öppnas tillsammans med casten.",
+  "Add by link": "Lägg till via länk",
+  "Added by link": "Tillagd via länk",
+  "Added {name} to the ⋯ menu": "{name} lades till i ⋯-menyn",
+  "Cast actions": "Cast-åtgärder",
+  "Cast actions…": "Cast-åtgärder…",
+  "Look up": "Slå upp",
+  "Make your own cast action": "Skapa din egen cast-åtgärd",
+  "Official": "Officiella",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast har inte granskat den här åtgärden. Den ser casten du använder den på och kan be om din plånbok, precis som vilken miniapp som helst.",
+  "Removed {name} from the ⋯ menu": "{name} togs bort från ⋯-menyn",
+  "That isn't a link.": "Det där är ingen länk.",
+  "The action's site, like example.com": "Åtgärdens webbplats, som example.com",
+  "{host} has no cast action.": "{host} har ingen cast-åtgärd."
 }

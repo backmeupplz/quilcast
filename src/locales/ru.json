@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/нед.",
   "Join for {price} a year?": "Присоединиться за {price} в год?",
   "Join for {price} a week?": "Присоединиться за {price} в неделю?",
-  "Join for {price}?": "Присоединиться за {price}?"
+  "Join for {price}?": "Присоединиться за {price}?",
+  "Action link": "Ссылка на действие",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "Действия появляются в меню ⋯ под каждым кастом. Каждое из них — мини-приложение, которое открывается вместе с кастом.",
+  "Add by link": "Добавить по ссылке",
+  "Added by link": "Добавлено по ссылке",
+  "Added {name} to the ⋯ menu": "{name} добавлено в меню ⋯",
+  "Cast actions": "Действия для кастов",
+  "Cast actions…": "Действия для кастов…",
+  "Look up": "Найти",
+  "Make your own cast action": "Создайте своё действие для кастов",
+  "Official": "Официальные",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast не проверял это действие. Оно видит каст, к которому вы его применяете, и может запросить ваш кошелёк, как любое мини-приложение.",
+  "Removed {name} from the ⋯ menu": "{name} удалено из меню ⋯",
+  "That isn't a link.": "Это не ссылка.",
+  "The action's site, like example.com": "Сайт действия, например example.com",
+  "{host} has no cast action.": "У {host} нет действия для кастов."
 }

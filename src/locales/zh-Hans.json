@@ -1384,5 +1384,20 @@
   "{price}/wk": "{price}/周",
   "Join for {price} a year?": "以每年 {price} 加入？",
   "Join for {price} a week?": "以每周 {price} 加入？",
-  "Join for {price}?": "以 {price} 加入？"
+  "Join for {price}?": "以 {price} 加入？",
+  "Action link": "操作链接",
+  "Actions show up in the ⋯ menu under every cast. Each one is a mini app that opens with the cast.": "操作会显示在每条 cast 下方的 ⋯ 菜单中。每个操作都是一个随 cast 一起打开的小程序。",
+  "Add by link": "通过链接添加",
+  "Added by link": "已通过链接添加",
+  "Added {name} to the ⋯ menu": "已将 {name} 添加到 ⋯ 菜单",
+  "Cast actions": "Cast 操作",
+  "Cast actions…": "Cast 操作…",
+  "Look up": "查找",
+  "Make your own cast action": "创建你自己的 cast 操作",
+  "Official": "官方",
+  "Quilcast hasn't reviewed this action. It sees the cast you use it on and can ask for your wallet, like any mini app.": "Quilcast 尚未审核此操作。它能看到你使用它的那条 cast，并且和任何小程序一样可以请求你的钱包。",
+  "Removed {name} from the ⋯ menu": "已将 {name} 从 ⋯ 菜单中移除",
+  "That isn't a link.": "这不是链接。",
+  "The action's site, like example.com": "操作的网站，例如 example.com",
+  "{host} has no cast action.": "{host} 没有 cast 操作。"
 }

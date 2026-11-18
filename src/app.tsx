@@ -38,6 +38,7 @@ const Join = lazy<{ step?: string }>(() => import('./join.tsx').then((m) => m.Jo
 const Messages = lazy<{ id?: string }>(() => import('./messages.tsx').then((m) => m.Messages))
 const Spaces = lazy<{}>(() => import('./spaces.tsx').then((m) => m.Spaces))
 const WalletPage = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletPage))
+const Actions = lazy<{}>(() => import('./actions.tsx').then((m) => m.Actions))
 const WalletSettings = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletSettings))
 const WalletPanel = lazy<{ close: () => void }>(() => import('./walletui.tsx').then((m) => m.WalletPanel))
 const SpaceRoom = lazy<{ id: string }>(() => import('./spaces.tsx').then((m) => m.SpaceRoom))
@@ -2712,6 +2713,7 @@ function App() {
           : r0 === 'settings' ? <Settings />
           : r0 === 'write' ? (me ? <ArticleEditor /> : <Join />)
           : r0 === 'apps' ? <Apps />
+          : r0 === 'actions' ? <Actions />
           : r0 === 'wallet' ? (me ? <WalletPage /> : <Join />)
           : r0 === 'stickers' ? <StickersPage key={r1} id={r1 || undefined} />
           : r0 === 'spaces' ? (r1 && me ? <SpaceRoom id={decode(r1)} /> : me ? <Spaces /> : <Join />)

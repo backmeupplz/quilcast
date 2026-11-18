@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Build a Quilcast cast action</title>
+    <meta name="description" content="Cast actions are buttons in the ⋯ menu under every cast in Quilcast. Build one as a Farcaster mini app with a castShareUrl, and it works in other Farcaster clients' share sheets too." />
+    <link rel="canonical" href="https://quilcast.com/developers/cast-actions" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Quilcast" />
+    <meta property="og:url" content="https://quilcast.com/developers/cast-actions" />
+    <meta property="og:title" content="Build a Quilcast cast action" />
+    <meta property="og:description" content="Buttons in the ⋯ menu under every cast, built as Farcaster mini apps with a castShareUrl." />
+    <meta property="og:image" content="https://quilcast.com/og-actions.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Cast actions: buttons under every cast in Quilcast, built as Farcaster mini apps" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@quilcast" />
+    <meta name="twitter:title" content="Build a Quilcast cast action" />
+    <meta name="twitter:description" content="Buttons in the ⋯ menu under every cast, built as Farcaster mini apps with a castShareUrl." />
+    <meta name="twitter:image" content="https://quilcast.com/og-actions.png" />
+    <meta name="twitter:image:alt" content="Cast actions: buttons under every cast in Quilcast, built as Farcaster mini apps" />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Build a cast action</h1>
+      <p class="muted">For developers. Quilcast, November 2026.</p>
+      <p>A cast action is a button in the ⋯ menu under every cast in <a href="/">Quilcast</a>. People pick the actions they want, and each one does something with the cast it's tapped on: it can check it, tip its author, remind you about it later, reply to it, or anything else a small web app can do.</p>
+      <p>An action is a <a href="https://miniapps.farcaster.xyz">Farcaster mini app</a> that declares a <code>castShareUrl</code> in its manifest. That is the same <a href="https://miniapps.farcaster.xyz/docs/guides/share-extension">share extension</a> other Farcaster clients show in their share sheet, so a single app works as a Quilcast cast action and as a share target everywhere else, and a mini app that already has a share extension is already a cast action.</p>
+
+      <h2>How it works</h2>
+      <ol>
+        <li>Someone adds your action, either from the official list at <a href="/actions">quilcast.com/actions</a> or from your own link, <code>https://quilcast.com/actions?add=yourapp.com</code>.</li>
+        <li>Your action's name and icon then show up in the ⋯ menu under every cast they see.</li>
+        <li>When they tap it, Quilcast opens your <code>castShareUrl</code> as a mini app, with the cast in the query string and in the SDK context.</li>
+        <li>Your app does its job (shows something, asks a question, sends a token, writes a reply) and closes when it's done.</li>
+      </ol>
+
+      <h2>1. Declare it in your manifest</h2>
+      <p>Add <code>castShareUrl</code> to <code>/.well-known/farcaster.json</code> on your domain:</p>
+<pre><code>{
+  "accountAssociation": { "header": "…", "payload": "…", "signature": "…" },
+  "miniapp": {
+    "version": "1",
+    "name": "Remind me",
+    "iconUrl": "https://remind.example.com/icon.png",
+    "homeUrl": "https://remind.example.com/",
+    "castShareUrl": "https://remind.example.com/share",
+    "subtitle": "A nudge about a cast later",
+    "splashImageUrl": "https://remind.example.com/icon.png",
+    "splashBackgroundColor": "#0d0c11",
+    "webhookUrl": "https://remind.example.com/webhook"
+  }
+}</code></pre>
+      <ul>
+        <li><code>castShareUrl</code> must be an absolute https URL on the same origin as the manifest. Quilcast ignores one that points elsewhere.</li>
+        <li><code>name</code> is the menu label, so keep it short: two words is ideal, and the mini app spec allows 32 characters. <code>iconUrl</code> is a square PNG (1024×1024 without transparency is what Farcaster clients want), drawn at 18 px in the menu.</li>
+        <li><code>subtitle</code> (or <code>description</code>) is the line shown under the name when someone adds your action by link.</li>
+        <li>Quilcast doesn't require <code>accountAssociation</code>, but other Farcaster clients do, so <a href="https://miniapps.farcaster.xyz/docs/guides/publishing">sign your domain</a> anyway.</li>
+        <li><code>webhookUrl</code> is only needed if you send notifications (see Remind me below).</li>
+      </ul>
+
+      <h2>2. Read the cast</h2>
+      <p>Quilcast opens your <code>castShareUrl</code> with three query parameters, the same ones the share extension spec defines, which means your server can read them before any script runs:</p>
+<pre><code>https://remind.example.com/share?castHash=0x5415e243853e…&amp;castFid=2417&amp;viewerFid=12152</code></pre>
+      <p>Inside the app, the <a href="https://www.npmjs.com/package/@farcaster/miniapp-sdk">mini app SDK</a> context has the whole cast:</p>
+<pre><code>import { sdk } from '@farcaster/miniapp-sdk'
+
+const ctx = await sdk.context
+await sdk.actions.ready()
+
+if (ctx.location?.type === 'cast_share') {
+  const { hash, text, author, embeds, channelKey, timestamp } = ctx.location.cast
+  // author: { fid, username?, displayName?, pfpUrl? }
+  // ctx.user is the person who tapped your action
+}</code></pre>
+      <p>Other Farcaster clients send the same shape when someone shares a cast to your app, so you write this once.</p>
+
+      <h2>3. Do something</h2>
+      <p>Everything a mini app can do in Quilcast, an action can do too. The calls you'll want most are these:</p>
+      <ul>
+        <li><code>sdk.actions.sendToken({ token, amount, recipientFid })</code> sends a token to the cast's author. Quilcast finds the author's verified address, shows who and how much, and the person's wallet confirms it.</li>
+        <li><code>sdk.actions.composeCast({ text, parent: { type: 'cast', hash } })</code> opens the composer with a reply to the cast, which the person can edit before they send it.</li>
+        <li><code>sdk.actions.addMiniApp()</code> asks to add your app, with notifications, and returns <code>notificationDetails</code> when they're turned on.</li>
+        <li><code>sdk.actions.signIn({ nonce })</code> returns a Sign In With Farcaster message and signature that prove who the person is (see Trust, below).</li>
+        <li><code>sdk.wallet.getEthereumProvider()</code> gives you an EIP-1193 provider for anything else on chain. Quilcast checks each request and asks the person first.</li>
+        <li><code>sdk.actions.viewCast</code>, <code>viewProfile</code>, <code>openUrl</code>, <code>openMiniApp</code>, <code>swapToken</code>, <code>viewToken</code>, <code>setPrimaryButton</code> and <code>close</code> are all available as well, and so is haptics on phones.</li>
+      </ul>
+      <p>Close when you're done (<code>sdk.actions.close()</code>), so a quick action feels like a menu item rather than a separate app.</p>
+
+      <h2>Examples</h2>
+      <p>Quilcast's own actions are small, framework-free pages that you can read and copy. Their source is in <a href="https://github.com/backmeupplz/quilcast/tree/main/actions"><code>actions/</code></a> in the Quilcast repo.</p>
+
+      <h3>Spam check</h3>
+      <p><a href="https://spamcheck.quilcast.com">spamcheck.quilcast.com</a> doesn't ask anything. It reads <code>castHash</code> and <code>castFid</code>, asks the free <a href="https://spam.quilcast.com">spam.quilcast.com</a> API, and shows two numbers:</p>
+<pre><code>const hash = cast.hash.replace(/^0x/, '')
+const scores = await fetch(`https://spam.quilcast.com/scores?h=${hash}`).then((r) =&gt; r.json())
+const users = await fetch(`https://spam.quilcast.com/users?fid=${cast.author.fid}`).then((r) =&gt; r.json())
+// scores[hash] and users[fid] are 0…1, or missing while the model hasn't read them yet</code></pre>
+
+      <h3>Tip</h3>
+      <p><a href="https://tip.quilcast.com">tip.quilcast.com</a> offers $1, $5, $10 or any amount, then hands the rest to the host:</p>
+<pre><code>const USDC_ON_BASE = 'eip155:8453/erc20:0x833589fcd6edb6e08f4c7c32d4f71b54bda02913'
+const r = await sdk.actions.sendToken({
+  token: USDC_ON_BASE,
+  amount: String(5 * 1e6),          // base units: USDC has 6 decimals
+  recipientFid: cast.author.fid,
+})
+if (r.success) { /* r.send.transaction is the hash */ }</code></pre>
+
+      <h3>Remind me</h3>
+      <p>An action that asks a question and comes back later has three parts: its own small UI for the question, a notification token, and a server that sends the notification when the time comes.</p>
+<pre><code>// in the app: "Remind me in…" buttons, then
+const added = ctx.client.added ? null : await sdk.actions.addMiniApp()
+const notify = added?.notificationDetails ?? ctx.client.notificationDetails
+if (!notify) return show('Turn on notifications to get the reminder.')
+await fetch('/remind', {
+  method: 'POST',
+  body: JSON.stringify({ hash: cast.hash, at: Date.now() + 3 * 864e5, notify }),
+})
+await sdk.actions.close()
+
+// on your server, when it's due:
+await fetch(notify.url, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    notificationId: `remind-${id}`,
+    title: 'Reminder',
+    body: 'The cast you asked about',
+    targetUrl: `https://remind.example.com/open?cast=${hash}`,  // on your own domain
+    tokens: [notify.token],
+  }),
+})</code></pre>
+      <p>Tapping the notification opens <code>targetUrl</code> inside your app, which can then call <code>sdk.actions.viewCast({ hash })</code>. Your <code>webhookUrl</code> receives <code>notifications_disabled</code> and <code>miniapp_removed</code> events, after which you should stop sending to that token. In Quilcast, the first time someone turns on mini app notifications, Quilcast adds an app key to their Farcaster account with a small transaction from their custody address on Optimism, because that key is how your webhook can tell the events really came from them. Accounts created on Hypersnap since its November 2026 fork aren't registered on Optimism, so they can't turn notifications on yet. If your action has to reach everyone, offer another way back as well, such as a reply that mentions them.</p>
+
+      <h2>Trust</h2>
+      <ul>
+        <li><strong>The context isn't proof.</strong> Anyone can open your URL with any <code>castHash</code> or <code>viewerFid</code>, and <code>sdk.context.user</code> is whatever the host says. Before you spend, store or post anything for someone, have them sign in with <code>sdk.actions.signIn({ nonce })</code> and verify the result on your server: check the Sign In With Ethereum signature and your nonce, then check that the signing address is the FID's custody address. <a href="https://www.npmjs.com/package/@farcaster/auth-client"><code>@farcaster/auth-client</code></a>'s <code>verifySignInMessage</code> does both, but its usual setup looks the custody up on Optimism, which doesn't know accounts created on Hypersnap since its fork. Look the custody up on a Hypersnap node instead (<code>custody_address</code> in <code>https://haatz.quilibrium.com/v2/farcaster/user?fid=…</code>), which knows every account.</li>
+        <li><strong>Read the cast from the network when it matters.</strong> The cast in the context is a convenience. If your action depends on what it says, fetch it by hash from a Hypersnap node, for example <code>https://haatz.quilibrium.com/v2/farcaster/cast?type=hash&amp;identifier=0x…</code>.</li>
+        <li><strong>What Quilcast guards.</strong> Your app runs in a sandboxed frame on your own origin. Adding an action only reads your manifest, through Quilcast's server, so nothing about a person or a cast reaches you until they tap it. Every wallet request is shown to the person before their wallet sees it, and Quilcast refuses requests that could take over a Farcaster account. Quilcast reviews the actions on its official list, but not the ones people add by link, and it tells them so.</li>
+      </ul>
+
+      <h2>Test it</h2>
+      <ol>
+        <li>Serve your app over https on a public address (a tunnel such as <code>cloudflared tunnel --url http://localhost:5173</code> works while you build).</li>
+        <li>Open <code>https://quilcast.com/actions?add=your-tunnel-host</code> and tap Add.</li>
+        <li>Open any cast's ⋯ menu and tap your action. Quilcast caches manifests for ten minutes, so to pick up a changed manifest, remove the action and add it again after that.</li>
+      </ol>
+
+      <h2>Get on the official list</h2>
+      <p>The list at <a href="/actions">quilcast.com/actions</a> lives in <a href="https://github.com/backmeupplz/quilcast/blob/main/src/actions.json"><code>src/actions.json</code></a>. To add yours, open a pull request (or an issue) on <a href="https://github.com/backmeupplz/quilcast">github.com/backmeupplz/quilcast</a> with one line: its <code>castShareUrl</code>, name, icon and a short description. We list actions that work, do what their description says, and don't ask for a wallet signature that the job doesn't need. Until it's listed, share your <code>quilcast.com/actions?add=</code> link, which works for anyone.</p>
+
+      <p class="muted"><a href="/about">About Quilcast</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of use</a></p>
+    </main>
+  </body>
+</html>
