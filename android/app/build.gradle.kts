@@ -25,8 +25,8 @@ android {
         }
     }
     buildFeatures { buildConfig = true }
-    // play: Google's in-app review card. fdroid: no Google code, so F-Droid builds it (gradle: fdroid) and gets the
-    // same APK as the release's quilcast-X.Y.Z.apk. See src/<flavor>/java/com/borodutch/quilcast/RatingPrompt.java.
+    // play: Google's in-app review card. fdroid: no Google code, the release's quilcast-X.Y.Z.apk.
+    // See src/<flavor>/java/com/borodutch/quilcast/RatingPrompt.java.
     flavorDimensions += "store"
     productFlavors {
         create("play") { dimension = "store" }

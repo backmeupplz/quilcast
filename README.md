@@ -4,7 +4,7 @@ Quilcast is an open-source Farcaster client that runs in the browser, with apps 
 
 Reads hit the public node's HTTP API, writes are protobuf messages signed in the browser and posted to `/v1/submitMessage`, and keys live in the browser's IndexedDB, never in `localStorage`. The only server is a tiny static host that also gives shared links proper previews and fetches other sites' pictures (avatars, link previews, embeds and mini app icons) for you, so those sites never see your IP address; only our own files, Farcaster's image CDN and Tenor's GIFs load directly, along with Winamp skins from the Winamp Skin Museum when a profile uses one.
 
-Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App Store) and Android (Google Play, F-Droid, or the APK from the [latest release](https://github.com/backmeupplz/quilcast/releases/latest/download/quilcast.apk)).
+Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App Store) and Android (Google Play, or the APK from the [latest release](https://github.com/backmeupplz/quilcast/releases/latest/download/quilcast.apk)).
 
 ## What it does
 
@@ -152,7 +152,7 @@ open ios/Quilcast.xcodeproj                   # or ios/release.sh <version> <bui
 xcodebuild test -project ios/Quilcast.xcodeproj -scheme Quilcast -destination 'platform=iOS Simulator,name=iPhone 17e'
 ```
 
-One release ships everything: bump `versionName`/`versionCode` in `android/app/build.gradle.kts`, add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, and publish a release `vX.Y.Z` on git.borodutch.com. `.forgejo/workflows/release.yml` then uploads the bundle to Google Play, the iPhone app to App Review, attaches `quilcast-X.Y.Z.apk` and `quilcast.apk` to the release (here and on GitHub), and moves the F-Droid merge request to the new version. F-Droid builds the tag itself and ships our APK only when its build matches. Store texts live in `appstore/<locale>/listing.md` (the App Store's, with the screenshot captions; en-US is `appstore/listing.md`) and `fastlane/metadata/android/<language>/` (Play's and F-Droid's), in 24 languages, and `node scripts/store-copy.mjs` checks them against the stores' limits. The keyword research behind them is in Prime Radiant's `projects/quilcast/drafts/aso-<locale>.md`. CI builds the apps only when `android/` or `ios/` change.
+One release ships everything: bump `versionName`/`versionCode` in `android/app/build.gradle.kts`, add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, and publish a release `vX.Y.Z` on git.borodutch.com. `.forgejo/workflows/release.yml` then uploads the bundle to Google Play, the iPhone app to App Review, attaches `quilcast-X.Y.Z.apk` and `quilcast.apk` to the release (here and on GitHub). Store texts live in `appstore/<locale>/listing.md` (the App Store's, with the screenshot captions; en-US is `appstore/listing.md`) and `fastlane/metadata/android/<language>/` (Play's), in 24 languages, and `node scripts/store-copy.mjs` checks them against the stores' limits. The keyword research behind them is in Prime Radiant's `projects/quilcast/drafts/aso-<locale>.md`. CI builds the apps only when `android/` or `ios/` change.
 
 ## Quilcast WASM
 
