@@ -219,12 +219,20 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200' }, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] })
-  for (let i = 0; i < 50; i++) {
-    if (await fetch(base + '/health').then((r) => r.ok, () => false)) return
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] })
+  // the last of what it says on stderr, to show if it never comes up (kept short, and drained so it never blocks)
+  let stderr = ''
+  srv.stderr.setEncoding('utf8').on('data', (s) => (stderr = (stderr + s).slice(-8192)))
+  let exited = null
+  srv.once('exit', (code, signal) => (exited = { code, signal }))
+  // a loaded build host (the Docker stage runs every test file at once) can take well over 5 s to start it
+  const deadline = Date.now() + 30_000
+  while (Date.now() < deadline) {
+    if (exited) throw new Error(`server exited before it started (code ${exited.code}, signal ${exited.signal})\n${stderr}`)
+    if (await fetch(base + '/health', { signal: AbortSignal.timeout(2000) }).then((r) => r.ok, () => false)) return
     await new Promise((r) => setTimeout(r, 100))
   }
-  throw new Error('server did not start')
+  throw new Error(`server did not start within 30 s\n${stderr}`)
 })
 after(() => (srv.kill(), internal.close(), node.close()))
 
