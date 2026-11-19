@@ -46,9 +46,15 @@ export async function deleteAccount(req, fid, run_, { node, site }) {
   const id = /^[\w-]{1,64}$/.test(run_ || '') ? run_ : ''
   let job = jobs.get(fid)
   if (!job || (job.state !== 'running' && (job.run !== id || !id || Date.now() - job.at > 600e3))) {
+    // nothing more is cast from X for it, with the signature the deletion was asked with (so before the queue: it's
+    // only good for a few minutes)
+    if (CROSSPOST) {
+      const r = await crosspost('DELETE', fid, req.headers).catch(() => null)
+      if (r?.status !== 200) throw fail(503, "Quilcast's server is still deleting your data. Try again in a few minutes.")
+    }
     job = { state: 'running', run: id }
     const end = (o) => Object.assign(job, o, { at: Date.now() })
-    job.p = runs(() => run(fid, node, site, req.headers)).then((r) => end({ state: 'done', result: r }), (e) => end({ state: 'failed', error: e }))
+    job.p = runs(() => run(fid, node, site)).then((r) => end({ state: 'done', result: r }), (e) => end({ state: 'failed', error: e }))
     jobs.set(fid, job)
   }
   let timer
@@ -62,12 +68,7 @@ export async function deleteAccount(req, fid, run_, { node, site }) {
   return { state: 'done', ...job.result }
 }
 
-async function run(fid, node, site, headers) {
-  // nothing more is cast from X for it, with the same signature the deletion was asked with
-  if (CROSSPOST) {
-    const r = await crosspost('DELETE', fid, headers).catch(() => null)
-    if (r?.status !== 200) throw fail(503, "Quilcast's server is still deleting your data. Try again in a few minutes.")
-  }
+async function run(fid, node, site) {
   // scheduled casts still waiting are cancelled first, so none comes due while the casts are read (not counted:
   // none of them was posted)
   await dropScheduled(fid)

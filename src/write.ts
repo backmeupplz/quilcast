@@ -623,7 +623,8 @@ async function keyFetch(url: string, what: string, method: string, body = '', tr
 
 export type Crosspost = { handle?: string; on?: boolean; off?: boolean; error?: string }
 const crossUrl = (a: Account) => `/api/crosspost/${a.fid}`
-export const crosspostState = (a = account!): Promise<Crosspost> => keyFetch(crossUrl(a), 'quilcast-crosspost-read', 'GET', '', 3, a)
+// only read with a key this browser already has: opening Settings never asks for the phrase or the wallet
+export const crosspostState = (a = account!): Promise<Crosspost> => (hasKey(fresh(a)) ? keyFetch(crossUrl(a), 'quilcast-crosspost-read', 'GET', '', 1, a, {}, false) : Promise.resolve({}))
 /** Turns on crossposting from X account `handle`: the service makes a key that can only cast, this account's custody
  *  approves it (the phrase or the wallet is asked for), and the service adds it to the account. */
 export async function crosspostOn(handle: string, a = account!): Promise<Crosspost> {

@@ -50,6 +50,13 @@ async function save(c) {
   await writeFile(tmp, JSON.stringify(c), { mode: 0o600 })
   await rename(tmp, f)
 }
+// keys turned off (or replaced) while this process runs: a round still working with one stops and writes nothing more
+const gone = new Set()
+/** save() for the rounds: never brings back an account turned off meanwhile. */
+async function keep(c) {
+  if (gone.has(c.pub)) throw new Error('turned off')
+  await save(c)
+}
 const denied = (handle) => (process.env.CROSSPOST_DENY || '').toLowerCase().split(',').map((s) => s.trim()).includes(handle.toLowerCase())
 
 /** The X id of a post made at `ms` (a snowflake): everything after it is new. */
@@ -121,12 +128,13 @@ export async function newKey(req, fid, node, { profile = xProfile } = {}) {
   // one being turned off still holds its key until the revoke lands
   if (old?.on || old?.off) throw fail(409, 'already on')
   if (!old && (await readdir(dir)).filter((f) => f.endsWith('.json')).length >= MAX_ACCOUNTS) throw fail(503, 'full')
+  if (old) gone.add(old.pub)
   // the account has to exist (and not be protected) for there to be anything to copy
   const p = await profile(handle)
   if (!p) throw fail(404, 'no such account')
   const priv = hex(randomBytes(32))
   const key = rawEd(unhex(priv))
-  await save({ fid, handle: p.screen_name || handle, priv, pub: hex(key.pub), on: false })
+  await save({ fid, handle: p.screen_name || handle, priv, pub: hex(key.pub), on: false, made: Date.now() })
   return { pub: '0x' + hex(key.pub) }
 }
 
@@ -155,15 +163,14 @@ export async function turnOff(req, fid, node, { submit = (b) => submitTo(node, b
   await keySigned(req, 'quilcast-crosspost-off', fid, '', node, undefined, false).catch(() => keySigned(req, 'quilcast-delete', fid, '', node, undefined, false))
   const c = await read(fid)
   if (!c) return { was: null }
-  // stops posting at once; the key stays until its revoke lands, so a failed one can be tried again
+  gone.add(c.pub)
+  // stops posting at once; the key stays until its revoke lands, so one the node couldn't be asked about is tried again
   if (c.on) await save({ ...c, on: false, off: true })
-  if (c.on || c.off) {
-    const key = rawEd(unhex(c.priv))
-    await submit((await keyRemoveSelf(fid, key, Math.floor(Date.now() / 1000))).msg).catch((e) => {
-      // revoked already, expired, or never added: nothing left to revoke
-      if (!/not registered|invalid signer|unknown signer|not found/i.test(e.message)) throw fail(502, e.message)
-    })
-  }
+  // also for a key never known to be added (its KEY_ADD's answer may have been lost on the way)
+  await submit((await keyRemoveSelf(fid, rawEd(unhex(c.priv)), Math.floor(Date.now() / 1000))).msg).catch((e) => {
+    // any other refusal (revoked already, expired, never added) leaves nothing to revoke, and the key goes with the file
+    if (e.retry) throw fail(502, e.message)
+  })
   await rm(fileOf(fid), { force: true })
   return { was: c.handle }
 }
@@ -224,7 +231,7 @@ export async function uploadAs(c, url, max, site = SITE) {
 
 // --- the rounds ---
 
-const KEY_GONE = /invalid signer|unknown signer|not in the scope|signer.*(revoked|expired|not found)|unknown fid/i
+const KEY_GONE = /invalid signer|unknown signer|not in the scope|signer.*(revoked|expired|not found)|last_used_at expired|unknown fid/i
 
 /** Submits the cast signed last (c.pending); false when it couldn't be, and the account waits for the next round. */
 async function send(c, submit) {
@@ -241,7 +248,7 @@ async function send(c, submit) {
     else Object.assign(c, { since: p.id, pending: undefined, error: e.message })
     return false
   } finally {
-    await save(c)
+    await keep(c)
   }
 }
 
@@ -262,22 +269,28 @@ export async function step(c, { posts, upload, submit, now = Date.now() }) {
     const m = await toCast(s, c, parent, (url, max) => upload(c, url, max))
     // kept before it's sent, so a restart now sends these bytes rather than signing another
     c.pending = { id: s.id, hash: m.hash, msg: Buffer.from(m.msg).toString('base64'), tries: 0 }
-    await save(c)
+    await keep(c)
     if (!(await send(c, submit))) return
   }
-  await save(c)
+  await keep(c)
 }
 
-/** One round over every account that's on. Stops at an fxtwitter rate limit: the next round goes on from there. */
+let resume = ''
+/** One round over every account that's on. Stops at an fxtwitter rate limit: the next round starts from there. */
 export async function round(deps) {
-  for (const f of (await readdir(dir).catch(() => [])).filter((f) => /^[1-9]\d{0,19}\.json$/.test(f))) {
+  const files = (await readdir(dir).catch(() => [])).filter((f) => /^[1-9]\d{0,19}\.json$/.test(f)).sort()
+  const at = Math.max(0, files.indexOf(resume))
+  resume = ''
+  for (const f of [...files.slice(at), ...files.slice(0, at)]) {
     const c = await read(f.slice(0, -5))
+    // a key made for Turn on that the account never approved
+    if (c && !c.on && !c.off && Date.now() - (c.made || 0) > 86400e3) await rm(fileOf(c.fid), { force: true })
     if (!c?.on || denied(c.handle)) continue
     try {
       await step(c, deps)
     } catch (e) {
       console.error('crosspost', c.fid, e.message)
-      if (e.busy) return
+      if (e.busy) return void (resume = f)
     }
   }
 }

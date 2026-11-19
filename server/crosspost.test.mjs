@@ -194,8 +194,25 @@ test('turning it on adds a cast-only key; turning it off revokes it and forgets 
     assert.ok(!(await readdir(dir)).includes('11.json'))
     // deleting the account turns it off too, with the deletion's own signature
     await newKey(req('quilcast-crosspost-key', '{"handle":"me"}'), 11, NODE, { profile: async () => ({ screen_name: 'me' }) })
-    assert.deepEqual(await turnOff(req('quilcast-delete'), 11, NODE, { submit }), { was: 'me' })
-    assert.equal(submitted.length, 2, 'a key never added needs no revoke')
+    // a key never known to be added is revoked too, and the node refusing it (never added, expired) still forgets all
+    assert.deepEqual(await turnOff(req('quilcast-delete'), 11, NODE, { submit: async () => { throw new Error('unknown signer') } }), { was: 'me' })
+    assert.ok(!(await readdir(dir)).includes('11.json'))
+    // a node that can't be asked keeps the key, to be tried again
+    await newKey(req('quilcast-crosspost-key', '{"handle":"me"}'), 11, NODE, { profile: async () => ({ screen_name: 'me' }) })
+    await assert.rejects(turnOff(req('quilcast-crosspost-off'), 11, NODE, { submit: async () => { throw Object.assign(new Error('socket hang up'), { retry: true }) } }), /socket hang up/)
+    assert.ok((await readdir(dir)).includes('11.json'))
+    assert.deepEqual(await turnOff(req('quilcast-crosspost-off'), 11, NODE, { submit }), { was: 'me' })
+    // a round still working when the account turned off doesn't bring it back
+    await newKey(req('quilcast-crosspost-key', '{"handle":"me"}'), 11, NODE, { profile: async () => ({ screen_name: 'me' }) })
+    const c = { ...(await read(11)), on: true, since: idAt(T0), casts: {}, day: '', n: 0 }
+    let off
+    const slow = async (b) => {
+      off ??= turnOff(req('quilcast-crosspost-off'), 11, NODE, { submit })
+      await off
+      submitted.push(Buffer.from(b))
+    }
+    await assert.rejects(step(c, { posts: async () => [post(70)], upload: fake().upload, submit: slow, now: T0 }), /turned off/)
+    assert.ok(!(await readdir(dir)).includes('11.json'))
     await assert.rejects(turnOff(req('quilcast-look'), 11, NODE, { submit }), /Bad signature/)
   } finally {
     node.close()
