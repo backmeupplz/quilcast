@@ -138,7 +138,10 @@ export async function newKey(req, fid, node, { profile = xProfile, submit = (b) 
   if (old) {
     gone.add(old.pub)
     // a KEY_ADD whose answer was lost may have landed after all
-    if (old.tried) await revoke(old, submit).catch(() => {})
+    if (old.tried)
+      await revoke(old, submit).catch((e) => {
+        throw fail(502, e.message)
+      })
   }
   // the account has to exist (and not be protected) for there to be anything to copy
   const p = await profile(handle)
