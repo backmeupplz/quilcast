@@ -36,7 +36,7 @@ COPY . .
 # The server imports the helpers it shares with the app as TypeScript (Node strips the types); server/image.test.mjs
 # checks that every src/ file the server imports is copied here.
 RUN npm run build && npm test \
-  && mkdir -p /out/src && cp -r dist server collect actions package.json /out/ && cp -r src/shared.ts src/fx.ts src/article.ts src/removed.json src/locales /out/src/
+  && mkdir -p /out/src && cp -r dist server collect actions package.json /out/ && cp -r src/shared.ts src/fx.ts src/article.ts src/fc.ts src/keys.ts src/removed.json src/locales /out/src/
 
 # the runtime's own install, built alongside: browser-only packages (viem, hls.js, preact…) are devDependencies, so
 # this keeps just what server/ imports. Pruning the full install instead took ~4 minutes on the Easypanel host
@@ -53,6 +53,7 @@ COPY --from=build /out ./
 COPY --from=wasm /w/wasm/dist wasm/dist
 ENV PORT=3000
 EXPOSE 3000
-# the media volume (/data) is owned by uid 1000
+# the media volume (/data) is owned by uid 1000; a new empty volume (quilcast.crosspost's) takes this owner from the image
+RUN mkdir -p /data && chown node:node /data
 USER node
 CMD ["node", "server/index.mjs"]

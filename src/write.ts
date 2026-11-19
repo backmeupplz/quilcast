@@ -4,7 +4,7 @@ import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting,
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, keyState, reverted, sendTx } from './eth.ts'
-import { castAt, castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
+import { castAt, castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyAddAuth, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { search } from './pow.worker.ts'
 import { ARTICLE, type Outgoing, type Part } from './article.ts'
@@ -618,6 +618,25 @@ async function keyFetch(url: string, what: string, method: string, body = '', tr
   if (!r.ok) throw new Error(j?.error || t('Saving failed ({status})', { status: r.status }))
   return j
 }
+
+// --- X crossposting (Settings → X crossposting): Quilcast's crossposting service, server/crosspost.mjs ---
+
+export type Crosspost = { handle?: string; on?: boolean; off?: boolean; error?: string }
+const crossUrl = (a: Account) => `/api/crosspost/${a.fid}`
+// only read with a key this browser already has: opening Settings never asks for the phrase or the wallet
+export const crosspostState = (a = account!): Promise<Crosspost> => (hasKey(fresh(a)) ? keyFetch(crossUrl(a), 'quilcast-crosspost-read', 'GET', '', 1, a, {}, false) : Promise.resolve({}))
+/** Turns on crossposting from X account `handle`: the service makes a key that can only cast, this account's custody
+ *  approves it (the phrase or the wallet is asked for), and the service adds it to the account. */
+export async function crosspostOn(handle: string, a = account!): Promise<Crosspost> {
+  const { pub } = await keyFetch(crossUrl(a), 'quilcast-crosspost-key', 'POST', JSON.stringify({ handle }), 3, a)
+  // the account's key nonces only go up, the browser's own KEY_ADDs and this one alike
+  const nonce = Math.max((fresh(a).nonce || 0) + 1, Math.floor(Date.now() / 1000))
+  const k = await keyAddAuth(a.fid!, await custodyOf(fresh(a)), unhex(pub), nonce, [MT.CAST_ADD])
+  updateAccount({ ...fresh(a), nonce })
+  return keyFetch(crossUrl(a), 'quilcast-crosspost', 'PUT', JSON.stringify({ nonce, deadline: k.deadline, ttl: k.ttl, metadata: hex(k.metadata), custodySig: hex(k.custodySig) }), 3, a)
+}
+/** Stops it: the service's key revokes itself and the service forgets the account. */
+export const crosspostOff = (a = account!) => keyFetch(crossUrl(a), 'quilcast-crosspost-off', 'DELETE', '', 3, a)
 
 // --- deleting the account (Settings → Delete account) ---
 

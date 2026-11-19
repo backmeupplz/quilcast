@@ -72,10 +72,10 @@
   <body>
     <main>
       <h1>Polityka prywatności</h1>
-      <p class="muted">Quilcast, od Borodutch Labs Inc. Ostatnia aktualizacja: 6 listopada 2026.</p>
+      <p class="muted">Quilcast, od Borodutch Labs Inc. Ostatnia aktualizacja: 19 listopada 2026.</p>
       <p>Quilcast nie ma własnych kont, reklam, analityki ani śledzenia. Ta strona wymienia wszystko, co opuszcza twoje urządzenie, gdy korzystasz z Quilcast w sieci lub w aplikacji Quilcast.</p>
       <h2>Na twoim urządzeniu</h2>
-      <p>Twoja fraza odzyskiwania, klucze portfela i klucze podpisujące są tworzone i przechowywane na twoim urządzeniu, zaszyfrowane kluczem, który przechowuje samo urządzenie. Nigdy nie są nam wysyłane. Ustawienia, szkice i konta, z których korzystasz, również są zapisane na twoim urządzeniu.</p>
+      <p>Twoja fraza odzyskiwania, klucze portfela i klucze podpisujące są tworzone i przechowywane na twoim urządzeniu, zaszyfrowane kluczem, który przechowuje samo urządzenie. Nigdy nie są nam wysyłane. Jedynym wyjątkiem jest crossposting z X, jeśli go włączysz (zobacz niżej). Ustawienia, szkice i konta, z których korzystasz, również są zapisane na twoim urządzeniu.</p>
       <h2>Sieć Farcaster</h2>
       <p>Feedy, profile i casty są odczytywane z publicznego węzła Farcaster (Hypersnap), a to, co publikujesz, polubisz, zrecastujesz lub zaczniesz obserwować, jest podpisywane na twoim urządzeniu i do niego wysyłane. Wszystko na Farcaster jest publiczne.</p>
       <h2>Nasz serwer (quilcast.com)</h2>
@@ -85,6 +85,7 @@
         <li>Podglądy linków, tłumaczenia (tekst castu trafia do modelu tłumaczącego przez OpenRouter), lista miniaplikacji i wyszukiwarka GIF-ów są pobierane przez ten serwer.</li>
         <li>Zgłoszenia wysyłane z menu ⋯ są tam przechowywane dla naszych moderatorów: co zostało zgłoszone, dlaczego, twoja uwaga oraz twój Farcaster ID, jeśli zgłoszenie wysłano po zalogowaniu.</li>
         <li>Wiadomości prywatne i Pokoje audio są przekazywane do farcaster.xyz bez zapisywania ich i bez rejestrowania w logach.</li>
+        <li>Jeśli włączysz crossposting z X, który jest wyłączony, dopóki nie włączysz go w Ustawieniach, nasza usługa crosspostingu tworzy dla twojego konta klucz podpisujący, który może tylko publikować casty, i przechowuje go na naszym serwerze razem z twoim Farcaster ID, wskazanym kontem X i informacją, które z jego postów zostały już opublikowane jako casty. Mniej więcej co 5 minut sprawdza publiczne posty tego konta X i publikuje nowe jako casty z twojego konta. Wyłączenie tej funkcji lub usunięcie konta unieważnia klucz i usuwa wszystkie te dane.</li>
         <li>Jeśli włączysz powiadomienia miniaplikacji, losowy identyfikator skrzynki i subskrypcja push twojej przeglądarki są zapisywane, aby je dostarczać.</li>
         <li>Jeśli włączysz powiadomienia push o aktywności na swoim koncie, twój Farcaster ID jest zapisywany razem z subskrypcją push twojej przeglądarki i wybranymi dla niej ustawieniami (rodzaje powiadomień, język i to, czy spam jest ukrywany), a przez kilka minut także z informacją, które powiadomienia zostały już wysłane, aby nasz serwer mógł raz na minutę sprawdzać twoje powiadomienia i wysyłać nowe. Wylogowanie się lub usunięcie konta usuwa te dane.</li>
         <li>Liczy, ile kont korzystało z niego każdego dnia i ile pierwszych logowań pochodziło z każdego z naszych linków kampanii (nazwa linku jest przechowywana w twojej przeglądarce do czasu zalogowania). Zapisywane są tylko te sumy, bez żadnych informacji o tym, kto to był, i są one publiczne pod adresem <a href="/api/stats">quilcast.com/api/stats</a>.</li>

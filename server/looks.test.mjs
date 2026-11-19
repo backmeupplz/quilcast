@@ -7,6 +7,8 @@ import { keySigned } from './looks.mjs'
 
 const key = ed25519.utils.randomSecretKey()
 const soon = ed25519.utils.randomSecretKey()
+// X crossposting's key, which the node lists with CAST_ADD as its only scope
+const caster = ed25519.utils.randomSecretKey()
 const hexOf = (k) => '0x' + Buffer.from(ed25519.getPublicKey(k)).toString('hex')
 // 'up' lists `key` for every FID, and `soon` expiring in 30 s; 'none' lists nothing (the key was revoked); 'reset'
 // drops the connection; 'error' answers like Cloudflare does when haatz is down
@@ -14,16 +16,33 @@ let node = 'up'
 const srv = createServer((q, r) =>
   node === 'reset' ? q.socket.destroy()
     : node === 'error' ? r.writeHead(502).end('error code: 502')
-    : r.end(JSON.stringify({ signers: node === 'none' ? [] : [{ key: hexOf(key) }, { key: hexOf(soon), expiresAt: Math.floor(Date.now() / 1000) + 30 }] })))
+    : r.end(JSON.stringify({ signers: node === 'none' ? [] : [{ key: hexOf(key) }, { key: hexOf(soon), expiresAt: Math.floor(Date.now() / 1000) + 30 }, { key: hexOf(caster), scopes: ['MESSAGE_TYPE_CAST_ADD'] }] })))
 await new Promise((r) => srv.listen(0, '127.0.0.1', r))
 const url = `http://127.0.0.1:${srv.address().port}`
 after(() => srv.close())
 
-const check = (fid, k = key, outage = true) => {
+const check = (fid, k = key, outage = true, what = 'w') => {
   const ts = Date.now()
-  const headers = { 'x-key': hexOf(k), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`w:${fid}:${ts}:`), k)).toString('hex') }
-  return keySigned({ headers }, 'w', fid, '', url, undefined, outage).then(() => 200, (e) => e.status || 500)
+  const headers = { 'x-key': hexOf(k), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:`), k)).toString('hex') }
+  return keySigned({ headers }, what, fid, '', url, undefined, outage).then(() => 200, (e) => e.status || 500)
 }
+
+test("keySigned: X crossposting's cast-only key may upload media and nothing else, the node down or not", async () => {
+  node = 'up'
+  assert.equal(await check(5, caster, true, 'quilcast-upload'), 200)
+  assert.equal(await check(5, caster, true, 'quilcast-delete'), 403)
+  assert.equal(await check(5, caster, true, 'quilcast-prefs-read'), 403)
+  assert.equal(await check(5, key, true, 'quilcast-delete'), 200)
+  mock.timers.enable({ apis: ['Date'], now: Date.now() + 61e3 })
+  try {
+    node = 'error'
+    assert.equal(await check(5, caster, true, 'quilcast-upload'), 200)
+    assert.equal(await check(5, caster, true, 'quilcast-mutes-read'), 403)
+  } finally {
+    mock.timers.reset()
+    node = 'up'
+  }
+})
 
 test('keySigned: a node that is down answers 502, and a key it listed in the last hour still counts', async () => {
   mock.timers.enable({ apis: ['Date'], now: Date.now() })

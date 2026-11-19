@@ -67,15 +67,17 @@ export const getLook = (fid) => looks.get(fid) || keep(looks, 5000, fid, readFil
 // minutes now and then); only keys the node listed get in, so nobody can crowd real ones out with keys of their own
 const held = new Map()
 // a key counts while the node lists it for the FID and it hasn't expired; asked again after a minute, or after
-// a few seconds when the key isn't there (a browser that just added one). Rows are { key, exp } (ms).
+// a few seconds when the key isn't there (a browser that just added one). Rows are { key, exp } (ms), and `cast` for a
+// key that may only post casts (X crossposting's, server/crosspost.mjs).
 const signers = new Map()
+const castOnly = (scopes) => Array.isArray(scopes) && scopes.length === 1 && (scopes[0] === 'MESSAGE_TYPE_CAST_ADD' || scopes[0] === 1)
 const rowsOf = (node, fid, fresh) => {
   const hit = signers.get(fid)
   if (hit && hit.at > Date.now() - fresh) return hit.rows
   // a timeout or a dropped connection reads the same as an error answer
   const rows = fetchJson(`${node}/v1/signersByFid?fid=${fid}`).catch(() => null).then((r) => {
     if (!r?.signers) throw fail(502, "Couldn't reach the Farcaster node. Try again.")
-    const rows = r.signers.map((s) => ({ key: String(s.key).toLowerCase(), exp: s.expiresAt ? s.expiresAt * 1000 : Infinity }))
+    const rows = r.signers.map((s) => ({ key: String(s.key).toLowerCase(), exp: s.expiresAt ? s.expiresAt * 1000 : Infinity, cast: castOnly(s.scopes) }))
     // a key the node no longer lists is forgotten for outages too, whichever request asked
     const h = held.get(fid)
     if (h) for (const k of h.keys()) if (!rows.some((r) => r.key === k)) h.delete(k)
@@ -120,17 +122,19 @@ export async function keySigned(req, what, fid, body, node, stale = () => fail(4
       // re-adding moves the account to the back of the line
       const h = held.get(fid) || new Map()
       held.delete(fid)
-      keep(held, 5000, fid, h).set(key, { at: Date.now(), exp: r.exp })
+      keep(held, 5000, fid, h).set(key, { at: Date.now(), exp: r.exp, cast: r.cast })
     }
-    return !!r
+    return r
   }, (e) => {
     // the node can't be asked: a key it listed in the last hour still counts until it expires (so a revoked key can
     // outlive its removal by that long, only while the node is down); any other key waits for the node, never a 403
     const h = outage && held.get(fid)?.get(key)
-    if (h && h.at > Date.now() - 3600e3 && h.exp > Date.now()) return true
+    if (h && h.at > Date.now() - 3600e3 && h.exp > Date.now()) return h
     throw e
   })
   if (!ok) throw fail(403, "That key doesn't belong to this account.")
+  // X crossposting's key may post casts and their media, and nothing else here
+  if (ok.cast && what !== 'quilcast-upload') throw fail(403, "That key doesn't belong to this account.")
   // one more account today (server/stats.mjs keeps only the count)
   seen(fid)
   return { key, ts }

@@ -72,10 +72,10 @@
   <body>
     <main>
       <h1>Datenschutzerklärung</h1>
-      <p class="muted">Quilcast, von Borodutch Labs Inc. Zuletzt aktualisiert am 6. November 2026.</p>
+      <p class="muted">Quilcast, von Borodutch Labs Inc. Zuletzt aktualisiert am 19. November 2026.</p>
       <p>Quilcast hat keine eigenen Accounts, keine Werbung, keine Analyse-Tools und kein Tracking. Diese Seite listet alles auf, was dein Gerät verlässt, wenn du Quilcast im Web oder in der Quilcast-App nutzt.</p>
       <h2>Auf deinem Gerät</h2>
-      <p>Deine Wiederherstellungsphrase, deine Wallet-Schlüssel und deine Signaturschlüssel werden auf deinem Gerät erzeugt und dort aufbewahrt, verschlüsselt mit einem Schlüssel, den das Gerät selbst hält. Sie werden nie an uns gesendet. Einstellungen, Entwürfe und die Accounts, die du verwendest, werden ebenfalls auf deinem Gerät gespeichert.</p>
+      <p>Deine Wiederherstellungsphrase, deine Wallet-Schlüssel und deine Signaturschlüssel werden auf deinem Gerät erzeugt und dort aufbewahrt, verschlüsselt mit einem Schlüssel, den das Gerät selbst hält. Sie werden nie an uns gesendet. Die einzige Ausnahme ist X-Crossposting, wenn du es einschaltest (siehe unten). Einstellungen, Entwürfe und die Accounts, die du verwendest, werden ebenfalls auf deinem Gerät gespeichert.</p>
       <h2>Das Farcaster-Netzwerk</h2>
       <p>Feeds, Profile und Casts werden von einem öffentlichen Farcaster-Node (Hypersnap) gelesen. Was du postest, likest, recastest oder wem du folgst, wird auf deinem Gerät signiert und an ihn gesendet. Alles auf Farcaster ist öffentlich.</p>
       <h2>Unser Server (quilcast.com)</h2>
@@ -85,6 +85,7 @@
         <li>Link-Vorschauen, Übersetzungen (der Text des Casts geht über OpenRouter an ein Übersetzungsmodell), die Liste der Mini-Apps und die GIF-Suche werden über ihn abgerufen.</li>
         <li>Meldungen, die du über das ⋯-Menü sendest, werden dort für unsere Moderatoren gespeichert: was du gemeldet hast, warum, deine Anmerkung und, falls du angemeldet warst, deine Farcaster-ID.</li>
         <li>Nachrichten und Spaces werden an farcaster.xyz weitergeleitet, ohne gespeichert oder protokolliert zu werden.</li>
+        <li>Wenn du X-Crossposting einschaltest, das aus ist, solange du es nicht in den Einstellungen einschaltest, erstellt unser Crossposting-Dienst für deinen Account einen Signaturschlüssel, der nur Casts posten kann, und bewahrt ihn auf unserem Server auf, zusammen mit deiner Farcaster-ID, dem X-Konto, das du angegeben hast, und welche seiner Posts schon gecastet wurden. Er schaut sich die öffentlichen Posts dieses X-Kontos etwa alle 5 Minuten an und castet die neuen von deinem Account aus. Wenn du es ausschaltest oder den Account löschst, wird der Schlüssel widerrufen und all das gelöscht.</li>
         <li>Wenn du Benachrichtigungen von Mini-Apps einschaltest, werden eine zufällige Posteingangs-ID und das Push-Abonnement deines Browsers gespeichert, um sie zuzustellen.</li>
         <li>Wenn du Push-Benachrichtigungen für die Aktivitäten deines Accounts einschaltest, werden deine Farcaster-ID zusammen mit dem Push-Abonnement deines Browsers und den Einstellungen, die du dafür gewählt hast (welche Arten, die Sprache und ob Spam ausgeblendet wird), gespeichert, dazu für einige Minuten, welche Benachrichtigungen bereits gesendet wurden, damit unser Server deine Benachrichtigungen einmal pro Minute prüfen und das Neue senden kann. Beim Abmelden oder Löschen des Accounts werden sie entfernt.</li>
         <li>Er zählt, wie viele Accounts ihn pro Tag genutzt haben und wie viele erste Anmeldungen über jeden unserer Kampagnen-Links kamen (der Name des Links, der in deinem Browser bleibt, bis du dich anmeldest). Nur diese Summen werden gespeichert, ohne jede Angabe dazu, wer dahintersteckt, und sie sind öffentlich unter <a href="/api/stats">quilcast.com/api/stats</a> einsehbar.</li>

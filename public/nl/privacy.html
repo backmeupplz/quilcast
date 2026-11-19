@@ -72,10 +72,10 @@
   <body>
     <main>
       <h1>Privacybeleid</h1>
-      <p class="muted">Quilcast, van Borodutch Labs Inc. Laatst bijgewerkt op 6 november 2026.</p>
+      <p class="muted">Quilcast, van Borodutch Labs Inc. Laatst bijgewerkt op 19 november 2026.</p>
       <p>Quilcast heeft geen eigen accounts, geen advertenties, geen analytics en geen tracking. Op deze pagina staat alles wat je apparaat verlaat wanneer je Quilcast gebruikt op het web of in de Quilcast-app.</p>
       <h2>Op je apparaat</h2>
-      <p>Je herstelzin, walletsleutels en ondertekeningssleutels worden op je apparaat gemaakt en bewaard, versleuteld met een sleutel die het apparaat zelf beheert. Ze worden nooit naar ons gestuurd. Ook instellingen, concepten en de accounts die je gebruikt worden op je apparaat opgeslagen.</p>
+      <p>Je herstelzin, walletsleutels en ondertekeningssleutels worden op je apparaat gemaakt en bewaard, versleuteld met een sleutel die het apparaat zelf beheert. Ze worden nooit naar ons gestuurd. De enige uitzondering is crossposten vanaf X, als je dat aanzet (zie hieronder). Ook instellingen, concepten en de accounts die je gebruikt worden op je apparaat opgeslagen.</p>
       <h2>Het Farcaster-netwerk</h2>
       <p>Feeds, profielen en casts worden gelezen van een openbare Farcaster-node (Hypersnap), en wat je post, liket, recast of volgt wordt op je apparaat ondertekend en naar die node gestuurd. Alles op Farcaster is openbaar.</p>
       <h2>Onze server (quilcast.com)</h2>
@@ -85,6 +85,7 @@
         <li>Linkvoorbeelden, vertalingen (de tekst van de cast gaat via OpenRouter naar een vertaalmodel), de lijst met mini-apps en het zoeken naar GIF's worden via de server opgehaald.</li>
         <li>Rapportages die je verstuurt via het ⋯-menu worden daar bewaard voor onze moderators: wat je hebt gerapporteerd, waarom, je toelichting en, als je was ingelogd, je Farcaster-ID.</li>
         <li>Directe berichten en Spaces worden doorgestuurd naar farcaster.xyz, zonder te worden opgeslagen of gelogd.</li>
+        <li>Als je crossposten vanaf X aanzet, wat uit staat tenzij je het in Instellingen aanzet, maakt onze crosspostdienst voor je account een ondertekeningssleutel die alleen casts kan posten en bewaart die op onze server, samen met je Farcaster-ID, het X-account dat je hebt opgegeven en welke van de posts daarvan al gecast zijn. De dienst kijkt ongeveer elke 5 minuten naar de openbare posts van dat X-account en cast de nieuwe vanaf je account. Als je het uitzet of het account verwijdert, wordt de sleutel ingetrokken en wordt dat allemaal verwijderd.</li>
         <li>Als je meldingen van mini-apps aanzet, worden een willekeurige inbox-ID en het pushabonnement van je browser bewaard om ze te kunnen bezorgen.</li>
         <li>Als je pushmeldingen aanzet voor de activiteit van je account, worden je Farcaster-ID en het pushabonnement van je browser bewaard, samen met de instellingen die je daarvoor hebt gekozen (welke soorten, de taal en of spam wordt verborgen) en, een paar minuten lang, welke meldingen al zijn verstuurd, zodat onze server je meldingen één keer per minuut kan controleren en kan versturen wat nieuw is. Als je uitlogt of je account verwijdert, worden ze verwijderd.</li>
         <li>De server telt per dag hoeveel accounts er gebruik van maakten en hoeveel eerste inlogs er via elk van onze campagnelinks kwamen (de naam van de link, die in je browser wordt bewaard tot je inlogt). Alleen deze totalen worden bewaard, zonder iets over wie het waren, en ze zijn openbaar op <a href="/api/stats">quilcast.com/api/stats</a>.</li>

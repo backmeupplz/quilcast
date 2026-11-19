@@ -72,10 +72,10 @@
   <body>
     <main>
       <h1>Gizlilik Politikası</h1>
-      <p class="muted">Borodutch Labs Inc. tarafından Quilcast. Son güncelleme: 6 Kasım 2026.</p>
+      <p class="muted">Borodutch Labs Inc. tarafından Quilcast. Son güncelleme: 19 Kasım 2026.</p>
       <p>Quilcast'in kendine ait hesapları, reklamları, analitiği ve takibi yoktur. Bu sayfa, Quilcast'i web'de veya Quilcast uygulamasında kullandığında cihazından çıkan her şeyi listeler.</p>
       <h2>Cihazında</h2>
-      <p>Kurtarma ifaden, cüzdan anahtarların ve imzalama anahtarların cihazında oluşturulur ve cihazın tuttuğu bir anahtarla şifrelenmiş olarak orada saklanır. Bize asla gönderilmezler. Ayarların, taslakların ve kullandığın hesaplar da cihazında saklanır.</p>
+      <p>Kurtarma ifaden, cüzdan anahtarların ve imzalama anahtarların cihazında oluşturulur ve cihazın tuttuğu bir anahtarla şifrelenmiş olarak orada saklanır. Bize asla gönderilmezler. Tek istisna, açarsan X'ten çapraz paylaşımdır (aşağıya bak). Ayarların, taslakların ve kullandığın hesaplar da cihazında saklanır.</p>
       <h2>Farcaster ağı</h2>
       <p>Akışlar, profiller ve cast'ler herkese açık bir Farcaster (Hypersnap) düğümünden okunur; paylaştığın, beğendiğin, recast ettiğin veya takip ettiğin şeyler cihazında imzalanıp o düğüme gönderilir. Farcaster'daki her şey herkese açıktır.</p>
       <h2>Sunucumuz (quilcast.com)</h2>
@@ -85,6 +85,7 @@
         <li>Bağlantı önizlemeleri, çeviriler (cast'in metni OpenRouter üzerinden bir çeviri modeline gider), mini uygulama listesi ve GIF araması sunucumuz üzerinden getirilir.</li>
         <li>⋯ menüsünden gönderdiğin şikâyetler moderatörlerimiz için orada saklanır: neyi şikâyet ettiğin, nedeni, notun ve giriş yapmışsan Farcaster ID'n.</li>
         <li>Direkt mesajlar ve Sohbet Odaları, saklanmadan ve kaydedilmeden farcaster.xyz'e aktarılır.</li>
+        <li>Ayarlar'da açmadıkça kapalı olan X'ten çapraz paylaşımı açarsan, çapraz paylaşım hizmetimiz hesabın için yalnızca cast paylaşabilen bir imzalama anahtarı oluşturur ve bunu Farcaster kimliğin, belirttiğin X hesabı ve o hesabın hangi gönderilerinin zaten cast olarak paylaşıldığı bilgisiyle birlikte sunucumuzda saklar. O X hesabının herkese açık gönderilerine yaklaşık 5 dakikada bir bakar ve yenilerini senin hesabından cast olarak paylaşır. Kapatmak ya da hesabı silmek anahtarı iptal eder ve bunların hepsini siler.</li>
         <li>Mini uygulama bildirimlerini açarsan, bildirimleri iletmek için rastgele bir gelen kutusu kimliği ve tarayıcının anlık bildirim aboneliği saklanır.</li>
         <li>Hesabının etkinliği için anlık bildirimleri açarsan, Farcaster ID'n; tarayıcının anlık bildirim aboneliği ve bunun için seçtiğin ayarlarla (hangi türler, dil ve spam'in gizlenip gizlenmediği) birlikte, ayrıca birkaç dakika boyunca hangi bildirimlerin zaten gönderildiği bilgisiyle saklanır; böylece sunucumuz bildirimlerini dakikada bir kontrol edip yenileri gönderebilir. Çıkış yapmak ya da hesabı silmek bunları kaldırır.</li>
         <li>Sunucumuz, her gün kaç hesabın Quilcast'i kullandığını ve ilk girişlerin kaçının kampanya bağlantılarımızdan hangisinden geldiğini sayar (bağlantının adı, giriş yapana kadar tarayıcında tutulur). Yalnızca bu toplamlar saklanır, kimin olduğuna dair hiçbir şey saklanmaz; toplamlar <a href="/api/stats">quilcast.com/api/stats</a> adresinde herkese açıktır.</li>

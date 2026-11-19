@@ -77,6 +77,7 @@
       <h2>En la app</h2>
       <p>Abre Ajustes con la cuenta seleccionada y toca <strong>Eliminar cuenta</strong>, debajo de Cerrar sesión. Cuando lo confirmes, Quilcast hace lo siguiente y te va mostrando el progreso:</p>
       <ol>
+        <li>Si la publicación cruzada desde X está activada, primero se desactiva: se revoca la clave con la que nuestro servidor publicaba tus publicaciones de X como casts, y se borran la clave, el nombre de la cuenta de X y el registro de lo que se publicó.</li>
         <li>Nuestro servidor elimina todo lo que guarda de la cuenta: el estilo de su perfil y su cast fijado, las listas de silenciados y bloqueados, los borradores, las traducciones guardadas de sus casts y las fotos y videos que solo esta cuenta subió a nuestro servidor.</li>
         <li>Tus casts, me gusta, recasts y seguimientos se eliminan de la red Farcaster, y tu perfil (imagen, nombre, biografía, sitio web, ubicación, nombre de usuario de X y banner) se vacía. Después la app comprueba la red y te avisa de cualquier cosa que siga ahí.</li>
         <li>A continuación Quilcast cierra la sesión como lo hace Cerrar sesión: se elimina la clave que añadió en Optimism para las notificaciones de mini apps, se revoca su clave de firma para que la red deje de aceptarla, se descarta el buzón de notificaciones de nuestro servidor y la frase de recuperación y las claves se borran de tu dispositivo.</li>
