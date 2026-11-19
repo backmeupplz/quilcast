@@ -25,7 +25,7 @@ export function fillPost<F extends { url?: string; err?: string }>(text: string,
   // not TRAIN (the Train button asks first, carMedia) and nothing the hub won't take
   const add = [...new Set((Array.isArray(o.embeds) ? o.embeds.slice(0, MAX_EMBEDS * 2) : []).flatMap((u) => safeUrl(String(u)) ?? []))]
     .filter((u) => u.startsWith('https://') && u !== TRAIN && new TextEncoder().encode(u).length <= EMBED_BYTES && !have.has(u))
-  return { text: typeof o.text === 'string' ? [...o.text.slice(0, 2048)].slice(0, 1024).join('') : text, files: [...files, ...add.slice(0, embedRoom(files.length, fixed)).map(make)] }
+  return { text: typeof o.text === 'string' ? unholdPicture([...o.text.slice(0, 2048)].slice(0, 1024).join('')) : text, files: [...files, ...add.slice(0, embedRoom(files.length, fixed)).map(make)] }
 }
 /** A composer post's media embeds: the fixed ones, then its attachments (write.ts post adds the quote and links), less
  *  any the post's text already shows as a Markdown picture. */
@@ -689,6 +689,9 @@ export const pictureToken = () => {
  *  moved to another post while it uploaded: that text is never sent or saved as a draft, as the stand-in would go out
  *  as it's typed. */
 export const holdsPicture = (text: string) => text.includes(`](${PICTURE_TOKEN}`) || [...tokens].some((t) => text.includes(t))
+/** Text from outside (a mini app's composeCast) without anything that reads as a stand-in, ](uploading:, which would
+ *  keep the post from being sent until the person deleted it. */
+export const unholdPicture = (text: string) => text.replace(new RegExp(`\\]\\((?:${PICTURE_TOKEN})+`, 'g'), '](')
 /** The pictures Markdown puts in a text, ![alt](url), as safe URLs. */
 export const imagesIn = (text: string) => [...text.matchAll(PICTURE)].flatMap((m) => safeUrl(m[1]) ?? [])
 

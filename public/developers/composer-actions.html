@@ -64,7 +64,7 @@
       </ul>
 
       <h2>2. Read the draft</h2>
-      <p>Inside the app, the <a href="https://www.npmjs.com/package/@farcaster/miniapp-sdk">mini app SDK</a> context has the post the person is writing. Its shape follows <code>composeCast</code>'s options, so what you read is what you send back:</p>
+      <p>Inside the app, the <a href="https://www.npmjs.com/package/@farcaster/miniapp-sdk">mini app SDK</a> context has the post the person is writing. Its shape follows <code>composeCast</code>'s options, so you can send back what you read. Only <code>text</code> and <code>embeds</code> are taken back, though: <code>parent</code>, <code>quote</code> and <code>channelKey</code> are there to read, and <code>composeCast</code> ignores them.</p>
 <pre><code>import { sdk } from '@farcaster/miniapp-sdk'
 
 const ctx = await sdk.context
@@ -92,7 +92,7 @@ if (loc?.type === 'composer') {
 })</code></pre>
       <ul>
         <li><strong><code>text</code> replaces the post's text</strong> when you send it, so start from <code>draft.text</code> if you only add to it. Leave <code>text</code> out to keep the text as it is. A long cast holds up to 1024 bytes, and the composer won't send more.</li>
-        <li><strong><code>embeds</code> are added</strong> to the post's attachments, after the ones it has. A URL that's already in <code>draft.embeds</code> isn't added twice, so you can send those back with yours, and only https URLs count. A link that's both in your text and in <code>embeds</code> is embedded once. A cast holds four embeds on Hypersnap, counting a quote, so the ones past that are left out.</li>
+        <li><strong><code>embeds</code> are added</strong> to the post's attachments, after the ones it has. A URL that's already in <code>draft.embeds</code> isn't added twice, so you can send those back with yours, and only https URLs up to 256 bytes long (the hub's limit) count. A link that's both in your text and in <code>embeds</code> is embedded once. A cast holds four embeds on Hypersnap, counting a quote, so the ones past that are left out.</li>
         <li><strong>Nothing is posted.</strong> The person sees the post in the composer and sends it, edits it or throws it away. An image you made has to be at an https URL before you send it, because the embed is the URL.</li>
         <li>To leave without changing anything, call <code>sdk.actions.close()</code>.</li>
       </ul>

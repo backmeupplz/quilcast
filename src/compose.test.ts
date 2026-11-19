@@ -2,7 +2,7 @@
 // counts against MAX_EMBEDS with the first post's quote and fixed embeds, and goes out as the cast's embed as it is.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { castEmbeds, embedRoom, holdsPicture, isImg, pictureToken, isLookImg, MAX_EMBEDS, PICTURE_TOKEN, postMedia, sentFiles, textLinks, urlsOf, withGif, fillPost } from './shared.ts'
+import { castEmbeds, embedRoom, holdsPicture, isImg, pictureToken, isLookImg, MAX_EMBEDS, PICTURE_TOKEN, postMedia, sentFiles, textLinks, urlsOf, withGif, fillPost, unholdPicture } from './shared.ts'
 
 const GIF = 'https://media1.tenor.com/m/gotOLnyvy4YAAAAd/bubu-dancing-dance.gif'
 const att = (url: string) => ({ id: Math.random(), preview: url, video: false, url })
@@ -256,6 +256,9 @@ test("a composer action's cast fills its post: new text replaces the draft's, it
   assert.deepEqual(fillPost('', [photo(1), photo(2), photo(3)], 1, { embeds: ['https://quilcast.com/train', poll] }, att, ['https://quilcast.com/train']).files.length, 3)
   // huge text is cut before it's spread
   assert.equal(fillPost('', [], 0, { text: '😀'.repeat(5e6) }, att).text, '😀'.repeat(1024))
+  // an app's text that reads as a picture still uploading doesn't lock the post
+  assert.equal(fillPost('', [], 0, { text: 'a ![](uploading:x) b ](uploading:uploading:y' }, att).text, 'a ![](x) b ](y')
+  assert.ok(!holdsPicture(unholdPicture('](uploading:uploading:](uploading:z')))
   // a link in the text that's attached too is embedded once
   assert.deepEqual(castEmbeds(`Vote ${poll}`, [poll]), [poll])
 })

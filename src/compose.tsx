@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, posting, users, type Account, type Cast, type User } from './api.ts'
 import { lang, t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, fillPost, safeUrl, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
+import { castText, embedRoom, fillPost, safeUrl, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, unholdPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
 import { ago, AppIcon, Avatar, composerActions, fetchCast, handle, Icon, launchApp, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w, type CastAction, type Drafting } from './ui.tsx'
 import type { Draft, Scheduled, ThreadStart } from './write.ts'
 import { trainOk } from './trainask.ts'
@@ -310,7 +310,7 @@ function ScheduledList({ as, open, close }: { as: Account; open: (s: Scheduled) 
 
 /** `text` and `embeds` prefill the first post (a mini app's composeCast); `onDone` hears the new hash, or null. */
 export function Composer({ channel: initial, text = '', embeds: given = [], onDone, onClose: close, scheduled: showScheduled = false, ...props }: { parent?: Cast; quote?: Cast; channel?: string; text?: string; embeds?: string[]; onDone?: (hash: string | null) => void; onClose: () => void; scheduled?: boolean }) {
-  const [parts, setParts] = useState<Part[]>(() => [{ ...newPart(), text }])
+  const [parts, setParts] = useState<Part[]>(() => [{ ...newPart(), text: unholdPicture(text) }])
   // where a send that failed partway left the thread (write.ts postThread): a retry goes on from the last cast that went
   // out instead of forking from the start again, and `root` is the thread's first cast. Opening a draft or a scheduled
   // cast starts over.
