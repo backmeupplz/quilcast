@@ -933,6 +933,8 @@ describe('the app in WebKit', { concurrency: true }, () => {
   }
   for (const [w, h, quorum] of [[390, 844, false], [360, 800, false], [360, 800, true], [430, 932, false]]) test(`on a ${w} px phone${quorum ? ' in Quorum mode' : ''}, the composer's toolbar fits the sheet, for a cast and a reply (#721)`, async () => {
     const { page, close } = await open({ 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify({ ...nodeAt, quorum }) }, { phone: { width: w, height: h } })
+    // a full list of channels (#763)
+    await page.route('**/api/channels?*', (r) => r.fulfill({ json: Array.from({ length: 8 }, (_, i) => ({ id: `chan${i}`, url: `https://farcaster.xyz/~/channel/chan${i}`, name: `Chan ${i}`, followers: 442000 - i, members: 0, open: true })) }))
     await drawn(page)
     await page.locator('#app article.cast footer').first().waitFor({ timeout: 30e3 })
     await page.locator('.fab').click()
@@ -943,7 +945,7 @@ describe('the app in WebKit', { concurrency: true }, () => {
     const c = await chip.boundingBox()
     await chip.click()
     const menu = page.locator('.modal .menu.picker')
-    await menu.waitFor()
+    await menu.locator('button', { hasText: '/chan7' }).waitFor({ state: 'attached' })
     const m = await menu.boundingBox()
     assert.ok(m.x >= 0 && m.x + m.width <= w && m.y >= 0 && m.y + m.height <= c.y, `the Channel picker is at ${JSON.stringify(m)}`)
     // a second tap on the chip closes the picker, and a third opens it again (#764)
@@ -956,6 +958,55 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await page.locator('#app article.cast button.act[aria-label="Reply"]').first().click()
     const reply = await toolbarFits(page, 'a reply')
     assert.ok(!reply.some((b) => /Channel/.test(b.label)), 'a reply has no Channel chip')
+    await close()
+  })
+
+  // #763: the Channel picker opened up past the window's top once its 8 channels were in, and its search box wasn't focused
+  for (const height of [720, 420]) test(`on a desktop ${height} px tall, the Channel picker stays on screen with its search box focused (#763)`, async () => {
+    const { page, close } = await open({ 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify(nodeAt) })
+    const list = Array.from({ length: 8 }, (_, i) => ({ id: `chan${i}`, url: `https://farcaster.xyz/~/channel/chan${i}`, name: `Chan ${i}`, followers: 442000 - i, members: 0, open: true }))
+    await page.route('**/api/channels?*', (r) => r.fulfill({ json: list }))
+    await drawn(page)
+    await page.locator('#app .cast-btn').click()
+    await page.locator('.modal .toolbar .chip').waitFor()
+    await page.setViewportSize({ width: 1280, height })
+    await page.locator('.modal .toolbar .chip').click()
+    const menu = page.locator('.modal .menu.picker')
+    await menu.locator('button', { hasText: '/chan7' }).waitFor({ state: 'attached' })
+    const m = await menu.boundingBox()
+    assert.ok(m.y >= 0 && m.y + m.height <= height, `the Channel picker is at ${JSON.stringify(m)} in a ${height} px window`)
+    assert.ok(await menu.locator('input').evaluate((el) => document.activeElement === el), 'the search box has focus')
+    // a window that shrinks under it, as an Android app's does for the keyboard
+    await page.setViewportSize({ width: 1280, height: height - 150 })
+    await page.waitForFunction((h) => document.querySelector('.modal .menu.picker').getBoundingClientRect().bottom <= h, height - 150, { timeout: 5e3 })
+    const s = await menu.boundingBox()
+    assert.ok(s.y >= 0 && s.y + s.height <= height - 150, `the Channel picker is at ${JSON.stringify(s)} in a ${height - 150} px window`)
+    // a keyboard that covers the page instead, as on iOS: the visual viewport ends above the chip, and the picker
+    // (search box and list) moves up into what's left of it
+    const kb = await page.evaluate(() => {
+      const kb = Math.round(document.querySelector('.modal .toolbar .chip').offsetParent.getBoundingClientRect().top / 2)
+      Object.defineProperty(visualViewport, 'height', { get: () => kb, configurable: true })
+      visualViewport.dispatchEvent(new Event('resize'))
+      return kb
+    })
+    await page.waitForFunction((kb) => document.querySelector('.modal .menu.picker').getBoundingClientRect().bottom <= kb, kb, { timeout: 5e3 })
+    const k = await menu.boundingBox()
+    assert.ok(k.y >= 0 && k.y + k.height <= kb, `the Channel picker is at ${JSON.stringify(k)} above a keyboard at ${kb} px`)
+    // Escape closes the picker, not the composer, from the search box and from a channel in the list; a picked channel
+    // gives the focus back to the composer (Cmd+Enter sends)
+    await page.keyboard.press('Escape')
+    await menu.waitFor({ state: 'detached' })
+    assert.ok(await page.locator('.modal').isVisible(), 'the composer is still open')
+    await page.locator('.modal .toolbar .chip').click()
+    await menu.locator('button', { hasText: '/chan7' }).waitFor({ state: 'attached' })
+    await menu.locator('button', { hasText: '/chan0' }).focus()
+    await page.keyboard.press('Escape')
+    await menu.waitFor({ state: 'detached' })
+    assert.ok(await page.locator('.modal').isVisible(), 'the composer is still open after Escape on a channel')
+    await page.locator('.modal .toolbar .chip').click()
+    await menu.locator('button', { hasText: '/chan3' }).click()
+    await page.locator('.modal .toolbar .chip', { hasText: '/chan3' }).waitFor()
+    assert.equal(await page.evaluate(() => document.activeElement?.tagName), 'TEXTAREA', 'the text has the focus back')
     await close()
   })
 

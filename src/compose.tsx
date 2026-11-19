@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, posting, users, type Account, type Cast, type User } from './api.ts'
 import { lang, t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
@@ -45,6 +45,35 @@ function AsPicker({ value, set }: { value: Account; set: (a: Account) => void })
 
 function ChannelPicker({ value, set, fid }: { value?: string; set: (v?: string) => void; fid?: number }) {
   const [open, setOpen] = useState(false)
+  // where it opens: above the chip, or below it when there's more room there, and as tall as that room allows (#763)
+  const [at, setAt] = useState({ up: true, max: 0, lift: 0 })
+  const chip = useRef<HTMLButtonElement>(null)
+  const place = () => {
+    // what it's placed against: the chip's box, or on a phone the whole toolbar (style.css, #721)
+    const r = (chip.current!.offsetParent || chip.current!).getBoundingClientRect()
+    // the visual viewport: the part a phone's keyboard leaves. On iOS (and in phone browsers) the keyboard covers the
+    // page rather than shrinking it, so the chip can be under it: then the picker is lifted to sit just above it.
+    const v = visualViewport, top = v ? v.offsetTop : 0, bottom = v ? v.offsetTop + v.height : innerHeight
+    const above = Math.min(r.top, bottom) - top, below = bottom - r.bottom
+    setAt({ up: above >= below, max: Math.max(above, below) - 14, lift: Math.max(0, r.top - bottom) })
+  }
+  const input = useRef<HTMLInputElement>(null)
+  // autofocus is only honoured on a page's load; still in the tap, so a phone's keyboard comes up (#763). Once a
+  // channel is picked, the text the search box took the focus from has it back (the chip doesn't take it on its way).
+  const back = useRef<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    if (open) return void ((back.current = document.activeElement as HTMLElement), input.current?.focus())
+    // fallen to the page, or (Safari) to the sheet around it: not into another field the click went to
+    back.current && document.activeElement?.contains(back.current) && back.current.focus()
+  }, [open])
+  // the keyboard coming up (an Android app's window shrinks with it; on iOS the visual viewport shrinks and moves)
+  // or a turned phone changes the room
+  useEffect(() => {
+    if (!open) return
+    visualViewport?.addEventListener('resize', place)
+    visualViewport?.addEventListener('scroll', place)
+    return () => (visualViewport?.removeEventListener('resize', place), visualViewport?.removeEventListener('scroll', place))
+  }, [open])
   const [q, setQ] = useState('')
   const [list, setList] = useState<Channel[]>([])
   // farcaster.xyz leaves non-members' casts out of a members-only channel
@@ -62,10 +91,10 @@ function ChannelPicker({ value, set, fid }: { value?: string; set: (v?: string) 
   }, [value, fid])
   return (
     <span class="wrap-menu">
-      <button class={`chip${value ? ' on' : ''}`} onClick={() => setOpen(!open)} aria-haspopup="menu" title={closed ? t('Only members can cast in /{id}, so farcaster.xyz won\'t show this there.', { id: value! }) : undefined}><Icon d={P.hash} size={14} />{value ? `/${value}` : t('Channel')}{closed && ' 🔒'}</button>
+      <button class={`chip${value ? ' on' : ''}`} ref={chip} onMouseDown={(e) => e.preventDefault()} onClick={() => (place(), setOpen(!open))} aria-haspopup="menu" title={closed ? t('Only members can cast in /{id}, so farcaster.xyz won\'t show this there.', { id: value! }) : undefined}><Icon d={P.hash} size={14} />{value ? `/${value}` : t('Channel')}{closed && ' 🔒'}</button>
       {open && (
-        <Menu class="picker" close={() => setOpen(false)}>
-          <input autoFocus value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search channels')} aria-label={t('Search channels')} />
+        <Menu class={`picker${at.up ? '' : ' down'}`} style={{ maxHeight: `${at.max}px`, ...(at.lift ? { bottom: `calc(100% + ${at.lift}px)` } : {}) }} close={() => setOpen(false)}>
+          <input ref={input} value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder={t('Search channels')} aria-label={t('Search channels')} />
           {value && <button onClick={() => (set(undefined), setOpen(false))}>{t('No channel')}</button>}
           {list.map((c) => <button onClick={() => (set(c.id), setOpen(false), setQ(''))}>/{c.id}<small>{c.open ? n(c.followers) : `🔒 ${n(c.followers)}`}</small></button>)}
         </Menu>

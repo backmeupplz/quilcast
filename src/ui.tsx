@@ -220,10 +220,10 @@ export function AppIcon({ src, name }: { src?: string; name?: string }) {
   return src && !bad ? <img class="app-icon" alt="" loading="lazy" referrerpolicy="no-referrer" src={proxied(src)} onError={() => setBad(true)} /> : <span class="app-icon">{[...(name || '?')][0]}</span>
 }
 
-/** A popup that closes on any click outside it and its button: its parent (each caller's wrapper) holds just that
+/** A popup that closes on Escape (just it, not a composer or dialog it's in) and on any click outside it and its button: its parent (each caller's wrapper) holds just that
  *  button and the popup, and the button toggles it itself. Closing on a click on the button too would
  *  open it again: Preact draws the closed menu before the button's handler runs, which then sees it closed (#764). */
-export function Menu({ close, class: cls, children }: { close: () => void; class?: string; children: ComponentChildren }) {
+export function Menu({ close, class: cls, style, children }: { close: () => void; class?: string; style?: Record<string, string>; children: ComponentChildren }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // capturing, so clicks that other handlers stop still count
@@ -231,7 +231,7 @@ export function Menu({ close, class: cls, children }: { close: () => void; class
     addEventListener('click', f, true)
     return () => removeEventListener('click', f, true)
   }, [])
-  return <div ref={ref} class={`menu ${cls || ''}`} role="menu">{children}</div>
+  return <div ref={ref} class={`menu ${cls || ''}`} style={style} role="menu" onKeyDown={(e) => e.key === 'Escape' && (e.stopPropagation(), close())}>{children}</div>
 }
 
 export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?: number; link?: boolean; onClick?: (e: MouseEvent) => void }) => {
