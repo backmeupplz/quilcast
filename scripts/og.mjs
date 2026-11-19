@@ -14,6 +14,7 @@ const PAGES = [
   { file: 'safety', title: 'Child Safety Standards', line: 'Zero tolerance for child sexual abuse and exploitation on Quilcast.', glyph: '🛡️' },
   { file: 'delete', title: 'Delete your account', line: 'Delete it from Settings: what it removes from Farcaster, our server and your device.', glyph: '🗑️' },
   { file: 'actions', title: 'Cast actions', line: 'Buttons in the ⋯ menu under every cast, built as Farcaster mini apps.', glyph: '⚡' },
+  { file: 'composer-actions', title: 'Composer actions', line: 'Mini apps that fill in the post you are writing.', glyph: '✍️' },
   { file: 'hypersnap', title: 'Mini apps on Hypersnap', line: 'Sign in and notifications that work for every Hypersnap account.', glyph: '🧩', url: 'quilcast.com/developers/mini-apps' },
 ]
 

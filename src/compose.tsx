@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, posting, users, type Account, type Cast, type User } from './api.ts'
 import { lang, t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
-import { ago, Avatar, fetchCast, handle, Icon, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w } from './ui.tsx'
+import { castText, embedRoom, fillPost, safeUrl, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
+import { ago, AppIcon, Avatar, composerActions, fetchCast, handle, Icon, launchApp, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w, type CastAction, type Drafting } from './ui.tsx'
 import type { Draft, Scheduled, ThreadStart } from './write.ts'
 import { trainOk } from './trainask.ts'
 import { findChannels, getChannel, isMember, urlOf, type Channel } from './channels.ts'
@@ -132,6 +132,13 @@ const Busy = ({ f }: { f: Attachment }) => (
   </span>
 )
 
+// an attachment that isn't a picture or a video (a composer action's link, compose.tsx runAction) shows its address
+function Preview({ f }: { f: Attachment }) {
+  const [link, setLink] = useState(false)
+  if (f.video) return <video src={f.preview} muted />
+  return link && f.url ? <span class="att-link"><Icon d={P.link} size={16} /><span>{f.url.replace(/^https:\/\//, '')}</span></span> : <img src={f.preview} alt="" onError={() => setLink(true)} />
+}
+
 /** One post of a thread: text with @mention autocomplete, its attachments and the links it will embed. */
 function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus, attach, placeholder, remove, md }: {
   md: boolean; part: Part; set: (p: Partial<Part>) => void; first: boolean; last: boolean; quote?: Cast; embeds?: string[]
@@ -179,8 +186,10 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
   }
   const grow = (el: HTMLTextAreaElement) => ((el.style.height = 'auto'), (el.style.height = el.scrollHeight + 'px'))
   useEffect(() => void (ref.current && grow(ref.current)), [part.text])
-  // the link cards are the links castEmbeds sends: what's left after the attachments postMedia sends
+  // the link cards are the links castEmbeds sends: what's left after the attachments postMedia sends, less a link that
+  // went in as an attachment too (a composer action's), which goes out once
   const slots = embedRoom(sentFiles(part.files, part.text), first ? +!!quote + embeds.length : 0)
+  const media = new Set(postMedia(first ? embeds : [], part.files, part.text).map((u) => safeUrl(u) ?? u))
   return (
     <div class={`part${last ? '' : ' threaded'}`} onClick={onFocus}>
       <div class="editor">
@@ -204,8 +213,8 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
       {part.files.length > 0 && (
         <div class="attachments">
           {part.files.map((f) => (
-            <div class={`att${f.err ? ' bad' : ''}`}>
-              {f.video ? <video src={f.preview} muted /> : <img src={f.preview} alt="" />}
+            <div key={f.id} class={`att${f.err ? ' bad' : ''}`}>
+              <Preview f={f} />
               {!f.url && !f.err && <Busy f={f} />}
               {f.err && <span class="att-err">{t(f.err)}</span>}
               <button class="att-x" aria-label={t('Remove')} onClick={() => set({ files: part.files.filter((x) => x.id !== f.id) })}><Icon d={P.x} size={14} /></button>
@@ -231,7 +240,7 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
       )}
       {first && quote && <div class="embed-preview"><QuoteCard c={quote} /></div>}
       {first && embeds.filter((u) => u !== TRAIN).map((u) => <div class="embed-preview">{isImg(u) || isVid(u) ? <Media urls={[u]} /> : <LinkCard u={u} />}</div>)}
-      {links.slice(0, slots).map((u) => <div class="embed-preview"><LinkCard u={u} /></div>)}
+      {links.filter((u) => !media.has(safeUrl(u) ?? u)).slice(0, slots).map((u) => <div class="embed-preview"><LinkCard u={u} /></div>)}
     </div>
   )
 }
@@ -526,6 +535,44 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   // out of the text again, and then all of them go out, never more than MAX_EMBEDS
   const room = busy ? 0 : embedRoom(cur.files.length, fixed(at))
   const add = () => (setParts((ps) => [...ps, newPart()]), setActive(parts.length))
+  // composer actions (/composer-actions): a mini app opened over the composer with the post on screen as its draft;
+  // the cast its composeCast sends fills that post in (shared.ts fillPost), or the post on screen once that one is gone
+  // (a draft was opened). `now` is this render's state, for the app's calls later; the app closes with the composer.
+  const [actions, setActions] = useState(false)
+  // while one is open the sheet can't be edited, so nothing typed meanwhile is lost to its fill, and the backdrop stays
+  // (an inert one lets clicks through to the page) but doesn't close the composer
+  const [acting, setActing] = useState(0)
+  const now = useRef({ parts, active: at, parent, quote, channel, fixed, embeds })
+  now.current = { parts, active: at, parent, quote, channel, fixed, embeds }
+  const opened = useRef<Drafting[]>([])
+  useEffect(() => () => void (opened.current.length && import('./miniapp.tsx').then((m) => opened.current.forEach(m.dropDraft))), [])
+  const runAction = (a: CastAction) => {
+    const id = cur.id
+    const post = () => {
+      const { parts: ps, active: i } = now.current
+      const at = ps.some((x) => x.id === id) ? ps.findIndex((x) => x.id === id) : i
+      return { p: ps[at], at }
+    }
+    const hash = (c?: Cast) => c && { type: 'cast' as const, hash: '0x' + c.hash.replace(/^0x/, '') }
+    // the first post's fixed embeds (a mini app's links, the train) go out first, so the app sees them with the
+    // attachments and counts the room they take (fixed)
+    const given = (at: number) => (at === 0 ? now.current.embeds : [])
+    const d: Drafting = {
+      draft: () => {
+        const { p, at } = post(), { parent, quote, channel } = now.current
+        return { text: p.text, embeds: [...given(at), ...p.files.flatMap((f) => f.url ?? [])], parent: hash(parent), quote: hash(quote), channelKey: parent ? undefined : channel }
+      },
+      open: (on) => setActing((n) => n + (on ? 1 : -1)),
+      fill: (o) => {
+        const { p, at } = post()
+        update(p.id, (x) => fillPost(x.text, x.files, now.current.fixed(at), o, (url) => ({ id: Math.random(), preview: url, video: isVid(url), url }), given(at)))
+        setActive(at)
+      },
+    }
+    opened.current.push(d)
+    setActions(false)
+    launchApp(a, { draft: d })
+  }
   const send = async () => {
     if (lost) return toast("The cast this replies to can't be loaded right now, so this reply can't be sent yet. Save it as a draft and try again later.")
     if (when) return later(when)
@@ -600,8 +647,8 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
     }
   }
   return (
-    <div class="modal" onClick={leave}>
-      <div class="sheet" tabIndex={-1} role="dialog" aria-label={parent || lost ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
+    <div class="modal" onClick={acting ? undefined : leave}>
+      <div class="sheet" inert={acting > 0} tabIndex={-1} role="dialog" aria-label={parent || lost ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : scheduledOpen ? setScheduledOpen(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send(), shortcut(e))}>
         <div class="sheet-top">
           <span class="sheet-left">
@@ -679,6 +726,15 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
           {canDraft && <button class={`icon-btn${timing ? ' on' : ''}`} aria-label={t('Schedule')} title={t('Schedule')} aria-pressed={timing} disabled={busy} onClick={() => (timing ? (setTiming(false), setWhen(undefined)) : (setTiming(true), setWhen((x) => x || Math.ceil((Date.now() + 3600e3) / 300e3) * 300e3)))}><Icon d={P.clock} /></button>}
           {!cont && <button class={`icon-btn${train ? ' on' : ''}`} aria-label={t('Train')} title={t('Train: anyone can tap the train button to quote this cast with the same text')} aria-pressed={train} disabled={busy} onClick={() => (train ? setTrain(false) : trainOk('start').then((ok) => ok && setTrain(true)))}><Icon d={P.train} /></button>}
+          <span class="wrap-menu">
+            <button class={`icon-btn${actions ? ' on' : ''}`} aria-label={t('Composer actions')} title={t('Composer actions')} aria-haspopup="menu" disabled={busy || uploading} onClick={() => setActions(!actions)}><Icon d={P.apps} /></button>
+            {actions && (
+              <Menu class="picker" close={() => setActions(false)}>
+                {composerActions().map((a) => <button role="menuitem" onClick={() => runAction(a)}><AppIcon src={a.icon} name={a.name} />{a.name}</button>)}
+                <button role="menuitem" onClick={() => (setActions(false), (then.current = '/composer-actions'), leave())}><Icon d={P.plus} />{t('Composer actions…')}</button>
+              </Menu>
+            )}
+          </span>
           {!parent && !lost && <ChannelPicker value={channel} set={setChannel} fid={as.fid} />}
           {/* the count and + stay together at the row's end, on a second row with the Channel chip when a phone is too narrow for one (#721) */}
           <span class="toolbar-end">

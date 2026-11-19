@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Build a Quilcast composer action</title>
+    <meta name="description" content="Composer actions are mini apps people open from the Quilcast composer. They get the draft and fill it in with text and embeds: polls, GIF and meme makers, anything a small web app can write." />
+    <link rel="canonical" href="https://quilcast.com/developers/composer-actions" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Quilcast" />
+    <meta property="og:url" content="https://quilcast.com/developers/composer-actions" />
+    <meta property="og:title" content="Build a Quilcast composer action" />
+    <meta property="og:description" content="Mini apps opened from the composer that fill in the draft, declared with a composerActionUrl." />
+    <meta property="og:image" content="https://quilcast.com/og-composer-actions.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Composer actions: mini apps that fill in a Quilcast draft" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@quilcast" />
+    <meta name="twitter:title" content="Build a Quilcast composer action" />
+    <meta name="twitter:description" content="Mini apps opened from the composer that fill in the draft, declared with a composerActionUrl." />
+    <meta name="twitter:image" content="https://quilcast.com/og-composer-actions.png" />
+    <meta name="twitter:image:alt" content="Composer actions: mini apps that fill in a Quilcast draft" />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Build a composer action</h1>
+      <p class="muted">For developers. Quilcast, November 2026.</p>
+      <p>A composer action is an app people open from the composer in <a href="/">Quilcast</a>. It gets the post they're writing and fills it in: a poll, a GIF or meme maker, a price chart, a link to something your app made, or anything else a small web app can put in a cast. Warpcast used to have these, and this is the same idea built on today's <a href="https://miniapps.farcaster.xyz">Farcaster mini apps</a>.</p>
+      <p>An action is a mini app that declares a <code>composerActionUrl</code> in its manifest. Quilcast opens it with the draft in the SDK context, and the app sends the finished post back with the SDK's own <code>composeCast</code>. Nothing else is new, so the same app keeps working in other Farcaster clients, where <code>composeCast</code> simply opens their composer. To make sign-in and notifications work for accounts created on Hypersnap too, see <a href="/developers/mini-apps">Build mini apps for Hypersnap</a>.</p>
+
+      <h2>How it works</h2>
+      <ol>
+        <li>Someone adds your action from <a href="/composer-actions">quilcast.com/composer-actions</a>, usually through your own link, <code>https://quilcast.com/composer-actions?add=yourapp.com</code>.</li>
+        <li>Your action's name and icon then show up under the apps button in their composer.</li>
+        <li>When they tap it, Quilcast opens your <code>composerActionUrl</code> as a mini app over the composer, with the post they're writing in the SDK context.</li>
+        <li>Your app does its job and calls <code>sdk.actions.composeCast({ text, embeds })</code>. Quilcast puts that into the post and closes your app, and the person reads it over, edits it if they like, and sends it themselves.</li>
+      </ol>
+
+      <h2>1. Declare it in your manifest</h2>
+      <p>Add <code>composerActionUrl</code> to <code>/.well-known/farcaster.json</code> on your domain:</p>
+<pre><code>{
+  "accountAssociation": { "header": "…", "payload": "…", "signature": "…" },
+  "miniapp": {
+    "version": "1",
+    "name": "Poll",
+    "iconUrl": "https://poll.example.com/icon.png",
+    "homeUrl": "https://poll.example.com/",
+    "composerActionUrl": "https://poll.example.com/compose",
+    "subtitle": "Ask your followers",
+    "splashImageUrl": "https://poll.example.com/icon.png",
+    "splashBackgroundColor": "#0d0c11"
+  }
+}</code></pre>
+      <ul>
+        <li><code>composerActionUrl</code> must be an absolute https URL on the same origin as the manifest. Quilcast ignores one that points elsewhere. <code>composerActionUrl</code> is Quilcast's addition to the manifest, and other clients skip fields they don't know.</li>
+        <li><code>name</code> is the menu label, so keep it short: two words is ideal, and the mini app spec allows 32 characters. <code>iconUrl</code> is a square PNG, drawn at 18 px in the menu.</li>
+        <li><code>subtitle</code> (or <code>description</code>) is the line shown under the name when someone adds your action by link.</li>
+        <li>Quilcast doesn't require <code>accountAssociation</code>, but other Farcaster clients do, so <a href="https://miniapps.farcaster.xyz/docs/guides/publishing">sign your domain</a> anyway.</li>
+        <li>An app can be a cast action (<a href="/developers/cast-actions"><code>castShareUrl</code></a>) and a composer action at the same time.</li>
+      </ul>
+
+      <h2>2. Read the draft</h2>
+      <p>Inside the app, the <a href="https://www.npmjs.com/package/@farcaster/miniapp-sdk">mini app SDK</a> context has the post the person is writing. Its shape follows <code>composeCast</code>'s options, so what you read is what you send back:</p>
+<pre><code>import { sdk } from '@farcaster/miniapp-sdk'
+
+const ctx = await sdk.context
+await sdk.actions.ready()
+
+// the SDK's types don't list this location yet, so compare it as a string
+const loc = ctx.location as any
+if (loc?.type === 'composer') {
+  const { text, embeds, parent, quote, channelKey } = loc.draft
+  // text: what's typed so far ('' for an empty post)
+  // embeds: the URLs the post embeds: any the composer was opened with (say, a mini app's link, or
+  //   https://quilcast.com/train for a train), then its
+  //   attachments (photos, videos, GIFs, and links an action added)
+  // parent / quote: { type: 'cast', hash } when it's a reply or a quote cast, else undefined
+  // channelKey: the channel it goes to, if one is picked, else undefined
+  // ctx.user is the signed-in account (the person may pick another of theirs to post this one as)
+}</code></pre>
+      <p>In a thread, <code>text</code> and <code>embeds</code> are those of the post the person had selected when they opened your action, and <code>parent</code>, <code>quote</code> and <code>channelKey</code> are the thread's. Links typed in the text aren't in <code>embeds</code>: they're in <code>text</code>, and they go out as embeds when there's room.</p>
+
+      <h2>3. Fill it in</h2>
+      <p>When your app is done, send the post back and Quilcast closes your app:</p>
+<pre><code>await sdk.actions.composeCast({
+  text: `${text}\n\nVote below 👇`.trim(),
+  embeds: ['https://poll.example.com/p/8f3a'],
+})</code></pre>
+      <ul>
+        <li><strong><code>text</code> replaces the post's text</strong> when you send it, so start from <code>draft.text</code> if you only add to it. Leave <code>text</code> out to keep the text as it is. A long cast holds up to 1024 bytes, and the composer won't send more.</li>
+        <li><strong><code>embeds</code> are added</strong> to the post's attachments, after the ones it has. A URL that's already in <code>draft.embeds</code> isn't added twice, so you can send those back with yours, and only https URLs count. A link that's both in your text and in <code>embeds</code> is embedded once. A cast holds four embeds on Hypersnap, counting a quote, so the ones past that are left out.</li>
+        <li><strong>Nothing is posted.</strong> The person sees the post in the composer and sends it, edits it or throws it away. An image you made has to be at an https URL before you send it, because the embed is the URL.</li>
+        <li>To leave without changing anything, call <code>sdk.actions.close()</code>.</li>
+      </ul>
+      <p>Everything else a mini app can do works too, such as <code>signIn</code>, <code>addMiniApp</code>, the wallet, <code>openUrl</code> and haptics. See the <a href="/developers/cast-actions">cast action doc</a> for what Quilcast supports. Your app stays over the composer until it's done, so <code>viewCast</code>, <code>viewProfile</code> and <code>openMiniApp</code> do nothing while it's open as a composer action.</p>
+
+      <h2>In other clients</h2>
+      <p>Other Farcaster clients don't know <code>composerActionUrl</code> yet. If someone opens your app there (from a cast embed, a link or the client's app list), <code>location</code> isn't <code>composer</code>, and <code>composeCast</code> opens that client's composer with your text and embeds. Show a starting screen in that case, rather than assuming there's a draft.</p>
+
+      <h2>Trust</h2>
+      <ul>
+        <li><strong>The context isn't proof.</strong> Anyone can open your URL, and <code>sdk.context</code> is whatever the host says. Before you spend, store or post anything for someone, have them sign in with <code>sdk.actions.signIn({ nonce })</code> and verify the result on your server (<a href="/developers/mini-apps#sign-in">Build for Hypersnap</a> has the whole check).</li>
+        <li><strong>What your app sees.</strong> Your app runs in a sandboxed frame on your own origin. It sees the draft of the post it was opened from, from the moment the person taps your action until your app closes, and the composer closes your app when it closes itself. Adding an action only reads your manifest, through Quilcast's server.</li>
+        <li><strong>What it can't do.</strong> It can't send the cast. Only the person can, from the composer, after they've seen what your app wrote. Quilcast reviews the actions on its official list, but not the ones people add by link, and it tells them so.</li>
+      </ul>
+
+      <h2 id="clients">For client developers</h2>
+      <p>Any Hypersnap or Farcaster client can run the same composer actions. It takes four things:</p>
+      <ol>
+        <li><strong>Read <code>composerActionUrl</code></strong> from the app's manifest, and accept it only as an https URL on the manifest's own origin.</li>
+        <li><strong>Open it from the composer</strong> as a mini app, with <code>location</code> set to <code>{ type: 'composer', draft: { text, embeds, parent, quote, channelKey } }</code>. <code>parent</code> and <code>quote</code> are <code>{ type: 'cast', hash }</code> with a <code>0x</code> hash, and the fields that don't apply are undefined.</li>
+        <li><strong>Answer that app's <code>composeCast</code></strong> by filling in the post instead of opening a new composer. A <code>text</code> string replaces the post's text; each https URL in <code>embeds</code> that isn't attached yet is added while the post has room. Then close the app, and answer the call with <code>{ cast: null }</code>, since nothing was posted. Take the call only from the app on screen.</li>
+        <li><strong>Let the person send it.</strong> Never post from a composer action without the person sending it in your composer.</li>
+      </ol>
+
+      <h2>Test it</h2>
+      <ol>
+        <li>Serve your app over https on a public address (a tunnel such as <code>cloudflared tunnel --url http://localhost:5173</code> works while you build).</li>
+        <li>Open <code>https://quilcast.com/composer-actions?add=your-tunnel-host</code> and tap Add.</li>
+        <li>Open the composer, tap the apps button and pick your action. Quilcast caches manifests for ten minutes, so to pick up a changed manifest, remove the action and add it again after that.</li>
+      </ol>
+
+      <h2>Get on the official list</h2>
+      <p>The official list at <a href="/composer-actions">quilcast.com/composer-actions</a> lives in <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/src/composer-actions.json"><code>src/composer-actions.json</code></a>. To add yours, open a pull request (or an issue) on <a href="https://git.borodutch.com/backmeupplz/quilcast">git.borodutch.com/backmeupplz/quilcast</a> with one line: its <code>composerActionUrl</code>, name, icon and a short description. We list actions that work, do what their description says, and don't ask for a wallet signature that the job doesn't need. Until it's listed, share your <code>quilcast.com/composer-actions?add=</code> link, which works for anyone.</p>
+
+      <p class="muted"><a href="/about">About Quilcast</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of use</a></p>
+    </main>
+  </body>
+</html>

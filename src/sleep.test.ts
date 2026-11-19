@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { awake, IDLE, sleepers, type Napper } from './sleep.ts'
+import { awake, displaced, IDLE, sleepers, type Napper } from './sleep.ts'
 
 type A = Napper & { busy?: boolean }
 const ids = (l: A[]) => l.map((a) => a.id)
@@ -31,4 +31,16 @@ test('past the limit, the apps used longest ago sleep first', () => {
 test('on a phone in the background every waiting app sleeps', () => {
   const apps: A[] = [{ id: 1, hidAt: now }, { id: 2 }, { id: 3, hidAt: now, busy: true }]
   assert.deepEqual(ids(sleepers(apps, 2, now, 3, busy, true)), [1])
+})
+
+test('a composer action on screen is pushed off by any other app, or none, but not by itself (#765)', () => {
+  const action = { id: 2, draft: {} }
+  const apps = [{ id: 1 }, action, { id: 3 }]
+  assert.equal(displaced(apps, 2, apps[0]), action)
+  assert.equal(displaced(apps, 2, apps[2]), action)
+  assert.equal(displaced(apps, 2, null), action)
+  assert.equal(displaced(apps, 2, action), undefined)
+  // a plain app on screen just goes to the dock, as before
+  assert.equal(displaced(apps, 1, apps[2]), undefined)
+  assert.equal(displaced(apps, null, apps[2]), undefined)
 })

@@ -15,10 +15,10 @@ import { choices, pair, qr, WC, wcChoice, wcLive } from './wallet.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
 import { castText, LOGO, proxied } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
-import { addAppAction, APP_PUSH, askPush, castActions, channelOf, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, saveActions, shell, toast, togglePin, unfurl, WalletIcon, type CastAction } from './ui.tsx'
+import { addAppAction, APP_PUSH, askPush, castActions, channelOf, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, saveActions, shell, toast, togglePin, unfurl, WalletIcon, type CastAction, type Drafting } from './ui.tsx'
 import { custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
-import { awake, sleepers } from './sleep.ts'
+import { awake, displaced, sleepers } from './sleep.ts'
 import { isSaved, oneClick, oneClickPayload, shareHome } from './appsaved.ts'
 
 const QUILCAST_FID = 3356316
@@ -106,8 +106,9 @@ type Notice = { notificationId: string; title: string; body: string }
 type Ask = { title: string; body: string; yes: string; extra?: () => ComponentChildren; at: number; done: (ok: boolean) => void }
 type App = {
   id: number; url: string; origin: string; host: string; name: string; icon?: string; bg?: string
-  // share: opened as a cast action (castShareUrl) on `cast`, rather than from its embed
-  cast?: Cast; embed?: string; share?: boolean; from?: string; notification?: Notice; frame?: HTMLIFrameElement; ready: boolean
+  // share: opened as a cast action (castShareUrl) on `cast`, rather than from its embed; draft: opened as a composer
+  // action (composerActionUrl), from the post it fills in
+  cast?: Cast; embed?: string; share?: boolean; draft?: Drafting; from?: string; notification?: Notice; frame?: HTMLIFrameElement; ready: boolean
   wallet?: Wallet; connected: boolean; chain: number; sol?: { wallet: SolWallet; account: { address: string } }; media: boolean
   button?: { text: string; loading: boolean; disabled: boolean; hidden: boolean }; back: boolean
   ask?: Ask; waiting?: string; stop?: () => void; uuid: string; pair?: { uri: string; img: string; cancel: () => void }
@@ -119,6 +120,8 @@ type App = {
   stuck?: boolean; tries?: number; loaded?: HTMLIFrameElement; watching?: ReturnType<typeof setTimeout>
   // asleep: its frame is unloaded (sleep.ts); hidAt: when it last went into the dock
   asleep?: boolean; hidAt?: number; calls: number
+  // before: the app on screen when this composer action opened, shown again when it closes
+  before?: number
 }
 const apps: App[] = []
 let shown: number | null = null
@@ -167,6 +170,10 @@ function nap(all = false) {
 addEventListener('visibilitychange', () => document.hidden && (narrow() || inApp) && nap(true))
 
 const show = (app: App | null) => {
+  // whatever takes the screen from a composer action (another app's viewProfile, a notification's app) closes it, so
+  // its composer unlocks and keeps its draft (sleep.ts displaced); `app` takes the screen, not the action's `before`
+  const action = displaced(apps, shown, app)
+  if (action) (action.before = undefined), close(action)
   leaveMonitor(app)
   const was = apps.find((a) => a.id === shown)
   if (was && was !== app) was.hidAt = Date.now()
@@ -178,21 +185,25 @@ const show = (app: App | null) => {
 }
 
 /** Open a mini app, or bring it forward if it's already open. */
-export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; share?: boolean; from?: string; notification?: Notice } = {}) {
+export function launch(m: AppMeta, ctx: { cast?: Cast; embed?: string; share?: boolean; draft?: Drafting; from?: string; notification?: Notice } = {}) {
   const url = safeUrl(m.url)
   if (!url?.startsWith('https://')) return toast("That mini app isn't on a secure (https) address.")
   const { origin, host } = new URL(url)
-  const open = apps.find((a) => a.url === url)
-  if (open) return show(open)
+  const open = apps.find((a) => a.url === url && !a.draft)
+  // a composer action's address is the same from every post, so one already open starts over with this one; and one
+  // composer action at a time, since another stays hidden under the composer
+  if (ctx.draft) apps.filter((a) => a.draft).forEach(close)
+  else if (open && !open.draft) return show(open)
   if (!root) render(<Host />, (root = document.body.appendChild(document.createElement('div')))), setInterval(nap, 30_000)
   const bg = /^#[0-9a-f]{3,8}$/i.test(m.bg || '') ? m.bg : undefined
   const app: App = {
     id: ++ids, url, origin, host, name: (m.name || host).slice(0, 60), icon: safeUrl(m.splash) || safeUrl(m.icon), bg, ...ctx,
     ready: false, connected: false, chain: base.id, media: Object.hasOwn(allowed('media'), origin), back: false, uuid: crypto.randomUUID(), calls: 0,
-    full: Object.hasOwn(allowed('full'), origin),
+    full: Object.hasOwn(allowed('full'), origin), before: ctx.draft ? shown ?? undefined : undefined,
   }
   app.wallet = remembered(app) || wallets.find((w) => w.key === read('quilcast:wallet', '')) || wallets[0]
   apps.push(app)
+  app.draft?.open(true)
   show(app)
 }
 
@@ -202,12 +213,19 @@ export async function launchUrl(url: string, from?: string, notification?: Notic
   launch(d?.app ? { ...d.app, icon: d.icon, url: notification ? url : d.app.url } : { url: d?.url || url, name: d?.title, icon: d?.icon }, { from, notification })
 }
 
+/** The composer a composer action was opened from is gone (the cast went out, or it was closed), and so is the action. */
+export const dropDraft = (d: Drafting) => apps.filter((a) => a.draft === d).forEach(close)
+
 function close(app: App) {
+  if (!apps.includes(app)) return
   app.ask?.done(false)
   if (shown === app.id) leaveMonitor(null)
   apps.splice(apps.indexOf(app), 1)
+  app.draft?.open(false)
+  // a composer action gives the screen back to the app that was on it (one whose composeCast opened the composer)
+  const back = shown === app.id && apps.find((a) => a.id === app.before)
   if (shown === app.id) shown = null
-  update()
+  back ? show(back) : update()
 }
 // Chrome won't load a frame at the same address as its ancestors, so each Quilcast in Quilcast gets its own
 const src = (app: App) => {
@@ -710,7 +728,7 @@ const inboxSecret = () => {
 }
 const notifying = (origin: string) => !!account?.notify?.includes(origin)
 const savedApps = () => read<AppMeta[]>('quilcast:apps', [])
-export const manifestOf = (origin: string): Promise<{ name?: string; iconUrl?: string; homeUrl?: string; castShareUrl?: string; description?: string; webhook?: boolean } | null> =>
+export const manifestOf = (origin: string): Promise<{ name?: string; iconUrl?: string; homeUrl?: string; castShareUrl?: string; composerActionUrl?: string; description?: string; webhook?: boolean } | null> =>
   fetch(`/api/manifest?origin=${encodeURIComponent(origin)}`).then((r) => r.json(), () => null)
 const details = (m: AppMeta) => api('/api/notify/token', { inbox: inboxSecret(), origin: new URL(m.url).origin, name: m.name, icon: m.icon }) as Promise<{ token: string; url: string }>
 
@@ -768,16 +786,21 @@ const context = async (app: App) => ({
   },
   user: userCtx(myUser()!),
   location: app.notification ? { type: 'notification', notification: app.notification }
+    : app.draft ? { type: 'composer', draft: app.draft.draft() }
     : app.cast ? (app.share ? { type: 'cast_share', cast: castCtx(app.cast) } : { type: 'cast_embed', embed: app.embed, cast: castCtx(app.cast) })
       : app.from ? { type: 'open_miniapp', referrerDomain: app.from } : { type: 'launcher' },
   features: { haptics, cameraAndMicrophoneAccess: true },
 })
 
-// on a phone, or full screen, the app covers the page, so it steps aside for the cast or profile it opened
-const leave = (app: App, path: string) => ((narrow() || app.full) && show(null), go(path))
+// on a phone, or full screen, the app covers the page, so it steps aside for the cast or profile it opened; a composer
+// action can't (the composer is over the page, and the action over the composer), so it ignores these
+const leave = (app: App, path: string) => !app.draft && ((narrow() || app.full) && shown === app.id && show(null), go(path))
 
 async function compose(app: App, o: any = {}) {
   foreground(app)
+  // a composer action's cast goes into the post it was opened from, and the app is done
+  // (the composer closes the app when it goes, so there's always one to fill)
+  if (app.draft) return app.draft.fill(o ?? {}), close(app), { cast: null }
   const embeds = (Array.isArray(o.embeds) ? o.embeds : []).slice(0, 2).flatMap((u: unknown) => safeUrl(String(u)) ?? [])
   const parent = typeof o.parent?.hash === 'string' ? await fetchCast(o.parent.hash) : undefined
   if (parent === null) throw new Error('That cast is unavailable.')
@@ -806,8 +829,8 @@ async function addApp(app: App) {
   // the spec has hosts check the domain's manifest before adding
   const m = await manifestOf(app.origin)
   if (!m) return { error: { type: 'invalid_domain_manifest' } }
-  // a cast action is saved once, at its home rather than at this cast (appsaved.ts)
-  const meta = { url: app.share ? shareHome(app.url, m.homeUrl) : app.url, name: app.name, icon: app.icon }
+  // a cast or composer action is saved once, at its home rather than at this cast or post (appsaved.ts)
+  const meta = { url: app.share || app.draft ? shareHome(app.url, m.homeUrl) : app.url, name: app.name, icon: app.icon }
   const saved = isSaved(savedApps(), app)
   let d: { url: string; token: string } | undefined
   if (saved && (notifying(app.origin) || !m.webhook)) d = notifying(app.origin) ? await details(meta).catch(() => undefined) : undefined
@@ -895,7 +918,7 @@ function openUrl(app: App, raw: unknown) {
   const x = new URL(u)
   // farcaster.xyz's compose links open our composer
   if (/^(www\.)?(warpcast\.com|farcaster\.xyz)$/.test(x.hostname) && x.pathname === '/~/compose')
-    return compose(app, { text: x.searchParams.get('text') || '', embeds: x.searchParams.getAll('embeds[]'), channelKey: x.searchParams.get('channelKey') })
+    return compose(app, { text: x.searchParams.get('text') ?? undefined, embeds: x.searchParams.getAll('embeds[]'), channelKey: x.searchParams.get('channelKey') })
   open(u, '_blank', 'noopener,noreferrer')
 }
 
@@ -915,6 +938,8 @@ const calls: Record<string, (app: App, ...a: any[]) => unknown> = {
   openUrl,
   openMiniApp: async (app, o) => {
     foreground(app)
+    // it would open under the composer a composer action fills in
+    if (app.draft) return
     const u = safeUrl(o?.url)
     if (!u) throw new Error('That is not a web link.')
     await launchUrl(u, app.host)
@@ -1069,17 +1094,18 @@ function Window({ app }: { app: App }) {
   const on = shown === app.id
   const b = app.button
   return (
-    <section class={`mini${on ? '' : ' away'}${app.full ? ' full' : ''}`} aria-label={app.name} aria-hidden={!on}>
+    <section class={`mini${on ? '' : ' away'}${app.full ? ' full' : ''}${app.draft ? ' over' : ''}`} aria-label={app.name} aria-hidden={!on}>
       <header class="mini-top">
         {app.back ? <button class="icon-btn" aria-label={t('Back')} onClick={() => emit(app, { event: 'back_navigation_triggered' })}><Icon d={P.back} /></button> : <AppIcon app={app} />}
         <span class="mini-name"><b>{app.name}</b><small>{app.host}</small></span>
         <WalletMenu app={app} />
         <AppMenu app={app} />
-        <button class="icon-btn" aria-label={t('Minimize')} onClick={() => show(null)}><Icon d={P.min} /></button>
+        {/* a composer action stays over its composer until it's closed: minimized, it would sit in the dock under it */}
+        {!app.draft && <button class="icon-btn" aria-label={t('Minimize')} onClick={() => show(null)}><Icon d={P.min} /></button>}
         {/* (a phone's window is always the whole screen) */}
         <button class="icon-btn mini-full" aria-label={app.full ? t('Exit full screen') : t('Full screen')} title={app.full ? t('Exit full screen') : t('Full screen')} onClick={() => setFull(app, !app.full)}><Icon d={app.full ? P.shrink : P.expand} /></button>
         {/* Quorum mode has Quorum's share button */}
-        {settings.quorum && (
+        {settings.quorum && !app.draft && (
           <>
             <button class="icon-btn" aria-label={t('Share in a cast')} onClick={() => shell.compose({ embeds: [app.url] })}><Icon d={P.share} /></button>
             {/* Quorum's search: tucks this app into the dock and looks through the directory for another */}

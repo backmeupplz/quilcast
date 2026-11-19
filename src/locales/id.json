@@ -1421,5 +1421,13 @@
   "Pick a time from a minute to a year away.": "Pilih waktu antara satu menit dan satu tahun dari sekarang.",
   "Too many reminders right now. Try again later.": "Terlalu banyak pengingat saat ini. Coba lagi nanti.",
   "The reminder wasn’t saved. Try again.": "Pengingat tidak tersimpan. Coba lagi.",
-  "Something went wrong.": "Terjadi kesalahan."
+  "Something went wrong.": "Terjadi kesalahan.",
+  "Composer actions": "Aksi penyusun",
+  "Composer actions…": "Aksi penyusun…",
+  "Added {name} to the composer": "{name} ditambahkan ke penyusun",
+  "Removed {name} from the composer": "{name} dihapus dari penyusun",
+  "{host} has no composer action.": "{host} tidak punya aksi penyusun.",
+  "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Aksi penyusun ada di bawah tombol aplikasi di penyusun. Masing-masing adalah aplikasi mini yang terbuka dengan draf-mu dan mengisinya.",
+  "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast belum meninjau aksi ini. Aksi ini melihat draf tempat kamu membukanya dan bisa meminta dompetmu, seperti aplikasi mini lainnya.",
+  "Make your own composer action": "Buat aksi penyusun-mu sendiri"
 }

@@ -1421,5 +1421,13 @@
   "Pick a time from a minute to a year away.": "اختر وقتًا بين دقيقة وسنة من الآن.",
   "Too many reminders right now. Try again later.": "هناك تذكيرات كثيرة جدًا الآن. حاول مرة أخرى لاحقًا.",
   "The reminder wasn’t saved. Try again.": "لم يُحفظ التذكير. حاول مرة أخرى.",
-  "Something went wrong.": "حدث خطأ ما."
+  "Something went wrong.": "حدث خطأ ما.",
+  "Composer actions": "إجراءات الكتابة",
+  "Composer actions…": "إجراءات الكتابة…",
+  "Added {name} to the composer": "تمت إضافة {name} إلى نافذة الكتابة",
+  "Removed {name} from the composer": "تمت إزالة {name} من نافذة الكتابة",
+  "{host} has no composer action.": "لا يوجد إجراء كتابة في {host}.",
+  "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "تظهر إجراءات الكتابة تحت زر التطبيقات في نافذة الكتابة. كل واحد منها تطبيق مصغّر يفتح مع مسودتك ويملؤها.",
+  "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "لم يراجع Quilcast هذا الإجراء. يرى المسودة التي تفتحه منها ويمكنه طلب محفظتك، مثل أي تطبيق مصغّر.",
+  "Make your own composer action": "أنشئ إجراء الكتابة الخاص بك"
 }

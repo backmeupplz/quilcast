@@ -37,7 +37,8 @@ export const oneClickPayload = (url: string, cast: { hash: string; fid: number }
   ...(input != null && { input }), ...(notificationDetails && { notificationDetails }), timestamp: now,
 })
 
-/** Whether the app is in Mini apps: a cast action by its origin (one entry per app), any other app by its address. */
-export function isSaved(saved: { url: string }[], app: { url: string; origin: string; share?: boolean }) {
-  return saved.some((s) => (app.share ? parse(s.url)?.origin === app.origin : s.url === app.url))
+/** Whether the app is in Mini apps: a cast or composer action (`draft`) by its origin (one entry per app), any other
+ *  app by its address. */
+export function isSaved(saved: { url: string }[], app: { url: string; origin: string; share?: boolean; draft?: unknown }) {
+  return saved.some((s) => (app.share || app.draft ? parse(s.url)?.origin === app.origin : s.url === app.url))
 }

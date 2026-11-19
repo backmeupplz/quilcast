@@ -1421,5 +1421,13 @@
   "Pick a time from a minute to a year away.": "Escolha um momento entre um minuto e um ano a partir de agora.",
   "Too many reminders right now. Try again later.": "Lembretes demais agora. Tente de novo mais tarde.",
   "The reminder wasn’t saved. Try again.": "O lembrete não foi salvo. Tente de novo.",
-  "Something went wrong.": "Algo deu errado."
+  "Something went wrong.": "Algo deu errado.",
+  "Composer actions": "Ações do editor",
+  "Composer actions…": "Ações do editor…",
+  "Added {name} to the composer": "{name} adicionada ao editor",
+  "Removed {name} from the composer": "{name} removida do editor",
+  "{host} has no composer action.": "{host} não tem nenhuma ação do editor.",
+  "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "As ações do editor ficam no botão de apps do editor. Cada uma é um miniapp que abre com o seu rascunho e o preenche.",
+  "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "O Quilcast não analisou esta ação. Ela vê o rascunho de onde você a abre e pode pedir a sua carteira, como qualquer miniapp.",
+  "Make your own composer action": "Crie sua própria ação do editor"
 }

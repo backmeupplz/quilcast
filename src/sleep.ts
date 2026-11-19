@@ -16,3 +16,9 @@ export function sleepers<T extends Napper>(apps: T[], shown: number | null, now:
   const waiting = apps.filter((a) => a.id !== shown && !a.asleep && !busy(a)).sort((a, b) => (b.hidAt ?? now) - (a.hidAt ?? now))
   return waiting.filter((a, i) => all || i >= keep || now - (a.hidAt ?? now) >= IDLE)
 }
+
+/** The composer action on screen that showing `next` (null: none) pushes off it. miniapp.tsx show() closes that one
+ *  rather than hiding it: its composer is locked while it's open, and it has no Minimize, so hidden it would lock it
+ *  for good (#765). */
+export const displaced = <T extends { id: number; draft?: unknown }>(apps: T[], shown: number | null, next: T | null) =>
+  apps.find((a) => a.id === shown && a.draft && a !== next)

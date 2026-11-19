@@ -28,6 +28,12 @@ test('a cast action added from its home before counts as saved; other apps still
   assert.ok(!isSaved(saved, { url: 'https://tip.quilcast.com/other', origin: 'https://tip.quilcast.com' }))
 })
 
+test('a composer action is saved once, at its home, and known by its origin', () => {
+  const saved = [{ url: shareHome('https://poll.example.com/compose', 'https://poll.example.com/') }]
+  assert.ok(isSaved(saved, { url: 'https://poll.example.com/compose', origin: 'https://poll.example.com', draft: {} }))
+  assert.ok(!isSaved(saved, { url: 'https://poll.example.com/compose', origin: 'https://poll.example.com' }))
+})
+
 test('a one-click action is https on the asking app\'s own origin, with a short name and placeholder', async () => {
   const { oneClick, oneClickPayload } = await import('./appsaved.ts')
   const o = 'https://remind.example.com'

@@ -1421,5 +1421,13 @@
   "Pick a time from a minute to a year away.": "지금부터 1분에서 1년 사이의 시간을 고르세요.",
   "Too many reminders right now. Try again later.": "지금은 리마인더가 너무 많아요. 나중에 다시 시도하세요.",
   "The reminder wasn’t saved. Try again.": "리마인더가 저장되지 않았어요. 다시 시도해 주세요.",
-  "Something went wrong.": "문제가 발생했어요."
+  "Something went wrong.": "문제가 발생했어요.",
+  "Composer actions": "작성 액션",
+  "Composer actions…": "작성 액션…",
+  "Added {name} to the composer": "{name}을(를) 작성 화면에 추가했어요",
+  "Removed {name} from the composer": "{name}을(를) 작성 화면에서 삭제했어요",
+  "{host} has no composer action.": "{host}에는 작성 액션이 없어요.",
+  "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "작성 액션은 작성 화면의 앱 버튼 아래에 있어요. 각각 초안을 가지고 열려서 내용을 채워 주는 미니 앱이에요.",
+  "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast는 이 액션을 검토하지 않았어요. 열 때의 초안을 볼 수 있고, 다른 미니 앱처럼 지갑을 요청할 수 있어요.",
+  "Make your own composer action": "나만의 작성 액션 만들기"
 }

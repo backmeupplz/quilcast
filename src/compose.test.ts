@@ -2,7 +2,7 @@
 // counts against MAX_EMBEDS with the first post's quote and fixed embeds, and goes out as the cast's embed as it is.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { castEmbeds, embedRoom, holdsPicture, isImg, pictureToken, isLookImg, MAX_EMBEDS, PICTURE_TOKEN, postMedia, sentFiles, textLinks, urlsOf, withGif } from './shared.ts'
+import { castEmbeds, embedRoom, holdsPicture, isImg, pictureToken, isLookImg, MAX_EMBEDS, PICTURE_TOKEN, postMedia, sentFiles, textLinks, urlsOf, withGif, fillPost } from './shared.ts'
 
 const GIF = 'https://media1.tenor.com/m/gotOLnyvy4YAAAAd/bubu-dancing-dance.gif'
 const att = (url: string) => ({ id: Math.random(), preview: url, video: false, url })
@@ -226,4 +226,45 @@ test('a Markdown [label](url) link is already in the text, so it gets no card, n
   }
   assert.deepEqual(textLinks('[x](https://a.com) and https://b.com'), ['https://b.com'])
   assert.deepEqual(textLinks('![](https://a.com/p.png) [x](https://b.com) c.com'), ['https://c.com'])
+})
+
+test("a composer action's cast fills its post: new text replaces the draft's, its links join the attachments while there's room", () => {
+  const poll = 'https://poll.example/p/1'
+  // no text keeps the draft's; a link already attached or sent twice goes in once; a non-https one is dropped
+  const a = fillPost('Lunch?', [photo(1)], 0, { embeds: [poll, poll, photo(1).url, 'javascript:alert(1)'] }, att)
+  assert.equal(a.text, 'Lunch?')
+  assert.deepEqual(a.files.map((f) => f.url), ['https://imagedelivery.net/a/p1/original', poll])
+  // its text replaces the draft's, even an empty one
+  assert.equal(fillPost('Lunch?', [], 0, { text: '' }, att).text, '')
+  // past MAX_EMBEDS (with the quote) the rest is left out
+  const b = fillPost('', [photo(1), photo(2)], 1, { text: 'x'.repeat(2000), embeds: [poll, 'https://poll.example/p/2'] }, att)
+  assert.equal(b.text.length, 1024)
+  assert.deepEqual(b.files.map((f) => f.url).slice(2), [poll])
+  assert.equal(fillPost('', [], 0, { embeds: 'nope' }, att).files.length, 0)
+  // only https, and one already attached counts however it's written
+  assert.deepEqual(fillPost('', [att('https://poll.example')], 0, { embeds: ['http://poll.example/p/3', 'https://poll.example/'] }, att).files.length, 1)
+  // the post's fixed embeds (in the draft it was given) aren't attached again when the app sends them back
+  assert.deepEqual(fillPost('', [], 1, { embeds: ['https://app.example', poll] }, att, ['https://app.example/']).files.map((f) => f.url), [poll])
+  // never TRAIN (that's the Train button's, after it asks), nor a URL past the hub's EMBED_BYTES
+  assert.deepEqual(fillPost('', [], 0, { embeds: ['https://quilcast.com/train', `https://poll.example/${'a'.repeat(300)}`, poll] }, att).files.map((f) => f.url), [poll])
+  // a huge list is cut before it's looked at, and text is cut by code points, never inside an emoji
+  assert.equal(fillPost('', [], 0, { embeds: [...Array(1e5).fill('nope'), poll] }, att).files.length, 0)
+  assert.equal(fillPost('', [], 0, { text: 'x'.repeat(1023) + '😀😀' }, att).text, 'x'.repeat(1023) + '😀')
+  // a failed upload (not in the draft, can't be sent) is dropped and takes no room: 3 photos + 1 failed leave room for the poll
+  assert.deepEqual(fillPost('', [photo(1), photo(2), photo(3), { ...att('blob:x'), url: undefined, err: 'Upload failed' }], 0, { embeds: [poll] }, att).files.map((f) => f.url).slice(3), [poll])
+  // the train (in the draft it was given) takes its slot and isn't attached again: 3 photos + train leave no room
+  assert.deepEqual(fillPost('', [photo(1), photo(2), photo(3)], 1, { embeds: ['https://quilcast.com/train', poll] }, att, ['https://quilcast.com/train']).files.length, 3)
+  // huge text is cut before it's spread
+  assert.equal(fillPost('', [], 0, { text: '😀'.repeat(5e6) }, att).text, '😀'.repeat(1024))
+  // a link in the text that's attached too is embedded once
+  assert.deepEqual(castEmbeds(`Vote ${poll}`, [poll]), [poll])
+})
+
+test('a train link in the text (a composer action\'s, say) starts no train: only the Train button does (#765)', () => {
+  for (const text of ['all aboard https://quilcast.com/train', 'all aboard quilcast.com/train', 'https://QUILCAST.com/train']) {
+    assert.deepEqual(textLinks(text), [], text)
+    assert.deepEqual(castEmbeds(text, []), [], text)
+  }
+  // the Train button's TRAIN, in media, still goes out
+  assert.deepEqual(castEmbeds('all aboard', ['https://quilcast.com/train']), ['https://quilcast.com/train'])
 })

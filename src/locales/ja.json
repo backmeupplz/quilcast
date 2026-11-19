@@ -1421,5 +1421,13 @@
   "Pick a time from a minute to a year away.": "1分後から1年後までの時間を選んでください。",
   "Too many reminders right now. Try again later.": "現在、リマインダーが多すぎます。しばらくしてからもう一度お試しください。",
   "The reminder wasn’t saved. Try again.": "リマインダーを保存できませんでした。もう一度お試しください。",
-  "Something went wrong.": "問題が発生しました。"
+  "Something went wrong.": "問題が発生しました。",
+  "Composer actions": "作成画面アクション",
+  "Composer actions…": "作成画面アクション…",
+  "Added {name} to the composer": "{name} を作成画面に追加しました",
+  "Removed {name} from the composer": "{name} を作成画面から削除しました",
+  "{host} has no composer action.": "{host} には作成画面アクションがありません。",
+  "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "作成画面アクションは作成画面のアプリボタンの中にあります。どれも下書きを受け取って開き、内容を書き込むミニアプリです。",
+  "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast はこのアクションを審査していません。開いたときの下書きを確認でき、ほかのミニアプリと同じようにウォレットを要求することがあります。",
+  "Make your own composer action": "自分だけの作成画面アクションを作る"
 }

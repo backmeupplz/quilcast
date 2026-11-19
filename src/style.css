@@ -664,6 +664,9 @@ small.warn { color: var(--warn); }
 .attachments { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 0 42px; }
 .att { position: relative; border-radius: calc(12px * var(--rs, 1)); overflow: hidden; aspect-ratio: 4 / 3; background: var(--soft); }
 .att img, .att video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.att-link { display: flex; align-items: center; justify-content: center; gap: 6px; height: 100%; padding: 10px; font-size: 13px; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
+.att-link svg { flex: none; }
+.att-link span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .att.bad img, .att.bad video { opacity: 0.35; }
 .att-busy { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgb(0 0 0 / 0.45); color: #fff; }
 .att-stage { font-size: 13px; font-weight: 600; text-shadow: 0 1px 2px rgb(0 0 0 / 0.5); }
@@ -705,6 +708,10 @@ small.warn { color: var(--warn); }
 /* a window over the page's right side (the whole screen on a phone); the dock under it lists every open app */
 .mini { position: fixed; z-index: 9; inset-inline-end: 16px; bottom: 76px; width: 424px; height: min(695px, calc(100vh - 92px)); display: flex; flex-direction: column; background: var(--card); border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(18px * var(--rs, 1)); overflow: hidden; box-shadow: 0 24px 60px rgb(0 0 0 / 0.3); animation: fade 0.15s; }
 .mini.away { display: none; }
+/* a composer action sits over the composer (.modal) it fills in, full screen too, and under the prompts its calls can
+   bring up (app.tsx PhraseAsk, PairAsk) */
+.mini.over, .mini.full.over { z-index: 32; }
+.modal.ask { z-index: 33; }
 .mini-top { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border-bottom: var(--bw, 1px) var(--bs, solid) var(--line); flex: none; }
 .mini-top > .app-icon { width: 28px; height: 28px; font-size: 13px; }
 .mini-name { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.2; }

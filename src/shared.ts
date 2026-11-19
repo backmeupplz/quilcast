@@ -15,6 +15,18 @@ export const embedRoom = (files: number, fixed: number) => Math.max(0, MAX_EMBED
 /** A post's attachments plus a picked GIF, which is Tenor's own URL (src/gifs.tsx, nothing is uploaded); the same
  *  attachments when the post has no room left. */
 export const withGif = <F extends { url?: string }>(files: F[], fixed: number, gif: F) => (embedRoom(files.length, fixed) ? [...files, gif] : files)
+/** A composer action's composeCast (public/developers/composer-actions.html) merged into the post it was opened from:
+ *  its `text`, when it sends one, replaces the post's (it was given the draft); its `embeds` join the attachments, each
+ *  once (counting the post's fixed embeds, `given`), while there's room. */
+export function fillPost<F extends { url?: string; err?: string }>(text: string, all: F[], fixed: number, o: { text?: unknown; embeds?: unknown }, make: (url: string) => F, given: string[] = []) {
+  // a failed upload can't be sent, so it isn't in the draft the app was given and takes no room from the app's embeds
+  const files = all.filter((f) => !f.err)
+  const have = new Set([...given, ...files.flatMap((f) => f.url ?? [])].map((u) => safeUrl(u) ?? u))
+  // not TRAIN (the Train button asks first, carMedia) and nothing the hub won't take
+  const add = [...new Set((Array.isArray(o.embeds) ? o.embeds.slice(0, MAX_EMBEDS * 2) : []).flatMap((u) => safeUrl(String(u)) ?? []))]
+    .filter((u) => u.startsWith('https://') && u !== TRAIN && new TextEncoder().encode(u).length <= EMBED_BYTES && !have.has(u))
+  return { text: typeof o.text === 'string' ? [...o.text.slice(0, 2048)].slice(0, 1024).join('') : text, files: [...files, ...add.slice(0, embedRoom(files.length, fixed)).map(make)] }
+}
 /** A composer post's media embeds: the fixed ones, then its attachments (write.ts post adds the quote and links), less
  *  any the post's text already shows as a Markdown picture. */
 export const postMedia = (fixed: string[], files: { url?: string }[], text = '') => [...fixed, ...files.map((f) => f.url!).filter((u) => !imagesIn(text).includes(safeUrl(u) ?? u))]
@@ -638,14 +650,17 @@ export const carMedia = (c: { text?: string; embeds?: { url?: string }[] }) => {
  *  less the pictures the text shows with Markdown. Readers' Quilcast hides those (urlsOf), so they'd only take a slot. */
 export const castEmbeds = <Q>(text: string, media: string[], quote?: Q) => {
   const out: (string | Q)[] = [...media, ...(quote ? [quote] : [])]
-  for (const u of textLinks(text)) if (out.length < MAX_EMBEDS) out.push(u)
+  // a link the text has and an attachment (a composer action's) already is goes out once
+  const sent = new Set(media.map((u) => safeUrl(u) ?? u))
+  for (const u of textLinks(text)) if (out.length < MAX_EMBEDS && !sent.has(safeUrl(u) ?? u)) out.push(u)
   return out.slice(0, MAX_EMBEDS)
 }
 /** The links typed in a text, as castEmbeds embeds them and the composer shows their cards: less the pictures the text
- *  shows with Markdown, compared as safeUrl puts them (imagesIn), so https://A.com and ![](https://a.com) are one. */
+ *  shows with Markdown, compared as safeUrl puts them (imagesIn), so https://A.com and ![](https://a.com) are one. Not
+ *  TRAIN: only the Train button starts a train, after asking (a composer action's text can hold the link). */
 export const textLinks = (text: string) => {
   const shown = new Set(imagesIn(text))
-  return [...new Set(typed(text).map(toUrl))].filter((u) => !shown.has(safeUrl(u) ?? u))
+  return [...new Set(typed(text).map(toUrl))].filter((u) => !shown.has(safeUrl(u) ?? u) && (safeUrl(u) ?? u) !== TRAIN)
 }
 /** A Markdown picture, ![alt](url), as markdown() reads it (INLINE). */
 const PICTURE = /!\[[^\]\n]*\]\(([^\s()]+)\)/g

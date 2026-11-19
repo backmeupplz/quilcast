@@ -1421,5 +1421,13 @@
   "Pick a time from a minute to a year away.": "अभी से एक मिनट से एक साल के बीच का समय चुनें।",
   "Too many reminders right now. Try again later.": "अभी बहुत सारे रिमाइंडर हैं। बाद में फिर कोशिश करें।",
   "The reminder wasn’t saved. Try again.": "रिमाइंडर सेव नहीं हुआ। फिर से कोशिश करें।",
-  "Something went wrong.": "कुछ गलत हो गया।"
+  "Something went wrong.": "कुछ गलत हो गया।",
+  "Composer actions": "कंपोज़र एक्शन",
+  "Composer actions…": "कंपोज़र एक्शन…",
+  "Added {name} to the composer": "{name} को कंपोज़र में जोड़ा गया",
+  "Removed {name} from the composer": "{name} को कंपोज़र से हटाया गया",
+  "{host} has no composer action.": "{host} पर कोई कंपोज़र एक्शन नहीं है।",
+  "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "कंपोज़र एक्शन कंपोज़र में ऐप्स बटन के नीचे दिखते हैं। हर एक मिनी ऐप है जो आपके ड्राफ़्ट के साथ खुलता है और उसे भर देता है।",
+  "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast ने इस एक्शन की समीक्षा नहीं की है। यह उस ड्राफ़्ट को देख सकता है जिससे आप इसे खोलते हैं और किसी भी मिनी ऐप की तरह आपका वॉलेट माँग सकता है।",
+  "Make your own composer action": "अपना खुद का कंपोज़र एक्शन बनाएँ"
 }

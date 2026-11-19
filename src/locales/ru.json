@@ -1421,5 +1421,13 @@
   "Pick a time from a minute to a year away.": "Выберите время от минуты до года.",
   "Too many reminders right now. Try again later.": "Сейчас слишком много напоминаний. Попробуйте позже.",
   "The reminder wasn’t saved. Try again.": "Напоминание не сохранилось. Попробуйте ещё раз.",
-  "Something went wrong.": "Что-то пошло не так."
+  "Something went wrong.": "Что-то пошло не так.",
+  "Composer actions": "Действия редактора",
+  "Composer actions…": "Действия редактора…",
+  "Added {name} to the composer": "{name} добавлено в редактор",
+  "Removed {name} from the composer": "{name} убрано из редактора",
+  "{host} has no composer action.": "У {host} нет действия для редактора.",
+  "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Действия редактора находятся под кнопкой приложений в редакторе. Каждое — мини-приложение, которое открывается с вашим черновиком и заполняет его.",
+  "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast не проверял это действие. Оно видит черновик, из которого вы его открываете, и может запросить ваш кошелёк, как любое мини-приложение.",
+  "Make your own composer action": "Создайте своё действие для редактора"
 }

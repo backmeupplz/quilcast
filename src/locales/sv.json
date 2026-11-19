@@ -1421,5 +1421,13 @@
   "Pick a time from a minute to a year away.": "Välj en tid mellan en minut och ett år från nu.",
   "Too many reminders right now. Try again later.": "Just nu finns det för många påminnelser. Försök igen senare.",
   "The reminder wasn’t saved. Try again.": "Påminnelsen sparades inte. Försök igen.",
-  "Something went wrong.": "Något gick fel."
+  "Something went wrong.": "Något gick fel.",
+  "Composer actions": "Redigeraråtgärder",
+  "Composer actions…": "Redigeraråtgärder…",
+  "Added {name} to the composer": "{name} lades till i redigeraren",
+  "Removed {name} from the composer": "{name} togs bort från redigeraren",
+  "{host} has no composer action.": "{host} har ingen redigeraråtgärd.",
+  "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Redigeraråtgärder finns under appknappen i redigeraren. Var och en är en miniapp som öppnas med ditt utkast och fyller i det.",
+  "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast har inte granskat den här åtgärden. Den ser utkastet du öppnar den från och kan be om din plånbok, precis som vilken miniapp som helst.",
+  "Make your own composer action": "Skapa din egen redigeraråtgärd"
 }

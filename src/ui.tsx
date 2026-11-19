@@ -71,13 +71,20 @@ export async function pushSubscription() {
   return Promise.race([reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw }), timeout])
 }
 /** Open a mini app (src/miniapp.tsx, loaded on first use). */
-export const launchApp = (m: AppMeta, ctx?: { cast?: Cast; embed?: string; share?: boolean }) => requireAccount() && import('./miniapp.tsx').then((x) => x.launch(m, ctx))
+export const launchApp = (m: AppMeta, ctx?: { cast?: Cast; embed?: string; share?: boolean; draft?: Drafting }) => requireAccount() && import('./miniapp.tsx').then((x) => x.launch(m, ctx))
 /** Cast actions (/actions, public/developers/cast-actions.html): mini apps with a castShareUrl, listed in every cast's
  *  ⋯ menu. `url` is the castShareUrl. A one-click action (`post`, added by its app with addCastAction in miniapp.tsx)
  *  instead gets a signed POST at `url`, after one line of text when it has a `placeholder`, and its answer is a toast. */
 export type CastAction = AppMeta & { description?: string; post?: boolean; placeholder?: string }
 export const castActions = () => read<CastAction[]>('quilcast:actions', [])
 export const saveActions = (l: CastAction[]) => save('quilcast:actions', l.slice(0, 30))
+/** Composer actions (/composer-actions, public/developers/composer-actions.html): mini apps with a composerActionUrl,
+ *  listed under the composer's apps button. `url` is the composerActionUrl. */
+export const composerActions = () => read<CastAction[]>('quilcast:composer-actions', [])
+export const saveComposerActions = (l: CastAction[]) => save('quilcast:composer-actions', l.slice(0, 30))
+/** The post a composer action was opened from (compose.tsx): `draft` is what the app's context.location shows, and `fill`
+ *  puts what its composeCast sends into that post. The composer closes the app when it goes (miniapp.tsx dropDraft). */
+export type Drafting = { draft: () => { text: string; embeds: string[]; parent?: { type: 'cast'; hash: string }; quote?: { type: 'cast'; hash: string }; channelKey?: string }; fill: (o: { text?: unknown; embeds?: unknown }) => void; open: (on: boolean) => void }
 /** An installed mini app's cast action (its manifest's castShareUrl) joins the ⋯ menu with it, unless the menu has one
  *  from that origin already. quilcast:app-actions keeps, per origin, 0 once its action was offered (so one taken off
  *  the menu at /actions stays off), or when its manifest last had none (looked at again a day later). */

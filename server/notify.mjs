@@ -187,11 +187,12 @@ export function manifest(o) {
     const a = j?.miniapp || j?.frame
     if (!a || typeof a !== 'object') return null
     const url = (u) => (typeof u === 'string' && /^https:\/\//.test(u) && u.length < 1024 ? u : undefined)
-    // a cast action (the share extension spec): castShareUrl has to be on the app's own origin
+    // a cast action (the share extension spec) and a composer action (public/developers/composer-actions.html): each
+    // URL has to be on the app's own origin
     const share = shareUrl(a.castShareUrl, o)
     return {
       name: str(a.name, 60), iconUrl: url(a.iconUrl), homeUrl: url(a.homeUrl), splashImageUrl: url(a.splashImageUrl), splashBackgroundColor: str(a.splashBackgroundColor, 9), webhookUrl: url(a.webhookUrl),
-      castShareUrl: share, description: str(a.subtitle, 30) || str(a.description, 170),
+      castShareUrl: share, composerActionUrl: shareUrl(a.composerActionUrl, o), description: str(a.subtitle, 30) || str(a.description, 170),
     }
   }).catch(() => null)
   keep(manifests, 2000, o, { at: Date.now(), m })

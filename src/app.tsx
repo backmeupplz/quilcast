@@ -38,7 +38,7 @@ const Join = lazy<{ step?: string }>(() => import('./join.tsx').then((m) => m.Jo
 const Messages = lazy<{ id?: string }>(() => import('./messages.tsx').then((m) => m.Messages))
 const Spaces = lazy<{}>(() => import('./spaces.tsx').then((m) => m.Spaces))
 const WalletPage = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletPage))
-const Actions = lazy<{}>(() => import('./actions.tsx').then((m) => m.Actions))
+const Actions = lazy<{ composer?: boolean }>(() => import('./actions.tsx').then((m) => m.Actions))
 const WalletSettings = lazy<{}>(() => import('./walletui.tsx').then((m) => m.WalletSettings))
 const WalletPanel = lazy<{ close: () => void }>(() => import('./walletui.tsx').then((m) => m.WalletPanel))
 const SpaceRoom = lazy<{ id: string }>(() => import('./spaces.tsx').then((m) => m.SpaceRoom))
@@ -76,7 +76,7 @@ function PhraseAsk() {
     close(p)
   }
   return (
-    <div class="modal" onClick={(e) => e.target === e.currentTarget && close(null)}>
+    <div class="modal ask" onClick={(e) => e.target === e.currentTarget && close(null)}>
       <form class="sheet wallet-form" onSubmit={check}>
         <div class="move-top"><h2>{t('Enter your recovery phrase')}</h2></div>
         <p class="hint">{t("@{name}'s recovery phrase isn't kept in this browser. Enter it to sign this; Quilcast uses it once and doesn't keep it.", { name: q.a.username || String(q.a.fid) })}</p>
@@ -134,7 +134,7 @@ function PairAsk() {
   if (!address) return null
   const cancel = () => settle(Object.assign(new Error('You declined.'), { code: 4001 }))
   return (
-    <div class="modal" onClick={(e) => e.target === e.currentTarget && cancel()}>
+    <div class="modal ask" onClick={(e) => e.target === e.currentTarget && cancel()}>
       <div class="sheet wallet-form pair" role="dialog" aria-label={t('Reconnect your wallet')}>
         <div class="move-top"><h2>{t('Reconnect your wallet')}</h2></div>
         <p class="hint">{t('Your WalletConnect connection to {address} has to be renewed. Scan this with the wallet on your phone, or open it in a wallet app on this device.', { address: `${address.slice(0, 6)}…${address.slice(-4)}` })}</p>
@@ -2786,7 +2786,8 @@ function App() {
           : r0 === 'settings' ? <Settings />
           : r0 === 'write' ? (me ? <ArticleEditor /> : <Join />)
           : r0 === 'apps' ? <Apps />
-          : r0 === 'actions' ? <Actions />
+          : r0 === 'actions' ? <Actions key="cast" />
+          : r0 === 'composer-actions' ? <Actions key="composer" composer />
           : r0 === 'wallet' ? (me ? <WalletPage /> : <Join />)
           : r0 === 'stickers' ? <StickersPage key={r1} id={r1 || undefined} />
           : r0 === 'spaces' ? (r1 && me ? <SpaceRoom id={decode(r1)} /> : me ? <Spaces /> : <Join />)
