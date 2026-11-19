@@ -47,6 +47,11 @@ export const BUILT_IN: Theme[] = [
     name: 'Glitter', base: 'light', bg: '#ffe0f0', card: '#fff0f8', soft: '#ffd6ec', line: '#ff8ac6', ink: '#5a0838', muted: '#a0507c', accent: '#ff2e9a', like: '#ff2e9a', recast: '#7a5cff',
     bgImg: tenor('4AZnyLAk3nE', 'pink-sparkles'), bgMode: 'tile', sheer: 84, round: 2, borderWidth: 3, borderStyle: 'dotted', font: 'comic', nameFx: 'glitter', nameColor: '#ff2e9a', fx: 'glitter',
   },
+  {
+    // the "the world if…" meme's city
+    name: 'Utopia', base: 'light', bg: '#eaf6fb', card: '#f7fcff', soft: '#ddf0f7', line: '#b9dcea', ink: '#0c2a3d', muted: '#3f6074', accent: '#0b647d', like: '#e0457b', recast: '#05875f', warn: '#c2410c',
+    bgImg: tenor('0I05Y5gWP7U', 'world-if-world-without'), bgMode: 'cover', scrim: 20, sheer: 80, round: 1.6, glow: true, fx: 'bokeh',
+  },
   ...HOLIDAYS.map((h) => h.theme),
 ]
 
