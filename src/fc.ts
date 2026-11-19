@@ -164,9 +164,15 @@ export const keyCustody = (priv: Uint8Array): Custody => ({
 const KEY_ADD_DOMAIN = { name: 'Farcaster KeyAdd', version: '1', chainId: 1 }
 const n = (name: string, type: string) => ({ name, type })
 
+export type KeyAuth = { nonce: number; deadline: number; ttl: number; scopes: number[]; metadata: Uint8Array; custodySig: Uint8Array }
 /** KEY_ADD that registers `signer` for `fid` without an on-chain tx (Hypersnap gasless signers). */
-export async function keyAdd(fid: number, custody: Custody, signer: Ed, nonce: number) {
-  const key = signer.pub
+export const keyAdd = async (fid: number, custody: Custody, signer: Ed, nonce: number) => keyAddMsg(fid, signer, await keyAddAuth(fid, custody, signer.pub, nonce))
+/** The KEY_ADD itself: Hypersnap takes it only signed by the key it adds, so whoever holds that key sends it (this
+ *  browser, or Quilcast's crossposting service, server/crosspost.mjs), with the custody's signatures from keyAddAuth. */
+export const keyAddMsg = (fid: number, signer: Ed, a: KeyAuth) =>
+  envelope(MT.KEY_ADD, fid, pb([1, signer.pub], [2, 1], [3, a.custodySig], [4, a.deadline], [5, a.nonce], [6, a.metadata], [7, 1], [9, a.scopes], [10, a.ttl]), signer)
+/** The custody's say-so for adding `key` to `fid` with `scopes`, which a KEY_ADD carries. */
+export async function keyAddAuth(fid: number, custody: Custody, key: Uint8Array, nonce: number, scopes = SCOPES): Promise<KeyAuth> {
   // Hypersnap checks the deadline against the message timestamp, so it counts from the same epoch
   const deadline = fcNow() + 3600
   const ttl = 90 * 86400
@@ -180,9 +186,9 @@ export async function keyAdd(fid: number, custody: Custody, signer: Ed, nonce: n
   const custodySig = await custody.typed({
     domain: KEY_ADD_DOMAIN, primaryType: 'KeyAdd',
     types: { KeyAdd: [n('fid', 'uint256'), n('key', 'bytes'), n('keyType', 'uint32'), n('scopes', 'uint32[]'), n('ttl', 'uint32'), n('nonce', 'uint32'), n('deadline', 'uint256')] },
-    message: { fid, key: '0x' + hex(key), keyType: 1, scopes: SCOPES, ttl, nonce, deadline },
+    message: { fid, key: '0x' + hex(key), keyType: 1, scopes, ttl, nonce, deadline },
   })
-  return envelope(MT.KEY_ADD, fid, pb([1, key], [2, 1], [3, custodySig], [4, deadline], [5, nonce], [6, metadata], [7, 1], [9, SCOPES], [10, ttl]), signer)
+  return { nonce, deadline, ttl, scopes, metadata, custodySig }
 }
 
 // Farcaster's key contracts on Optimism, for the one on-chain key mini app webhooks are signed with

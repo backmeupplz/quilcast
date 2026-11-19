@@ -2122,6 +2122,50 @@ function DeleteAccount() {
   )
 }
 
+/** X crossposting: new posts from an X account are cast from this one by Quilcast's crossposting service
+ *  (server/crosspost.mjs), with a key of its own that can only cast. Off unless turned on here. */
+function CrosspostSettings() {
+  const a = account!
+  const [st, setSt] = useState<import('./write.ts').Crosspost | null>(null)
+  const [asking, setAsking] = useState(false)
+  const [handle, setHandle] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  // the service's short answers, in words; anything else is the node's own
+  const words = (m: string) => (/^(bad handle|no such account)$/.test(m) ? t("There's no public X account with that name.") : /^(off|unavailable|full|not allowed|already on|no key)$/.test(m) ? t("X crossposting isn't available right now.") : m)
+  useEffect(() => void w().then((m) => m.crosspostState(a)).then(setSt, (e) => (setSt({}), setErr(words(e.message)))), [a.fid])
+  const run = async (f: (m: typeof import('./write.ts')) => Promise<import('./write.ts').Crosspost>) => {
+    setBusy(true)
+    setErr('')
+    try {
+      setSt(await f(await w()))
+      setAsking(false)
+    } catch (e: any) {
+      setErr(words(e.message))
+    }
+    setBusy(false)
+  }
+  const live = st?.on || st?.off
+  return (
+    <>
+      <div class="setting">
+        <span>{live && st?.handle ? `@${st.handle}` : t('Off')}</span>
+        <button class="btn ghost small" disabled={!st || busy} onClick={() => (live ? run((m) => m.crosspostOff(a).then(() => ({}))) : setAsking(!asking))}>{busy ? t('Working…') : live ? t('Turn off') : asking ? t('Cancel') : t('Turn on')}</button>
+      </div>
+      {st?.on && <p class="hint">{t('New posts from @{handle} on X are cast from this account within about 5 minutes.', { handle: st.handle! })}</p>}
+      {st?.error && <p class="hint warn" role="alert">{st.error === 'key' ? t("Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.") : t("The last post couldn't be cast: {error}", { error: st.error })}</p>}
+      {!live && asking && (
+        <>
+          <p class="hint">{t("Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.")}</p>
+          <label class="field"><span>{t('X account')}</span><input value={handle} placeholder="@name" maxLength={16} onInput={(e) => setHandle(e.currentTarget.value.trim())} /></label>
+          <div class="actions"><button class="btn small" disabled={busy || !/^@?\w{1,15}$/.test(handle)} onClick={() => run((m) => m.crosspostOn(handle.replace(/^@/, ''), a))}>{busy ? t('Working…') : t('Turn on')}</button></div>
+        </>
+      )}
+      {err && <p class="hint warn" role="alert">{err}</p>}
+    </>
+  )
+}
+
 function Settings() {
   const [, force] = useState(0)
   const local = useLocalFollows()
@@ -2434,6 +2478,12 @@ function Settings() {
           </div>
           <p class="hint">{t('Anyone can join a train with one tap, so one train can fill your feed with the same cast. Hiding trains takes them out of feeds, replies and notifications; your own still show, and so does one you open.')}</p>
         </section>
+        {account?.done && (
+          <section id="crosspost">
+            <h2>{t('X crossposting')}</h2>
+            <CrosspostSettings key={idOf(account)} />
+          </section>
+        )}
         {account && (
           <section>
             <h2>{t('Keys')}</h2>

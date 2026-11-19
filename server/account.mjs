@@ -3,6 +3,8 @@
 // A big account has many casts to read, and no request may outlive the proxy's 60 s, so the work runs in the background:
 // the first call starts it, and each call (signed again) waits up to 20 s and answers { state: 'running' } until it can
 // answer { state: 'done', … }. Running it again later is safe: what's gone stays gone.
+// Crossposting from X (server/crosspost.mjs, a service of its own) is turned off first: its key revokes itself and the
+// service forgets the account. If the service can't be reached, the deletion fails, to be tried again.
 // What goes: the profile look and pinned cast, mutes, synced theme settings, drafts, scheduled casts, translations kept of its casts (read from the node, never from the
 // browser), and the photos and videos only this account put on our volume (upload.mjs keeps who). A file someone else
 // uploaded too, a theme's picture, or one from before uploads were recorded stays: `kept` counts those among the files
@@ -25,6 +27,16 @@ const jobs = new Map()
 const runs = gate(2, 100)
 const down = () => fail(502, "Couldn't read your casts from the Farcaster node. Try again.")
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+// the crossposting service on the project network; '' where there's none (it then holds nothing either)
+const CROSSPOST = process.env.CROSSPOST_URL || ''
+
+/** A request to the crossposting service as the browser signed it (its x-key, x-ts and x-sig): { status, body }. */
+export async function crosspost(method, fid, headers, body = '') {
+  if (!CROSSPOST) return { status: 503, body: { error: 'off' } }
+  const sig = Object.fromEntries(['x-key', 'x-ts', 'x-sig'].map((h) => [h, String(headers[h] || '')]))
+  const r = await fetch(`${CROSSPOST}/api/crosspost/${fid}`, { method, headers: { 'content-type': 'application/json', ...sig }, body: body || undefined, signal: AbortSignal.timeout(30e3) })
+  return { status: r.status, body: await r.json().catch(() => ({})) }
+}
 
 /** `run`: the browser's id for this deletion (?run=), so a reply lost on the way is answered again while a new deletion
  *  starts afresh; a running one is joined whatever it says. */
@@ -36,7 +48,7 @@ export async function deleteAccount(req, fid, run_, { node, site }) {
   if (!job || (job.state !== 'running' && (job.run !== id || !id || Date.now() - job.at > 600e3))) {
     job = { state: 'running', run: id }
     const end = (o) => Object.assign(job, o, { at: Date.now() })
-    job.p = runs(() => run(fid, node, site)).then((r) => end({ state: 'done', result: r }), (e) => end({ state: 'failed', error: e }))
+    job.p = runs(() => run(fid, node, site, req.headers)).then((r) => end({ state: 'done', result: r }), (e) => end({ state: 'failed', error: e }))
     jobs.set(fid, job)
   }
   let timer
@@ -50,7 +62,12 @@ export async function deleteAccount(req, fid, run_, { node, site }) {
   return { state: 'done', ...job.result }
 }
 
-async function run(fid, node, site) {
+async function run(fid, node, site, headers) {
+  // nothing more is cast from X for it, with the same signature the deletion was asked with
+  if (CROSSPOST) {
+    const r = await crosspost('DELETE', fid, headers).catch(() => null)
+    if (r?.status !== 200) throw fail(503, "Quilcast's server is still deleting your data. Try again in a few minutes.")
+  }
   // scheduled casts still waiting are cancelled first, so none comes due while the casts are read (not counted:
   // none of them was posted)
   await dropScheduled(fid)

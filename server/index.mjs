@@ -18,7 +18,7 @@ import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
 import { cached, unfurl } from './unfurl.mjs'
 import { cancel, chunk, done, EXT, loadOwners, MEDIA, start, status } from './upload.mjs'
-import { deleteAccount } from './account.mjs'
+import { crosspost, deleteAccount } from './account.mjs'
 import { load, route as notifyRoute } from './notify.mjs'
 import { keys as vapidKeys } from './push.mjs'
 import { credits, gifs, pick, refresh } from './shrek.mjs'
@@ -1439,6 +1439,15 @@ const server = createServer(async (req, res) => {
       const err = r instanceof Error
       if (err && !r.status) console.error('signup', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Failed.' } : r)
+    }
+    // X crossposting: its own service holds the keys (server/crosspost.mjs); requests go there as they came
+    const xp = path.match(/^\/api\/crosspost\/([1-9]\d{0,19})$/)
+    if (xp) {
+      if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) return json(405, { error: 'use GET, POST, PUT or DELETE' })
+      if (limited(`crosspost:${ip}`, 60, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      const r = await readText(req, 4e3).then((body) => crosspost(req.method, xp[1], req.headers, body)).catch((e) => e)
+      if (r instanceof Error && !r.status) console.error('crosspost', r.message)
+      return r instanceof Error ? json(r.status || 503, { error: r.status ? r.message : 'unavailable' }) : json(r.status, r.body)
     }
     // deleting an account: everything kept here for it (server/account.mjs)
     const del = path.match(/^\/api\/account\/([1-9]\d{0,9})$/)

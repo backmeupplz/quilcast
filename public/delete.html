@@ -77,6 +77,7 @@
       <h2>In the app</h2>
       <p>Open Settings with the account selected and tap <strong>Delete account</strong>, under Sign out. Once you confirm, Quilcast does the following, showing its progress as it goes:</p>
       <ol>
+        <li>If X crossposting is on, it's turned off first: the key our server cast your X posts with is revoked, and the key, the X account's name and the record of what was cast are deleted.</li>
         <li>Our server deletes everything it keeps for the account: its profile look and pinned cast, mute and block lists, drafts, saved translations of its casts, and the photos and videos that only this account uploaded to our server.</li>
         <li>Your casts, likes, recasts and follows are removed from the Farcaster network, and your profile (picture, name, bio, website, location, X username and banner) is emptied. The app checks the network afterwards and tells you about anything still there.</li>
         <li>Quilcast then signs out the way Sign out does: the key it added on Optimism for mini app notifications is removed, its signing key is revoked so the network stops accepting it, the notification inbox on our server is dropped, and the recovery phrase and keys are erased from your device.</li>

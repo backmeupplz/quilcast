@@ -39,6 +39,9 @@ const fid7 = { casts: [], profile: [] }
 const orAsked = []
 const submitted = []
 let refuse = ''
+// the crossposting service (server/crosspost.mjs) behind the main server: what reached it, and whether it's down
+const crossposted = []
+let crossDown = false
 const stickerCasts = {}
 const hookHits = []
 // a sticker of each kind: a Lottie square spinning for a second (.tgs is it gzipped), and a still PNG
@@ -113,6 +116,13 @@ const node = createServer(async (q, r) => {
     const parentCastId = hash === '0x' + '7d'.repeat(20) ? { fid: 9, hash: '0x' + '9a'.repeat(20) } : null
     if (u.searchParams.get('fid') === '7' && ['7a', '7b', '7c', '7d'].some((x) => hash === '0x' + x.repeat(20))) return r.end(JSON.stringify({ hash, data: { fid: 7, castAddBody: { text: 'mine', parentCastId } } }))
     return (r.statusCode = 400), r.end(JSON.stringify({ errCode: 'not_found', details: 'cast not found' }))
+  }
+  if (u.pathname.startsWith('/xp/')) {
+    let body = ''
+    for await (const c of q) body += c
+    crossposted.push({ method: q.method, path: u.pathname, sig: q.headers['x-sig'], body })
+    if (crossDown) return (r.statusCode = 502), r.end('{}')
+    return r.end(JSON.stringify(q.method === 'GET' ? { handle: 'someone', on: true } : { was: null }))
   }
   // scheduled casts arriving at their time (server/scheduled.mjs): kept as sent, or refused while `refuse` says why
   if (u.pathname === '/v1/submitMessage') {
@@ -219,7 +229,7 @@ let srv
 // moves the server's clock on by ms (testclock.mjs)
 const later = (ms) => new Promise((ok) => (srv.once('message', ok), srv.send(ms)))
 before(async () => {
-  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200', REMIND_EVERY_MS: '100', SNAPCHAIN_URL: '' }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] })
+  srv = spawn(process.execPath, ['--import', new URL('./testclock.mjs', import.meta.url).pathname, new URL('./index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, BASE_RPC: `http://127.0.0.1:${nodePort}/rpc`, FC_URL: `http://127.0.0.1:${nodePort}`, FARCASTER_API_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: media, WASM_DIR: wasmDir, FREE_FLOOR: '0', UPLOAD_IDLE_MS: '60000', SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}`, OPENROUTER_API_KEY: 'test-key', OPENROUTER_URL: `http://127.0.0.1:${nodePort}/or/chat`, REPORT_WEBHOOK: `http://127.0.0.1:${nodePort}/report-hook?to=mods`, TELEGRAM_API: `http://127.0.0.1:${nodePort}/tg`, TELEGRAM_BOT_TOKEN: 'tg-token', TELEGRAM_CHAT_ID: '76', SPAM_URL: `http://127.0.0.1:${nodePort}/spam`, SENDCLAP_URL: `http://127.0.0.1:${nodePort}/sendclap`,SCHEDULED_EVERY_MS: '200', REMIND_EVERY_MS: '100', SNAPCHAIN_URL: '', CROSSPOST_URL: `http://127.0.0.1:${nodePort}/xp` }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] })
   // the last of what it says on stderr, to show if it never comes up (kept short, and drained so it never blocks)
   let stderr = ''
   srv.stderr.setEncoding('utf8').on('data', (s) => (stderr = (stderr + s).slice(-8192)))
@@ -1363,6 +1373,25 @@ test('deleting an account: only with its own key, and only files it alone put he
   // a node that can't list the casts stops it before anything goes
   fid7.casts = null
   assert.equal((await del(7, { run: 'three' })).status, 502)
+  // each deletion first turned off X crossposting, with the signature it was asked with
+  const dels = crossposted.filter((x) => x.method === 'DELETE' && x.path === '/xp/api/crosspost/7')
+  assert.ok(dels.length >= 1 && dels.every((x) => /^[0-9a-f]{128}$/.test(x.sig)))
+  // and while the crossposting service can't be reached, nothing goes and it's tried again
+  crossDown = true
+  assert.equal((await del(7, { run: 'four' })).status, 503)
+  crossDown = false
+})
+
+test('X crossposting goes to its own service as it came', async () => {
+  const sign = (what, fid, ts = Date.now(), body = '') => ({ 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), signer)).toString('hex') })
+  const read = sign('quilcast-crosspost-read', 7)
+  assert.deepEqual(await (await fetch(`${base}/api/crosspost/7`, { headers: read })).json(), { handle: 'someone', on: true })
+  const body = JSON.stringify({ handle: 'someone' })
+  const key = sign('quilcast-crosspost-key', 7, Date.now(), body)
+  assert.equal((await fetch(`${base}/api/crosspost/7`, { method: 'POST', headers: key, body })).status, 200)
+  const [get, post] = crossposted.slice(-2)
+  assert.deepEqual([get.method, get.sig, post.method, post.sig, post.body], ['GET', read['x-sig'], 'POST', key['x-sig'], body])
+  assert.equal((await fetch(`${base}/api/crosspost/7`, { method: 'PATCH' })).status, 405)
 })
 
 test('standalone pages inline their stylesheet, allowed by its hash, and ask Cloudflare not to rewrite them', async () => {
