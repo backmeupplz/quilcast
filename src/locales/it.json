@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Scegli un momento tra un minuto e un anno da adesso.",
   "Too many reminders right now. Try again later.": "Troppi promemoria in questo momento. Riprova più tardi.",
   "The reminder wasn’t saved. Try again.": "Il promemoria non è stato salvato. Riprova.",
-  "Something went wrong.": "Qualcosa è andato storto."
+  "Something went wrong.": "Qualcosa è andato storto.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "I nuovi post di @{handle} su X vengono pubblicati come cast da questo account entro circa 5 minuti.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast crea una chiave che può solo pubblicare cast per questo account e la conserva sul suo server, a differenza delle tue altre chiavi, che restano in questo browser. Circa ogni 5 minuti controlla l'account X e pubblica come cast i suoi nuovi post, citazioni e thread, con foto e video; le risposte ad altri e i repost restano su X. Vengono copiati solo i post fatti dopo l'attivazione, al massimo 50 al giorno. La tua frase di recupero o il tuo wallet approva la chiave una volta sola. Disattivandolo la chiave viene revocata, e lo stesso succede eliminando l'account.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "La chiave di crossposting di Quilcast è stata rimossa o è scaduta, quindi non viene pubblicato nulla. Disattiva il crossposting e riattivalo.",
+  "The last post couldn't be cast: {error}": "Non è stato possibile pubblicare l'ultimo post come cast: {error}",
+  "There's no public X account with that name.": "Non esiste un account X pubblico con questo nome.",
+  "X account": "Account X",
+  "X crossposting": "Crossposting da X",
+  "X crossposting isn't available right now.": "Il crossposting da X non è disponibile al momento."
 }

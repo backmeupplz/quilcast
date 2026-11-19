@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "اختر وقتًا بين دقيقة وسنة من الآن.",
   "Too many reminders right now. Try again later.": "هناك تذكيرات كثيرة جدًا الآن. حاول مرة أخرى لاحقًا.",
   "The reminder wasn’t saved. Try again.": "لم يُحفظ التذكير. حاول مرة أخرى.",
-  "Something went wrong.": "حدث خطأ ما."
+  "Something went wrong.": "حدث خطأ ما.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "تُنشر المنشورات الجديدة من @{handle} على X ككاستات من هذا الحساب خلال 5 دقائق تقريبًا.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "ينشئ Quilcast مفتاحًا لا يستطيع إلا نشر الكاستات لهذا الحساب، ويحفظه على خادمه، على عكس مفاتيحك الأخرى التي تبقى في هذا المتصفح. كل 5 دقائق تقريبًا يتفقّد حساب X وينشر منشوراته الجديدة واقتباساته وسلاسله ككاستات، مع صورها وفيديوهاتها؛ أما الردود على الآخرين وإعادات النشر فتبقى على X. لا يُنسخ إلا ما يُنشر بعد تفعيل هذه الميزة، بحد أقصى 50 منشورًا في اليوم. توافق عبارة الاسترداد أو محفظتك على المفتاح مرة واحدة. إيقاف الميزة يُلغي المفتاح، وكذلك حذف الحساب.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "أُزيل مفتاح النشر المتزامن الخاص بـ Quilcast أو انتهت صلاحيته، لذا لا يُنشر أي شيء. أوقف النشر المتزامن ثم فعّله من جديد.",
+  "The last post couldn't be cast: {error}": "تعذّر نشر المنشور الأخير ككاست: {error}",
+  "There's no public X account with that name.": "لا يوجد حساب X عام بهذا الاسم.",
+  "X account": "حساب X",
+  "X crossposting": "النشر المتزامن من X",
+  "X crossposting isn't available right now.": "النشر المتزامن من X غير متاح حاليًا."
 }

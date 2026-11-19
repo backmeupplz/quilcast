@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "अभी से एक मिनट से एक साल के बीच का समय चुनें।",
   "Too many reminders right now. Try again later.": "अभी बहुत सारे रिमाइंडर हैं। बाद में फिर कोशिश करें।",
   "The reminder wasn’t saved. Try again.": "रिमाइंडर सेव नहीं हुआ। फिर से कोशिश करें।",
-  "Something went wrong.": "कुछ गलत हो गया।"
+  "Something went wrong.": "कुछ गलत हो गया।",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "X पर @{handle} की नई पोस्ट लगभग 5 मिनट के अंदर इस अकाउंट से कास्ट हो जाती हैं।",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast एक ऐसी की बनाता है जो इस अकाउंट के लिए सिर्फ़ कास्ट पोस्ट कर सकती है, और उसे अपने सर्वर पर रखता है, आपकी बाकी कीज़ से अलग, जो इसी ब्राउज़र में रहती हैं। लगभग हर 5 मिनट में यह X अकाउंट देखता है और उसकी नई पोस्ट, कोट और थ्रेड उनकी फ़ोटो और वीडियो के साथ कास्ट करता है; दूसरों को दिए जवाब और रीपोस्ट X पर ही रहते हैं। सिर्फ़ वही पोस्ट कॉपी होती हैं जो इसे चालू करने के बाद की गई हों, एक दिन में ज़्यादा से ज़्यादा 50। आपकी रिकवरी फ़्रेज़ या वॉलेट इस की को एक बार अप्रूव करता है। इसे बंद करने पर की रद्द हो जाती है, और अकाउंट डिलीट करने पर भी।",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Quilcast ने क्रॉसपोस्टिंग के लिए जो की बनाई थी, वह हटा दी गई है या एक्सपायर हो गई है, इसलिए कुछ भी कास्ट नहीं हो रहा। क्रॉसपोस्टिंग बंद करके फिर से चालू करें।",
+  "The last post couldn't be cast: {error}": "पिछली पोस्ट कास्ट नहीं हो सकी: {error}",
+  "There's no public X account with that name.": "इस नाम का कोई सार्वजनिक X अकाउंट नहीं है।",
+  "X account": "X अकाउंट",
+  "X crossposting": "X क्रॉसपोस्टिंग",
+  "X crossposting isn't available right now.": "X क्रॉसपोस्टिंग अभी उपलब्ध नहीं है।"
 }

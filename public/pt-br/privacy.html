@@ -72,10 +72,10 @@
   <body>
     <main>
       <h1>Política de Privacidade</h1>
-      <p class="muted">Quilcast, da Borodutch Labs Inc. Última atualização em 6 de novembro de 2026.</p>
+      <p class="muted">Quilcast, da Borodutch Labs Inc. Última atualização em 19 de novembro de 2026.</p>
       <p>O Quilcast não tem contas próprias, anúncios, ferramentas de análise nem rastreamento. Esta página lista tudo o que sai do seu dispositivo quando você usa o Quilcast na web ou no app do Quilcast.</p>
       <h2>No seu dispositivo</h2>
-      <p>Sua frase de recuperação, as chaves da carteira e as chaves de assinatura são criadas e guardadas no seu dispositivo, criptografadas com uma chave que o próprio dispositivo mantém. Elas nunca são enviadas para nós. As configurações, os rascunhos e as contas que você usa também ficam guardados no seu dispositivo.</p>
+      <p>Sua frase de recuperação, as chaves da carteira e as chaves de assinatura são criadas e guardadas no seu dispositivo, criptografadas com uma chave que o próprio dispositivo mantém. Elas nunca são enviadas para nós. Se você ativar o crossposting do X, nosso servidor guarda uma chave própria e separada, que só pode publicar casts (veja abaixo). As configurações, os rascunhos e as contas que você usa também ficam guardados no seu dispositivo.</p>
       <h2>A rede Farcaster</h2>
       <p>Feeds, perfis e casts são lidos de um nó público do Farcaster (Hypersnap), e o que você publica, curte, recasta ou segue é assinado no seu dispositivo e enviado a ele. Tudo no Farcaster é público.</p>
       <h2>Nosso servidor (quilcast.com)</h2>
@@ -85,6 +85,7 @@
         <li>Prévias de links, traduções (o texto do cast vai para um modelo de tradução por meio do OpenRouter), a lista de miniapps e a busca de GIFs são obtidos por ele.</li>
         <li>As denúncias que você envia pelo menu ⋯ ficam guardadas lá para os nossos moderadores: o que você denunciou, o motivo, a sua observação e o seu Farcaster ID, se você estava conectado.</li>
         <li>As mensagens diretas e os Espaços são repassados ao farcaster.xyz sem serem armazenados nem registrados.</li>
+        <li>Se você ativar o crossposting do X, que fica desativado a menos que você o ative em Configurações, nosso serviço de crossposting cria para a sua conta uma chave de assinatura que só pode publicar casts e a guarda no nosso servidor, junto com o seu Farcaster ID, a conta do X que você informou e quais posts dela já foram publicados como casts. Ele confere os posts públicos dessa conta do X mais ou menos a cada 5 minutos e publica os novos como casts da sua conta. Desativá-lo ou excluir a conta revoga a chave e apaga tudo isso.</li>
         <li>Se você ativar as notificações de miniapps, um ID de caixa de entrada aleatório e a assinatura de push do seu navegador ficam guardados para entregá-las.</li>
         <li>Se você ativar as notificações push da atividade da sua conta, seu Farcaster ID fica guardado junto com a assinatura de push do seu navegador e as configurações que você escolheu para ela (quais tipos, o idioma e se o spam fica oculto), além de, por alguns minutos, quais notificações já foram enviadas, para que o nosso servidor verifique suas notificações uma vez por minuto e envie as novas. Sair da conta ou excluí-la remove esses dados.</li>
         <li>Ele conta quantas contas o usaram em cada dia e quantos primeiros logins vieram de cada um dos nossos links de campanha (o nome do link, guardado no seu navegador até você entrar). Só esses totais são guardados, sem nada sobre quem foi, e eles são públicos em <a href="/api/stats">quilcast.com/api/stats</a>.</li>

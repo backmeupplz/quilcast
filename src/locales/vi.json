@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Hãy chọn thời điểm từ một phút đến một năm kể từ bây giờ.",
   "Too many reminders right now. Try again later.": "Hiện có quá nhiều lời nhắc. Hãy thử lại sau.",
   "The reminder wasn’t saved. Try again.": "Lời nhắc chưa được lưu. Hãy thử lại.",
-  "Something went wrong.": "Đã xảy ra lỗi."
+  "Something went wrong.": "Đã xảy ra lỗi.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Bài đăng mới của @{handle} trên X sẽ được đăng thành cast từ tài khoản này trong khoảng 5 phút.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast tạo một khóa chỉ có thể đăng cast cho tài khoản này và giữ khóa đó trên máy chủ của mình, khác với các khóa khác của bạn vốn nằm trong trình duyệt này. Khoảng 5 phút một lần, Quilcast xem tài khoản X và đăng các bài mới, trích dẫn và chuỗi bài của tài khoản đó thành cast, kèm ảnh và video; các trả lời cho người khác và bài đăng lại vẫn chỉ ở trên X. Chỉ những bài đăng sau khi bạn bật tính năng này mới được sao chép, tối đa 50 bài mỗi ngày. Cụm từ khôi phục hoặc ví của bạn chỉ cần phê duyệt khóa một lần. Tắt tính năng này sẽ thu hồi khóa, xóa tài khoản cũng vậy.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Khóa đăng chéo của Quilcast đã bị gỡ hoặc đã hết hạn, nên không có gì được đăng. Hãy tắt đăng chéo rồi bật lại.",
+  "The last post couldn't be cast: {error}": "Không đăng được bài gần nhất thành cast: {error}",
+  "There's no public X account with that name.": "Không có tài khoản X công khai nào có tên đó.",
+  "X account": "Tài khoản X",
+  "X crossposting": "Đăng chéo từ X",
+  "X crossposting isn't available right now.": "Đăng chéo từ X hiện không khả dụng."
 }

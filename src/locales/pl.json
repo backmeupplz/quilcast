@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Wybierz czas od minuty do roku od teraz.",
   "Too many reminders right now. Try again later.": "Za dużo przypomnień w tej chwili. Spróbuj później.",
   "The reminder wasn’t saved. Try again.": "Nie zapisano przypomnienia. Spróbuj ponownie.",
-  "Something went wrong.": "Coś poszło nie tak."
+  "Something went wrong.": "Coś poszło nie tak.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Nowe posty @{handle} z X są publikowane jako casty z tego konta w ciągu około 5 minut.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast tworzy klucz, który może tylko publikować casty z tego konta, i przechowuje go na swoim serwerze – w przeciwieństwie do twoich pozostałych kluczy, które zostają w tej przeglądarce. Mniej więcej co 5 minut sprawdza konto X i publikuje jako casty jego nowe posty, cytaty i wątki wraz ze zdjęciami i filmami; odpowiedzi do innych i reposty zostają na X. Kopiowane są tylko posty opublikowane po włączeniu tej funkcji, maksymalnie 50 dziennie. Twoja fraza odzyskiwania lub portfel zatwierdza klucz jeden raz. Wyłączenie tej funkcji unieważnia klucz, podobnie jak usunięcie konta.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Klucz Quilcast do crosspostowania został usunięty lub wygasł, więc nic nie jest publikowane. Wyłącz crosspostowanie i włącz je ponownie.",
+  "The last post couldn't be cast: {error}": "Nie udało się opublikować ostatniego posta jako castu: {error}",
+  "There's no public X account with that name.": "Nie ma publicznego konta X o tej nazwie.",
+  "X account": "Konto X",
+  "X crossposting": "Crosspostowanie z X",
+  "X crossposting isn't available right now.": "Crosspostowanie z X jest teraz niedostępne."
 }

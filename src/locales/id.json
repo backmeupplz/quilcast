@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Pilih waktu antara satu menit dan satu tahun dari sekarang.",
   "Too many reminders right now. Try again later.": "Terlalu banyak pengingat saat ini. Coba lagi nanti.",
   "The reminder wasn’t saved. Try again.": "Pengingat tidak tersimpan. Coba lagi.",
-  "Something went wrong.": "Terjadi kesalahan."
+  "Something went wrong.": "Terjadi kesalahan.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Postingan baru dari @{handle} di X di-cast dari akun ini dalam sekitar 5 menit.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast membuat kunci yang hanya bisa memposting cast untuk akun ini dan menyimpannya di servernya, tidak seperti kunci-kuncimu yang lain, yang tetap di browser ini. Sekitar setiap 5 menit, Quilcast memeriksa akun X itu dan meng-cast postingan, kutipan, dan utas barunya, beserta foto dan videonya; balasan ke orang lain dan repost tetap di X. Hanya postingan yang dibuat setelah kamu mengaktifkannya yang disalin, paling banyak 50 per hari. Frasa pemulihan atau dompetmu menyetujui kunci itu sekali saja. Mematikannya akan mencabut kunci itu, begitu juga menghapus akun.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Kunci crossposting Quilcast sudah dihapus atau kedaluwarsa, jadi tidak ada yang di-cast. Matikan crossposting lalu aktifkan lagi.",
+  "The last post couldn't be cast: {error}": "Postingan terakhir tidak bisa di-cast: {error}",
+  "There's no public X account with that name.": "Tidak ada akun X publik dengan nama itu.",
+  "X account": "Akun X",
+  "X crossposting": "Crossposting X",
+  "X crossposting isn't available right now.": "Crossposting X sedang tidak tersedia."
 }

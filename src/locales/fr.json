@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Choisissez un moment entre une minute et un an à partir de maintenant.",
   "Too many reminders right now. Try again later.": "Trop de rappels en ce moment. Réessayez plus tard.",
   "The reminder wasn’t saved. Try again.": "Le rappel n’a pas été enregistré. Réessayez.",
-  "Something went wrong.": "Une erreur s’est produite."
+  "Something went wrong.": "Une erreur s’est produite.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Les nouvelles publications de @{handle} sur X sont castées depuis ce compte en 5 minutes environ.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast crée une clé qui ne peut que publier des casts pour ce compte et la conserve sur son serveur, contrairement à vos autres clés, qui restent dans ce navigateur. Environ toutes les 5 minutes, il consulte le compte X et caste ses nouvelles publications, citations et fils, avec leurs photos et vidéos ; les réponses aux autres et les reposts restent sur X. Seules les publications faites après l’activation sont copiées, 50 par jour au maximum. Votre phrase de récupération ou votre portefeuille approuve la clé une seule fois. La désactivation révoque la clé, tout comme la suppression du compte.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "La clé de publication croisée de Quilcast a été retirée ou a expiré, donc rien n’est casté. Désactivez puis réactivez la publication croisée.",
+  "The last post couldn't be cast: {error}": "La dernière publication n’a pas pu être castée : {error}",
+  "There's no public X account with that name.": "Aucun compte X public ne porte ce nom.",
+  "X account": "Compte X",
+  "X crossposting": "Publication croisée depuis X",
+  "X crossposting isn't available right now.": "La publication croisée depuis X n’est pas disponible pour le moment."
 }

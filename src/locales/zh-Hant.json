@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "請選擇一分鐘到一年之內的時間。",
   "Too many reminders right now. Try again later.": "目前提醒太多，請稍後再試。",
   "The reminder wasn’t saved. Try again.": "提醒沒有儲存，請再試一次。",
-  "Something went wrong.": "發生了一些問題。"
+  "Something went wrong.": "發生了一些問題。",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "@{handle} 在 X 上的新貼文會在大約 5 分鐘內從這個帳號發出。",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast 會建立一把只能為這個帳號發文的金鑰，並保存在它的伺服器上；這和你的其他金鑰不同，它們都留在這個瀏覽器中。它大約每 5 分鐘查看一次該 X 帳號，把新貼文、引用和串文連同相片和影片一起發出；回覆他人的貼文和轉貼則只留在 X 上。只有在你開啟這項功能之後發佈的貼文才會被同步，每天最多 50 則。你的復原詞組或錢包只需核准這把金鑰一次。關閉這項功能會撤銷金鑰，刪除帳號也一樣。",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Quilcast 的同步發文金鑰已被移除或已過期，所以目前不會發出任何貼文。請關閉同步發文再重新開啟。",
+  "The last post couldn't be cast: {error}": "上一則貼文無法發出：{error}",
+  "There's no public X account with that name.": "沒有使用這個名稱的公開 X 帳號。",
+  "X account": "X 帳號",
+  "X crossposting": "X 同步發文",
+  "X crossposting isn't available right now.": "X 同步發文目前無法使用。"
 }

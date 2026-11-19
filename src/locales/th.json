@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "เลือกเวลาตั้งแต่หนึ่งนาทีถึงหนึ่งปีนับจากนี้",
   "Too many reminders right now. Try again later.": "ขณะนี้มีการเตือนความจำมากเกินไป โปรดลองอีกครั้งภายหลัง",
   "The reminder wasn’t saved. Try again.": "ไม่ได้บันทึกการเตือนความจำ ลองอีกครั้ง",
-  "Something went wrong.": "เกิดข้อผิดพลาด"
+  "Something went wrong.": "เกิดข้อผิดพลาด",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "โพสต์ใหม่จาก @{handle} บน X จะถูกแคสต์จากบัญชีนี้ภายในประมาณ 5 นาที",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast จะสร้างคีย์ที่ใช้ได้แค่โพสต์แคสต์ให้บัญชีนี้และเก็บไว้บนเซิร์ฟเวอร์ของตัวเอง ต่างจากคีย์อื่นๆ ของคุณที่อยู่ในเบราว์เซอร์นี้ ทุกๆ ประมาณ 5 นาที Quilcast จะดูบัญชี X แล้วแคสต์โพสต์ใหม่ โพสต์อ้างอิง และเธรดของบัญชีนั้น พร้อมรูปภาพและวิดีโอ ส่วนการตอบกลับคนอื่นและการรีโพสต์จะอยู่บน X เท่านั้น ระบบจะคัดลอกเฉพาะโพสต์ที่สร้างหลังจากคุณเปิดใช้งาน สูงสุด 50 โพสต์ต่อวัน วลีกู้คืนหรือกระเป๋าเงินของคุณจะอนุมัติคีย์นี้ครั้งเดียว การปิดใช้งานจะเพิกถอนคีย์ และการลบบัญชีก็เช่นกัน",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "คีย์ครอสโพสต์ของ Quilcast ถูกนำออกหรือหมดอายุแล้ว จึงไม่มีอะไรถูกแคสต์ ปิดการครอสโพสต์แล้วเปิดใหม่อีกครั้ง",
+  "The last post couldn't be cast: {error}": "แคสต์โพสต์ล่าสุดไม่ได้: {error}",
+  "There's no public X account with that name.": "ไม่มีบัญชี X สาธารณะที่ใช้ชื่อนี้",
+  "X account": "บัญชี X",
+  "X crossposting": "ครอสโพสต์จาก X",
+  "X crossposting isn't available right now.": "ครอสโพสต์จาก X ยังใช้งานไม่ได้ในขณะนี้"
 }

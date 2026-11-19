@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Şu andan itibaren bir dakika ile bir yıl arasında bir zaman seç.",
   "Too many reminders right now. Try again later.": "Şu anda çok fazla hatırlatıcı var. Daha sonra tekrar dene.",
   "The reminder wasn’t saved. Try again.": "Hatırlatıcı kaydedilmedi. Tekrar dene.",
-  "Something went wrong.": "Bir şeyler ters gitti."
+  "Something went wrong.": "Bir şeyler ters gitti.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "@{handle} kullanıcısının X'teki yeni gönderileri yaklaşık 5 dakika içinde bu hesaptan cast olarak paylaşılır.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast, bu tarayıcıda kalan diğer anahtarlarının aksine, bu hesap için yalnızca cast paylaşabilen bir anahtar oluşturur ve onu kendi sunucusunda saklar. Yaklaşık 5 dakikada bir X hesabına bakar ve yeni gönderilerini, alıntılarını ve dizilerini fotoğraf ve videolarıyla birlikte cast olarak paylaşır; başkalarına verilen yanıtlar ve repost'lar X'te kalır. Yalnızca bunu açtıktan sonra yapılan gönderiler kopyalanır, günde en fazla 50 tane. Kurtarma ifaden veya cüzdanın anahtarı bir kez onaylar. Bunu kapatmak anahtarı iptal eder, hesabı silmek de öyle.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Quilcast'in çapraz paylaşım anahtarı kaldırılmış veya süresi dolmuş, bu yüzden hiçbir şey cast olarak paylaşılmıyor. Çapraz paylaşımı kapatıp yeniden aç.",
+  "The last post couldn't be cast: {error}": "Son gönderi cast olarak paylaşılamadı: {error}",
+  "There's no public X account with that name.": "Bu adla herkese açık bir X hesabı yok.",
+  "X account": "X hesabı",
+  "X crossposting": "X çapraz paylaşımı",
+  "X crossposting isn't available right now.": "X çapraz paylaşımı şu anda kullanılamıyor."
 }

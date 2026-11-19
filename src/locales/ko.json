@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "지금부터 1분에서 1년 사이의 시간을 고르세요.",
   "Too many reminders right now. Try again later.": "지금은 리마인더가 너무 많아요. 나중에 다시 시도하세요.",
   "The reminder wasn’t saved. Try again.": "리마인더가 저장되지 않았어요. 다시 시도해 주세요.",
-  "Something went wrong.": "문제가 발생했어요."
+  "Something went wrong.": "문제가 발생했어요.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "X의 @{handle} 새 게시물은 약 5분 안에 이 계정에서 캐스트돼요.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast는 이 계정으로 캐스트만 올릴 수 있는 키를 만들어 서버에 보관해요. 이 브라우저에 남는 다른 키와는 달라요. 약 5분마다 X 계정을 확인해 새 게시물, 인용, 스레드를 사진과 동영상까지 함께 캐스트해요. 다른 사람에게 단 답글과 재게시물은 X에만 남아요. 이 기능을 켠 뒤에 올라온 게시물만 복사되며, 하루 최대 50개까지예요. 키는 복구 문구나 지갑으로 한 번만 승인하면 돼요. 이 기능을 끄면 키가 취소되고, 계정을 삭제해도 마찬가지예요.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Quilcast의 크로스포스팅 키가 삭제되었거나 만료되어 아무것도 캐스트되지 않고 있어요. 크로스포스팅을 껐다가 다시 켜세요.",
+  "The last post couldn't be cast: {error}": "마지막 게시물을 캐스트하지 못했어요: {error}",
+  "There's no public X account with that name.": "그 이름의 공개 X 계정이 없어요.",
+  "X account": "X 계정",
+  "X crossposting": "X 크로스포스팅",
+  "X crossposting isn't available right now.": "지금은 X 크로스포스팅을 사용할 수 없어요."
 }

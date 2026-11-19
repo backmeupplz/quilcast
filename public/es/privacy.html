@@ -72,10 +72,10 @@
   <body>
     <main>
       <h1>Política de privacidad</h1>
-      <p class="muted">Quilcast, de Borodutch Labs Inc. Última actualización: 6 de noviembre de 2026.</p>
+      <p class="muted">Quilcast, de Borodutch Labs Inc. Última actualización: 19 de noviembre de 2026.</p>
       <p>Quilcast no tiene cuentas propias, ni anuncios, ni analítica, ni rastreo. Esta página enumera todo lo que sale de tu dispositivo cuando usas Quilcast en la web o en la app de Quilcast.</p>
       <h2>En tu dispositivo</h2>
-      <p>Tu frase de recuperación, las claves de tu billetera y tus claves de firma se crean y se guardan en tu dispositivo, cifradas con una clave que este mismo conserva. Nunca se nos envían. Los ajustes, los borradores y las cuentas que usas también se guardan en tu dispositivo.</p>
+      <p>Tu frase de recuperación, las claves de tu billetera y tus claves de firma se crean y se guardan en tu dispositivo, cifradas con una clave que este mismo conserva. Nunca se nos envían. Si activas la publicación cruzada desde X, nuestro servidor guarda una clave aparte, propia, que solo puede publicar casts (ver más abajo). Los ajustes, los borradores y las cuentas que usas también se guardan en tu dispositivo.</p>
       <h2>La red Farcaster</h2>
       <p>Los feeds, los perfiles y los casts se leen de un nodo público de Farcaster (Hypersnap), y lo que publicas, marcas con me gusta, recasteas o sigues se firma en tu dispositivo y se le envía. Todo lo que hay en Farcaster es público.</p>
       <h2>Nuestro servidor (quilcast.com)</h2>
@@ -85,6 +85,7 @@
         <li>Las vistas previas de enlaces, las traducciones (el texto del cast se envía a un modelo de traducción a través de OpenRouter), la lista de mini apps y la búsqueda de GIF se obtienen a través de él.</li>
         <li>Los reportes que envías desde el menú ⋯ se almacenan allí para nuestros moderadores: lo que reportaste, el motivo, tu nota y tu ID de Farcaster si tenías la sesión iniciada.</li>
         <li>Los mensajes directos y los Espacios se retransmiten a farcaster.xyz sin almacenarse ni registrarse.</li>
+        <li>Si activas la publicación cruzada desde X, que está desactivada salvo que la actives en Ajustes, nuestro servicio de publicación cruzada crea una clave de firma para tu cuenta que solo puede publicar casts y la guarda en nuestro servidor, junto con tu ID de Farcaster, la cuenta de X que indicaste y cuáles de sus publicaciones ya se publicaron como casts. Revisa las publicaciones públicas de esa cuenta de X más o menos cada 5 minutos y publica las nuevas como casts desde tu cuenta. Desactivarla o eliminar la cuenta revoca la clave y borra todo eso.</li>
         <li>Si activas las notificaciones de mini apps, se almacenan un ID de buzón aleatorio y la suscripción push de tu navegador para poder entregarlas.</li>
         <li>Si activas las notificaciones push de la actividad de tu cuenta, se almacenan tu ID de Farcaster junto con la suscripción push de tu navegador y los ajustes que elegiste para ella (qué tipos de notificaciones, el idioma y si se oculta el spam) y, durante unos minutos, qué notificaciones ya se enviaron, para que nuestro servidor pueda comprobar tus notificaciones una vez por minuto y enviarte las nuevas. Al cerrar sesión o eliminar la cuenta, se borran estos datos.</li>
         <li>Cuenta cuántas cuentas lo usaron cada día y cuántos primeros inicios de sesión llegaron desde cada uno de nuestros enlaces de campaña (el nombre del enlace, que se guarda en tu navegador hasta que inicias sesión). Solo se conservan estos totales, sin nada sobre quién, y son públicos en <a href="/api/stats">quilcast.com/api/stats</a>.</li>

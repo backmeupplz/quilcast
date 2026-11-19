@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Wähle eine Zeit zwischen einer Minute und einem Jahr.",
   "Too many reminders right now. Try again later.": "Gerade gibt es zu viele Erinnerungen. Versuch es später noch einmal.",
   "The reminder wasn’t saved. Try again.": "Die Erinnerung wurde nicht gespeichert. Versuch es noch mal.",
-  "Something went wrong.": "Etwas ist schiefgelaufen."
+  "Something went wrong.": "Etwas ist schiefgelaufen.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Neue Posts von @{handle} auf X werden innerhalb von etwa 5 Minuten von diesem Account gecastet.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast erstellt einen Schlüssel, der für diesen Account nur Casts posten kann, und bewahrt ihn auf seinem Server auf, anders als deine anderen Schlüssel, die in diesem Browser bleiben. Etwa alle 5 Minuten schaut es sich den X-Account an und castet seine neuen Posts, Zitate und Threads mit ihren Fotos und Videos; Antworten an andere und Reposts bleiben auf X. Übernommen werden nur Posts, die nach dem Einschalten entstehen, höchstens 50 pro Tag. Deine Wiederherstellungsphrase oder Wallet genehmigt den Schlüssel einmal. Beim Ausschalten wird der Schlüssel widerrufen, ebenso beim Löschen des Accounts.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Der Crossposting-Schlüssel von Quilcast wurde entfernt oder ist abgelaufen, daher wird nichts gecastet. Schalte Crossposting aus und wieder ein.",
+  "The last post couldn't be cast: {error}": "Der letzte Post konnte nicht gecastet werden: {error}",
+  "There's no public X account with that name.": "Es gibt keinen öffentlichen X-Account mit diesem Namen.",
+  "X account": "X-Account",
+  "X crossposting": "X-Crossposting",
+  "X crossposting isn't available right now.": "X-Crossposting ist gerade nicht verfügbar."
 }

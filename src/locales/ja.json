@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "1分後から1年後までの時間を選んでください。",
   "Too many reminders right now. Try again later.": "現在、リマインダーが多すぎます。しばらくしてからもう一度お試しください。",
   "The reminder wasn’t saved. Try again.": "リマインダーを保存できませんでした。もう一度お試しください。",
-  "Something went wrong.": "問題が発生しました。"
+  "Something went wrong.": "問題が発生しました。",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "X の @{handle} の新しいポストは、約5分以内にこのアカウントからキャストされます。",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast は、このアカウントでキャストの投稿だけができるキーを作成し、サーバーに保管します。このブラウザに残るほかのキーとは異なります。約5分ごとに X アカウントを確認し、新しいポスト、引用、スレッドを写真や動画ごとキャストします。他の人への返信やリポストは X に残ります。コピーされるのはこの機能をオンにした後のポストだけで、1日最大50件です。キーの承認は、リカバリーフレーズまたはウォレットで一度だけ行います。この機能をオフにするとキーは取り消されます。アカウントを削除した場合も同様です。",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Quilcast のクロスポスト用キーが削除されたか期限切れになったため、何もキャストされていません。クロスポストを一度オフにしてから、もう一度オンにしてください。",
+  "The last post couldn't be cast: {error}": "最後のポストをキャストできませんでした：{error}",
+  "There's no public X account with that name.": "その名前の公開 X アカウントはありません。",
+  "X account": "X アカウント",
+  "X crossposting": "X クロスポスト",
+  "X crossposting isn't available right now.": "X クロスポストは現在ご利用いただけません。"
 }

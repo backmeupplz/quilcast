@@ -77,6 +77,7 @@
       <h2>Dans l’app</h2>
       <p>Ouvrez Paramètres avec le compte sélectionné et touchez <strong>Supprimer le compte</strong>, sous Se déconnecter. Une fois que vous avez confirmé, Quilcast effectue les étapes suivantes en affichant sa progression :</p>
       <ol>
+        <li>Si la publication croisée depuis X est activée, elle est d’abord désactivée : la clé avec laquelle notre serveur castait vos publications X est révoquée, puis la clé, le nom du compte X et la liste de ce qui a été casté sont supprimés.</li>
         <li>Notre serveur supprime tout ce qu’il conserve pour le compte : son style de profil et son cast épinglé, ses listes de comptes mis en sourdine et bloqués, ses brouillons, les traductions enregistrées de ses casts, et les photos et vidéos que ce compte seul a envoyées à notre serveur.</li>
         <li>Vos casts, J’aime, recasts et abonnements sont retirés du réseau Farcaster, et votre profil (photo, nom, bio, site web, lieu, nom d’utilisateur X et bannière) est vidé. L’app vérifie ensuite le réseau et vous signale tout ce qui s’y trouve encore.</li>
         <li>Quilcast vous déconnecte ensuite comme le fait Se déconnecter : la clé qu’il avait ajoutée sur Optimism pour les notifications des mini-apps est retirée, sa clé de signature est révoquée pour que le réseau cesse de l’accepter, la boîte de notifications sur notre serveur est supprimée, et la phrase de récupération et les clés sont effacées de votre appareil.</li>

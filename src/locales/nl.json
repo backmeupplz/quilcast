@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Kies een tijd tussen een minuut en een jaar vanaf nu.",
   "Too many reminders right now. Try again later.": "Er zijn nu te veel herinneringen. Probeer het later nog eens.",
   "The reminder wasn’t saved. Try again.": "De herinnering is niet opgeslagen. Probeer het opnieuw.",
-  "Something went wrong.": "Er ging iets mis."
+  "Something went wrong.": "Er ging iets mis.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Nieuwe posts van @{handle} op X worden binnen ongeveer 5 minuten vanaf dit account gecast.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast maakt een sleutel die alleen casts kan plaatsen voor dit account en bewaart die op zijn server, anders dan je andere sleutels, die in deze browser blijven. Ongeveer elke 5 minuten kijkt Quilcast naar het X-account en cast de nieuwe posts, citaten en threads daarvan, met hun foto's en video's; antwoorden aan anderen en reposts blijven op X. Alleen posts die na het aanzetten zijn geplaatst worden gekopieerd, maximaal 50 per dag. Je herstelzin of wallet keurt de sleutel één keer goed. Als je dit uitzet, wordt de sleutel ingetrokken, en dat gebeurt ook als je het account verwijdert.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "De crosspostingsleutel van Quilcast is verwijderd of verlopen, dus er wordt niets gecast. Zet crossposting uit en weer aan.",
+  "The last post couldn't be cast: {error}": "De laatste post kon niet worden gecast: {error}",
+  "There's no public X account with that name.": "Er is geen openbaar X-account met die naam.",
+  "X account": "X-account",
+  "X crossposting": "X-crossposting",
+  "X crossposting isn't available right now.": "X-crossposting is nu niet beschikbaar."
 }

@@ -77,6 +77,7 @@
       <h2>No app</h2>
       <p>Abra Configurações com a conta selecionada e toque em <strong>Excluir conta</strong>, abaixo de Sair. Depois que você confirmar, o Quilcast faz o seguinte, mostrando o progresso conforme avança:</p>
       <ol>
+        <li>Se o crossposting do X estiver ativado, ele é desativado primeiro: a chave com que nosso servidor publicava seus posts do X como casts é revogada, e a chave, o nome da conta do X e o registro do que foi publicado são excluídos.</li>
         <li>Nosso servidor exclui tudo o que guarda da conta: o visual do perfil e o cast fixado, as listas de silenciados e bloqueados, os rascunhos, as traduções salvas dos casts dela e as fotos e os vídeos que somente essa conta enviou ao nosso servidor.</li>
         <li>Seus casts, curtidas, recasts e quem você segue são removidos da rede Farcaster, e o seu perfil (foto, nome, bio, site, localização, nome de usuário no X e banner) é esvaziado. Depois, o app consulta a rede e avisa se ainda restar alguma coisa.</li>
         <li>Em seguida, o Quilcast sai da conta do mesmo modo que Sair: a chave que ele adicionou na Optimism para as notificações de miniapps é removida, a chave de assinatura é revogada para que a rede deixe de aceitá-la, a caixa de entrada de notificações no nosso servidor é descartada, e a frase de recuperação e as chaves são apagadas do seu dispositivo.</li>

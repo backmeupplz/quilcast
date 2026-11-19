@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Escolha um momento entre um minuto e um ano a partir de agora.",
   "Too many reminders right now. Try again later.": "Lembretes demais agora. Tente de novo mais tarde.",
   "The reminder wasn’t saved. Try again.": "O lembrete não foi salvo. Tente de novo.",
-  "Something went wrong.": "Algo deu errado."
+  "Something went wrong.": "Algo deu errado.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Os novos posts de @{handle} no X são publicados como casts desta conta em cerca de 5 minutos.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "O Quilcast cria uma chave que só pode publicar casts nesta conta e a guarda no servidor dele, ao contrário das suas outras chaves, que ficam neste navegador. Mais ou menos a cada 5 minutos, ele confere a conta do X e publica como casts os novos posts, citações e fios dela, com fotos e vídeos; respostas a outras pessoas e reposts ficam no X. Só são copiados os posts feitos depois que você ativar isto, no máximo 50 por dia. Sua frase de recuperação ou carteira aprova a chave uma vez. Desativar isto revoga a chave, e excluir a conta também.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "A chave de crossposting do Quilcast foi removida ou expirou, então nada está sendo publicado. Desative o crossposting e ative de novo.",
+  "The last post couldn't be cast: {error}": "Não foi possível publicar o último post como cast: {error}",
+  "There's no public X account with that name.": "Não existe uma conta pública do X com esse nome.",
+  "X account": "Conta do X",
+  "X crossposting": "Crossposting do X",
+  "X crossposting isn't available right now.": "O crossposting do X não está disponível agora."
 }

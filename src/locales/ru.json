@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Выберите время от минуты до года.",
   "Too many reminders right now. Try again later.": "Сейчас слишком много напоминаний. Попробуйте позже.",
   "The reminder wasn’t saved. Try again.": "Напоминание не сохранилось. Попробуйте ещё раз.",
-  "Something went wrong.": "Что-то пошло не так."
+  "Something went wrong.": "Что-то пошло не так.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Новые посты @{handle} в X публикуются кастами с этого аккаунта примерно в течение 5 минут.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast создаёт ключ, который может только публиковать касты от этого аккаунта, и хранит его на своём сервере — в отличие от других ваших ключей, которые остаются в этом браузере. Примерно раз в 5 минут он проверяет аккаунт X и публикует кастами его новые посты, цитаты и треды вместе с фото и видео; ответы другим и репосты остаются в X. Копируются только посты, сделанные после включения, не больше 50 в день. Ваша фраза восстановления или кошелёк один раз одобряет ключ. Выключение отзывает ключ, как и удаление аккаунта.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "Ключ Quilcast для кросспостинга удалён или истёк, поэтому ничего не публикуется. Выключите кросспостинг и включите снова.",
+  "The last post couldn't be cast: {error}": "Не удалось опубликовать последний пост кастом: {error}",
+  "There's no public X account with that name.": "Публичного аккаунта X с таким именем нет.",
+  "X account": "Аккаунт X",
+  "X crossposting": "Кросспостинг из X",
+  "X crossposting isn't available right now.": "Кросспостинг из X сейчас недоступен."
 }

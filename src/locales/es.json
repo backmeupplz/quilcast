@@ -1413,5 +1413,13 @@
   "Pick a time from a minute to a year away.": "Elige un momento entre un minuto y un año a partir de ahora.",
   "Too many reminders right now. Try again later.": "Hay demasiados recordatorios ahora mismo. Inténtalo más tarde.",
   "The reminder wasn’t saved. Try again.": "No se guardó el recordatorio. Inténtalo de nuevo.",
-  "Something went wrong.": "Algo salió mal."
+  "Something went wrong.": "Algo salió mal.",
+  "New posts from @{handle} on X are cast from this account within about 5 minutes.": "Las nuevas publicaciones de @{handle} en X se publican como casts desde esta cuenta en unos 5 minutos.",
+  "Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.": "Quilcast crea una clave que solo puede publicar casts para esta cuenta y la guarda en su servidor, a diferencia de tus otras claves, que se quedan en este navegador. Más o menos cada 5 minutos revisa la cuenta de X y publica como casts sus nuevas publicaciones, citas e hilos, con sus fotos y videos; las respuestas a otros y los reposts se quedan en X. Solo se copian las publicaciones hechas después de que lo actives, como máximo 50 al día. Tu frase de recuperación o tu billetera aprueba la clave una sola vez. Al desactivarlo se revoca la clave, y lo mismo pasa al eliminar la cuenta.",
+  "Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.": "La clave de publicación cruzada de Quilcast se quitó o caducó, así que no se está publicando nada. Desactiva la publicación cruzada y vuelve a activarla.",
+  "The last post couldn't be cast: {error}": "No se pudo publicar como cast la última publicación: {error}",
+  "There's no public X account with that name.": "No hay ninguna cuenta pública de X con ese nombre.",
+  "X account": "Cuenta de X",
+  "X crossposting": "Publicación cruzada desde X",
+  "X crossposting isn't available right now.": "La publicación cruzada desde X no está disponible ahora mismo."
 }
