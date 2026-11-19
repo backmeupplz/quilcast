@@ -63,21 +63,30 @@ export async function dropLook(fid) {
 
 export const getLook = (fid) => looks.get(fid) || keep(looks, 5000, fid, readFile(file(fid), 'utf8').then(JSON.parse, () => null))
 
+// fid → Map(key → { at, exp }) of keys the node listed when they signed, for when it can't be asked (haatz stalls for
+// minutes now and then); only keys the node listed get in, so nobody can crowd real ones out with keys of their own
+const held = new Map()
 // a key counts while the node lists it for the FID and it hasn't expired; asked again after a minute, or after
-// a few seconds when the key isn't there (a browser that just added one)
+// a few seconds when the key isn't there (a browser that just added one). Rows are { key, exp } (ms).
 const signers = new Map()
-export const keysOf = (node, fid, fresh = 60e3) => {
+const rowsOf = (node, fid, fresh) => {
   const hit = signers.get(fid)
-  if (hit && hit.at > Date.now() - fresh) return hit.keys
-  const keys = fetchJson(`${node}/v1/signersByFid?fid=${fid}`).then((r) => {
+  if (hit && hit.at > Date.now() - fresh) return hit.rows
+  // a timeout or a dropped connection reads the same as an error answer
+  const rows = fetchJson(`${node}/v1/signersByFid?fid=${fid}`).catch(() => null).then((r) => {
     if (!r?.signers) throw fail(502, "Couldn't reach the Farcaster node. Try again.")
-    return r.signers.filter((s) => !s.expiresAt || s.expiresAt * 1000 > Date.now()).map((s) => String(s.key).toLowerCase())
+    const rows = r.signers.map((s) => ({ key: String(s.key).toLowerCase(), exp: s.expiresAt ? s.expiresAt * 1000 : Infinity }))
+    // a key the node no longer lists is forgotten for outages too, whichever request asked
+    const h = held.get(fid)
+    if (h) for (const k of h.keys()) if (!rows.some((r) => r.key === k)) h.delete(k)
+    return rows
   })
   // a failed lookup isn't kept, so the next save asks the node again
-  keep(signers, 2000, fid, { at: Date.now(), keys })
-  keys.catch(() => signers.get(fid)?.keys === keys && signers.delete(fid))
-  return keys
+  keep(signers, 2000, fid, { at: Date.now(), rows })
+  rows.catch(() => signers.get(fid)?.rows === rows && signers.delete(fid))
+  return rows
 }
+export const keysOf = (node, fid, fresh = 60e3) => rowsOf(node, fid, fresh).then((rows) => rows.filter((r) => r.exp > Date.now()).map((r) => r.key))
 
 // images are checked once each: fetched up to their cap, so a 1 GB "GIF" stops at the cap and fails
 const probes = gate(4)
@@ -97,14 +106,31 @@ const yt = gate(4, 200)
 const songTitle = (id, pl) => yt(() => fetchJson(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(pl ? `https://www.youtube.com/playlist?list=${id}` : `https://www.youtube.com/watch?v=${id}`)}`)).catch(() => null)
 
 /** The account's Farcaster key (one the node lists for `fid`) that signed "<what>:<fid>:<ts>:<body>" in the last five
- *  minutes, from the x-key, x-ts and x-sig headers. `stale` makes the answer when they're missing or too old. */
-export async function keySigned(req, what, fid, body, node, stale = () => fail(401, 'missing auth')) {
+ *  minutes, from the x-key, x-ts and x-sig headers. `stale` makes the answer when they're missing or too old. `outage`
+ *  false: the node has to answer, a key it listed before doesn't count (for what can't be undone). */
+export async function keySigned(req, what, fid, body, node, stale = () => fail(401, 'missing auth'), outage = true) {
   const key = String(req.headers['x-key'] || '').toLowerCase()
   const ts = Number(req.headers['x-ts'])
   const sig = String(req.headers['x-sig'] || '')
   if (!/^0x[0-9a-f]{64}$/.test(key) || !/^[0-9a-f]{128}$/.test(sig) || !(Math.abs(Date.now() - ts) < 300e3)) throw stale()
   if (!ed25519.verify(Buffer.from(sig, 'hex'), Buffer.from(`${what}:${fid}:${ts}:${body}`), Buffer.from(key.slice(2), 'hex'))) throw fail(401, 'Bad signature.')
-  if (!(await keysOf(node, fid)).includes(key) && !(await keysOf(node, fid, 3e3)).includes(key)) throw fail(403, "That key doesn't belong to this account.")
+  const listed = async (fresh) => (await rowsOf(node, fid, fresh)).find((r) => r.key === key && r.exp > Date.now())
+  const ok = await listed(60e3).then((r) => r || listed(3e3)).then((r) => {
+    if (r) {
+      // re-adding moves the account to the back of the line
+      const h = held.get(fid) || new Map()
+      held.delete(fid)
+      keep(held, 5000, fid, h).set(key, { at: Date.now(), exp: r.exp })
+    }
+    return !!r
+  }, (e) => {
+    // the node can't be asked: a key it listed in the last hour still counts until it expires (so a revoked key can
+    // outlive its removal by that long, only while the node is down); any other key waits for the node, never a 403
+    const h = outage && held.get(fid)?.get(key)
+    if (h && h.at > Date.now() - 3600e3 && h.exp > Date.now()) return true
+    throw e
+  })
+  if (!ok) throw fail(403, "That key doesn't belong to this account.")
   // one more account today (server/stats.mjs keeps only the count)
   seen(fid)
   return { key, ts }

@@ -614,7 +614,7 @@ export const sendclapClaim = (email: string) =>
 async function keyFetch(url: string, what: string, method: string, body = '', tries = 3, as = account!, extra: Record<string, string> = {}, add = true): Promise<any> {
   const r = await fetch(url, { method, headers: { ...(method !== 'GET' && { 'content-type': 'application/json' }), ...extra, ...(await keySigned(what, body, as, add)) }, body: method === 'GET' ? undefined : body })
   const j = await r.json().catch(() => null)
-  if (r.status === 403 && tries > 1) return ((await signerListed(fresh(as))) ? sleep(3000) : replaceSigner(fresh(as))).then(() => keyFetch(url, what, method, body, tries - 1, as, extra))
+  if (r.status === 403 && tries > 1) return ((await signerListed(fresh(as))) ? sleep(3000) : replaceSigner(fresh(as))).then(() => keyFetch(url, what, method, body, tries - 1, as, extra, add))
   if (!r.ok) throw new Error(j?.error || t('Saving failed ({status})', { status: r.status }))
   return j
 }

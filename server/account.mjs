@@ -29,7 +29,8 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 /** `run`: the browser's id for this deletion (?run=), so a reply lost on the way is answered again while a new deletion
  *  starts afresh; a running one is joined whatever it says. */
 export async function deleteAccount(req, fid, run_, { node, site }) {
-  await keySigned(req, 'quilcast-delete', fid, '', node)
+  // deleting can't be undone, so the node has to vouch for the key right now
+  await keySigned(req, 'quilcast-delete', fid, '', node, undefined, false)
   const id = /^[\w-]{1,64}$/.test(run_ || '') ? run_ : ''
   let job = jobs.get(fid)
   if (!job || (job.state !== 'running' && (job.run !== id || !id || Date.now() - job.at > 600e3))) {
