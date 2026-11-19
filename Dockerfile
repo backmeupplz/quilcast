@@ -1,20 +1,20 @@
 # Every release bumps the version in both manifests; blanking it here keeps the installs below cached
 # until a dependency actually changes.
-FROM node:24.22.1-slim AS manifests
+FROM node:24.22.3-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS manifests
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN node -e 'const fs = require("fs"); for (const f of ["package.json", "package-lock.json"]) { const j = JSON.parse(fs.readFileSync(f)); j.version = "0.0.0"; if (j.packages) j.packages[""].version = "0.0.0"; fs.writeFileSync(f, JSON.stringify(j)) }'
 
 # stickers (server/stickers.mjs) are made with ffmpeg (a static build: it has libvpx, which Telegram's video stickers
 # need for their alpha) and libwebp's img2webp; the tests make some too, so the build has them as well
-FROM mwader/static-ffmpeg:7.1.1 AS ffmpeg
-FROM node:24.22.1-slim AS media
+FROM mwader/static-ffmpeg:7.1.1@sha256:11a44711684c0b9f754c047dcd64235b8b52deab251bd0e0a86f22faa160749c AS ffmpeg
+FROM node:24.22.3-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS media
 RUN apt-get update && apt-get install -y --no-install-recommends webp && rm -rf /var/lib/apt/lists/*
 COPY --from=ffmpeg /ffmpeg /usr/local/bin/
 
 # Quilcast WASM (wasm/, served at wasm.quilcast.com): Rust compiled to WebAssembly, nothing else (wasm/build.sh). Its own
 # stage, so the image only rebuilds it when wasm/ changes
-FROM rust:1.99-slim AS wasm
+FROM rust:1.100-slim@sha256:6f14b2b4b278ec0d50aa1d69541c304ce0f95e0f6268487aa9924af1c2e9aebe AS wasm
 WORKDIR /w
 RUN rustup target add wasm32-unknown-unknown
 COPY wasm/Cargo.toml wasm/Cargo.lock wasm/build.sh wasm/
@@ -41,7 +41,7 @@ RUN npm run build && npm test \
 # the runtime's own install, built alongside: browser-only packages (viem, hls.js, preact…) are devDependencies, so
 # this keeps just what server/ imports. Pruning the full install instead took ~4 minutes on the Easypanel host
 # (npm moves every removed file, and each move copies it in the build's overlay filesystem).
-FROM node:24.22.1-slim AS deps
+FROM node:24.22.3-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS deps
 WORKDIR /app
 COPY --from=manifests /app ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev --prefer-offline --no-audit --no-fund
