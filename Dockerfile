@@ -53,6 +53,7 @@ COPY --from=build /out ./
 COPY --from=wasm /w/wasm/dist wasm/dist
 ENV PORT=3000
 EXPOSE 3000
-# the media volume (/data) is owned by uid 1000
+# the media volume (/data) is owned by uid 1000; a new empty volume (quilcast.crosspost's) takes this owner from the image
+RUN mkdir -p /data && chown node:node /data
 USER node
 CMD ["node", "server/index.mjs"]

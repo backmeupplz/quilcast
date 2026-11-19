@@ -195,6 +195,8 @@ export async function xPosts(handle) {
 
 const SITE = process.env.QUILCAST_URL || 'http://quilcast-quilcast:3000'
 /** Puts the file at `url` on Quilcast's server and gives its address there. */
+// ponytail: every upload comes from this service's one IP, so past the server's 30 uploads per 10 minutes per IP the
+// rest become links to the post; exempt this service there if many accounts post media
 export async function uploadAs(c, url, max, site = SITE) {
   const r = await safeGet(url, { max: max + 1, timeout: 120e3 })
   if (r.status !== 200 || r.truncated) throw new Error(`media ${r.status}${r.truncated ? ' too big' : ''}`)
