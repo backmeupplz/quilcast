@@ -117,8 +117,15 @@ export async function getCrosspost(req, fid, node) {
   return c?.on || c?.off || c?.error ? { handle: c.handle, on: !!c.on, off: c.off, error: c.error } : {}
 }
 
+/** The key revokes itself; only a node that can't be asked throws (any other refusal leaves nothing to revoke). */
+async function revoke(c, submit) {
+  await submit((await keyRemoveSelf(c.fid, rawEd(unhex(c.priv)), Math.floor(Date.now() / 1000))).msg).catch((e) => {
+    if (e.retry) throw e
+  })
+}
+
 /** POST: a fresh key for `handle`, kept here until PUT adds it (or a new POST replaces it). */
-export async function newKey(req, fid, node, { profile = xProfile } = {}) {
+export async function newKey(req, fid, node, { profile = xProfile, submit = (b) => submitTo(node, b) } = {}) {
   const body = await readText(req, 1e3)
   await keySigned(req, 'quilcast-crosspost-key', fid, body, node)
   const handle = String(parseJson(body)?.handle || '').replace(/^@/, '')
@@ -128,7 +135,11 @@ export async function newKey(req, fid, node, { profile = xProfile } = {}) {
   // one being turned off still holds its key until the revoke lands
   if (old?.on || old?.off) throw fail(409, 'already on')
   if (!old && (await readdir(dir)).filter((f) => f.endsWith('.json')).length >= MAX_ACCOUNTS) throw fail(503, 'full')
-  if (old) gone.add(old.pub)
+  if (old) {
+    gone.add(old.pub)
+    // a KEY_ADD whose answer was lost may have landed after all
+    if (old.tried) await revoke(old, submit).catch(() => {})
+  }
   // the account has to exist (and not be protected) for there to be anything to copy
   const p = await profile(handle)
   if (!p) throw fail(404, 'no such account')
@@ -148,10 +159,17 @@ export async function turnOn(req, fid, node, { submit = (b) => submitTo(node, b)
   const n = (v) => Number.isSafeInteger(v) && v > 0
   if (!n(a.nonce) || !n(a.deadline) || !n(a.ttl) || !/^(0x)?[0-9a-f]{2,2000}$/i.test(a.metadata) || !/^(0x)?[0-9a-f]{130}$/i.test(a.custodySig)) throw fail(400, 'bad key request')
   const m = await keyAddMsg(fid, rawEd(unhex(c.priv)), { nonce: a.nonce, deadline: a.deadline, ttl: a.ttl, scopes: [MT.CAST_ADD], metadata: unhex(a.metadata), custodySig: unhex(a.custodySig) })
+  // from here the key may be on the account, so whatever replaces or sweeps it revokes it first
+  await save({ ...c, tried: true })
   try {
     await submit(m.msg)
   } catch (e) {
     throw fail(e.retry ? 502 : 400, e.message)
+  }
+  // turned off (or deleted) while the KEY_ADD was on its way
+  if (gone.has(c.pub)) {
+    await revoke(c, submit).catch(() => {})
+    throw fail(409, 'no key')
   }
   await save({ ...c, on: true, since: idAt(now), casts: {}, day: '', n: 0, error: undefined, pending: undefined })
   return { handle: c.handle, on: true }
@@ -166,10 +184,10 @@ export async function turnOff(req, fid, node, { submit = (b) => submitTo(node, b
   gone.add(c.pub)
   // stops posting at once; the key stays until its revoke lands, so one the node couldn't be asked about is tried again
   if (c.on) await save({ ...c, on: false, off: true })
-  // also for a key never known to be added (its KEY_ADD's answer may have been lost on the way)
-  await submit((await keyRemoveSelf(fid, rawEd(unhex(c.priv)), Math.floor(Date.now() / 1000))).msg).catch((e) => {
-    // any other refusal (revoked already, expired, never added) leaves nothing to revoke, and the key goes with the file
-    if (e.retry) throw fail(502, e.message)
+  // also for a key never known to be added (its KEY_ADD's answer may have been lost on the way); a refusal (revoked
+  // already, expired, never added) leaves nothing to revoke, and the key goes with the file
+  await revoke(c, submit).catch((e) => {
+    throw fail(502, e.message)
   })
   await rm(fileOf(fid), { force: true })
   return { was: c.handle }
@@ -283,8 +301,12 @@ export async function round(deps) {
   resume = ''
   for (const f of [...files.slice(at), ...files.slice(0, at)]) {
     const c = await read(f.slice(0, -5))
-    // a key made for Turn on that the account never approved
-    if (c && !c.on && !c.off && Date.now() - (c.made || 0) > 86400e3) await rm(fileOf(c.fid), { force: true })
+    // a key made for Turn on that never went on (a day on)
+    if (c && !c.on && !c.off && c.since === undefined && Date.now() - (c.made || 0) > 86400e3) {
+      gone.add(c.pub)
+      if (!c.tried || (await revoke(c, deps.submit).then(() => true, () => false))) await rm(fileOf(c.fid), { force: true })
+      continue
+    }
     if (!c?.on || denied(c.handle)) continue
     try {
       await step(c, deps)

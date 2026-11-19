@@ -2141,7 +2141,9 @@ function CrosspostSettings() {
       setSt(await f(await w()))
       setAsking(false)
     } catch (e: any) {
-      setErr(words(e.message))
+      // on already, from a browser that couldn't read it before it had a key: show it as it is
+      if (e.message === 'already on') await w().then((m) => m.crosspostState(a)).then((s) => (setSt(s), setAsking(false)), () => setErr(words(e.message)))
+      else setErr(words(e.message))
     }
     setBusy(false)
   }

@@ -46,15 +46,14 @@ export async function deleteAccount(req, fid, run_, { node, site }) {
   const id = /^[\w-]{1,64}$/.test(run_ || '') ? run_ : ''
   let job = jobs.get(fid)
   if (!job || (job.state !== 'running' && (job.run !== id || !id || Date.now() - job.at > 600e3))) {
-    // nothing more is cast from X for it, with the signature the deletion was asked with (so before the queue: it's
-    // only good for a few minutes)
-    if (CROSSPOST) {
-      const r = await crosspost('DELETE', fid, req.headers).catch(() => null)
-      if (r?.status !== 200) throw fail(503, "Quilcast's server is still deleting your data. Try again in a few minutes.")
-    }
     job = { state: 'running', run: id }
     const end = (o) => Object.assign(job, o, { at: Date.now() })
-    job.p = runs(() => run(fid, node, site)).then((r) => end({ state: 'done', result: r }), (e) => end({ state: 'failed', error: e }))
+    // nothing more is cast from X for it, with the signature the deletion was asked with (so before the queue: it's
+    // only good for a few minutes)
+    const xp = !CROSSPOST ? Promise.resolve() : crosspost('DELETE', fid, req.headers).catch(() => null).then((r) => {
+      if (r?.status !== 200) throw fail(503, "Quilcast's server is still deleting your data. Try again in a few minutes.")
+    })
+    job.p = xp.then(() => runs(() => run(fid, node, site))).then((r) => end({ state: 'done', result: r }), (e) => end({ state: 'failed', error: e }))
     jobs.set(fid, job)
   }
   let timer

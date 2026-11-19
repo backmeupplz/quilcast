@@ -219,3 +219,17 @@ test('turning it on adds a cast-only key; turning it off revokes it and forgets 
   }
   void readFile
 })
+
+test('a key that never went on is swept after a day (revoked if its KEY_ADD was sent); a removed key stays to be seen', async () => {
+  const { sent, submit, upload } = fake()
+  const day = 86400e3
+  await writeFile(join(dir, '21.json'), JSON.stringify({ fid: 21, handle: 'me', priv, pub: 'a1', on: false, made: Date.now() - 2 * day }))
+  await writeFile(join(dir, '22.json'), JSON.stringify({ fid: 22, handle: 'me', priv, pub: 'a2', on: false, tried: true, made: Date.now() - 2 * day }))
+  await writeFile(join(dir, '23.json'), JSON.stringify({ fid: 23, handle: 'me', priv, pub: 'a3', on: false, made: Date.now() }))
+  await writeFile(join(dir, '24.json'), JSON.stringify(account({ fid: 24, pub: 'a4', on: false, error: 'key', made: Date.now() - 2 * day })))
+  await round({ posts: async () => [], upload, submit })
+  const left = await readdir(dir)
+  assert.deepEqual(['21.json', '22.json', '23.json', '24.json'].map((f) => left.includes(f)), [false, false, true, true])
+  // only the one whose KEY_ADD went out was revoked
+  assert.deepEqual(sent.map((b) => fields(fields(b).get(7)).get(1)), [BigInt(MT.KEY_REMOVE)])
+})
