@@ -2156,7 +2156,7 @@ function CrosspostSettings() {
       {st?.error && <p class="hint warn" role="alert">{st.error === 'key' ? t("Quilcast's crossposting key was removed or has expired, so nothing is being cast. Turn crossposting off and on again.") : t("The last post couldn't be cast: {error}", { error: st.error })}</p>}
       {!live && asking && (
         <>
-          <p class="hint">{t("Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.")}</p>
+          <p class="hint">{t("Quilcast makes a key that can only post casts for this account and keeps it on its server, unlike your other keys, which stay in this browser. About every 5 minutes it looks at the X account and casts its new posts, quotes and threads, with their photos and videos; replies to others and reposts stay on X. Only posts made after you turn this on are copied, at most 50 a day. Your recovery phrase or wallet approves the key once. Turning this off revokes the key, and so does deleting the account.")}</p>
           <label class="field"><span>{t('X account')}</span><input value={handle} placeholder="@name" maxLength={16} onInput={(e) => setHandle(e.currentTarget.value.trim())} /></label>
           <div class="actions"><button class="btn small" disabled={busy || !/^@?\w{1,15}$/.test(handle)} onClick={() => run((m) => m.crosspostOn(handle.replace(/^@/, ''), a))}>{busy ? t('Working…') : t('Turn on')}</button></div>
         </>
