@@ -220,12 +220,14 @@ export function AppIcon({ src, name }: { src?: string; name?: string }) {
   return src && !bad ? <img class="app-icon" alt="" loading="lazy" referrerpolicy="no-referrer" src={proxied(src)} onError={() => setBad(true)} /> : <span class="app-icon">{[...(name || '?')][0]}</span>
 }
 
-/** A popup that closes on any click outside it. */
+/** A popup that closes on any click outside it and its button: its parent (each caller's wrapper) holds just that
+ *  button and the popup, and the button toggles it itself. Closing on a click on the button too would
+ *  open it again: Preact draws the closed menu before the button's handler runs, which then sees it closed (#764). */
 export function Menu({ close, class: cls, children }: { close: () => void; class?: string; children: ComponentChildren }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // capturing, so clicks that other handlers stop still count
-    const f = (e: Event) => !ref.current?.contains(e.target as Node) && close()
+    const f = (e: Event) => !ref.current?.parentElement?.contains(e.target as Node) && close()
     addEventListener('click', f, true)
     return () => removeEventListener('click', f, true)
   }, [])
