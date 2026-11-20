@@ -41,13 +41,24 @@ const ask = (i: Inline, title: string, body: string, yes: string) =>
     i.say({ title, body, yes, at: Date.now(), done: (ok) => ((i.asking = false), i.say(null), resolve(ok)) })
   })
 
+// whether the person just tapped this view: the page's tap is fresh and focus went into this frame, not another card's.
+// A tap on the page itself takes focus off a view, which Firefox leaves there (its buttons don't take focus).
+const tapped = (i: Inline) => !!navigator.userActivation?.isActive && document.activeElement === i.frame
+addEventListener('pointerdown', () => [...frames].find((x) => x.frame === document.activeElement)?.frame.blur(), true)
+// a call that takes the person somewhere goes ahead at once only right after they tapped the view; otherwise they're
+// asked in its card first, so a view can't move the app, open another app or a tab, by itself
+const leaving = (i: Inline, where: string) => tapped(i) || ask(i, t('Open this link?'), where, t('Open'))
+// what the composer's preview may call: it's not the cast yet, and no one taps it
+const PREVIEW = new Set(['context', 'ready', 'getCapabilities', 'getChains'])
+
 const calls: Record<string, (i: Inline, ...a: any[]) => unknown> = {
   ready: () => {},
   getCapabilities: () => ['actions.ready', 'actions.signIn', 'actions.openUrl', 'actions.openMiniApp', 'actions.viewCast', 'actions.viewProfile'],
   getChains: () => [],
   async signIn(i, o: any = {}) {
     if (document.hidden || !i.cast) return { error: { type: 'rejected_by_user' } }
-    if (!requireAccount()) return { error: { type: 'rejected_by_user' } }
+    // someone signed out goes to /join, which only a tap on the view may send them to
+    if ((!account?.done && !tapped(i)) || !requireAccount()) return { error: { type: 'rejected_by_user' } }
     const a = account!, me = myUser()!
     const custody = await custodyOf(a)
     const draft = () => siwf({ origin: i.origin, address: custody.address, fid: a.fid!, nonce: o.nonce, notBefore: o.notBefore, expirationTime: o.expirationTime })
@@ -65,27 +76,27 @@ const calls: Record<string, (i: Inline, ...a: any[]) => unknown> = {
     }
     return signSiwf(i, custody, draft(), { wait, toast, update: () => {} })
   },
-  openUrl(_, raw: unknown) {
+  async openUrl(i, raw: unknown) {
     const u = safeUrl(typeof raw === 'string' ? raw.trim() : (raw as any)?.url)
     if (!u) throw new Error('That is not a web link.')
-    open(u, '_blank', 'noopener,noreferrer')
+    if (await leaving(i, u)) open(u, '_blank', 'noopener,noreferrer')
   },
   // the whole app, as its card's button opens it, or another app
   async openMiniApp(i, o: any = {}) {
     const u = safeUrl(o?.url)
     if (!u) throw new Error('That is not a web link.')
-    if (!requireAccount()) return
+    if (!(await leaving(i, u)) || !requireAccount()) return
     const m = await import('./miniapp.tsx')
     u === i.app.url ? m.launch(i.app, { cast: i.cast, embed: i.embed }) : m.launchUrl(u, i.host)
   },
-  viewCast: (_, o) => {
+  async viewCast(i, o) {
     const h = String(o?.hash || '').replace(/^0x/, '')
     if (!/^[0-9a-f]{40}$/i.test(h)) throw new Error('Invalid cast hash.')
-    go(`/c/${h}`)
+    if (await leaving(i, `${location.host}/c/${h}`)) go(`/c/${h}`)
   },
-  viewProfile: (_, o) => {
+  async viewProfile(i, o) {
     if (!Number.isSafeInteger(o?.fid) || o.fid <= 0) throw new Error('Invalid fid.')
-    go(`/u/${o.fid}`)
+    if (await leaving(i, `${location.host}/u/${o.fid}`)) go(`/u/${o.fid}`)
   },
 }
 
@@ -109,7 +120,8 @@ addEventListener('message', (e) => {
   const args = (Array.isArray(d.argumentList) ? d.argumentList : []).map((v: any) => (v?.type === 'RAW' ? v.value : undefined))
   let out: unknown
   try {
-    out = d.type === 'GET' && name === 'context' ? context(i)
+    out = !i.cast && !PREVIEW.has(name) ? Promise.reject(new Error(`${i.name} can't use ${name} in a preview.`))
+      : d.type === 'GET' && name === 'context' ? context(i)
       : d.type === 'APPLY' && Object.hasOwn(calls, name) ? calls[name](i, ...args)
         : Promise.reject(new Error(`In the cast, ${i.name} can't use ${name}. Open the app for that.`))
   } catch (err) {

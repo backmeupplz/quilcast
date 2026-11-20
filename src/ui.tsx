@@ -986,7 +986,8 @@ function PageCard({ u: given, c }: { u: string; c?: Cast }) {
   // a middle click on a look-alike asks too
   const aux = (e: MouseEvent) => e.button === 1 && lookalike(u) && (e.stopPropagation(), shell.link(u)) && e.preventDefault()
   // a mini app's inline view (inline.ts) takes the picture's place, with the rest of the card under it
-  const inline = d?.app && d.inline && safeUrl(d.inline.url)
+  // never one on this app's own origin: Quilcast itself in the card, signed in, is a page to trick a tap out of
+  const inline = d?.app && d.inline && [safeUrl(d.inline.url)].find((x) => x && new URL(x).origin !== location.origin)
   const card = (
     // a mini app's or frame's embed image (the one with a button) is 3:2, so its card is too
     <a class={`linkcard${image && !inline ? ' big' : ''}${image && d?.button && !inline ? ' lc-app' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click} onAuxClick={aux}>
@@ -1004,12 +1005,12 @@ function PageCard({ u: given, c }: { u: string; c?: Cast }) {
 
 // our own hosts' inline views load as they scroll in, like quilcast.com's own pictures; another host's only once
 // tapped, as loading its page would tell it who is reading, which its picture (through /api/img) doesn't
-const OWN_HOST = /^https:\/\/(?:[\w-]+\.)*quilcast\.com$/
+const OWN_HOST = /^https:\/\/(?:[\w-]+\.)+quilcast\.com$/
 /** A mini app embed's inline view (fc:miniapp:inline): its page in a frame `height` px tall, answered by inline.ts.
  *  In the composer (no `c`) it's a preview the composer's styles keep from being used. */
 function InlineApp({ u, src, height, app, c, image }: { u: string; src: string; height: number; app: AppMeta; c?: Cast; image?: string }) {
   const { origin, host } = new URL(src)
-  const [run, setRun] = useState(OWN_HOST.test(origin) || origin === location.origin)
+  const [run, setRun] = useState(OWN_HOST.test(origin))
   const [mod, setMod] = useState<typeof import('./inline.ts')>()
   const [say, setSay] = useState<import('./inline.ts').Say>(null)
   const ref = useRef<HTMLIFrameElement>(null)
