@@ -65,7 +65,7 @@ await sdk.actions.ready()
       <p>Everything else is refused with an error: the wallet, <code>composeCast</code>, <code>addMiniApp</code>, notifications, the camera and microphone, haptics and the primary button. Those belong in the whole app, so open it with <code>openMiniApp</code>.</p>
 
       <h3>An example: Poll</h3>
-      <p><a href="https://poll.quilcast.com">poll.quilcast.com</a>, Quilcast's own <a href="/developers/composer-actions">composer action</a>, works this way. Each poll's page declares <code>/p/&lt;id&gt;?inline</code> as its view, 60 pixels plus 48 for each option. That URL is the same page laid out smaller: the options as buttons and the number of votes so far. Tapping an option asks to sign in, the sign-in is the vote, and the view shows the results. See <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/actions/poll"><code>actions/poll/</code></a> for the code.</p>
+      <p><a href="https://poll.quilcast.com">poll.quilcast.com</a>, Quilcast's own <a href="/developers/composer-actions">composer action</a>, works this way. Each poll's page declares <code>/p/&lt;id&gt;?inline</code> as its view, 36 pixels plus 48 for each option. That URL is the same page laid out smaller: the options as buttons and the number of votes so far. Tapping an option asks to sign in, the sign-in is the vote, and the view shows the results. See <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/actions/poll"><code>actions/poll/</code></a> for the code.</p>
 
       <h2>Trust</h2>
       <ul>

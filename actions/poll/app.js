@@ -83,6 +83,8 @@ function results(p, mine) {
   box.append(sum)
   box.hidden = false
   $('#choices').hidden = true
+  // the inline view has one line under the rows, for the count or a message (a message after this one replaces it)
+  if (inline) status(votes(total))
 }
 
 async function cast(p, i, buttons) {

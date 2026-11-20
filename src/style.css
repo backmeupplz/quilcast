@@ -659,7 +659,8 @@ small.warn { color: var(--warn); }
 .lc-inline .lc-desc { display: none; }
 .lc-inline .lc-title { -webkit-line-clamp: 1; }
 .lc-inline .lc-btn { margin: 0 12px 0 0; padding: 6px 14px; }
-.lc-frame { position: relative; background: var(--soft); }
+.lc-frame { position: relative; }
+.lc-frame:has(.lc-img) { background: var(--soft); }
 .lc-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
 .lc-frame .lc-img { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; object-fit: contain; border: 0; }
 .lc-run { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 24px); }
@@ -688,11 +689,10 @@ small.warn { color: var(--warn); }
 .att-bar { position: absolute; inset-inline-start: 10px; inset-inline-end: 10px; bottom: 10px; height: 4px; border-radius: calc(4px * var(--rs, 1)); background: rgb(255 255 255 / 0.3); overflow: hidden; }
 .att-bar i { display: block; height: 100%; background: #fff; border-radius: calc(4px * var(--rs, 1)); transition: width 0.2s; }
 .att-err { position: absolute; inset: auto 6px 6px; font-size: 12px; color: #fff; background: rgb(180 30 30 / 0.85); padding: 4px 8px; border-radius: calc(8px * var(--rs, 1)); }
-/* a mini app's link (compose.tsx linkAtt): its card across the row, the x still clickable */
-.att.embed-preview { grid-column: 1 / -1; aspect-ratio: auto; margin: 0; background: none; }
+/* a mini app's link (compose.tsx linkAtt): its card across the row, the x on its corner, off what the card shows */
+.att.embed-preview { grid-column: 1 / -1; aspect-ratio: auto; margin: 0; background: none; overflow: visible; }
 .att.embed-preview .linkcard { margin-top: 0; }
-.att.embed-preview .lc-text { padding-inline-end: 36px; }
-.att.embed-preview .att-x { pointer-events: auto; }
+.att.embed-preview .att-x { pointer-events: auto; top: -8px; inset-inline-end: -4px; z-index: 1; }
 .att-x { position: absolute; top: 6px; inset-inline-end: 6px; width: 26px; height: 26px; border-radius: calc(99px * var(--rs, 1)); border: 0; display: grid; place-items: center; background: rgb(0 0 0 / 0.6); color: #fff; }
 
 /* a phone too narrow for one row puts the Channel chip, the count and + on a second; it doesn't scroll sideways, which would clip the Channel picker that opens above the chip (#721) */

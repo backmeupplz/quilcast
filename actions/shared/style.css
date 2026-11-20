@@ -35,14 +35,19 @@ a { color: #b3a6ff; }
 .bar { display: flex; justify-content: space-between; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(90deg, var(--accent) var(--pct), var(--card) var(--pct)); overflow-wrap: anywhere; }
 .bar.mine { border-color: var(--accent-hi); font-weight: 650; }
 #q { white-space: pre-wrap; overflow-wrap: anywhere; }
-/* Poll's inline view (/p/<id>?inline): a cast's card holds it at 60 + 48 px an option (server/index.mjs), so each row
-   is one line */
-.inline { min-height: 0; }
+/* Poll's inline view (/p/<id>?inline): a cast's card holds it at 36 + 48 px an option (server/index.mjs): the rows,
+   then one line for the count or a message. No background of its own, so it takes the card's: a light card gets the
+   browser's dark backdrop instead, as the page is dark only */
+.inline, .inline body { min-height: 0; background: transparent; }
 .inline main { max-width: none; padding: 8px 12px; }
 .inline #q { display: none; }
 .inline .choices, .inline .results { margin: 0; gap: 8px; }
-.inline .choices button, .inline .bar { min-height: 40px; padding: 8px 12px; border-radius: 10px; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inline .choices button, .inline .bar { min-height: 40px; padding: 8px 12px 8px 16px; border: 1px solid rgb(255 255 255 / .12); border-radius: 10px; color: var(--fg); font-size: 15px; line-height: 22px; font-weight: 600; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: inset 4px 0 var(--accent-hi); }
+.inline .choices button { background: rgb(255 255 255 / .06); }
+.inline .choices button:hover:not(:disabled) { background: rgb(122 97 255 / .2); border-color: var(--accent-hi); }
+.inline .bar { background: linear-gradient(90deg, rgb(122 97 255 / .45) var(--pct), rgb(255 255 255 / .06) var(--pct)); }
+.inline .bar.mine { border-color: var(--accent-hi); }
 .inline .bar span { overflow: hidden; text-overflow: ellipsis; }
-.inline .results p { margin: 0; }
-.inline #status { min-height: 0; margin: 4px 0 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inline .results p { display: none; }
+.inline #status { min-height: 0; margin: 6px 0 0; font-size: 13px; line-height: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inline #status.err { color: var(--bad); }

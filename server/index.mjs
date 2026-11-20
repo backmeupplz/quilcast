@@ -1294,7 +1294,7 @@ const server = createServer(async (req, res) => {
             h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: `${url}.png`, button: { title: 'Vote', action: { type, name: 'Poll', url, splashImageUrl: `https://${actionHost}/icon.png`, splashBackgroundColor: '#0d0c11' } } }))
           }
           // its options, or the bars once voted, then a line for the count (actions/poll/app.js inline)
-          h = meta(h, 'name', 'fc:miniapp:inline', JSON.stringify({ url: `${url}?inline`, height: 60 + 48 * p.options.length }))
+          h = meta(h, 'name', 'fc:miniapp:inline', JSON.stringify({ url: `${url}?inline`, height: 36 + 48 * p.options.length }))
         }
         res.setHeader('content-security-policy', ACTION_CSP)
         return html(h)
