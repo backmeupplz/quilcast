@@ -28,3 +28,10 @@ button.ghost:hover:not(:disabled) { background: var(--line); }
 #status { min-height: 1.5em; margin: 12px 0 0; }
 #status.err { color: var(--bad); }
 a { color: #b3a6ff; }
+.field { display: grid; gap: 8px; margin: 16px 0; font-weight: 650; }
+.field textarea, .field input { width: 100%; min-height: 52px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--fg); font: inherit; font-weight: 400; resize: vertical; }
+.choices { display: grid; gap: 10px; margin: 16px 0; }
+.results { display: grid; gap: 10px; margin: 16px 0; }
+.bar { display: flex; justify-content: space-between; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(90deg, var(--accent) var(--pct), var(--card) var(--pct)); overflow-wrap: anywhere; }
+.bar.mine { border-color: var(--accent-hi); font-weight: 650; }
+#q { white-space: pre-wrap; overflow-wrap: anywhere; }

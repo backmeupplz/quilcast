@@ -53,14 +53,14 @@ export function looksLike(type, b) {
 
 const canon = (o) => (o === null || typeof o !== 'object' ? JSON.stringify(o) : Array.isArray(o) ? `[${o.map(canon).join(',')}]` : `{${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}:${canon(o[k])}`).join(',')}}`)
 
-/** Address that signed the farcaster.xyz bearer (EIP-191 over the canonical auth request). */
-function signerOf(authRequest, bearer) {
-  const sig = Buffer.from(bearer.replace(/^eip191:/, ''), 'base64')
-  const msg = Buffer.from(canon(authRequest))
+/** Address that signed `msg` with EIP-191 (personal_sign), lowercase; throws on a malformed signature. */
+export function personalSigner(msg, sig) {
   const digest = keccak_256(Buffer.concat([Buffer.from(`\x19Ethereum Signed Message:\n${msg.length}`), msg]))
-  const pub = secp256k1.Signature.fromBytes(sig.subarray(0, 64), 'compact').addRecoveryBit(sig[64] - 27).recoverPublicKey(digest).toBytes(false)
+  const pub = secp256k1.Signature.fromBytes(sig.subarray(0, 64), 'compact').addRecoveryBit(sig[64] < 27 ? sig[64] : sig[64] - 27).recoverPublicKey(digest).toBytes(false)
   return '0x' + Buffer.from(keccak_256(pub.subarray(1)).subarray(12)).toString('hex')
 }
+/** Address that signed the farcaster.xyz bearer (EIP-191 over the canonical auth request). */
+const signerOf = (authRequest, bearer) => personalSigner(Buffer.from(canon(authRequest)), Buffer.from(bearer.replace(/^eip191:/, ''), 'base64'))
 
 async function fcJson(path, token, init = {}) {
   const r = await fetch(FC + path, { ...init, headers: { ...FC_HEADERS, 'content-type': 'application/json', authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(60000) })

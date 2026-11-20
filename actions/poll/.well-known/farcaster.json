@@ -1,0 +1,26 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMzNTYzMTYsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhhRDI4MDQxNTMxNzJDYTE0MTA1NTA2Mzg2YzkwNzg1Mzc1ODhEZDVkIn0",
+    "payload": "eyJkb21haW4iOiJwb2xsLnF1aWxjYXN0LmNvbSJ9",
+    "signature": "dQ3hpkJRJnxnOhHc-SYnUekbTjF4LEk4UtlmSma52sEccs9QRUcdixs1nnPJa60AotfG3enWEXkwCufsHOGOqBw"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Poll",
+    "iconUrl": "https://poll.quilcast.com/icon.png",
+    "homeUrl": "https://poll.quilcast.com/",
+    "composerActionUrl": "https://poll.quilcast.com/",
+    "splashImageUrl": "https://poll.quilcast.com/icon.png",
+    "splashBackgroundColor": "#0d0c11",
+    "subtitle": "Ask your followers",
+    "description": "Write a question with 2 to 4 options and put the poll in your cast. Everyone votes once, signed in with Farcaster, and sees the results.",
+    "primaryCategory": "social",
+    "tags": [
+      "poll",
+      "vote",
+      "composer",
+      "quilcast"
+    ],
+    "canonicalDomain": "poll.quilcast.com"
+  }
+}

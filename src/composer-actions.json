@@ -1,1 +1,3 @@
-[]
+[
+  {"url": "https://poll.quilcast.com/", "name": "Poll", "icon": "https://poll.quilcast.com/icon.png", "description": "Ask a question with 2 to 4 options; everyone votes once"}
+]

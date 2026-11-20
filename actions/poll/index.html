@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Poll</title>
+  <meta name="description" content="A Quilcast composer action: ask a question with 2 to 4 options, put the poll in your cast, and everyone votes once." />
+  <link rel="icon" href="/icon.png" />
+  <meta name="theme-color" content="#0d0c11" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Quilcast" />
+  <meta property="og:url" content="https://poll.quilcast.com/" />
+  <meta property="og:title" content="Poll" />
+  <meta property="og:description" content="A Quilcast composer action: ask a question with 2 to 4 options, put the poll in your cast, and everyone votes once." />
+  <meta property="og:image" content="https://poll.quilcast.com/embed.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@quilcast" />
+  <meta name="twitter:title" content="Poll" />
+  <meta name="twitter:description" content="A Quilcast composer action: ask a question with 2 to 4 options, put the poll in your cast, and everyone votes once." />
+  <meta name="twitter:image" content="https://poll.quilcast.com/embed.png" />
+  <meta name="fc:miniapp" content="{&quot;version&quot;:&quot;1&quot;,&quot;imageUrl&quot;:&quot;https://poll.quilcast.com/embed.png&quot;,&quot;button&quot;:{&quot;title&quot;:&quot;Make a poll&quot;,&quot;action&quot;:{&quot;type&quot;:&quot;launch_miniapp&quot;,&quot;name&quot;:&quot;Poll&quot;,&quot;url&quot;:&quot;https://poll.quilcast.com/&quot;,&quot;splashImageUrl&quot;:&quot;https://poll.quilcast.com/icon.png&quot;,&quot;splashBackgroundColor&quot;:&quot;#0d0c11&quot;}}}" />
+  <meta name="fc:frame" content="{&quot;version&quot;:&quot;1&quot;,&quot;imageUrl&quot;:&quot;https://poll.quilcast.com/embed.png&quot;,&quot;button&quot;:{&quot;title&quot;:&quot;Make a poll&quot;,&quot;action&quot;:{&quot;type&quot;:&quot;launch_frame&quot;,&quot;name&quot;:&quot;Poll&quot;,&quot;url&quot;:&quot;https://poll.quilcast.com/&quot;,&quot;splashImageUrl&quot;:&quot;https://poll.quilcast.com/icon.png&quot;,&quot;splashBackgroundColor&quot;:&quot;#0d0c11&quot;}}}" />
+  <link rel="stylesheet" href="/style.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main>
+    <form id="make" hidden>
+      <h1>Poll</h1>
+      <label class="field">Question<textarea id="question" rows="3" maxlength="320" required></textarea></label>
+      <div class="field">Options
+        <input class="option" maxlength="60" placeholder="Option 1" aria-label="Option 1" />
+        <input class="option" maxlength="60" placeholder="Option 2" aria-label="Option 2" />
+        <input class="option" maxlength="60" placeholder="Option 3 (optional)" aria-label="Option 3" />
+        <input class="option" maxlength="60" placeholder="Option 4 (optional)" aria-label="Option 4" />
+      </div>
+      <p class="muted small">Everyone who opens the poll signs in with Farcaster to vote, once each, and then sees the results.</p>
+      <button id="put" type="submit">Put the poll in my cast</button>
+    </form>
+    <section id="poll" hidden>
+      <h1 id="q"></h1>
+      <div id="choices" class="choices"></div>
+      <div id="results" class="results" hidden></div>
+    </section>
+    <p id="status" role="status"></p>
+  </main>
+</body>
+</html>

@@ -29,6 +29,7 @@ import { alertState, flushAlerts, loadAlerts, offAlerts, putAlerts, watchAlerts 
 import { loadReports, report } from './report.mjs'
 import { getDrafts, loadDrafts, putDraft } from './drafts.mjs'
 import { addReminder, loadRemind, oneClickReminder, watchRemind } from './remind.mjs'
+import { addPoll, getPoll, loadPolls, no, pollCard, tally, vote } from './poll.mjs'
 import { cancelScheduled, getScheduled, loadScheduled, putScheduled, watchScheduled } from './scheduled.mjs'
 import { getPrefs, loadPrefs, putPrefs } from './prefs.mjs'
 import { getPin, loadPins, putPin } from './pins.mjs'
@@ -80,6 +81,8 @@ loadDrafts(DATA)
 loadScheduled(DATA).then(() => watchScheduled({ node: NODE, every: Number(process.env.SCHEDULED_EVERY_MS) || 15e3 }))
 // Remind me's reminders (server/remind.mjs), sent as mini app notifications when they're due
 loadRemind(DATA, SITE).then(() => watchRemind(Number(process.env.REMIND_EVERY_MS) || 15e3))
+// Poll's polls and votes (server/poll.mjs)
+loadPolls(DATA)
 loadPrefs(DATA)
 loadPins(DATA)
 loadStickers(DATA)
@@ -927,10 +930,11 @@ async function fidFromLink(text) {
 // collect/'s files, listed once: nothing else under it is served
 const collectFiles = new Set(readdirSync(COLLECT_DIR, { recursive: true, withFileTypes: true }).filter((d) => d.isFile() && d.name !== 'index.html').map((d) => '/' + relative(COLLECT_DIR, join(d.parentPath, d.name))))
 
-// Quilcast's own cast actions (src/actions.json), each a mini app on its own host: actions/<name>/, and actions/shared/
-// for what they all load. Static pages; they read the node and spam.quilcast.com themselves.
+// Quilcast's own cast actions (src/actions.json) and composer actions (src/composer-actions.json), each a mini app on
+// its own host: actions/<name>/, and actions/shared/ for what they all load. Static pages; they read the node and
+// spam.quilcast.com themselves, and Remind me and Poll keep what they need here.
 const ACTIONS_DIR = new URL('../actions/', import.meta.url).pathname
-const ACTION_HOSTS = { [process.env.SPAMCHECK_HOST || 'spamcheck.quilcast.com']: 'spamcheck', [process.env.TIP_HOST || 'tip.quilcast.com']: 'tip', [process.env.REMIND_HOST || 'remind.quilcast.com']: 'remindme' }
+const ACTION_HOSTS = { [process.env.SPAMCHECK_HOST || 'spamcheck.quilcast.com']: 'spamcheck', [process.env.TIP_HOST || 'tip.quilcast.com']: 'tip', [process.env.REMIND_HOST || 'remind.quilcast.com']: 'remindme', [process.env.POLL_HOST || 'poll.quilcast.com']: 'poll' }
 const actionFiles = new Set(readdirSync(ACTIONS_DIR, { recursive: true, withFileTypes: true }).filter((d) => d.isFile()).map((d) => '/' + relative(ACTIONS_DIR, join(d.parentPath, d.name))))
 const ACTION_CSP = `default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' ${NODE} https://spam.quilcast.com; img-src 'self' data: https:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *`
 /** The file an action's host serves at `path`, or undefined. */
@@ -1248,6 +1252,51 @@ const server = createServer(async (req, res) => {
       const err = r instanceof Error
       if (err && !r.status) console.error('remind', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Something went wrong.' } : r)
+    }
+    // Poll keeps polls and votes (server/poll.mjs); a poll's page is the app with its own embed tags and picture
+    if (action === 'poll') {
+      const who = ipGroup(ip)
+      const answer = (r) => {
+        const err = r instanceof Error
+        if (err && !r.status) console.error('poll', r)
+        return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Something went wrong. Try again.' } : r)
+      }
+      if (path === '/api/poll' && req.method === 'POST') {
+        if (limited(`poll:new:${who}`, 20) || limited(`poll:day:${who}`, 200, 86400e3)) return answer(no(429, 'Too many polls right now. Try again later.'))
+        return answer(await readJson(req, 8000).then((b) => addPoll(b, actionHost)).catch((e) => e))
+      }
+      const api = path.match(/^\/api\/poll\/([0-9a-f]{12})(\/vote)?$/)
+      if (api && api[2] && req.method === 'POST') {
+        if (limited(`poll:vote:${who}`, 30)) return answer(no(429, 'Slow down a little.'))
+        return answer(await readJson(req, 8000).then((b) => vote(api[1], b, actionHost, { node: NODE, snapchain: SNAPCHAIN })).catch((e) => e))
+      }
+      if (api && !api[2]) {
+        const p = await getPoll(api[1])
+        return answer(p ? await tally(api[1], p).catch((e) => e) : no(404, 'That poll is gone.'))
+      }
+      const card = path === '/embed.png' ? 'home' : path.match(/^\/p\/([0-9a-f]{12})\.png$/)?.[1]
+      if (card) {
+        const p = card === 'home' ? { question: 'What should we ask?', options: ['Write 2 to 4 options', 'Put the poll in your cast', 'Everyone votes once'] } : await getPoll(card)
+        if (!p) return res.writeHead(404).end()
+        const k = `poll:${card}`
+        // a poll never changes, so neither does its picture
+        const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => render(pollCard(p)))))
+        return send(req, res, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }, png)
+      }
+      const id = path.match(/^\/p\/([0-9a-f]{12})$/)?.[1]
+      if (id) {
+        const p = await getPoll(id)
+        let h = await readFile(join(ACTIONS_DIR, 'poll/index.html'), 'utf8')
+        if (p) {
+          const url = `https://${actionHost}/p/${id}`, title = p.question.replace(/\s+/g, ' ').slice(0, 120), desc = p.options.join(' · ')
+          for (const [a, k, v] of [['name', 'description', desc], ['property', 'og:title', title], ['property', 'og:description', desc], ['property', 'og:url', url], ['property', 'og:image', `${url}.png`], ['name', 'twitter:title', title], ['name', 'twitter:description', desc], ['name', 'twitter:image', `${url}.png`]]) h = meta(h, a, k, v)
+          for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
+            h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: `${url}.png`, button: { title: 'Vote', action: { type, name: 'Poll', url, splashImageUrl: `https://${actionHost}/icon.png`, splashBackgroundColor: '#0d0c11' } } }))
+          }
+        }
+        res.setHeader('content-security-policy', ACTION_CSP)
+        return html(h)
+      }
     }
     if (action) {
       const f = actionFile(action, path)
