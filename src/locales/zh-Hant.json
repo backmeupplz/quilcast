@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "編輯器操作位於編輯器的應用程式按鈕下。每一個都是小程式，會帶著你的草稿開啟並幫你填寫。",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast 尚未審核此操作。它能看到你開啟它時的草稿，而且和任何小程式一樣可以請求你的錢包。",
   "Make your own composer action": "建立你自己的編輯器操作",
-  "Load {host} here": "在這裡載入 {host}"
+  "Load {host} here": "在這裡載入 {host}",
+  "Add a token": "新增代幣",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "任何人都能用任意名稱和符號建立代幣，包括仿冒真實代幣。只新增從你信任的來源取得的合約地址。",
+  "Couldn't reach the network. Try again in a bit.": "無法連線到網路。請稍後再試。",
+  "No contract at that address on this network.": "此網路上該地址沒有合約。",
+  "Paste a token contract address.": "貼上代幣合約地址。",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast 只顯示 Base、Ethereum、Optimism、Arbitrum 和 Polygon 上的代幣。",
+  "That contract isn't an ERC-20 token.": "該合約不是 ERC-20 代幣。",
+  "Token contract address": "代幣合約地址"
 }

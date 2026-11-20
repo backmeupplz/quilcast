@@ -7,7 +7,7 @@ import { matches, newest, toActivity, type Activity } from './activity.ts'
 import { t } from './i18n.ts'
 import { proxied } from './shared.ts'
 import { ago, Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
-import { logoOf, tokensOn } from './tokens.ts'
+import { balanceOf, erc20Meta, logoOf, pastedToken, tokensOn, type Rpc } from './tokens.ts'
 import { explorer, pending, SendSheet, SwapSheet } from './walletmove.tsx'
 import { activeWallet, addWallet, custodyAccounts, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, setCustodyWallet, walletList, type WalletEntry } from './vault.ts'
 
@@ -55,16 +55,26 @@ export function Coin({ chain, address, symbol, src }: { chain: number; address?:
   )
 }
 // `raw` is the exact balance in base units, for sending all of it
-export type Holding = { chain: string; chainId: number; address?: `0x${string}`; decimals: number; raw: bigint; symbol: string; name: string; icon?: string; amount: number; usd: number }
+// `custom`: a token the reader added by hand (Add a token), listed whatever its price or balance
+export type Holding = { chain: string; chainId: number; address?: `0x${string}`; decimals: number; raw: bigint; symbol: string; name: string; icon?: string; amount: number; usd: number; custom?: boolean }
 type Nft = { chain: string; name: string; image?: string; big?: string; collection: string }
 
+// tokens added by hand, for every wallet in this browser; their balances come from each chain's RPC, not the explorer
+type CustomToken = { chain: number; address: `0x${string}`; symbol: string; name: string; decimals: number }
+const CUSTOM = 'quilcast:customTokens'
+const customTokens = (): CustomToken[] => {
+  const l = read<unknown>(CUSTOM, [])
+  return Array.isArray(l) ? l.filter((x) => /^0x[0-9a-f]{40}$/.test(x?.address) && CHAINS.some((c) => c.id === x.chain) && Number.isInteger(x.decimals) && typeof x.symbol === 'string' && typeof x.name === 'string') : []
+}
+const saveCustom = (l: CustomToken[]) => (save(CUSTOM, l), cache.clear())
 // an explorer that hangs is skipped after a while, so one slow chain can't hold up the rest
 const getJson = (u: string) => fetch(u, { signal: AbortSignal.timeout(25e3) }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
 const units = (v: string, d: number) => Number(BigInt(v || '0')) / 10 ** d
 
-const coinBalance = (rpc: string, address: string) =>
-  fetch(rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [address, 'latest'] }), signal: AbortSignal.timeout(15e3) })
-    .then((r) => r.json()).then((j) => BigInt(j.result))
+const call = (rpc: string): Rpc => (method, params) =>
+  fetch(rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(15e3) })
+    .then((r) => r.json()).then((j) => (j.error ? Promise.reject(new Error(j.error.message)) : j.result))
+const coinBalance = (rpc: string, address: string) => call(rpc)('eth_getBalance', [address, 'latest']).then(BigInt)
 // the coin's price when the explorer can't be reached
 const coinPrice = (chain: number) => tokensOn(chain).then((l) => l.find((x) => !x.address)?.usd || 0, () => 0)
 
@@ -75,7 +85,11 @@ async function holdings(address: string): Promise<Holding[]> {
   const missed: string[] = []
   const per = await Promise.all(CHAINS.map(async (c) => {
     const api = `https://${c.host}/api/v2/addresses/${address}`
-    const [raw, me, tokens] = await Promise.all([coinBalance(c.rpc, address).catch(() => null), getJson(api).catch(() => null), getJson(`${api}/tokens?type=ERC-20`).catch(() => null)])
+    const mine = customTokens().filter((x) => x.chain === c.id)
+    const [raw, me, tokens, balances] = await Promise.all([
+      coinBalance(c.rpc, address).catch(() => null), getJson(api).catch(() => null), getJson(`${api}/tokens?type=ERC-20`).catch(() => null),
+      Promise.all(mine.map((x) => balanceOf(call(c.rpc), x.address, address).catch(() => null))),
+    ])
     if (!tokens) missed.push(c.name)
     const out: Holding[] = []
     const wei = raw ?? (me ? BigInt(me.coin_balance || 0) : 0n)
@@ -84,11 +98,21 @@ async function holdings(address: string): Promise<Holding[]> {
     // tokens nobody prices or the explorer flags are almost always airdropped spam
     for (const i of tokens?.items || []) {
       const tk = i.token || {}
+      if (mine.some((x) => x.address === String(tk.address_hash).toLowerCase())) continue
       if (!tk.exchange_rate || (tk.reputation && tk.reputation !== 'ok')) continue
       const amount = units(i.value, Number(tk.decimals || 18))
       // and dust worth less than a cent is just noise
       if (amount * Number(tk.exchange_rate) >= 0.01) out.push({ chain: c.name, chainId: c.id, address: String(tk.address_hash).toLowerCase() as `0x${string}`, decimals: Number(tk.decimals || 18), raw: BigInt(i.value), symbol: String(tk.symbol || '?').slice(0, 12), name: String(tk.name || ''), icon: safeUrl(tk.icon_url), amount, usd: amount * Number(tk.exchange_rate) })
     }
+    // tokens added by hand show whatever they're worth; when the RPC fails the explorer's balance stands in, and one the
+    // explorer's whole list goes without is held at 0 (otherwise it's left out and the chain named as unreachable)
+    mine.forEach((x, n) => {
+      const i = (tokens?.items || []).find((i: any) => String(i.token?.address_hash).toLowerCase() === x.address)
+      const wei = balances[n] ?? (i ? BigInt(i.value) : tokens && !tokens.next_page_params ? 0n : null)
+      if (wei === null) return void (missed.includes(c.name) || missed.push(c.name))
+      const amount = units(String(wei), x.decimals)
+      out.push({ chain: c.name, chainId: c.id, address: x.address, decimals: x.decimals, raw: wei, symbol: x.symbol, name: x.name, icon: safeUrl(i?.token?.icon_url), amount, usd: amount * (Number(i?.token?.exchange_rate) || 0), custom: true })
+    })
     return out
   }))
   unreachable.set(address, missed)
@@ -133,7 +157,7 @@ function useMoves(w?: WalletEntry) {
   // after a send or swap the balances are read again
   const [round, setRound] = useState(0)
   const [opening, setOpening] = useState('')
-  const open = (kind: 'send' | 'swap') => (setOpening(kind), load(w!.address).then((holdings) => setMove({ kind, holdings }), () => toast("Balances couldn't be loaded. Try again in a bit.")).finally(() => setOpening('')))
+  const open = (kind: 'send' | 'swap') => (setOpening(kind), load(w!.address).then((h) => setMove({ kind, holdings: h.filter((x) => x.raw > 0n) }), () => toast("Balances couldn't be loaded. Try again in a bit.")).finally(() => setOpening('')))
   const refresh = () => (cache.delete(w!.address), setRound((r) => r + 1))
   const sent = () => setTimeout(refresh, 4000)
   const sheets = w && (
@@ -173,7 +197,7 @@ export function WalletPage() {
             <Tabs tabs={[['tokens', t('Tokens')], ['nfts', t('NFTs')]]} value={tab} set={(x) => (setTab(x), save('quilcast:walletTab', x))} />
             <button class="icon-btn" aria-label={t('Refresh')} title={t('Refresh')} onClick={refresh}><Icon d="M21 12a9 9 0 1 1-2.6-6.4L21 8M21 3v5h-5" /></button>
           </div>
-          {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} /> : <Nfts key={w.address + round} address={w.address} />}
+          {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} refresh={refresh} /> : <Nfts key={w.address + round} address={w.address} />}
           {sheets}
         </>
       )}
@@ -217,15 +241,23 @@ function Total({ address }: { address: string }) {
   return <b class="wallet-total">{sum === null ? '…' : usd(sum)}</b>
 }
 
-function Tokens({ address }: { address: string }) {
+function Tokens({ address, refresh }: { address: string; refresh: () => void }) {
   const [h, setH] = useState<Holding[] | null>(null)
   const [err, setErr] = useState(false)
+  const [adding, setAdding] = useState(false)
   useEffect(() => void load(address).then(setH, () => setErr(true)), [address])
   if (err) return <div class="note">{t("Balances couldn't be loaded. Try again in a bit.")}</div>
   if (!h) return <div class="spinner" />
   const missed = unreachable.get(address) || []
   const warn = missed.length > 0 && <p class="hint warn pad">{t("Couldn't reach the explorer for {chains}, so tokens there may be missing. Refresh to try again.", { chains: missed.join(', ') })}</p>
-  if (!h.length) return <>{warn}<div class="note">{t('Nothing here yet. Copy the address above to receive tokens on Base, Ethereum, Optimism, Arbitrum or Polygon.')}</div></>
+  const remove = (x: Holding) => (saveCustom(customTokens().filter((y) => !(y.chain === x.chainId && y.address === x.address))), refresh())
+  const add = (
+    <>
+      <div class="token-add"><button class="btn ghost small" onClick={() => setAdding(true)}><Icon d={P.plus} />{t('Add a token')}</button></div>
+      {adding && <AddToken close={() => setAdding(false)} added={refresh} />}
+    </>
+  )
+  if (!h.length) return <>{warn}<div class="note">{t('Nothing here yet. Copy the address above to receive tokens on Base, Ethereum, Optimism, Arbitrum or Polygon.')}</div>{add}</>
   return (
     <>
       {warn}
@@ -234,9 +266,66 @@ function Tokens({ address }: { address: string }) {
           <Coin chain={x.chainId} address={x.address} symbol={x.symbol} src={x.icon} />
           <span class="row-main"><b>{x.symbol}</b><span class="row-sub">{x.chain}</span></span>
           <span class="row-meta">{usd(x.usd)}<small>{fmt(x.amount)} {x.symbol}</small></span>
+          {x.custom && <button class="icon-btn" aria-label={t('Remove')} title={t('Remove')} onClick={() => remove(x)}><Icon d={P.x} size={16} /></button>}
         </div>
       ))}
+      {add}
     </>
+  )
+}
+
+/** Add a token the list leaves out (unpriced, flagged or dust): its contract on a chain, checked on-chain first. */
+function AddToken({ close, added }: { close: () => void; added: () => void }) {
+  const [chain, setChain] = useState(CHAINS[0].id)
+  const [input, setInput] = useState('')
+  const [found, setFound] = useState<CustomToken | null>(null)
+  const [err, setErr] = useState('')
+  const [busy, setBusy] = useState(false)
+  const submit = async (e: Event) => {
+    e.preventDefault()
+    if (found) {
+      const rest = customTokens().filter((x) => !(x.chain === found.chain && x.address === found.address))
+      saveCustom([...rest, found])
+      close()
+      return added()
+    }
+    setBusy(true)
+    setErr('')
+    try {
+      const tk = pastedToken(input, chain)
+      const c = CHAINS.find((c) => c.id === tk.chain)
+      if (!c) throw new Error('Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.')
+      setChain(c.id)
+      setFound({ ...tk, ...(await erc20Meta(call(c.rpc), tk.address)) })
+    } catch (e: any) {
+      setErr(e.message)
+    }
+    setBusy(false)
+  }
+  const edit = (f: () => void) => (f(), setFound(null), setErr(''))
+  return (
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && close()}>
+      <form class="sheet wallet-form" onSubmit={submit} autocomplete="off">
+        <h2>{t('Add a token')}</h2>
+        <div class="mv-chains">
+          {CHAINS.map((c) => <button type="button" class={`chip${chain === c.id ? ' on' : ''}`} disabled={busy} onClick={() => edit(() => setChain(c.id))}><img src={c.logo} alt="" referrerpolicy="no-referrer" />{c.name}</button>)}
+        </div>
+        <input value={input} onInput={(e) => edit(() => setInput(e.currentTarget.value))} readOnly={busy} placeholder={t('Token contract address')} aria-label={t('Token contract address')} spellcheck={false} autocapitalize="off" autocorrect="off" />
+        {err && <p class="hint warn">{t(err)}</p>}
+        {found && (
+          <div class="row token-row">
+            <Coin chain={found.chain} address={found.address} symbol={found.symbol} />
+            <span class="row-main"><b>{found.symbol}</b><span class="row-sub">{found.name}</span></span>
+            <span class="row-meta"><small>{short(found.address)}</small></span>
+          </div>
+        )}
+        <p class="hint warn">{t('Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.')}</p>
+        <div class="sheet-btns">
+          <button type="button" class="btn ghost" onClick={close}>{t('Cancel')}</button>
+          <button class="btn" disabled={busy || !input.trim()}>{busy ? t('Checking…') : found ? t('Add a token') : t('Look up')}</button>
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -333,7 +422,7 @@ export function WalletPanel({ close }: { close: () => void }) {
           </div>
           {nets && <p class="hint pad">{CHAINS.map((c) => c.name).join(' · ')}</p>}
           <Tabs tabs={[['tokens', t('Tokens')], ['nfts', t('Collectibles')], ['activity', t('Activity')]]} value={tab} set={(x) => (setTab(x), save(PANEL_TAB, x))} />
-          {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} /> : tab === 'nfts' ? <Nfts key={w.address + round} address={w.address} /> : <ActivityList key={w.address + round} address={w.address} />}
+          {tab === 'tokens' ? <Tokens key={w.address + round} address={w.address} refresh={refresh} /> : tab === 'nfts' ? <Nfts key={w.address + round} address={w.address} /> : <ActivityList key={w.address + round} address={w.address} />}
           {sheets}
         </div>
       )}

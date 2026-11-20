@@ -37,8 +37,8 @@ export function parseToken(id: unknown): TokenId {
   return { chain: Number(m[1]), address: m[2]?.toLowerCase() as `0x${string}` | undefined }
 }
 
-type Rpc = (method: string, params: unknown[]) => Promise<any>
-const read = async (rpc: Rpc, to: string, functionName: 'symbol' | 'decimals' | 'allowance', args: unknown[] = []) =>
+export type Rpc = (method: string, params: unknown[]) => Promise<any>
+const read = async (rpc: Rpc, to: string, functionName: 'symbol' | 'name' | 'decimals' | 'allowance' | 'balanceOf', args: unknown[] = []) =>
   decodeFunctionResult({ abi: erc20Abi, functionName, data: await rpc('eth_call', [{ to, data: encodeFunctionData({ abi: erc20Abi, functionName, args } as any) }, 'latest']) } as any)
 
 /** Symbol and decimals; the chain's coin uses `native`. */
@@ -47,6 +47,35 @@ export async function tokenInfo(rpc: Rpc, t: TokenId, native: { symbol: string; 
   const [symbol, decimals] = await Promise.all([read(rpc, t.address, 'symbol'), read(rpc, t.address, 'decimals')])
   return { ...t, symbol: String(symbol).slice(0, 12), decimals: Number(decimals) }
 }
+
+/** A token pasted into the wallet's Add a token: a contract address on `chain`, or a CAIP-19 id (whose chain wins). */
+export function pastedToken(s: string, chain: number): { chain: number; address: `0x${string}` } {
+  s = s.trim()
+  if (/^0x[0-9a-fA-F]{40}$/.test(s)) return { chain, address: s.toLowerCase() as `0x${string}` }
+  const t = (() => {
+    try {
+      return parseToken(s)
+    } catch {}
+  })()
+  if (!t?.address) throw new Error('Paste a token contract address.')
+  return t as { chain: number; address: `0x${string}` }
+}
+
+/** An ERC-20's symbol, name and decimals, read from the contract; anything else at the address fails readably. */
+export async function erc20Meta(rpc: Rpc, address: string) {
+  const code = await rpc('eth_getCode', [address, 'latest']).catch(() => {
+    throw new Error("Couldn't reach the network. Try again in a bit.")
+  })
+  if (!code || code === '0x') throw new Error('No contract at that address on this network.')
+  try {
+    const [symbol, decimals, name] = await Promise.all([read(rpc, address, 'symbol'), read(rpc, address, 'decimals'), read(rpc, address, 'name').catch(() => '')])
+    const d = Number(decimals)
+    if (String(symbol).trim() && Number.isInteger(d) && d <= 36) return { symbol: String(symbol).slice(0, 12), name: String(name).slice(0, 40), decimals: d }
+  } catch {}
+  throw new Error("That contract isn't an ERC-20 token.")
+}
+
+export const balanceOf = async (rpc: Rpc, token: string, owner: string) => BigInt(await read(rpc, token, 'balanceOf', [owner]) as bigint)
 
 export const allowance = async (rpc: Rpc, t: TokenId, owner: string) => BigInt(await read(rpc, t.address!, 'allowance', [owner, LIFI]) as bigint)
 

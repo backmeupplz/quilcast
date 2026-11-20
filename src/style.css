@@ -1411,6 +1411,7 @@ body:has(.space-bar) .dock { bottom: calc(84px + env(safe-area-inset-bottom)); }
 .wallet-total { font-size: 34px; font-weight: 750; letter-spacing: -0.02em; }
 .token-icon { width: 36px; height: 36px; border-radius: calc(99px * var(--rs, 1)); flex: none; display: grid; place-items: center; background: var(--soft); font-weight: 700; color: var(--muted); object-fit: cover; }
 .token-row .row-main b { font-size: 15px; }
+.token-add { display: flex; justify-content: center; padding: 12px 16px 20px; }
 .nft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 12px 16px 24px; }
 .nft { display: flex; flex-direction: column; gap: 2px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); background: var(--card); padding: 0 0 8px; overflow: hidden; text-align: start; color: var(--ink); min-width: 0; }
 .nft img, .nft-blank { width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--soft); display: block; margin-bottom: 6px; }

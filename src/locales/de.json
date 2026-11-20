@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Editor-Aktionen findest du unter dem Apps-Button im Editor. Jede ist eine Mini-App, die sich mit deinem Entwurf öffnet und ihn ausfüllt.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast hat diese Aktion nicht geprüft. Sie sieht den Entwurf, aus dem du sie öffnest, und kann wie jede Mini-App nach deiner Wallet fragen.",
   "Make your own composer action": "Erstelle deine eigene Editor-Aktion",
-  "Load {host} here": "{host} hier laden"
+  "Load {host} here": "{host} hier laden",
+  "Add a token": "Token hinzufügen",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "Jeder kann einen Token mit beliebigem Namen und Symbol erstellen, auch Kopien echter Token. Füge nur eine Vertragsadresse hinzu, die du aus einer vertrauenswürdigen Quelle hast.",
+  "Couldn't reach the network. Try again in a bit.": "Das Netzwerk ist nicht erreichbar. Versuch es gleich noch einmal.",
+  "No contract at that address on this network.": "Unter dieser Adresse gibt es in diesem Netzwerk keinen Vertrag.",
+  "Paste a token contract address.": "Füge eine Token-Vertragsadresse ein.",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast zeigt nur Token auf Base, Ethereum, Optimism, Arbitrum und Polygon.",
+  "That contract isn't an ERC-20 token.": "Dieser Vertrag ist kein ERC-20-Token.",
+  "Token contract address": "Token-Vertragsadresse"
 }

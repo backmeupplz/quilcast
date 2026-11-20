@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Aksi penyusun ada di bawah tombol aplikasi di penyusun. Masing-masing adalah aplikasi mini yang terbuka dengan draf-mu dan mengisinya.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast belum meninjau aksi ini. Aksi ini melihat draf tempat kamu membukanya dan bisa meminta dompetmu, seperti aplikasi mini lainnya.",
   "Make your own composer action": "Buat aksi penyusun-mu sendiri",
-  "Load {host} here": "Muat {host} di sini"
+  "Load {host} here": "Muat {host} di sini",
+  "Add a token": "Tambah token",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "Siapa pun bisa membuat token dengan nama dan simbol apa saja, termasuk tiruan token asli. Tambahkan hanya alamat kontrak yang kamu dapat dari sumber tepercaya.",
+  "Couldn't reach the network. Try again in a bit.": "Tidak bisa menjangkau jaringan. Coba lagi sebentar lagi.",
+  "No contract at that address on this network.": "Tidak ada kontrak di alamat itu di jaringan ini.",
+  "Paste a token contract address.": "Tempel alamat kontrak token.",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast hanya menampilkan token di Base, Ethereum, Optimism, Arbitrum, dan Polygon.",
+  "That contract isn't an ERC-20 token.": "Kontrak itu bukan token ERC-20.",
+  "Token contract address": "Alamat kontrak token"
 }

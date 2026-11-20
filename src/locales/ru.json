@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Действия редактора находятся под кнопкой приложений в редакторе. Каждое — мини-приложение, которое открывается с вашим черновиком и заполняет его.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast не проверял это действие. Оно видит черновик, из которого вы его открываете, и может запросить ваш кошелёк, как любое мини-приложение.",
   "Make your own composer action": "Создайте своё действие для редактора",
-  "Load {host} here": "Загрузить {host} здесь"
+  "Load {host} here": "Загрузить {host} здесь",
+  "Add a token": "Добавить токен",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "Кто угодно может выпустить токен с любым названием и символом, в том числе копию настоящего. Добавляйте только адрес контракта из источника, которому доверяете.",
+  "Couldn't reach the network. Try again in a bit.": "Не удалось связаться с сетью. Попробуйте чуть позже.",
+  "No contract at that address on this network.": "В этой сети по этому адресу нет контракта.",
+  "Paste a token contract address.": "Вставьте адрес контракта токена.",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast показывает токены только в Base, Ethereum, Optimism, Arbitrum и Polygon.",
+  "That contract isn't an ERC-20 token.": "Этот контракт не является токеном ERC-20.",
+  "Token contract address": "Адрес контракта токена"
 }

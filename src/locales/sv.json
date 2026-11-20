@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Redigeraråtgärder finns under appknappen i redigeraren. Var och en är en miniapp som öppnas med ditt utkast och fyller i det.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast har inte granskat den här åtgärden. Den ser utkastet du öppnar den från och kan be om din plånbok, precis som vilken miniapp som helst.",
   "Make your own composer action": "Skapa din egen redigeraråtgärd",
-  "Load {host} here": "Ladda {host} här"
+  "Load {host} here": "Ladda {host} här",
+  "Add a token": "Lägg till en token",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "Vem som helst kan skapa en token med vilket namn och symbol som helst, även kopior av riktiga. Lägg bara till en kontraktsadress du har fått från en källa du litar på.",
+  "Couldn't reach the network. Try again in a bit.": "Kunde inte nå nätverket. Försök igen om en stund.",
+  "No contract at that address on this network.": "Det finns inget kontrakt på den adressen i det här nätverket.",
+  "Paste a token contract address.": "Klistra in tokenens kontraktsadress.",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast visar bara tokens på Base, Ethereum, Optimism, Arbitrum och Polygon.",
+  "That contract isn't an ERC-20 token.": "Det kontraktet är ingen ERC-20-token.",
+  "Token contract address": "Tokenens kontraktsadress"
 }

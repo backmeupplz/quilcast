@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Hành động trình soạn nằm dưới nút ứng dụng trong trình soạn. Mỗi hành động là một ứng dụng mini mở cùng bản nháp của bạn và điền nội dung vào đó.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast chưa xem xét hành động này. Nó thấy bản nháp bạn mở nó từ đó và có thể yêu cầu ví của bạn, như mọi ứng dụng mini khác.",
   "Make your own composer action": "Tạo hành động trình soạn của riêng bạn",
-  "Load {host} here": "Tải {host} tại đây"
+  "Load {host} here": "Tải {host} tại đây",
+  "Add a token": "Thêm token",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "Ai cũng có thể tạo token với bất kỳ tên và ký hiệu nào, kể cả bản sao của token thật. Chỉ thêm địa chỉ hợp đồng mà bạn lấy từ nguồn đáng tin cậy.",
+  "Couldn't reach the network. Try again in a bit.": "Không kết nối được mạng. Hãy thử lại sau ít phút.",
+  "No contract at that address on this network.": "Không có hợp đồng nào ở địa chỉ đó trên mạng này.",
+  "Paste a token contract address.": "Dán địa chỉ hợp đồng của token.",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast chỉ hiển thị token trên Base, Ethereum, Optimism, Arbitrum và Polygon.",
+  "That contract isn't an ERC-20 token.": "Hợp đồng đó không phải là token ERC-20.",
+  "Token contract address": "Địa chỉ hợp đồng token"
 }

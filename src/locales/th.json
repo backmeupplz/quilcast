@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "แอ็กชันหน้าเขียนอยู่ใต้ปุ่มแอปในหน้าเขียน แต่ละอันเป็นมินิแอปที่เปิดพร้อมฉบับร่างของคุณและเติมเนื้อหาให้",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast ยังไม่ได้ตรวจสอบแอ็กชันนี้ แอ็กชันจะเห็นฉบับร่างที่คุณเปิดมันขึ้นมาและอาจขอใช้กระเป๋าเงินของคุณได้เหมือนมินิแอปทั่วไป",
   "Make your own composer action": "สร้างแอ็กชันหน้าเขียนของคุณเอง",
-  "Load {host} here": "โหลด {host} ที่นี่"
+  "Load {host} here": "โหลด {host} ที่นี่",
+  "Add a token": "เพิ่มโทเคน",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "ใครก็สร้างโทเคนด้วยชื่อและสัญลักษณ์อะไรก็ได้ รวมถึงโทเคนปลอมที่เลียนแบบของจริง เพิ่มเฉพาะที่อยู่สัญญาที่ได้มาจากแหล่งที่คุณเชื่อถือเท่านั้น",
+  "Couldn't reach the network. Try again in a bit.": "เชื่อมต่อเครือข่ายไม่ได้ ลองอีกครั้งในอีกสักครู่",
+  "No contract at that address on this network.": "ไม่มีสัญญาที่ที่อยู่นี้บนเครือข่ายนี้",
+  "Paste a token contract address.": "วางที่อยู่สัญญาของโทเคน",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast แสดงเฉพาะโทเคนบน Base, Ethereum, Optimism, Arbitrum และ Polygon",
+  "That contract isn't an ERC-20 token.": "สัญญานี้ไม่ใช่โทเคน ERC-20",
+  "Token contract address": "ที่อยู่สัญญาของโทเคน"
 }

@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "कंपोज़र एक्शन कंपोज़र में ऐप्स बटन के नीचे दिखते हैं। हर एक मिनी ऐप है जो आपके ड्राफ़्ट के साथ खुलता है और उसे भर देता है।",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast ने इस एक्शन की समीक्षा नहीं की है। यह उस ड्राफ़्ट को देख सकता है जिससे आप इसे खोलते हैं और किसी भी मिनी ऐप की तरह आपका वॉलेट माँग सकता है।",
   "Make your own composer action": "अपना खुद का कंपोज़र एक्शन बनाएँ",
-  "Load {host} here": "{host} यहीं लोड करें"
+  "Load {host} here": "{host} यहीं लोड करें",
+  "Add a token": "टोकन जोड़ें",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "कोई भी किसी भी नाम और सिंबल से टोकन बना सकता है, असली टोकनों की नकल भी। सिर्फ़ वही कॉन्ट्रैक्ट पता जोड़ें जो आपको किसी भरोसेमंद स्रोत से मिला हो।",
+  "Couldn't reach the network. Try again in a bit.": "नेटवर्क तक नहीं पहुँच सके। थोड़ी देर में फिर कोशिश करें।",
+  "No contract at that address on this network.": "इस नेटवर्क पर उस पते पर कोई कॉन्ट्रैक्ट नहीं है।",
+  "Paste a token contract address.": "टोकन का कॉन्ट्रैक्ट पता पेस्ट करें।",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast सिर्फ़ Base, Ethereum, Optimism, Arbitrum और Polygon पर टोकन दिखाता है।",
+  "That contract isn't an ERC-20 token.": "यह कॉन्ट्रैक्ट ERC-20 टोकन नहीं है।",
+  "Token contract address": "टोकन कॉन्ट्रैक्ट पता"
 }

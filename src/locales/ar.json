@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "تظهر إجراءات الكتابة تحت زر التطبيقات في نافذة الكتابة. كل واحد منها تطبيق مصغّر يفتح مع مسودتك ويملؤها.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "لم يراجع Quilcast هذا الإجراء. يرى المسودة التي تفتحه منها ويمكنه طلب محفظتك، مثل أي تطبيق مصغّر.",
   "Make your own composer action": "أنشئ إجراء الكتابة الخاص بك",
-  "Load {host} here": "حمّل {host} هنا"
+  "Load {host} here": "حمّل {host} هنا",
+  "Add a token": "إضافة رمز مميز",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "يمكن لأي شخص إنشاء رمز مميز بأي اسم ورمز، بما في ذلك نسخ من رموز حقيقية. لا تُضف إلا عنوان عقد حصلت عليه من مصدر تثق به.",
+  "Couldn't reach the network. Try again in a bit.": "تعذّر الوصول إلى الشبكة. حاول مرة أخرى بعد قليل.",
+  "No contract at that address on this network.": "لا يوجد عقد على هذا العنوان في هذه الشبكة.",
+  "Paste a token contract address.": "الصق عنوان عقد الرمز المميز.",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "يعرض Quilcast الرموز المميزة على Base وEthereum وOptimism وArbitrum وPolygon فقط.",
+  "That contract isn't an ERC-20 token.": "هذا العقد ليس رمزًا مميزًا من نوع ERC-20.",
+  "Token contract address": "عنوان عقد الرمز المميز"
 }

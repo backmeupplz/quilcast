@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "作成画面アクションは作成画面のアプリボタンの中にあります。どれも下書きを受け取って開き、内容を書き込むミニアプリです。",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast はこのアクションを審査していません。開いたときの下書きを確認でき、ほかのミニアプリと同じようにウォレットを要求することがあります。",
   "Make your own composer action": "自分だけの作成画面アクションを作る",
-  "Load {host} here": "{host} をここで読み込む"
+  "Load {host} here": "{host} をここで読み込む",
+  "Add a token": "トークンを追加",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "誰でも好きな名前とシンボルでトークンを作れます。本物のトークンの偽物も作れます。信頼できる情報源から入手したコントラクトアドレスだけを追加してください。",
+  "Couldn't reach the network. Try again in a bit.": "ネットワークに接続できませんでした。しばらくしてからもう一度お試しください。",
+  "No contract at that address on this network.": "このネットワークのそのアドレスにはコントラクトがありません。",
+  "Paste a token contract address.": "トークンのコントラクトアドレスを貼り付けてください。",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast が表示するのは Base、Ethereum、Optimism、Arbitrum、Polygon のトークンだけです。",
+  "That contract isn't an ERC-20 token.": "このコントラクトは ERC-20 トークンではありません。",
+  "Token contract address": "トークンのコントラクトアドレス"
 }

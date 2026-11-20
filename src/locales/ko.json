@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "작성 액션은 작성 화면의 앱 버튼 아래에 있어요. 각각 초안을 가지고 열려서 내용을 채워 주는 미니 앱이에요.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast는 이 액션을 검토하지 않았어요. 열 때의 초안을 볼 수 있고, 다른 미니 앱처럼 지갑을 요청할 수 있어요.",
   "Make your own composer action": "나만의 작성 액션 만들기",
-  "Load {host} here": "여기서 {host} 불러오기"
+  "Load {host} here": "여기서 {host} 불러오기",
+  "Add a token": "토큰 추가",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "누구나 원하는 이름과 심볼로 토큰을 만들 수 있으며, 진짜 토큰을 흉내 낸 것도 있습니다. 믿을 수 있는 곳에서 받은 컨트랙트 주소만 추가하세요.",
+  "Couldn't reach the network. Try again in a bit.": "네트워크에 연결할 수 없습니다. 잠시 후 다시 시도하세요.",
+  "No contract at that address on this network.": "이 네트워크의 해당 주소에는 컨트랙트가 없습니다.",
+  "Paste a token contract address.": "토큰 컨트랙트 주소를 붙여 넣으세요.",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast는 Base, Ethereum, Optimism, Arbitrum, Polygon의 토큰만 표시합니다.",
+  "That contract isn't an ERC-20 token.": "이 컨트랙트는 ERC-20 토큰이 아닙니다.",
+  "Token contract address": "토큰 컨트랙트 주소"
 }

@@ -1430,5 +1430,13 @@
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Düzenleyici eylemleri, düzenleyicideki uygulamalar düğmesinin altında yer alır. Her biri taslağınla açılan ve onu dolduran bir mini uygulamadır.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast bu eylemi incelemedi. Eylem, onu açtığın taslağı görür ve her mini uygulama gibi cüzdanını isteyebilir.",
   "Make your own composer action": "Kendi düzenleyici eylemini oluştur",
-  "Load {host} here": "{host} burada yüklensin"
+  "Load {host} here": "{host} burada yüklensin",
+  "Add a token": "Token ekle",
+  "Anyone can create a token with any name and symbol, including copies of real ones. Only add a contract address you got from a source you trust.": "Herkes istediği ad ve sembolle token oluşturabilir, gerçek tokenların kopyaları da buna dahil. Yalnızca güvendiğin bir kaynaktan aldığın sözleşme adresini ekle.",
+  "Couldn't reach the network. Try again in a bit.": "Ağa ulaşılamadı. Biraz sonra tekrar dene.",
+  "No contract at that address on this network.": "Bu ağda o adreste bir sözleşme yok.",
+  "Paste a token contract address.": "Token sözleşme adresini yapıştır.",
+  "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast yalnızca Base, Ethereum, Optimism, Arbitrum ve Polygon üzerindeki tokenları gösterir.",
+  "That contract isn't an ERC-20 token.": "Bu sözleşme bir ERC-20 token değil.",
+  "Token contract address": "Token sözleşme adresi"
 }
