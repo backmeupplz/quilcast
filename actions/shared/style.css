@@ -42,7 +42,7 @@ a { color: #b3a6ff; }
 .inline main { max-width: none; padding: 8px 12px; }
 .inline #q { display: none; }
 .inline .choices, .inline .results { margin: 0; gap: 8px; }
-.inline .choices button, .inline .bar { min-height: 40px; padding: 8px 12px 8px 16px; border: 1px solid rgb(255 255 255 / .12); border-radius: 10px; color: var(--fg); font-size: 15px; line-height: 22px; font-weight: 600; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: inset 4px 0 var(--accent-hi); }
+.inline .choices button, .inline .bar { min-height: 40px; padding: 8px 12px; border: 1px solid rgb(255 255 255 / .12); border-radius: 10px; color: var(--fg); font-size: 15px; line-height: 22px; font-weight: 600; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inline .choices button { background: rgb(255 255 255 / .06); }
 .inline .choices button:hover:not(:disabled) { background: rgb(122 97 255 / .2); border-color: var(--accent-hi); }
 .inline .bar { background: linear-gradient(90deg, rgb(122 97 255 / .45) var(--pct), rgb(255 255 255 / .06) var(--pct)); }
