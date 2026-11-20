@@ -41,13 +41,9 @@ const ask = (i: Inline, title: string, body: string, yes: string) =>
     i.say({ title, body, yes, at: Date.now(), done: (ok) => ((i.asking = false), i.say(null), resolve(ok)) })
   })
 
-// whether the person just tapped this view: the page's tap is fresh and focus went into this frame, not another card's.
-// A tap on the page itself takes focus off a view, which Firefox leaves there (its buttons don't take focus).
-const tapped = (i: Inline) => !!navigator.userActivation?.isActive && document.activeElement === i.frame
-addEventListener('pointerdown', () => [...frames].find((x) => x.frame === document.activeElement)?.frame.blur(), true)
-// a call that takes the person somewhere goes ahead at once only right after they tapped the view; otherwise they're
-// asked in its card first, so a view can't move the app, open another app or a tab, by itself
-const leaving = (i: Inline, where: string) => tapped(i) || ask(i, t('Open this link?'), where, t('Open'))
+// a call that takes the person somewhere always asks in its card first, so a view can't move the app, open another
+// app or a tab, by itself. No tap shortcut: a view can focus itself, so a tap anywhere would look like one on it (#774)
+const leaving = (i: Inline, where: string) => ask(i, t('Open this link?'), where, t('Open'))
 // what the composer's preview may call: it's not the cast yet, and no one taps it
 const PREVIEW = new Set(['context', 'ready', 'getCapabilities', 'getChains'])
 
@@ -57,8 +53,9 @@ const calls: Record<string, (i: Inline, ...a: any[]) => unknown> = {
   getChains: () => [],
   async signIn(i, o: any = {}) {
     if (document.hidden || !i.cast) return { error: { type: 'rejected_by_user' } }
-    // someone signed out goes to /join, which only a tap on the view may send them to
-    if ((!account?.done && !tapped(i)) || !requireAccount()) return { error: { type: 'rejected_by_user' } }
+    // someone signed out goes to /join only once they agree in the card
+    if (!account?.done && !(await leaving(i, `${location.host}/join`))) return { error: { type: 'rejected_by_user' } }
+    if (!requireAccount()) return { error: { type: 'rejected_by_user' } }
     const a = account!, me = myUser()!
     const custody = await custodyOf(a)
     const draft = () => siwf({ origin: i.origin, address: custody.address, fid: a.fid!, nonce: o.nonce, notBefore: o.notBefore, expirationTime: o.expirationTime })
@@ -66,11 +63,14 @@ const calls: Record<string, (i: Inline, ...a: any[]) => unknown> = {
     draft()
     const ok = await ask(i, t('Sign in to {site}?', { site: i.name }), t('{host} will know you as @{name} (fid {fid}). This signs a sign-in message with your account.', { host: i.host, name: handle(me), fid: me.fid }), t('Sign in'))
     if (!ok) return { error: { type: 'rejected_by_user' } }
+    // the wait is a prompt too: another one asked for meanwhile is refused, so it can't hide this one's Cancel
     const wait = async <T,>(f: () => Promise<T>) => {
+      i.asking = true
       i.say({ title: a.wallet ? t('Check your wallet') : t('Signing…'), done: () => i.stop?.() })
       try {
         return await f()
       } finally {
+        i.asking = false
         i.say(null)
       }
     }
