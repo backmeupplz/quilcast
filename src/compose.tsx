@@ -132,7 +132,9 @@ const Busy = ({ f }: { f: Attachment }) => (
   </span>
 )
 
-// an attachment that isn't a picture or a video (a composer action's link, compose.tsx runAction) shows its address
+// a link a mini app put in the post (composeCast's embeds, not an upload): its card, as a link typed in the text gets
+const linkAtt = (f: Attachment) => !!f.url && f.preview === f.url && !f.video && !isImg(f.url)
+// a picture whose address won't load shows the address
 function Preview({ f }: { f: Attachment }) {
   const [link, setLink] = useState(false)
   if (f.video) return <video src={f.preview} muted />
@@ -213,8 +215,8 @@ function PartEditor({ part, set, first, last, quote, embeds = [], focus, onFocus
       {part.files.length > 0 && (
         <div class="attachments">
           {part.files.map((f) => (
-            <div key={f.id} class={`att${f.err ? ' bad' : ''}`}>
-              <Preview f={f} />
+            <div key={f.id} class={`att${f.err ? ' bad' : ''}${linkAtt(f) ? ' embed-preview' : ''}`}>
+              {linkAtt(f) ? <LinkCard u={f.url!} /> : <Preview f={f} />}
               {!f.url && !f.err && <Busy f={f} />}
               {f.err && <span class="att-err">{t(f.err)}</span>}
               <button class="att-x" aria-label={t('Remove')} onClick={() => set({ files: part.files.filter((x) => x.id !== f.id) })}><Icon d={P.x} size={14} /></button>
