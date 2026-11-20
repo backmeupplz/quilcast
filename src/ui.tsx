@@ -698,7 +698,7 @@ export function Lightbox({ urls, index, close }: { urls: string[]; index: number
 }
 
 type Tweet = { text: string; author: { name?: string; handle?: string; avatar?: string }; at?: number; photos: string[]; video?: string; likes?: number; replies?: number; reposts?: number; quote?: { name?: string; handle?: string; text?: string }; article?: { title: string; text?: string; cover?: string } }
-type Unfurl = { url: string; title?: string; description?: string; image?: string; button?: string; icon?: string; tweet?: Tweet; app?: AppMeta } | null
+type Unfurl = { url: string; title?: string; description?: string; image?: string; button?: string; icon?: string; tweet?: Tweet; app?: AppMeta; inline?: { url: string; height: number } } | null
 
 function TweetCard({ u, t }: { u: string; t: Tweet }) {
   const video = safeUrl(t.video)
@@ -985,17 +985,57 @@ function PageCard({ u: given, c }: { u: string; c?: Cast }) {
   }
   // a middle click on a look-alike asks too
   const aux = (e: MouseEvent) => e.button === 1 && lookalike(u) && (e.stopPropagation(), shell.link(u)) && e.preventDefault()
-  return (
+  // a mini app's inline view (inline.ts) takes the picture's place, with the rest of the card under it
+  const inline = d?.app && d.inline && safeUrl(d.inline.url)
+  const card = (
     // a mini app's or frame's embed image (the one with a button) is 3:2, so its card is too
-    <a class={`linkcard${image ? ' big' : ''}${image && d?.button ? ' lc-app' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click} onAuxClick={aux}>
-      {image && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(d?.image)} />}
+    <a class={`linkcard${image && !inline ? ' big' : ''}${image && d?.button && !inline ? ' lc-app' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click} onAuxClick={aux}>
+      {image && !inline && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(d?.image)} />}
       <span class="lc-text">
         <span class="lc-site">{icon && <Img src={icon} low />}{new URL(u).hostname.replace(/^www\./, '')}</span>
         {d?.title ? <b class="lc-title">{d.title}</b> : !d?.description && pathOf(u) && <span class="lc-desc">{pathOf(u)}</span>}
         {d?.description && <span class="lc-desc">{d.description}</span>}
       </span>
-      {d?.button && <span class="lc-btn">{d.button}</span>}
+      {d?.button && <span class="lc-btn">{inline ? t('Open') : d.button}</span>}
     </a>
+  )
+  return inline ? <div class="lc-inline"><InlineApp u={u} src={inline} height={d!.inline!.height} app={{ ...d!.app!, icon: icon || d!.app!.icon }} c={c} image={image} />{card}</div> : card
+}
+
+// our own hosts' inline views load as they scroll in, like quilcast.com's own pictures; another host's only once
+// tapped, as loading its page would tell it who is reading, which its picture (through /api/img) doesn't
+const OWN_HOST = /^https:\/\/(?:[\w-]+\.)*quilcast\.com$/
+/** A mini app embed's inline view (fc:miniapp:inline): its page in a frame `height` px tall, answered by inline.ts.
+ *  In the composer (no `c`) it's a preview the composer's styles keep from being used. */
+function InlineApp({ u, src, height, app, c, image }: { u: string; src: string; height: number; app: AppMeta; c?: Cast; image?: string }) {
+  const { origin, host } = new URL(src)
+  const [run, setRun] = useState(OWN_HOST.test(origin) || origin === location.origin)
+  const [mod, setMod] = useState<typeof import('./inline.ts')>()
+  const [say, setSay] = useState<import('./inline.ts').Say>(null)
+  const ref = useRef<HTMLIFrameElement>(null)
+  useEffect(() => void (run && !mod && import('./inline.ts').then(setMod, () => {})), [run])
+  // answering before the frame's page can ask anything: it loads only once the frame is in
+  useLayoutEffect(() => (mod && ref.current ? mod.attach({ frame: ref.current, origin, host, name: app.name || host, cast: c, embed: u, app, say: setSay }) : undefined), [mod, src, c?.hash])
+  return (
+    <div class="lc-frame" style={{ height: `${height}px` }} onClick={stop}>
+      {mod ? <iframe ref={ref} src={src} title={app.name || host} loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox" />
+        : !run && <>
+          {image && <Img class="lc-img" src={sized(image, 'w=1200')} low />}
+          <button class="btn small lc-run" onClick={() => setRun(true)}>{t('Load {host} here', { host })}</button>
+        </>}
+      {say && (
+        <div class="lc-say" role="dialog" aria-label={say.title}>
+          <b>{say.title}</b>
+          {say.body && <span>{say.body}</span>}
+          <span class="btns">
+            <button class="btn ghost small" onClick={() => say.done?.(false)}>{t('Cancel')}</button>
+            {/* it ignores clicks for its first second, as a whole app's does: the prompt comes up where the person was
+                just tapping the view, and a second tap mustn't land on it */}
+            {say.yes && <button class="btn small arm" onClick={() => Date.now() - (say.at || 0) > 1000 && say.done?.(true)}>{say.yes}</button>}
+          </span>
+        </div>
+      )}
+    </div>
   )
 }
 

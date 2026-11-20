@@ -1,7 +1,9 @@
 // Poll: a composer action (quilcast.com/developers/composer-actions). Opened from the composer, it takes the draft's
 // text as the question, keeps the poll on our server (server/poll.mjs) and fills the post with the question and the
 // poll's link. That link (/p/<id>) is a mini app embed: people sign in with Farcaster to vote, once per FID, and then
-// see the results. Opened anywhere else, composeCast opens that client's composer instead.
+// see the results. Opened anywhere else, composeCast opens that client's composer instead. At /p/<id>?inline it's the
+// poll's inline view (fc:miniapp:inline, quilcast.com/developers/inline-embeds): just the options, then the bars, in
+// the cast itself in clients that run one.
 import { status } from '/cast.js'
 import { composeCast, detect, ready, signIn } from '/miniapp.js'
 
@@ -10,6 +12,9 @@ const ctx = await detect()
 ready()
 const id = location.pathname.match(/^\/p\/([0-9a-f]{12})$/)?.[1]
 const draft = ctx?.location?.type === 'composer' ? ctx.location.draft : null
+const inline = id && new URLSearchParams(location.search).has('inline')
+document.body.classList.toggle('inline', !!inline)
+const votes = (n) => (n === 1 ? '1 vote' : `${n} votes`)
 
 const api = async (path, body) => {
   const r = await fetch(path, body && { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
@@ -74,7 +79,7 @@ function results(p, mine) {
   }))
   const sum = document.createElement('p')
   sum.className = 'muted small'
-  sum.textContent = total === 1 ? '1 vote' : `${total} votes`
+  sum.textContent = votes(total)
   box.append(sum)
   box.hidden = false
   $('#choices').hidden = true
@@ -90,15 +95,15 @@ async function cast(p, i, buttons) {
     const r = await signIn({ nonce, acceptAuthAddress: false }).catch(() => null)
     const s = r?.result || (r?.signature && r)
     // declined, or the wallet failed (some hosts throw for both): the buttons stay for another try
-    if (!r || r.error?.type === 'rejected_by_user') return status('Voting takes a sign-in, so each account votes once.', true)
+    if (!r || r.error?.type === 'rejected_by_user') return status(inline ? 'Voting takes a sign-in.' : 'Voting takes a sign-in, so each account votes once.', true)
     // a host that can't sign anyone in can't vote here either, so it gets the results
-    if (!s) return results(p), status('This app can’t sign you in, so you can’t vote here.', true)
+    if (!s) return results(p), status(inline ? 'Can’t vote from here.' : 'This app can’t sign you in, so you can’t vote here.', true)
     const v = await api(`/api/poll/${id}/vote`, { message: s.message, signature: s.signature })
     try {
       localStorage.setItem(mineKey, String(v.voted))
     } catch {}
     results(v, v.voted)
-    if (v.already) status('You already voted in this poll.')
+    if (v.already) status(inline ? 'You already voted.' : 'You already voted in this poll.')
   } catch (err) {
     status(err.message, true)
   } finally {
@@ -124,6 +129,8 @@ if (id) {
         return b
       })
       $('#choices').replaceChildren(...buttons)
+      // the inline view's question is the cast's; it says how many voted so far instead
+      if (inline) status(votes(p.votes.reduce((a, b) => a + b, 0)))
     }
   } catch (err) {
     status(err.message, true)

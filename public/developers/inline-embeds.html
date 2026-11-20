@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inline mini app embeds</title>
+    <meta name="description" content="A mini app embed can declare a small inline view, such as a poll's options and results, that clients run right in the cast instead of opening the whole app. How to build one, and how to support them in a Farcaster or Hypersnap client." />
+    <link rel="canonical" href="https://quilcast.com/developers/inline-embeds" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Quilcast" />
+    <meta property="og:url" content="https://quilcast.com/developers/inline-embeds" />
+    <meta property="og:title" content="Inline mini app embeds" />
+    <meta property="og:description" content="A mini app's small view, run right in the cast: one meta tag for apps, and a short checklist for clients." />
+    <meta property="og:image" content="https://quilcast.com/og-inline-embeds.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Inline embeds: a mini app's small view in the cast" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@quilcast" />
+    <meta name="twitter:title" content="Inline mini app embeds" />
+    <meta name="twitter:description" content="A mini app's small view, run right in the cast: one meta tag for apps, and a short checklist for clients." />
+    <meta name="twitter:image" content="https://quilcast.com/og-inline-embeds.png" />
+    <meta name="twitter:image:alt" content="Inline embeds: a mini app's small view in the cast" />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Inline mini app embeds</h1>
+      <p class="muted">For developers. Quilcast, November 2026.</p>
+      <p>A mini app embed is a picture with a button, and the button opens the whole app. For small jobs, that's a lot: to vote in a poll, you open an app, wait for its splash, tap an option and close it again. An <strong>inline embed</strong> lets the app declare a small view of itself, which clients that support it run right in the cast, in place of the picture. In <a href="/">Quilcast</a>, a poll's options are in the cast, and after you vote, so are its results.</p>
+      <p>The view is an ordinary page of your app, and it talks to the client with the same <a href="https://www.npmjs.com/package/@farcaster/miniapp-sdk">mini app SDK</a>. It gets fewer calls than a whole app: enough to know who's reading and what cast it's in, to sign in, and to open the whole app for the rest. Clients that don't support inline embeds show the usual card, so nothing breaks anywhere.</p>
+
+      <h2>1. Declare the view</h2>
+      <p>Next to the <code>fc:miniapp</code> tag on your embed's page, add an <code>fc:miniapp:inline</code> tag:</p>
+<pre><code>&lt;meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://poll.example.com/p/8f3a.png",
+  "button":{"title":"Vote","action":{"type":"launch_miniapp","name":"Poll","url":"https://poll.example.com/p/8f3a"}}}' /&gt;
+&lt;meta name="fc:miniapp:inline" content='{"url":"https://poll.example.com/p/8f3a?inline","height":156}' /&gt;</code></pre>
+      <ul>
+        <li><code>url</code> is the page the client puts in the cast. It must be an https URL on the same origin as the app the embed launches (<code>button.action.url</code>, or the page itself). Clients ignore one that points anywhere else.</li>
+        <li><code>height</code> is the view's height in CSS pixels. Clients hold it to 80-480. The width is the card's, which is about 300 to 600 pixels, so lay the view out to fit any width in that range.</li>
+        <li>The <code>fc:miniapp</code> tag stays as it is, and it's still required. Its picture is what clients without inline embeds show, and its button still opens the whole app. Clients that run your view show it as well, under the view.</li>
+        <li>The view has its own tag, not a field in <code>fc:miniapp</code>, so that the embed stays valid for every client and validator that checks it.</li>
+      </ul>
+
+      <h2>2. Build the view</h2>
+      <p>Build it like any mini app page, with the SDK or the same messages without it, and keep it to one screen that never scrolls: a few buttons, a number, a result. The view shows as soon as its frame loads, without a splash screen, so draw your own background and keep the page light. Call <code>sdk.actions.ready()</code> as usual.</p>
+<pre><code>import { sdk } from '@farcaster/miniapp-sdk'
+
+const ctx = await sdk.context
+await sdk.actions.ready()
+
+// ctx.client.inline: true when you're running in a cast (Quilcast's addition to the context)
+// ctx.location: { type: 'cast_embed', embed, cast } in a cast; undefined in a composer's preview,
+//   where the person is still writing the cast and the view can't be used
+// ctx.user: the reader, or undefined when they aren't signed in to the client</code></pre>
+      <p>A view can use these calls:</p>
+      <ul>
+        <li><code>sdk.actions.signIn({ nonce })</code>. The client asks the person first, as it does for a whole app. Verify the result on your server before you count anything (<a href="/developers/mini-apps#sign-in">Build for Hypersnap</a> has the whole check).</li>
+        <li><code>sdk.actions.openMiniApp({ url })</code> opens your whole app, or another one. Pass your embed's own URL (the one in <code>button.action.url</code>) to open your app for this cast, with the same <code>cast_embed</code> context. Do this for anything the view can't do.</li>
+        <li><code>sdk.actions.openUrl(url)</code>, <code>sdk.actions.viewCast({ hash })</code> and <code>sdk.actions.viewProfile({ fid })</code>.</li>
+        <li><code>sdk.getCapabilities()</code> lists these, so you can check for them.</li>
+      </ul>
+      <p>Everything else is refused with an error: the wallet, <code>composeCast</code>, <code>addMiniApp</code>, notifications, the camera and microphone, haptics and the primary button. Those belong in the whole app, so open it with <code>openMiniApp</code>.</p>
+
+      <h3>An example: Poll</h3>
+      <p><a href="https://poll.quilcast.com">poll.quilcast.com</a>, Quilcast's own <a href="/developers/composer-actions">composer action</a>, works this way. Each poll's page declares <code>/p/&lt;id&gt;?inline</code> as its view, 60 pixels plus 48 for each option. That URL is the same page laid out smaller: the options as buttons and the number of votes so far. Tapping an option asks to sign in, the sign-in is the vote, and the view shows the results. See <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/actions/poll"><code>actions/poll/</code></a> for the code.</p>
+
+      <h2>Trust</h2>
+      <ul>
+        <li><strong>The context isn't proof.</strong> Anyone can load your view, and <code>ctx.user</code> is whatever the client says. Count or store something for an account only after a sign-in you've checked.</li>
+        <li><strong>What your view sees.</strong> It runs in a sandboxed frame on your origin. It sees the cast it's in and, if the reader is signed in, their FID and name. It can't post, can't use the wallet and can't send notifications.</li>
+        <li><strong>When it loads.</strong> Loading a page tells its server who is reading (their IP address, and when). Quilcast loads views from its own hosts as you scroll to them, like its own pictures. A view from any other host loads only once you tap <em>Load here</em> on its card, so you can't count on it loading by itself.</li>
+      </ul>
+
+      <h2 id="clients">For client developers</h2>
+      <p>Any Farcaster or Hypersnap client that already runs mini apps can run inline embeds too. It takes five steps:</p>
+      <ol>
+        <li><strong>Read the tag.</strong> When you unfurl a link whose page has a valid <code>fc:miniapp</code> (or <code>fc:frame</code>) with a <code>launch_miniapp</code> (or <code>launch_frame</code>) button, also read <code>fc:miniapp:inline</code>. Parse it as JSON, and take it only if <code>url</code> is https on the same origin as the button's app URL and <code>height</code> is a positive number, which you hold to 80-480. Otherwise draw the usual card.</li>
+        <li><strong>Put the view in the card.</strong> Draw an iframe of <code>url</code> in place of the embed picture, as wide as the card and <code>height</code> pixels tall, and keep the rest of the card under it, with its button opening the whole app. Give the frame <code>sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"</code>, <code>referrerpolicy="no-referrer"</code> and <code>loading="lazy"</code>, and no <code>allow</code> permissions. Keep the same frame while the feed redraws, so that scrolling doesn't reload it.</li>
+        <li><strong>Answer it like a mini app, with fewer calls.</strong> The view speaks the SDK's Comlink messages over <code>postMessage</code>, like a whole app. Start listening before the frame loads, and take a message only when <code>event.source</code> is that frame's <code>contentWindow</code> and <code>event.origin</code> is the view's origin. Answer <code>context</code> with <code>client.inline: true</code>, <code>location: { type: 'cast_embed', embed, cast }</code> and the signed-in <code>user</code>. Answer <code>ready</code>, <code>signIn</code>, <code>openUrl</code>, <code>openMiniApp</code>, <code>viewCast</code>, <code>viewProfile</code> and <code>getCapabilities</code>, and refuse everything else with an error.</li>
+        <li><strong>Ask before signing in, outside the frame.</strong> Show your own prompt over the card or the screen, with the app's name and host, as you do for a whole app. The view can't draw over the prompt, and it never signs anything itself. The prompt comes up right where the person was tapping, so have its yes button ignore clicks for its first second, and refuse a second <code>signIn</code> while one prompt is up. When the view calls <code>openMiniApp</code> with its embed's URL, open the whole app with the same <code>cast_embed</code> location.</li>
+        <li><strong>Mind what loading tells the host.</strong> A frame that loads as the reader scrolls tells its host who's reading. Quilcast loads views from its own hosts right away and other hosts' only after a tap, showing the embed picture with a <em>Load here</em> button until then. Do the same, or let readers choose.</li>
+      </ol>
+      <p>A native client does the same with a web view in the card, and answers the same messages it already answers for whole apps there (<code>window.ReactNativeWebView</code> in a React Native app), limited to the calls above.</p>
+      <p>In your composer, you can show the view as a preview of the cast being written: leave <code>location</code> out and keep the frame from taking clicks (<code>pointer-events: none</code>). Quilcast's code is in <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/src/inline.ts"><code>src/inline.ts</code></a> (the calls) and <code>InlineApp</code> in <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/src/ui.tsx"><code>src/ui.tsx</code></a> (the card), and the tag is read in <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/server/unfurl.mjs"><code>server/unfurl.mjs</code></a>.</p>
+
+      <h2>Test it</h2>
+      <ol>
+        <li>Serve your app over https on a public address (a tunnel such as <code>cloudflared tunnel --url http://localhost:5173</code> works while you build).</li>
+        <li>Cast a link to your embed's page and open the cast in Quilcast. A view on your own host shows <em>Load here</em> first.</li>
+        <li>Quilcast keeps a link's preview for an hour, so after you change the tags, add a query string to the link (<code>?v=2</code>) to see them at once.</li>
+      </ol>
+
+      <p class="muted"><a href="/about">About Quilcast</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of use</a></p>
+    </main>
+  </body>
+</html>

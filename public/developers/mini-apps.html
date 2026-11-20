@@ -31,6 +31,8 @@
       <p class="muted">For developers. Quilcast, November 2026.</p>
       <p><a href="https://hypersnap.org">Hypersnap</a> is the Farcaster network that Quilibrium runs, and Hypersnap clients such as <a href="/">Quilcast</a> run standard <a href="https://miniapps.farcaster.xyz">Farcaster mini apps</a>. The SDK, the manifest and the notification format are all the same as elsewhere. What differs is how your server checks who someone is. The usual checks look things up on Optimism, and accounts created on Hypersnap were never registered there, so this page shows checks that ask a Hypersnap node instead, with Snapchain (the network the Farcaster app uses) as an optional second place to look. Cast actions are mini apps too, so all of this applies to them as well, and <a href="/developers/cast-actions">Build a cast action</a> covers what's specific to them.</p>
 
+      <p>Quilcast also runs a few additions of its own that any Hypersnap client can support: <a href="/developers/cast-actions#one-click">one-click cast actions</a>, <a href="/developers/composer-actions">composer actions</a>, which fill in the post you're writing, and <a href="/developers/inline-embeds">inline embeds</a>, a small view of your app that runs right in the cast.</p>
+
       <h2>What's different on Hypersnap</h2>
       <ul>
         <li><strong>New accounts live only on Hypersnap.</strong> Since Hypersnap forked from Snapchain on November 12, 2026, accounts are registered on Hypersnap itself, with no Optimism transaction and no ETH. Their FIDs start at 2<sup>32</sup> (4,294,967,296), so store FIDs as 64-bit integers or JavaScript numbers, never as 32-bit ones. Accounts registered on Optimism before the fork exist on both networks.</li>

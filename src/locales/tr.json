@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "{host} sitesinde düzenleyici eylemi yok.",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Düzenleyici eylemleri, düzenleyicideki uygulamalar düğmesinin altında yer alır. Her biri taslağınla açılan ve onu dolduran bir mini uygulamadır.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast bu eylemi incelemedi. Eylem, onu açtığın taslağı görür ve her mini uygulama gibi cüzdanını isteyebilir.",
-  "Make your own composer action": "Kendi düzenleyici eylemini oluştur"
+  "Make your own composer action": "Kendi düzenleyici eylemini oluştur",
+  "Load {host} here": "{host} burada yüklensin"
 }

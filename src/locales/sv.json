@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "{host} har ingen redigeraråtgärd.",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Redigeraråtgärder finns under appknappen i redigeraren. Var och en är en miniapp som öppnas med ditt utkast och fyller i det.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast har inte granskat den här åtgärden. Den ser utkastet du öppnar den från och kan be om din plånbok, precis som vilken miniapp som helst.",
-  "Make your own composer action": "Skapa din egen redigeraråtgärd"
+  "Make your own composer action": "Skapa din egen redigeraråtgärd",
+  "Load {host} here": "Ladda {host} här"
 }

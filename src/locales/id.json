@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "{host} tidak punya aksi penyusun.",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Aksi penyusun ada di bawah tombol aplikasi di penyusun. Masing-masing adalah aplikasi mini yang terbuka dengan draf-mu dan mengisinya.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast belum meninjau aksi ini. Aksi ini melihat draf tempat kamu membukanya dan bisa meminta dompetmu, seperti aplikasi mini lainnya.",
-  "Make your own composer action": "Buat aksi penyusun-mu sendiri"
+  "Make your own composer action": "Buat aksi penyusun-mu sendiri",
+  "Load {host} here": "Muat {host} di sini"
 }

@@ -35,3 +35,14 @@ a { color: #b3a6ff; }
 .bar { display: flex; justify-content: space-between; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(90deg, var(--accent) var(--pct), var(--card) var(--pct)); overflow-wrap: anywhere; }
 .bar.mine { border-color: var(--accent-hi); font-weight: 650; }
 #q { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Poll's inline view (/p/<id>?inline): a cast's card holds it at 60 + 48 px an option (server/index.mjs), so each row
+   is one line */
+.inline { min-height: 0; }
+.inline main { max-width: none; padding: 8px 12px; }
+.inline #q { display: none; }
+.inline .choices, .inline .results { margin: 0; gap: 8px; }
+.inline .choices button, .inline .bar { min-height: 40px; padding: 8px 12px; border-radius: 10px; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inline .bar span { overflow: hidden; text-overflow: ellipsis; }
+.inline .results p { margin: 0; }
+.inline #status { min-height: 0; margin: 4px 0 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inline #status.err { color: var(--bad); }

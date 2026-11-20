@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "У {host} немає дії для редактора.",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Дії редактора розташовані під кнопкою застосунків у редакторі. Кожна — мінізастосунок, який відкривається з вашою чернеткою і заповнює її.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast не перевіряв цю дію. Вона бачить чернетку, з якої ви її відкриваєте, і може попросити ваш гаманець, як і будь-який мінізастосунок.",
-  "Make your own composer action": "Створіть власну дію для редактора"
+  "Make your own composer action": "Створіть власну дію для редактора",
+  "Load {host} here": "Завантажити {host} тут"
 }

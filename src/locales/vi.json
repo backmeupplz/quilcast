@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "{host} không có hành động trình soạn nào.",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Hành động trình soạn nằm dưới nút ứng dụng trong trình soạn. Mỗi hành động là một ứng dụng mini mở cùng bản nháp của bạn và điền nội dung vào đó.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast chưa xem xét hành động này. Nó thấy bản nháp bạn mở nó từ đó và có thể yêu cầu ví của bạn, như mọi ứng dụng mini khác.",
-  "Make your own composer action": "Tạo hành động trình soạn của riêng bạn"
+  "Make your own composer action": "Tạo hành động trình soạn của riêng bạn",
+  "Load {host} here": "Tải {host} tại đây"
 }

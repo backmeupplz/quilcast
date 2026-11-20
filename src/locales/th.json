@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "{host} ไม่มีแอ็กชันหน้าเขียน",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "แอ็กชันหน้าเขียนอยู่ใต้ปุ่มแอปในหน้าเขียน แต่ละอันเป็นมินิแอปที่เปิดพร้อมฉบับร่างของคุณและเติมเนื้อหาให้",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast ยังไม่ได้ตรวจสอบแอ็กชันนี้ แอ็กชันจะเห็นฉบับร่างที่คุณเปิดมันขึ้นมาและอาจขอใช้กระเป๋าเงินของคุณได้เหมือนมินิแอปทั่วไป",
-  "Make your own composer action": "สร้างแอ็กชันหน้าเขียนของคุณเอง"
+  "Make your own composer action": "สร้างแอ็กชันหน้าเขียนของคุณเอง",
+  "Load {host} here": "โหลด {host} ที่นี่"
 }

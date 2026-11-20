@@ -651,6 +651,21 @@ small.warn { color: var(--warn); }
 .embed-preview .linkcard.big { display: grid; grid-template-columns: 140px minmax(0, 1fr); }
 .embed-preview .linkcard.big .lc-img { grid-row: span 2; width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; border-bottom: 0; border-inline-end: var(--bw, 1px) var(--bs, solid) var(--line); }
 .embed-preview .linkcard.big .lc-btn { justify-self: start; padding: 5px 12px; }
+/* a mini app's inline view (ui.tsx InlineApp) over the rest of its card, one box */
+.lc-inline { margin-top: 10px; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(14px * var(--rs, 1)); overflow: hidden; }
+.embed-preview .lc-inline { margin-top: 8px; }
+.lc-inline > .linkcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; margin: 0; border: 0; border-top: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: 0; }
+/* the view shows what the description would say; the button opens the whole app */
+.lc-inline .lc-desc { display: none; }
+.lc-inline .lc-title { -webkit-line-clamp: 1; }
+.lc-inline .lc-btn { margin: 0 12px 0 0; padding: 6px 14px; }
+.lc-frame { position: relative; background: var(--soft); }
+.lc-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.lc-frame .lc-img { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; object-fit: contain; border: 0; }
+.lc-run { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 24px); }
+.lc-say { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 14px; overflow: auto; font-size: 14px; background: color-mix(in srgb, var(--card, var(--bg)) 96%, transparent); }
+.lc-say span:not(.btns) { color: var(--muted); }
+.lc-say .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .part-x { color: var(--muted); width: 28px; height: 28px; margin-top: 4px; }
 .add-part { color: var(--accent); border: var(--bw, 1px) var(--bs, solid) var(--line) !important; width: 32px !important; height: 32px !important; }
 .editor .avatar { margin-inline-start: -4px; }

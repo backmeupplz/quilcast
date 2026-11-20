@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 import { test } from 'node:test'
 import { PassThrough } from 'node:stream'
 import { blocked, clientIp, imageInfo, ipGroup, lru, picInfo, proxiedPic, readBody, safeGet, sendOn } from './net.mjs'
-import { scan } from './unfurl.mjs'
+import { inlineOf, scan } from './unfurl.mjs'
 import { looksLike } from './upload.mjs'
 
 test('private, loopback, link-local, CGNAT and their IPv6 forms are blocked', () => {
@@ -233,4 +233,13 @@ test('rate limits count an IPv6 address by its /64', () => {
   assert.equal(ipGroup('2a01:04f8:0001:0002:ffff:1:2:3'), '2a01:4f8:1:2::/64')
   assert.equal(ipGroup('2a01::1'), '2a01:0:0:0::/64')
   assert.equal(ipGroup('2a01:4f8::'), '2a01:4f8:0:0::/64')
+})
+
+test("a mini app embed's inline view is taken only on the app's own origin, its height held to 80-480", () => {
+  const app = 'https://poll.example.com/p/1'
+  assert.deepEqual(inlineOf('{"url":"https://poll.example.com/p/1?inline","height":200}', app), { url: 'https://poll.example.com/p/1?inline', height: 200 })
+  assert.deepEqual(inlineOf('{"url":"https://poll.example.com/x","height":9000}', app), { url: 'https://poll.example.com/x', height: 480 })
+  assert.equal(inlineOf('{"url":"https://poll.example.com/x","height":10}', app).height, 80)
+  for (const bad of ['{"url":"https://evil.example/x","height":200}', '{"url":"http://poll.example.com/x","height":200}', '{"url":"https://poll.example.com/x"}', '{"url":"https://poll.example.com/x","height":"tall"}', 'not json', undefined])
+    assert.equal(inlineOf(bad, app), undefined, bad)
 })

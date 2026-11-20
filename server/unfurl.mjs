@@ -65,6 +65,7 @@ async function read(url) {
   }
   return {
     url: r.url,
+    ...(launch?.url && { inline: inlineOf(meta['fc:miniapp:inline'], launch.url, abs) }),
     title: clip(meta['og:title'] || meta['twitter:title'] || title, 300),
     description: clip(meta['og:description'] || meta['twitter:description'] || meta.description, 500),
     image: abs(app?.imageUrl || meta['og:image'] || meta['og:image:url'] || meta['twitter:image'] || meta['twitter:image:src']),
@@ -72,6 +73,19 @@ async function read(url) {
     icon: abs(icon || '/favicon.ico'),
     app: launch?.url ? launch : undefined,
   }
+}
+
+/** A mini app embed's inline view (fc:miniapp:inline, public/developers/inline-embeds.html): { url, height } when it's
+ *  well formed and on the app's own origin, else undefined. The height is CSS pixels, held to 80-480. */
+export function inlineOf(raw, appUrl, abs = (u) => httpUrl(u)) {
+  let o
+  try {
+    o = JSON.parse(raw || 'null')
+  } catch {}
+  const url = abs(o?.url)
+  const height = Math.round(Number(o?.height))
+  if (!url?.startsWith('https://') || new URL(url).origin !== new URL(appUrl).origin || !(height > 0)) return undefined
+  return { url, height: Math.min(480, Math.max(80, height)) }
 }
 
 // X posts: fxtwitter's public API returns the post itself, which X's own pages don't give bots

@@ -1146,7 +1146,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 // static files under a path without their extension: About (plain HTML for crawlers), the legal pages the stores link to, and Apple's universal links file
 // the standalone pages in the app's other languages (public/<lang>/<page>.html), each at its own address
 const TRANSLATED = /^\/(?:ar|de|es|fr|hi|id|it|ja|ko|nl|pl|pt-br|pt-pt|ru|sv|th|tr|uk|vi|zh-hans|zh-hant)\/(?:about|privacy|terms|safety|delete)$/
-const PAGES = { '/about': 'about.html', '/developers/cast-actions': 'developers/cast-actions.html', '/developers/composer-actions': 'developers/composer-actions.html', '/developers/mini-apps': 'developers/mini-apps.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
+const PAGES = { '/about': 'about.html', '/developers/cast-actions': 'developers/cast-actions.html', '/developers/composer-actions': 'developers/composer-actions.html', '/developers/inline-embeds': 'developers/inline-embeds.html', '/developers/mini-apps': 'developers/mini-apps.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
 
 // dist/ never changes while we run: its files are read once, and compressed once per encoding
 const files = new Map()
@@ -1293,6 +1293,8 @@ const server = createServer(async (req, res) => {
           for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
             h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: `${url}.png`, button: { title: 'Vote', action: { type, name: 'Poll', url, splashImageUrl: `https://${actionHost}/icon.png`, splashBackgroundColor: '#0d0c11' } } }))
           }
+          // its options, or the bars once voted, then a line for the count (actions/poll/app.js inline)
+          h = meta(h, 'name', 'fc:miniapp:inline', JSON.stringify({ url: `${url}?inline`, height: 60 + 48 * p.options.length }))
         }
         res.setHeader('content-security-policy', ACTION_CSP)
         return html(h)

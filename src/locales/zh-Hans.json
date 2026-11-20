@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "{host} 没有编辑器操作。",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "编辑器操作位于编辑器的应用按钮下。每一个都是小程序，会带着你的草稿打开并帮你填写。",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast 尚未审核此操作。它能看到你打开它时的草稿，并且和任何小程序一样可以请求你的钱包。",
-  "Make your own composer action": "创建你自己的编辑器操作"
+  "Make your own composer action": "创建你自己的编辑器操作",
+  "Load {host} here": "在这里加载 {host}"
 }

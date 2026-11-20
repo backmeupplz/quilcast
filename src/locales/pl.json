@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "{host} nie ma akcji edytora.",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Akcje edytora są pod przyciskiem aplikacji w edytorze. Każda to miniaplikacja, która otwiera się z twoim szkicem i go uzupełnia.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast nie sprawdził tej akcji. Widzi szkic, z którego ją otwierasz, i może poprosić o twój portfel, jak każda miniaplikacja.",
-  "Make your own composer action": "Stwórz własną akcję edytora"
+  "Make your own composer action": "Stwórz własną akcję edytora",
+  "Load {host} here": "Wczytaj {host} tutaj"
 }

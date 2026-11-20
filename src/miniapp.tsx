@@ -19,9 +19,9 @@ import { addAppAction, APP_PUSH, askPush, castActions, channelOf, Choose, pushSu
 import { custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
 import { awake, displaced, sleepers } from './sleep.ts'
+import { castCtx, QUILCAST_FID, userCtx } from './inline.ts'
 import { isSaved, oneClick, oneClickPayload, shareHome } from './appsaved.ts'
 
-const QUILCAST_FID = 3356316
 // viem's default Polygon RPC now wants a key, so Polygon reads and sends go through publicnode
 const POLYGON = { ...polygon, rpcUrls: { default: { http: ['https://polygon-bor-rpc.publicnode.com'] } } }
 const CHAINS = Object.fromEntries([base, optimism, mainnet, arbitrum, POLYGON, celo, zora, unichain, monad, degen, baseSepolia].map((c) => [c.id, c]))
@@ -770,11 +770,6 @@ export async function setNotify(m: AppMeta, on: boolean, event?: 'miniapp_added'
 
 // --- Farcaster actions ---
 
-const userCtx = (u: User) => ({ fid: u.fid, username: u.username?.startsWith('fid:') ? undefined : u.username, displayName: u.display_name, pfpUrl: u.pfp_url })
-const castCtx = (c: Cast) => ({
-  author: userCtx(c.author), hash: '0x' + c.hash.replace(/^0x/, ''), parentHash: c.parent_hash || undefined, parentFid: c.parent_author?.fid || undefined,
-  timestamp: Date.parse(c.timestamp), text: castText(c), embeds: c.embeds.flatMap((e) => e.url ?? []), channelKey: channelOf(c.parent_url),
-})
 const haptics = 'vibrate' in navigator
 // the Quilcast apps are phones however wide they are (an unfolded iPhone Duo has the sidebar)
 const inApp = navigator.userAgent.includes('QuilcastApp/')

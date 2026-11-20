@@ -1429,5 +1429,6 @@
   "{host} has no composer action.": "{host} hat keine Editor-Aktion.",
   "Composer actions show up under the apps button in the composer. Each one is a mini app that opens with your draft and fills it in.": "Editor-Aktionen findest du unter dem Apps-Button im Editor. Jede ist eine Mini-App, die sich mit deinem Entwurf öffnet und ihn ausfüllt.",
   "Quilcast hasn't reviewed this action. It sees the draft you open it from and can ask for your wallet, like any mini app.": "Quilcast hat diese Aktion nicht geprüft. Sie sieht den Entwurf, aus dem du sie öffnest, und kann wie jede Mini-App nach deiner Wallet fragen.",
-  "Make your own composer action": "Erstelle deine eigene Editor-Aktion"
+  "Make your own composer action": "Erstelle deine eigene Editor-Aktion",
+  "Load {host} here": "{host} hier laden"
 }
