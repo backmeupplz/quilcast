@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { SENDCLAP_PERIOD, sendclapAllowance, sendclapOk, tipAddress } from './tokens.ts'
+import { parseToken, SENDCLAP_PERIOD, sendclapAllowance, sendclapOk, tipAddress } from './tokens.ts'
+
+test("a token id names an ERC-20 or the chain's coin, as slip44 or native (#780)", () => {
+  assert.deepEqual(parseToken('eip155:8453/erc20:0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'), { chain: 8453, address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' })
+  assert.deepEqual(parseToken('eip155:8453/slip44:60'), { chain: 8453, address: undefined })
+  assert.deepEqual(parseToken('eip155:8453/native'), { chain: 8453, address: undefined })
+  assert.throws(() => parseToken('solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/native'))
+  assert.throws(() => parseToken('eip155:8453/nativex'))
+})
 
 test('a tip goes to the primary verified address, then any verified one, then custody', () => {
   const custody_address = '0xc'

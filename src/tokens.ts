@@ -29,9 +29,10 @@ export const sendclapOk = (o: { contract?: string; usdc?: string; amount?: strin
 export const sendclapAllowance = (amount: bigint, period?: number) =>
   amount * BigInt(period ? Math.max(1, Math.floor(SENDCLAP_PERIOD.year / period)) : 1)
 
-/** "eip155:8453/erc20:0x…" (a token) or "eip155:8453/slip44:60" (the chain's own coin). */
+/** "eip155:8453/erc20:0x…" (a token), or "eip155:8453/slip44:60" or "eip155:8453/native" (the chain's own coin;
+ *  Farcaster's docs use the latter, #780). */
 export function parseToken(id: unknown): TokenId {
-  const m = String(id).match(/^eip155:(\d{1,12})\/(?:erc20:(0x[0-9a-fA-F]{40})|slip44:\d{1,10})$/)
+  const m = String(id).match(/^eip155:(\d{1,12})\/(?:erc20:(0x[0-9a-fA-F]{40})|slip44:\d{1,10}|native)$/)
   if (!m) throw new Error('Quilcast can send and swap tokens on EVM chains only.')
   return { chain: Number(m[1]), address: m[2]?.toLowerCase() as `0x${string}` | undefined }
 }
