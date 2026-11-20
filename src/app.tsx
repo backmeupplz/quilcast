@@ -1101,6 +1101,8 @@ function Profile({ id }: { id: string }) {
   const tabNow = useRef(tab)
   tabNow.current = tab
   useEffect(() => holding(`profile:${id}`, () => tabNow.current), [id])
+  const idNow = useRef(id)
+  idNow.current = id
   const [following, setFollowing] = useState<boolean | null>(null)
   // they follow the viewer; shown only once known, so nothing jumps while it's asked
   const [followsYou, setFollowsYou] = useState(false)
@@ -1146,11 +1148,16 @@ function Profile({ id }: { id: string }) {
     setLook(null)
     setDraft(null)
     setFollowsYou(false)
+    // the last profile's follow state goes too: kept, a tap before this one's answer (or after it failed) would
+    // unfollow this account and count it down from a follow it never had
+    setFollowing(null)
+    was.current = false
     let live = true
     getUser(k?.fid ?? id).then((u) => {
+      if (!live) return
       setU(u)
       checkAccounts([u.fid]).then(() => live && setSpamChecked((x) => x + 1))
-      Promise.resolve((account?.done ? u.viewer_context?.following : undefined) ?? isFollowing(u.fid)).then((f) => ((was.current = f), setFollowing(f)))
+      Promise.resolve((account?.done ? u.viewer_context?.following : undefined) ?? isFollowing(u.fid)).then((f) => live && ((was.current = f), setFollowing(f)))
       followsMe(u).then((f) => live && setFollowsYou(f))
     }, (e) => {
       if (!live) return
@@ -1229,12 +1236,13 @@ function Profile({ id }: { id: string }) {
   }, [!!shown])
   const editLook = (f: (d: Look) => Look) => setDraft((d) => f(d || {}))
   // a follow on this device (anonymous mode) isn't on the network, so the count stays
-  const followers = (u?.follower_count || 0) + (account?.done ? +!!following - +was.current : 0)
+  const followers = Math.max(0, (u?.follower_count || 0) + (account?.done ? +!!following - +was.current : 0))
   const toggle = () => {
     if (!account?.done) return setFollowing(followLocally(u!, !following))
     const on = !following
     setFollowing(on)
-    w().then((m) => m.follow(u!.fid, on)).catch((e) => (setFollowing(!on), toast(e.message)))
+    // a send that fails after another profile opened leaves that one's button alone
+    w().then((m) => m.follow(u!.fid, on)).catch((e) => (idNow.current === id && setFollowing(!on), toast(e.message)))
   }
   // the header is a box stickers can sit on, like the look's sections
   // the account's casts as RSS (server/feed.mjs), which nameless and taken-down accounts don't have
