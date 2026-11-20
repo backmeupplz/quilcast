@@ -282,6 +282,7 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pil
       state.current.run = {}
       state.current.busy = false
       setBusy(false)
+      setErr('')
       setCursor(h.cursor)
     }
     got.current = { k, items: next, cursor: whole ? h.cursor ?? null : got.current.cursor }
@@ -386,8 +387,8 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pil
     }
   }, [k])
   useEffect(() => {
-    // re-armed after every render, so pages that filter down to nothing keep loading
-    const o = new IntersectionObserver((e) => e[0].isIntersecting && cursor && more(), { rootMargin: '800px' })
+    // re-armed after every render, so pages that filter down to nothing keep loading; a failed load waits for Retry
+    const o = new IntersectionObserver((e) => e[0].isIntersecting && cursor && !err && more(), { rootMargin: '800px' })
     sentinel.current && o.observe(sentinel.current)
     return () => o.disconnect()
   })
@@ -876,7 +877,9 @@ function Notifications() {
           // quotes, replies deeper in our threads and recasts come with Hypersnap PR #42's flag
           const r = await get('/v2/farcaster/notifications', { fid: account!.fid, limit: 50, cursor, include_quotes_and_deep_replies: 'true' }, true)
           const notes = r.notifications as Note[]
-          const next = notes.length ? r.next?.cursor || null : null
+          // Hypersnap's notifications index can end a page early, even empty, with a cursor to go on (PR #79); the same
+          // cursor again would load the same empty page forever
+          const next = r.next?.cursor && r.next.cursor !== cursor ? r.next.cursor : null
           const items = notes.filter((n) => n.user && (tab === 'all' || (n.cast && !ACT(n.type))))
           // the node sends notification casts with zero counts (unliking one showed -1), so casts shown with their
           // counts get them from one bulk lookup
