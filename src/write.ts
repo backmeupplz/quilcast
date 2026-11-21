@@ -1,6 +1,6 @@
 // Signed writes: everything here needs the account's keys.
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting, publishedArticle, setAccount, settings, updateAccount, users, type Account, type Cast } from './api.ts'
+import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting, publishedArticle, read, save, setAccount, settings, updateAccount, users, type Account, type Cast } from './api.ts'
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, keyState, reverted, sendTx } from './eth.ts'
@@ -77,12 +77,12 @@ async function submit(m: { msg: Uint8Array; hash: string }, wait = [1000, 2000, 
 /** `save` keeps the account with its new key (updateAccount); false from it means the account is gone, and so is the key. */
 export async function ensureSigner(a = account!, fresh = false, save: (a: Account) => unknown = updateAccount) {
   const now = Math.floor(Date.now() / 1000)
-  if (!fresh && (a.pub || a.signer) && a.scopes === SCOPES_VERSION) return
+  if (!fresh && hasKey(a)) return
   const old = !fresh && (await signerOf(a).catch(() => undefined))
   const [key, raw] = old ? [old, a.signer] : await newKey()
   const nonce = Math.max((a.nonce || 0) + 1, now)
   await submit(await keyAdd(a.fid!, await custodyOf(a), key, nonce))
-  if (save({ ...a, pub: hex(key.pub), signer: raw, signerAt: now, nonce, scopes: SCOPES_VERSION }) === false) return void (old || dropEd(hex(key.pub)).catch(() => {}))
+  if (save({ ...a, pub: hex(key.pub), signer: raw, nonce, scopes: SCOPES_VERSION }) === false) return void (old || dropEd(hex(key.pub)).catch(() => {}))
   // a key that was replaced is no use to anyone
   if (a.pub && a.pub !== hex(key.pub)) dropEd(a.pub).catch(() => {})
 }
@@ -226,11 +226,11 @@ export async function ensureAppKey(onWait?: (what: string) => void, pause = 3000
       throw answered
         ? new Error('The notification key is still being confirmed. Try again in a minute.')
         : new Error("Couldn't reach the Optimism RPC to check the notification key. Check the RPC in settings.")
-    await new Promise((r) => setTimeout(r, pause))
+    await sleep(pause)
   }
 }
 
-const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const b64url = (b: Uint8Array) => b64(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 /** A JSON Farcaster Signature over `payload`: what mini app webhooks receive. It's signed with the account's own
  *  Farcaster signer, which Hypersnap lists in /v1/signersByFid (and its shuttle brings to Snapchain's), so it needs no
  *  transaction and works for native Hypersnap accounts. `appKey` signs with the on-chain app key instead, adding it on
@@ -416,17 +416,21 @@ async function keySigned(what: string, body = '', as = account!, add = true) {
   return { 'x-key': '0x' + hex(key.pub), 'x-ts': String(ts), 'x-sig': hex(sig) }
 }
 
-// a farcaster.xyz login request signed with the custody key, valid for 10 minutes: the server swaps it for the CDN
-// token. Timestamps never repeat, because each one works only once.
+/** A farcaster.xyz generateToken request signed with `a`'s custody key: a bearer token, checked on this device only,
+ *  never sent to the RPC. */
+async function fcxBearer(a: Account, ts: number, exp: number) {
+  const authRequest = { method: 'generateToken', params: { timestamp: ts, expiresAt: exp } }
+  const sig = await (await custodyOf(a)).message(new TextEncoder().encode(`{"method":"generateToken","params":{"expiresAt":${exp},"timestamp":${ts}}}`), { local: true })
+  return { authRequest, bearer: `eip191:${b64(sig)}` }
+}
+
+// a farcaster.xyz login request, valid for 10 minutes: the server swaps it for the CDN token. Timestamps never repeat,
+// because each one works only once.
 let lastLogin = 0
 async function login() {
   const ts = (lastLogin = Math.max(Date.now(), lastLogin + 1))
-  const exp = ts + 600e3
-  const authRequest = { method: 'generateToken', params: { timestamp: ts, expiresAt: exp } }
-  const msg = new TextEncoder().encode(`{"method":"generateToken","params":{"expiresAt":${exp},"timestamp":${ts}}}`)
-  // a bearer token: checked on this device only, never sent to the RPC
-  const sig = await (await custodyOf(account!)).message(msg, { local: true })
-  return { authorization: `Bearer eip191:${btoa(String.fromCharCode(...sig))}`, 'x-auth-request': JSON.stringify(authRequest) }
+  const { authRequest, bearer } = await fcxBearer(account!, ts, ts + 600e3)
+  return { authorization: `Bearer ${bearer}`, 'x-auth-request': JSON.stringify(authRequest) }
 }
 
 // the server takes at most 3 uploads at a time from an account (server/upload.mjs MAX_ACTIVE_PER_FID), so the rest wait
@@ -480,13 +484,13 @@ async function sendFile(file: Blob, id: string, max: number, cdn: boolean, progr
     } catch (e) {
       size = Math.max(128 * 1024, size / 2)
       if (++tries > 4) throw e
-      await new Promise((r) => setTimeout(r, 1000 * tries))
+      await sleep(1000 * tries)
     }
   }
   progress('processing')
   let st = await json(await fetch(`/api/upload/${id}/done`, { method: 'POST', headers: cdn ? await login() : {} }))
   while (st.state === 'sending' || st.state === 'processing') {
-    await new Promise((r) => setTimeout(r, 1500))
+    await sleep(1500)
     st = await json(await fetch(`/api/upload/${id}`))
   }
   if (st.state !== 'ready' || !st.url) throw new Error(st.error || 'Upload failed')
@@ -594,10 +598,8 @@ export function spaceToken(fresh = false): Promise<string> {
 async function mintSpaceToken(a: Account) {
   const ts = Date.now()
   const exp = ts + 30 * 864e5
-  const authRequest = { method: 'generateToken', params: { timestamp: ts, expiresAt: exp } }
-  // a 30-day bearer token: checked on this device only, never sent to the RPC
-  const sig = await (await custodyOf(a)).message(new TextEncoder().encode(`{"method":"generateToken","params":{"expiresAt":${exp},"timestamp":${ts}}}`), { local: true })
-  const r = await fetch('/api/space/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ authRequest, bearer: `eip191:${btoa(String.fromCharCode(...sig))}` }) })
+  // a 30-day bearer token
+  const r = await fetch('/api/space/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(await fcxBearer(a, ts, exp)) })
   const j = await r.json().catch(() => ({}))
   if (!j.secret) throw new Error("farcaster.xyz didn't let this account into Spaces.")
   if (account && idOf(account) === idOf(a)) setAccount({ ...account, fcx: { secret: j.secret, exp: j.expiresAt || exp } })
@@ -795,7 +797,7 @@ export async function sendSignup(campaign: string, a = account!) {
 /** The account's mutes and blocks from our server, or null when this browser has no working key yet (reading them
  *  never adds one, so it can't ask for the recovery phrase). */
 export const fetchMutes = (a = account!) =>
-  (a.pub || a.signer) && a.scopes === SCOPES_VERSION ? keyFetch(`/api/mutes/${a.fid}`, 'quilcast-mutes-read', 'GET', '', 1) : Promise.resolve(null)
+  hasKey(a) ? keyFetch(`/api/mutes/${a.fid}`, 'quilcast-mutes-read', 'GET', '', 1) : Promise.resolve(null)
 /** Sends a report to us (server/report.mjs). Signed in, the account's key signs it, so we know who reported. */
 export async function sendReport(r: { fid: number; hash?: string; reason: string; text: string }) {
   const body = JSON.stringify(r)
@@ -813,7 +815,7 @@ export const saveMutes = (m: object) => keyFetch(`/api/mutes/${account!.fid}`, '
 /** The account's synced theme settings (src/prefs.ts). `ask` lets it add a key (Settings turning sync on); without it,
  *  like fetchMutes, it answers null when this browser has no working key. */
 export const fetchPrefs = (ask = false, a = account!) =>
-  ask || ((a.pub || a.signer) && a.scopes === SCOPES_VERSION) ? keyFetch(`/api/prefs/${a.fid}`, 'quilcast-prefs-read', 'GET', '', ask ? 3 : 1) : Promise.resolve(null)
+  ask || hasKey(a) ? keyFetch(`/api/prefs/${a.fid}`, 'quilcast-prefs-read', 'GET', '', ask ? 3 : 1) : Promise.resolve(null)
 export const savePrefs = (p: object) => keyFetch(`/api/prefs/${account!.fid}`, 'quilcast-prefs', 'PUT', JSON.stringify(p))
 
 // --- drafts ---
@@ -872,7 +874,7 @@ const draftKey = (a = account!) => {
     })().catch((e) => (draftKeys.delete(fid), Promise.reject(e))))
   return draftKeys.get(fid)!
 }
-const b64 = (b: Uint8Array) => btoa(Array.from(b, (x) => String.fromCharCode(x)).join(''))
+export const b64 = (b: Uint8Array) => btoa(Array.from(b, (x) => String.fromCharCode(x)).join(''))
 const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
 
 /** The account's drafts, newest first; asks its custody to sign the first time in this browser. */
@@ -951,8 +953,8 @@ export const waitingScheduled = async (as = account!): Promise<string[]> =>
  *  the key it has, never asking for a new one. */
 export async function failedScheduled(as = account!): Promise<Scheduled[]> {
   const list: Scheduled[] = await keyFetch(`/api/scheduled/${as.fid}`, 'quilcast-scheduled-read', 'GET', '', 1, as, {}, false)
-  const told = new Set<string>(JSON.parse(localStorage.getItem('quilcast:scheduled-told') || '[]'))
+  const told = new Set(read<string[]>('quilcast:scheduled-told', []))
   const news = list.filter((s) => s.status === 'failed' && !told.has(s.id))
-  if (news.length) localStorage.setItem('quilcast:scheduled-told', JSON.stringify([...told, ...news.map((s) => s.id)].slice(-200)))
+  if (news.length) save('quilcast:scheduled-told', [...told, ...news.map((s) => s.id)].slice(-200))
   return news
 }

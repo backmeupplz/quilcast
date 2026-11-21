@@ -141,12 +141,6 @@ test('matches the node can no longer find don\'t end the search early: the load 
   assert.equal(r.next.cursor, null)
 })
 
-test('searchCasts leaves out a match the node can no longer find', async () => {
-  const { get, hash } = node(7, 5, 10, () => 'hello', { gone: new Set([2]) })
-  const r = await searchCasts(get, 7, 'hello')
-  assert.deepEqual(r.casts.map((c) => c.hash), [0, 1, 3, 4].map(hash))
-})
-
 test('searchCasts stops after 50 hub pages in one load and hands back a cursor', async () => {
   const { get, asked } = node(9, 60 * 2, 2, (i) => (i === 119 ? 'needle' : 'hay'))
   const r = await searchCasts(get, 9, 'needle')

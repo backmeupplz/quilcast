@@ -51,6 +51,38 @@ const leaving = (i: Inline, where: string) => ask(i, t('Open this link?'), where
 // what the composer's preview may call: it's not the cast yet, and no one taps it
 const PREVIEW = new Set(['context', 'ready', 'getCapabilities', 'getChains'])
 
+// argument checks shared with a whole app's calls (miniapp.tsx)
+export const linkArg = (raw: any) => {
+  const u = safeUrl(raw)
+  if (!u) throw new Error('That is not a web link.')
+  return u
+}
+export const hashArg = (o: any) => {
+  const h = String(o?.hash || '').replace(/^0x/, '')
+  if (!/^[0-9a-f]{40}$/i.test(h)) throw new Error('Invalid cast hash.')
+  return h
+}
+export const fidArg = (o: any): number => {
+  if (!Number.isSafeInteger(o?.fid) || o.fid <= 0) throw new Error('Invalid fid.')
+  return o.fid
+}
+
+/** A Comlink call from a frame, or null when it isn't one. Plain values only: no proxies (MessagePorts) or other handlers. */
+export function parseCall(d: any): { id: string; type: unknown; name: string; args: unknown[] } | null {
+  if (!d || typeof d !== 'object' || typeof d.id !== 'string' || !Array.isArray(d.path) || d.path.length !== 1) return null
+  return { id: d.id, type: d.type, name: String(d.path[0]), args: (Array.isArray(d.argumentList) ? d.argumentList : []).map((v: any) => (v?.type === 'RAW' ? v.value : undefined)) }
+}
+
+/** Runs a call and posts its result back, or its error as Comlink throws one: also when `post` throws on the result
+ *  (it can't be cloned). A throw while posting the error is dropped. */
+export function answer(id: string, call: () => unknown, post: (m: unknown) => void) {
+  const p = new Promise((r) => r(call()))
+  p.then((value) => post({ id, type: 'RAW', value }))
+    .catch((err) => post({ id, type: 'HANDLER', name: 'throw', value: { isError: true, value: { message: String(err?.message || err), name: 'Error' } } }))
+    .catch(() => {})
+  return p
+}
+
 const calls: Record<string, (i: Inline, ...a: any[]) => unknown> = {
   ready: () => {},
   getCapabilities: () => ['actions.ready', 'actions.signIn', 'actions.openUrl', 'actions.openMiniApp', 'actions.viewCast', 'actions.viewProfile'],
@@ -81,26 +113,23 @@ const calls: Record<string, (i: Inline, ...a: any[]) => unknown> = {
     return signSiwf(i, custody, draft(), { wait, toast, update: () => {} })
   },
   async openUrl(i, raw: unknown) {
-    const u = safeUrl(typeof raw === 'string' ? raw.trim() : (raw as any)?.url)
-    if (!u) throw new Error('That is not a web link.')
+    const u = linkArg(typeof raw === 'string' ? raw.trim() : (raw as any)?.url)
     if (await leaving(i, u)) open(u, '_blank', 'noopener,noreferrer')
   },
   // the whole app, as its card's button opens it, or another app
   async openMiniApp(i, o: any = {}) {
-    const u = safeUrl(o?.url)
-    if (!u) throw new Error('That is not a web link.')
+    const u = linkArg(o?.url)
     if (!(await leaving(i, u)) || !requireAccount()) return
     const m = await import('./miniapp.tsx')
     u === i.app.url ? m.launch(i.app, { cast: i.cast, embed: i.embed }) : m.launchUrl(u, i.host)
   },
   async viewCast(i, o) {
-    const h = String(o?.hash || '').replace(/^0x/, '')
-    if (!/^[0-9a-f]{40}$/i.test(h)) throw new Error('Invalid cast hash.')
+    const h = hashArg(o)
     if (await leaving(i, `${location.host}/c/${h}`)) go(`/c/${h}`)
   },
   async viewProfile(i, o) {
-    if (!Number.isSafeInteger(o?.fid) || o.fid <= 0) throw new Error('Invalid fid.')
-    if (await leaving(i, `${location.host}/u/${o.fid}`)) go(`/u/${o.fid}`)
+    const fid = fidArg(o)
+    if (await leaving(i, `${location.host}/u/${fid}`)) go(`/u/${fid}`)
   },
 }
 
@@ -118,26 +147,18 @@ const context = (i: Inline) => {
 
 addEventListener('message', (e) => {
   const i = [...frames].find((x) => x.frame.contentWindow && x.frame.contentWindow === e.source)
-  const d = e.data
-  if (!i || e.origin !== i.origin || !d || typeof d !== 'object' || typeof d.id !== 'string' || !Array.isArray(d.path) || d.path.length !== 1) return
-  const name = String(d.path[0])
-  const args = (Array.isArray(d.argumentList) ? d.argumentList : []).map((v: any) => (v?.type === 'RAW' ? v.value : undefined))
-  let out: unknown
-  try {
-    out = !i.cast && !PREVIEW.has(name) ? Promise.reject(new Error(`${i.name} can't use ${name} in a preview.`))
-      : d.type === 'GET' && name === 'context' ? context(i)
-      : d.type === 'APPLY' && Object.hasOwn(calls, name) ? calls[name](i, ...args)
-        : Promise.reject(new Error(`In the cast, ${i.name} can't use ${name}. Open the app for that.`))
-  } catch (err) {
-    out = Promise.reject(err)
-  }
-  const post = (m: unknown) => {
+  const c = i && e.origin === i.origin && parseCall(e.data)
+  if (!i || !c) return
+  const { name, type } = c
+  answer(c.id, () =>
+    !i.cast && !PREVIEW.has(name) ? Promise.reject(new Error(`${i.name} can't use ${name} in a preview.`))
+      : type === 'GET' && name === 'context' ? context(i)
+      : type === 'APPLY' && Object.hasOwn(calls, name) ? calls[name](i, ...c.args)
+        : Promise.reject(new Error(`In the cast, ${i.name} can't use ${name}. Open the app for that.`)),
+  // a card gives no answer for a result it can't send
+  (m) => {
     try {
       i.frame.contentWindow?.postMessage(m, i.origin)
     } catch {}
-  }
-  Promise.resolve(out).then(
-    (value) => post({ id: d.id, type: 'RAW', value }),
-    (err) => post({ id: d.id, type: 'HANDLER', name: 'throw', value: { isError: true, value: { message: String(err?.message || err), name: 'Error' } } }),
-  )
+  })
 })

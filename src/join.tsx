@@ -268,7 +268,7 @@ function Setup() {
       if (!saved || startedOver.has(id)) return false
       // (a key of its own that this one replaces is no use to anyone)
       if (saved.pub && saved.pub !== b.pub) dropEd(saved.pub).catch(() => {})
-      return updateAccount({ ...saved, pub: b.pub, signer: b.signer, signerAt: b.signerAt, nonce: b.nonce, scopes: b.scopes })
+      return updateAccount({ ...saved, pub: b.pub, signer: b.signer, nonce: b.nonce, scopes: b.scopes })
     }
     ;(async () => {
       const custody = await custodyOf(a)

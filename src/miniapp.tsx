@@ -13,13 +13,13 @@ import { account, accounts as signedIn, alertsKept, getUser, go, myUser, read, s
 import { base58, hex } from './fc.ts'
 import { choices, pair, qr, WC, wcChoice, wcLive } from './wallet.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
-import { castText, LOGO, proxied } from './shared.ts'
+import { LOGO, proxied, queue, rpc } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
-import { addAppAction, APP_PUSH, askPush, castActions, channelOf, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, saveActions, shell, shortAddr as short, toast, togglePin, unfurl, WalletIcon, type CastAction, type Drafting } from './ui.tsx'
-import { custodyOf, signEvent } from './write.ts'
+import { addAppAction, APP_PUSH, askPush, castActions, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, saveActions, shell, shortAddr as short, toast, togglePin, unfurl, useOn, WalletIcon, type CastAction, type Drafting } from './ui.tsx'
+import { b64, custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
 import { awake, displaced, sleepers } from './sleep.ts'
-import { castCtx, inApp, narrow, QUILCAST_FID, userCtx } from './inline.ts'
+import { answer, castCtx, fidArg, hashArg, inApp, linkArg, narrow, parseCall, QUILCAST_FID, userCtx } from './inline.ts'
 import { isSaved, oneClick, oneClickPayload, shareHome } from './appsaved.ts'
 
 // viem's default Polygon RPC now wants a key, so Polygon reads and sends go through publicnode
@@ -78,12 +78,7 @@ addEventListener('wallet-standard:register-wallet', (e) => {
 dispatchEvent(new CustomEvent('wallet-standard:app-ready', { detail: { register: registerSol } }))
 
 // one wallet request at a time, so a chain switch and the request after it can't interleave with another app's
-let line: Promise<unknown> = Promise.resolve()
-const serial = <T,>(f: () => Promise<T>) => {
-  const p = line.then(f)
-  line = p.catch(() => {})
-  return p
-}
+const serial = queue(1)
 
 // what each app origin was allowed: its Ethereum wallet, its Solana wallet, the camera and microphone (and whether
 // the person keeps it full screen)
@@ -374,9 +369,10 @@ async function align(w: Wallet, chain: number) {
 async function publicRpc(chain: number, method: string, params: unknown[]) {
   const c = CHAINS[chain]
   if (!c) throw rpcError(4901, 'Quilcast has no RPC for that chain.')
-  const r = await (await fetch(c.rpcUrls.default.http[0], { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })).json()
-  if (r.error) throw rpcError(typeof r.error.code === 'number' ? r.error.code : -32603, String(r.error.message || 'RPC error'))
-  return r.result
+  // a node's error answer carries a code; a network failure goes on as it is
+  return rpc(c.rpcUrls.default.http[0], method, params).catch((e) => {
+    throw 'code' in e ? rpcError(typeof e.code === 'number' ? e.code : -32603, String(e.message || 'RPC error')) : e
+  })
 }
 
 async function setChain(app: App, id: number, method: string, params: unknown[]) {
@@ -549,7 +545,6 @@ async function local(app: App, w: Wallet, method: string, params: any[]): Promis
 
 // --- Solana ---
 
-const b64 = (b: Uint8Array) => btoa(String.fromCharCode(...b))
 const unb64 = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
 
 async function useSol(app: App, w: SolWallet) {
@@ -905,8 +900,7 @@ async function media(app: App) {
 
 function openUrl(app: App, raw: unknown) {
   foreground(app)
-  const u = safeUrl(typeof raw === 'string' ? raw.trim() : (raw as any)?.url)
-  if (!u) throw new Error('That is not a web link.')
+  const u = linkArg(typeof raw === 'string' ? raw.trim() : (raw as any)?.url)
   const x = new URL(u)
   // farcaster.xyz's compose links open our composer
   if (/^(www\.)?(warpcast\.com|farcaster\.xyz)$/.test(x.hostname) && x.pathname === '/~/compose')
@@ -932,20 +926,15 @@ const calls: Record<string, (app: App, ...a: any[]) => unknown> = {
     foreground(app)
     // it would open under the composer a composer action fills in
     if (app.draft) return
-    const u = safeUrl(o?.url)
-    if (!u) throw new Error('That is not a web link.')
-    await launchUrl(u, app.host)
+    await launchUrl(linkArg(o?.url), app.host)
   },
   viewCast: (app, o) => {
     foreground(app)
-    const h = String(o?.hash || '').replace(/^0x/, '')
-    if (!/^[0-9a-f]{40}$/i.test(h)) throw new Error('Invalid cast hash.')
-    leave(app, `/c/${h}`)
+    leave(app, `/c/${hashArg(o)}`)
   },
   viewProfile: (app, o) => {
     foreground(app)
-    if (!Number.isSafeInteger(o?.fid) || o.fid <= 0) throw new Error('Invalid fid.')
-    leave(app, `/u/${o.fid}`)
+    leave(app, `/u/${fidArg(o)}`)
   },
   composeCast: compose,
   signIn,
@@ -980,31 +969,17 @@ const calls: Record<string, (app: App, ...a: any[]) => unknown> = {
 addEventListener('message', (e) => {
   // only the app's own frame, still on the origin it was opened at
   const app = apps.find((a) => a.frame?.contentWindow && a.frame.contentWindow === e.source)
-  const d = e.data
-  if (!app || e.origin !== app.origin || !d || typeof d !== 'object' || typeof d.id !== 'string' || !Array.isArray(d.path) || d.path.length !== 1) return
-  const name = String(d.path[0])
-  // plain values only: no proxies (MessagePorts) or other Comlink handlers
-  const args = (Array.isArray(d.argumentList) ? d.argumentList : []).map((v: any) => (v?.type === 'RAW' ? v.value : undefined))
-  let out: unknown
-  try {
-    out = d.type === 'GET' && name === 'context' ? context(app)
-      : d.type === 'APPLY' && Object.hasOwn(calls, name) ? calls[name](app, ...args)
-        : Promise.reject(new Error(`Quilcast doesn't support ${name}.`))
-  } catch (err) {
-    out = Promise.reject(err)
-  }
-  const fail = (err: any) => post(app, { id: d.id, type: 'HANDLER', name: 'throw', value: { isError: true, value: { message: String(err?.message || err), name: 'Error' } } })
+  const c = app && e.origin === app.origin && parseCall(e.data)
+  if (!app || !c) return
+  const { name } = c
+  const p = answer(c.id, () =>
+    c.type === 'GET' && name === 'context' ? context(app)
+      : c.type === 'APPLY' && Object.hasOwn(calls, name) ? calls[name](app, ...c.args)
+        : Promise.reject(new Error(`Quilcast doesn't support ${name}.`)),
+  (m) => app.frame?.contentWindow?.postMessage(m, app.origin))
   // the app stays awake until its call is answered (sleep.ts)
   app.calls++
-  const p = Promise.resolve(out)
   p.finally(() => app.calls--).catch(() => {})
-  p.then((value) => {
-    try {
-      app.frame?.contentWindow?.postMessage({ id: d.id, type: 'RAW', value }, app.origin)
-    } catch (err) {
-      fail(err)
-    }
-  }, fail)
 })
 
 // --- UI ---
@@ -1152,11 +1127,7 @@ function Host() {
   shell.dock = { apps: apps.map(({ id, url, name, icon, asleep }) => ({ id, url, name, icon, asleep })), shown, show: (id) => show(shown === id ? null : apps.find((a) => a.id === id) || null) }
   useEffect(() => void dispatchEvent(new Event('dock')))
   // Quorum mode's title bar buttons come and go with the setting
-  useEffect(() => {
-    const f = () => update()
-    addEventListener('quorum', f)
-    return () => removeEventListener('quorum', f)
-  }, [])
+  useOn('quorum', () => update())
   // Escape (outside the app's frame, which keeps its own keys) leaves full screen, unless it's for something over the
   // window: capturing, so that's still there to see before its own Escape closes it
   useEffect(() => {

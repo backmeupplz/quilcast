@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cancelAll, confirmSignOut, waitingToPost, warning } from './signout.ts'
+import { confirmSignOut, waitingToPost, warning } from './signout.ts'
 
 test('only casts still waiting count: posted, failed and ones being sent are left out', () => {
   const list = [
@@ -9,16 +9,6 @@ test('only casts still waiting count: posted, failed and ones being sent are lef
   ]
   assert.deepEqual(waitingToPost(list).map((s) => s.id), ['a', 'e'])
   assert.deepEqual(waitingToPost([]), [])
-})
-
-test("a cast that can't be cancelled is reported, and the rest are still cancelled", async () => {
-  const done: string[] = []
-  const failed = await cancelAll(['a', 'b', 'c'], async (id) => {
-    if (id === 'b') throw new Error('That cast is being sent right now.')
-    done.push(id)
-  })
-  assert.deepEqual(done, ['a', 'c'])
-  assert.deepEqual(failed, [{ id: 'b', error: 'That cast is being sent right now.' }])
 })
 
 // a server holding `list` (the waiting ids), recording what the sign-out does, in order

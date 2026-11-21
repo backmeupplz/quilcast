@@ -16,7 +16,7 @@ export const warning = (w: Waiting): 'checking' | 'none' | 'casts' | 'unchecked'
   w === null ? 'checking' : w === 'unknown' ? 'unchecked' : w.length ? 'casts' : 'none'
 
 /** Cancel each one, one after another; answers those that couldn't be, with why (gone already is cancelled). */
-export async function cancelAll(ids: string[], cancel: (id: string) => Promise<unknown>): Promise<{ id: string; error: string }[]> {
+async function cancelAll(ids: string[], cancel: (id: string) => Promise<unknown>): Promise<{ id: string; error: string }[]> {
   const failed: { id: string; error: string }[] = []
   for (const id of ids) await cancel(id).catch((e) => failed.push({ id, error: String(e?.message || e) }))
   return failed
