@@ -354,6 +354,10 @@ function Chat({ id }: { id: string }) {
       )}
     </span>
   )
+  const input = (
+    <textarea ref={box} dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
+      onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => (e.key === 'Escape' && shut(), e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit()))} />
+  )
   return (
     <>
       <Header title={title || t('Messages')} action={action} />
@@ -391,9 +395,9 @@ function Chat({ id }: { id: string }) {
           {!chat && !err && <div class="spinner" />}
           {chat && !msgs.length && f && <div class="note">{f.one ? t('This is the start of your conversation with {name}.', { name: f.name }) : t('No messages yet.')}</div>}
         </div>
-        {!err && (settings.quorum ? (
-          // Quorum's composer: one rounded box with the send arrow inside it
-          <div class="dm-compose q-compose-box">
+        {!err && (
+          // Quorum's composer is one rounded box with the send arrow inside it
+          <div class={`dm-compose${settings.quorum ? ' q-compose-box' : ''}`}>
             {picker && <div class="dm-pick">{picker}</div>}
             {gif && (
               <div class="dm-att">
@@ -403,30 +407,15 @@ function Chat({ id }: { id: string }) {
                 </span>
               </div>
             )}
-            <div class="q-composer">
-              <textarea ref={box} dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
-                onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => (e.key === 'Escape' && shut(), e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit()))} />
-              {tools}
-              <button class="q-send" aria-label={t('Send')} title={t('Send')} disabled={(!text.trim() && !gif) || !c} onClick={submit}><svg width="18" height="14" viewBox="0 0 100 80" aria-hidden="true"><path d="M0 80L25 40.4L0 0l100 40.4z" fill="currentColor" /></svg></button>
-            </div>
-          </div>
-        ) : (
-          <div class="dm-compose">
-            {picker && <div class="dm-pick">{picker}</div>}
-            {gif && (
-              <div class="dm-att">
-                <span>
-                  <Img src={gif} />
-                  <button class="att-x" aria-label={t('Remove')} onClick={() => setGif('')}><Icon d={P.x} size={14} /></button>
-                </span>
+            {settings.quorum ? (
+              <div class="q-composer">
+                {input}
+                {tools}
+                <button class="q-send" aria-label={t('Send')} title={t('Send')} disabled={(!text.trim() && !gif) || !c} onClick={submit}><svg width="18" height="14" viewBox="0 0 100 80" aria-hidden="true"><path d="M0 80L25 40.4L0 0l100 40.4z" fill="currentColor" /></svg></button>
               </div>
-            )}
-            <textarea ref={box} dir="auto" rows={1} value={text} placeholder={t('Message')} maxLength={1024} aria-label={t('Message')}
-              onInput={(e) => setText(e.currentTarget.value)} onKeyDown={(e) => (e.key === 'Escape' && shut(), e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), submit()))} />
-            {tools}
-            <button class="btn small" disabled={(!text.trim() && !gif) || !c} onClick={submit}>{t('Send')}</button>
+            ) : <>{input}{tools}<button class="btn small" disabled={(!text.trim() && !gif) || !c} onClick={submit}>{t('Send')}</button></>}
           </div>
-        ))}
+        )}
       </div>
     </>
   )

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { account, getJson, getUser, go, type User } from './api.ts'
 import { t, tn } from './i18n.ts'
 import { stickerUrl } from './shared.ts'
-import { handle, Header, Icon, P, shell, stop, toast, userPath } from './ui.tsx'
+import { handle, Header, Icon, P, shell, stop, toast, useOn, userPath } from './ui.tsx'
 import { stickerOp } from './write.ts'
 
 type Sticker = { h: string; e: string }
@@ -27,12 +27,9 @@ const myPacks = (fresh = false): Promise<Pack[]> => {
 const changed = () => myPacks(true).then(() => dispatchEvent(new Event('stickers')))
 function useMine() {
   const [l, setL] = useState<Pack[] | null>(mine)
-  useEffect(() => {
-    const f = () => myPacks().then(setL)
-    f()
-    addEventListener('stickers', f)
-    return () => removeEventListener('stickers', f)
-  }, [])
+  const f = () => myPacks().then(setL)
+  useEffect(() => void f(), [])
+  useOn('stickers', f)
   return l
 }
 // Telegram imports this tab started, by pack, so its page shows how they're going

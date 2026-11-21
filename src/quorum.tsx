@@ -8,7 +8,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { account, go, myUser, read, save, settings } from './api.ts'
 import { t } from './i18n.ts'
 import type { AppMeta } from './miniapp.tsx'
-import { AppIcon, Avatar, Icon, launchApp, loadListed, P, pinned, sameApp, shell, worn } from './ui.tsx'
+import { AppIcon, Avatar, Icon, launchApp, loadListed, P, pinned, sameApp, shell, useOn, useRerenderOn, worn } from './ui.tsx'
 
 // --- the wallet panel: open or not, remembered ---
 // it comes back open only where it docks beside the page: on a phone, or in a Quilcast opened as a mini app (same
@@ -19,11 +19,7 @@ export const setWalletOpen = (on: boolean) => ((open = on), save('quilcast:walle
 /** Re-render when the wallet panel opens or closes. */
 export function useWalletOpen() {
   const [on, setOn] = useState(open)
-  useEffect(() => {
-    const f = () => setOn(open)
-    addEventListener('walletpanel', f)
-    return () => removeEventListener('walletpanel', f)
-  }, [])
+  useOn('walletpanel', () => setOn(open))
   return on
 }
 
@@ -39,12 +35,7 @@ addEventListener('keydown', (e) => {
 /** The right column: search, and the apps you keep (or the directory's top ones) a tap away. */
 export function QuorumAside({ search }: { search: boolean }) {
   const [top, setTop] = useState<AppMeta[]>([])
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('dock', f)
-    return () => removeEventListener('dock', f)
-  }, [])
+  useRerenderOn('dock')
   // pinned first, then the ones added from inside them
   const kept = [...pinned(), ...read<AppMeta[]>('quilcast:apps', [])].filter((a, i, all) => all.findIndex((b) => sameApp(a.url, b.url)) === i)
   useEffect(() => void (!kept.length && loadListed().then((l) => setTop(l.slice(0, 9)))), [kept.length])

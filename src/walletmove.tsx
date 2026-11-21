@@ -6,7 +6,7 @@ import { createPublicClient, createWalletClient, encodeFunctionData, erc20Abi, f
 import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains'
 import { account, askUser, getUser, type User } from './api.ts'
 import { t } from './i18n.ts'
-import { Icon, P, shortAddr as short, toast } from './ui.tsx'
+import { Icon, P, shortAddr as short, toast, useRerenderOn } from './ui.tsx'
 import { allowance, approveTx, quote, SENDCLAP_CONTRACT, SENDCLAP_PERIOD, sendclapAllowance, sendclapOk, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
 import { activeWallet, signerOf, type WalletEntry } from './vault.ts'
 import { CHAINS, Coin, type Holding } from './walletui.tsx'
@@ -155,12 +155,7 @@ export async function cancelSupport(id: number, wallet: string | null) {
 }
 
 function Sent({ d, close }: { d: Pending; close: () => void }) {
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('pending', f)
-    return () => removeEventListener('pending', f)
-  }, [])
+  useRerenderOn('pending')
   return (
     <div class="move-done">
       <p>{d.state}</p>

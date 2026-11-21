@@ -5,11 +5,11 @@
 // Winamp as a window over the app, and it comes back (paused) after a reload until it's closed.
 import { render } from 'preact'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
-import { getJson, go } from './api.ts'
+import { getJson, go, read } from './api.ts'
 import { t } from './i18n.ts'
 import { ampItem, type Amp, type AmpItem } from './shared.ts'
 import { loadSkin, type Skin } from './skin.ts'
-import { toast } from './ui.tsx'
+import { toast, useRerenderOn } from './ui.tsx'
 
 const KEY = 'quilcast:amp'
 const PREFS = 'quilcast:amp-prefs'
@@ -35,13 +35,6 @@ const plMid = () => 116 + pf.plH * 29
 /** How wide and tall the windows stand, stacked, at 1×. */
 const size = () => [pf.pl ? Math.max(275, plWidth()) : 275, (pf.shade ? 14 : 116) + (pf.eq ? (pf.eqShade ? 14 : 116) : 0) + (pf.pl ? (pf.plShade ? 14 : plMid() + 58) : 0)]
 
-const read = (k: string) => {
-  try {
-    return JSON.parse(localStorage.getItem(k) || 'null')
-  } catch {
-    return null
-  }
-}
 const write = (k: string, v: unknown) => {
   try {
     v ? localStorage.setItem(k, JSON.stringify(v)) : localStorage.removeItem(k)
@@ -50,7 +43,7 @@ const write = (k: string, v: unknown) => {
 
 let s: State | null = null
 // before 0.24.1 the window's settings were kept with the track
-let pf: Prefs = { ...P0, ...((({ vol, shuffle, repeat, pl, open, x, y }) => ({ vol, shuffle, repeat, pl, open, x, y }))(read(KEY) || {})), ...read(PREFS) }
+let pf: Prefs = { ...P0, ...((({ vol, shuffle, repeat, pl, open, x, y }) => ({ vol, shuffle, repeat, pl, open, x, y }))(read<any>(KEY, null) || {})), ...read<any>(PREFS, null) }
 for (const k of Object.keys(pf) as (keyof Prefs)[]) if (pf[k] === undefined && !['x', 'y', 'bx', 'by'].includes(k)) (pf as any)[k] = P0[k]
 const subs = new Set<() => void>()
 const changed = () => subs.forEach((f) => f())
@@ -306,7 +299,7 @@ const first = (e: Event) => {
 }
 const disarm = () => (removeEventListener('pointerdown', first, true), removeEventListener('keydown', first, true))
 {
-  const j = read(KEY)
+  const j = read<any>(KEY, null)
   if (j?.list?.length) {
     s = { fid: j.fid, who: j.who, name: j.name, skin: j.skin, list: j.list, orig: j.orig || j.list, i: j.i, sub: j.sub, at: j.at, len: j.len, title: j.title, ids: j.ids, st: j.st === 'stop' ? 'stop' : 'pause' }
     if (j.st === 'play') {
@@ -870,13 +863,7 @@ function moveWin(e: PointerEvent) {
 function Shell() {
   const v = useAmp()
   const k = useSkin(v?.skin)
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('popstate', f)
-    addEventListener('resize', f)
-    return () => (removeEventListener('popstate', f), removeEventListener('resize', f))
-  }, [])
+  useRerenderOn('popstate', 'resize')
   const z = fitWindow()
   const label = v && t("{name}'s Winamp", { name: v.name })
   let body = null

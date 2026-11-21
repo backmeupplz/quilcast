@@ -5,8 +5,8 @@ import { useEffect, useState } from 'preact/hooks'
 import { read, save, safeUrl, settings } from './api.ts'
 import { matches, newest, toActivity, type Activity } from './activity.ts'
 import { t } from './i18n.ts'
-import { proxied } from './shared.ts'
-import { ago, Header, Icon, Menu, P, shell, shortAddr as short, Tabs, toast } from './ui.tsx'
+import { proxied, rpc } from './shared.ts'
+import { ago, Header, Icon, Menu, P, Seg, shell, shortAddr as short, Tabs, toast, useRerenderOn } from './ui.tsx'
 import { balanceOf, erc20Meta, logoOf, pastedToken, tokensOn, type Rpc } from './tokens.ts'
 import { explorer, pending, SendSheet, SwapSheet } from './walletmove.tsx'
 import { activeWallet, addWallet, custodyAccounts, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, setCustodyWallet, walletList, type WalletEntry } from './vault.ts'
@@ -14,17 +14,13 @@ import { activeWallet, addWallet, custodyAccounts, newPhrase, parseSecret, remov
 
 /** Re-render when wallets are added, removed, renamed or switched. */
 function useWallets() {
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('wallets', f)
-    return () => removeEventListener('wallets', f)
-  }, [])
+  useRerenderOn('wallets')
   return walletList()
 }
 
 /** Picking a wallet here also makes it the one mini apps offer first. */
 const pick = (w: WalletEntry) => (setActive(w.id), save('quilcast:wallet', `quilcast:${w.id}`))
+const copyAddr = (a: string) => navigator.clipboard.writeText(a).then(() => toast('Address copied'))
 
 // --- balances and NFTs ---
 
@@ -70,10 +66,8 @@ const saveCustom = (l: CustomToken[]) => (save(CUSTOM, l), cache.clear())
 const getJson = (u: string) => fetch(u, { signal: AbortSignal.timeout(25e3) }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
 const units = (v: string, d: number) => Number(BigInt(v || '0')) / 10 ** d
 
-const call = (rpc: string): Rpc => (method, params) =>
-  fetch(rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(15e3) })
-    .then((r) => r.json()).then((j) => (j.error ? Promise.reject(new Error(j.error.message)) : j.result))
-const coinBalance = (rpc: string, address: string) => call(rpc)('eth_getBalance', [address, 'latest']).then(BigInt)
+const call = (url: string): Rpc => (method, params) => rpc(url, method, params, AbortSignal.timeout(15e3))
+const coinBalance = (url: string, address: string) => call(url)('eth_getBalance', [address, 'latest']).then(BigInt)
 // the coin's price when the explorer can't be reached
 const coinPrice = (chain: number) => tokensOn(chain).then((l) => l.find((x) => !x.address)?.usd || 0, () => 0)
 
@@ -168,6 +162,15 @@ function useMoves(w?: WalletEntry) {
   return { open, opening, refresh, round, sheets }
 }
 
+const NoWallet = ({ add }: { add: () => void }) => (
+  <div class="wallet-empty">
+    <Icon d={P.wallet} size={40} />
+    <h2>{t('Your Quilcast wallet')}</h2>
+    <p>{t('Create a wallet or bring one in with its recovery phrase or private key. Mini apps can then use it alongside any wallet extension you have.')}</p>
+    <button class="btn" onClick={add}>{t('Add a wallet')}</button>
+  </div>
+)
+
 export function WalletPage() {
   const list = useWallets()
   const w = activeWallet()
@@ -178,19 +181,14 @@ export function WalletPage() {
     <>
       <Header title={t('Wallet')} action={list.length > 0 && <Switcher list={list} w={w!} add={() => setAdding(true)} />} />
       {!w ? (
-        <div class="wallet-empty">
-          <Icon d={P.wallet} size={40} />
-          <h2>{t('Your Quilcast wallet')}</h2>
-          <p>{t('Create a wallet or bring one in with its recovery phrase or private key. Mini apps can then use it alongside any wallet extension you have.')}</p>
-          <button class="btn" onClick={() => setAdding(true)}>{t('Add a wallet')}</button>
-        </div>
+        <NoWallet add={() => setAdding(true)} />
       ) : (
         <>
           <Summary key={w.address + round} w={w} />
           <div class="wallet-actions">
             <button class="btn" onClick={() => open('send')} disabled={!!opening}><Icon d="M12 19V5M5 12l7-7 7 7" size={16} />{opening === 'send' ? t('Loading…') : t('Send')}</button>
             <button class="btn" onClick={() => open('swap')} disabled={!!opening}><Icon d="M7 4v13M3 13l4 4 4-4M17 20V7M21 11l-4-4-4 4" size={16} />{opening === 'swap' ? t('Loading…') : t('Swap')}</button>
-            <button class="btn ghost" onClick={() => navigator.clipboard.writeText(w.address).then(() => toast('Address copied'))}><Icon d="M12 5v14M5 12l7 7 7-7" size={16} />{t('Receive')}</button>
+            <button class="btn ghost" onClick={() => copyAddr(w.address)}><Icon d="M12 5v14M5 12l7 7 7-7" size={16} />{t('Receive')}</button>
           </div>
           <div class="wallet-tabs">
             <Tabs tabs={[['tokens', t('Tokens')], ['nfts', t('NFTs')]]} value={tab} set={(x) => (setTab(x), save('quilcast:walletTab', x))} />
@@ -221,10 +219,9 @@ function Switcher({ list, w, add }: { list: WalletEntry[]; w: WalletEntry; add: 
 }
 
 function Summary({ w }: { w: WalletEntry }) {
-  const copy = () => navigator.clipboard.writeText(w.address).then(() => toast('Address copied'))
   return (
     <div class="wallet-top">
-      <button class="wallet-addr" onClick={copy} title={t('Copy address')}><code>{short(w.address)}</code><Icon d="M8 8h12v12H8zM4 16V4h12" size={15} /></button>
+      <button class="wallet-addr" onClick={() => copyAddr(w.address)} title={t('Copy address')}><code>{short(w.address)}</code><Icon d="M8 8h12v12H8zM4 16V4h12" size={15} /></button>
       <Total key={w.address} address={w.address} />
     </div>
   )
@@ -366,7 +363,7 @@ export function WalletPanel({ close }: { close: () => void }) {
   const [explorers, setExplorers] = useState(false)
   const [nets, setNets] = useState(false)
   const { open, opening, refresh, round, sheets } = useMoves(w)
-  const copy = () => navigator.clipboard.writeText(w!.address).then(() => toast('Address copied'))
+  const copy = () => copyAddr(w!.address)
   return (
     <aside class="q-wallet" aria-label={t('Wallet')}>
       <div class="q-wallet-h">
@@ -375,12 +372,7 @@ export function WalletPanel({ close }: { close: () => void }) {
         <button class="icon-btn" aria-label={t('Minimize')} title={t('Minimize')} onClick={close}><Icon d={P.min} /></button>
       </div>
       {!w ? (
-        <div class="wallet-empty">
-          <Icon d={P.wallet} size={40} />
-          <h2>{t('Your Quilcast wallet')}</h2>
-          <p>{t('Create a wallet or bring one in with its recovery phrase or private key. Mini apps can then use it alongside any wallet extension you have.')}</p>
-          <button class="btn" onClick={() => setAdding(true)}>{t('Add a wallet')}</button>
-        </div>
+        <NoWallet add={() => setAdding(true)} />
       ) : (
         <div class="q-wallet-body">
           <section class="q-primary">
@@ -432,12 +424,7 @@ export function WalletPanel({ close }: { close: () => void }) {
 
 /** Re-render when a send or swap moves on (walletmove.tsx). */
 function usePending() {
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('pending', f)
-    return () => removeEventListener('pending', f)
-  }, [])
+  useRerenderOn('pending')
   return pending
 }
 
@@ -536,9 +523,7 @@ export function WalletSettings() {
         <>
           <div class="setting">
             <h2>{t('Custody wallet')}</h2>
-            <div class="seg">
-              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.custodyWallet === v ? 'on' : ''} onClick={() => setCustodyWallet(v as boolean)}>{label}</button>)}
-            </div>
+            <Seg opts={[[true, t('On')], [false, t('Off')]]} on={!!settings.custodyWallet} set={setCustodyWallet} />
           </div>
           <p class="hint warn">{t("Lists your account's custody wallet on the Wallet tab and in mini apps. It's off by default because that wallet owns your Farcaster account: one malicious request a mini app asks you to sign can take the account or what it holds. Quilcast asks before every signature, but turn this on at your own risk.")}</p>
         </>

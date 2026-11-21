@@ -6,10 +6,9 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { t, tn } from './i18n.ts'
 import { PRESETS as EFFECTS } from './fx.ts'
-import { GifPicker } from './gifs.tsx'
-import { EditSticker, focusSticker } from './looks.tsx'
-import { BG_MODES, BORDERS, cleanTheme, DEFAULTS, FONTS, FX, HOLIDAYS, isLookImg, LIMITS, NAME_FX, ownMedia, sized, themeId, themeVars, type Theme } from './shared.ts'
-import { CARD, copyText, dressed, Img, keepLibrary, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
+import { EditSticker, focusSticker, FONT_NAMES, group, row, shareUrl, useEditorKit } from './looks.tsx'
+import { BG_MODES, BORDERS, cleanTheme, DEFAULTS, FONTS, FX, HOLIDAYS, LIMITS, NAME_FX, ownMedia, sized, themeId, themeVars, type Theme } from './shared.ts'
+import { CARD, copyText, dressed, Img, keepLibrary, library, remember, screenUnit, Seg, shell, theme, themeOf, toast, useApply, useOn, wear, type Saved } from './ui.tsx'
 
 // --- built-in themes ---
 // two of Quorum's sample skins (theme/skins/samples.ts) and a few of our own; GIFs are Tenor's
@@ -59,12 +58,7 @@ const same = (a: Theme | null | undefined, b: Theme | null | undefined) => JSON.
 
 // --- sharing and moving themes around ---
 
-async function shareLink(th: Theme) {
-  const r = await fetch('/api/theme', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(cleanTheme(th)) })
-  const j = await r.json().catch(() => null)
-  if (!r.ok || !j?.id) throw new Error(j?.error || 'Sharing failed.')
-  return `${location.origin}/theme/${j.id}`
-}
+const shareLink = async (th: Theme) => shareUrl('theme', cleanTheme(th))
 const castTheme = (th: Theme) => shareLink(th).then((url) => shell.compose({ embeds: [url] }), (e) => toast(e.message))
 
 /** Whatever was pasted or picked: a theme link, a Quorum skin's JSON, or a Quilcast theme's. */
@@ -252,9 +246,7 @@ function Gallery() {
     <div class="th-gallery">
       <div class="th-gallery-head">
         <input value={q} placeholder={t('Search Quorum themes')} aria-label={t('Search Quorum themes')} onInput={(e) => setQ(e.currentTarget.value)} />
-        <div class="seg">
-          {([['popular', t('Popular')], ['new', t('New')]] as const).map(([k, label]) => <button type="button" class={sort === k ? 'on' : ''} onClick={() => setSort(k)}>{label}</button>)}
-        </div>
+        <Seg opts={[['popular', t('Popular')], ['new', t('New')]]} on={sort} set={setSort} />
       </div>
       {!list ? <div class="spinner" /> : !list.length ? <p class="hint">{t('No themes found.')}</p> : list.map((s) => (
         got[s.id] || s.theme ? <Row th={got[s.id] || cleanTheme(s.theme)} meta={{ quorum: s.id }} sub={facts(s)} /> : (
@@ -276,11 +268,7 @@ export function ThemeSettings() {
   const [tab, setTab] = useState<'mine' | 'built' | 'quorum'>(library().length ? 'mine' : 'built')
   const [paste, setPaste] = useState('')
   const file = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('theme', f)
-    return () => removeEventListener('theme', f)
-  }, [])
+  useOn('theme', () => force((x) => x + 1))
   const kept = library()
   const take = (p: Promise<Saved>) => p.then((s) => (remember(s), wear(s.theme, true), setPaste(''), setTab('mine'), toast('Theme applied')), (e) => toast(e.message))
   return (
@@ -320,20 +308,14 @@ export function ThemeSettings() {
 // --- the editor ---
 
 type Set = (f: (d: Theme) => Theme) => void
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
-const FONT_NAMES: Record<keyof typeof FONTS, string> = { system: 'System', verdana: 'Verdana', arial: 'Arial', trebuchet: 'Trebuchet', georgia: 'Georgia', times: 'Times', courier: 'Courier', comic: 'Comic Sans', impact: 'Impact', rounded: 'Rounded', pixel: 'Console' }
 // a drop's place on the screen
 const onScreen = (cx: number, cy: number) => ({ x: Math.round((cx / innerWidth) * 1000) / 10, y: Math.round((cy / innerHeight) * 1000) / 10 })
 
 /** The theme editor: a side panel (a sheet on phones) over the real app, which wears the draft while it's open. */
 export function Editor({ start, close }: { start: Theme | null; close: () => void }) {
   const [d, setD] = useState<Theme>(start || { base: (document.documentElement.dataset.theme as 'light' | 'dark') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') })
-  const [min, setMin] = useState(false)
-  const [gif, setGif] = useState<{ pick: (u: string) => void; stickers?: boolean } | null>(null)
-  const file = useRef<HTMLInputElement>(null)
-  const onFile = useRef<(u: string) => void>(() => {})
   const set: Set = (f) => setD((x) => f(x))
-  const up = (p: Theme) => set((x) => ({ ...x, ...p }))
+  const { min, setMin, gif, up, clear, select, image, head, stickers } = useEditorKit(d, set, ownMedia)
   useEffect(() => void wear(cleanTheme(d)), [d])
   // leaving without saving puts the saved theme back
   const cancel = () => (wear(dressed()), close())
@@ -347,18 +329,6 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
   const base = d.base || 'dark'
   const def = DEFAULTS[base] as Record<string, string>
 
-  const upload = (then: (u: string) => void) => ((onFile.current = then), file.current?.click())
-  const gotFile = async (f?: File) => {
-    if (!f) return
-    toast('Uploading…')
-    try {
-      const url = sized(await (await w()).upload(f), 'w=1600')
-      if (!isLookImg(url)) throw new Error("That image can't be used here.")
-      onFile.current(url)
-    } catch (e: any) {
-      toast(e.message)
-    }
-  }
   const addSticker = (src: string) => {
     const n = d.stickers?.length || 0
     set((x) => ({ ...x, stickers: [...(x.stickers || []), { src, x: 50, y: 40, w: 30 }].slice(0, LIMITS.stickers) }))
@@ -368,23 +338,10 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
   }
 
   // controls are plain functions, not components, so typing or dragging doesn't remount them
-  const row = (label: string, ctl: ComponentChildren) => <label class="lk-row"><span>{label}</span><span class="lk-ctl">{ctl}</span></label>
-  const clear = (k: keyof Theme, label: string) => d[k] !== undefined && <button type="button" class="lk-x" aria-label={t('Reset {name}', { name: label })} onClick={(e) => (e.preventDefault(), up({ [k]: undefined }))}>×</button>
   const color = (k: 'bg' | 'card' | 'ink' | 'muted' | 'line' | 'soft' | 'accent' | 'onAccent' | 'like' | 'recast' | 'warn' | 'bar' | 'nameColor', label: string) =>
     row(label, <><input type="color" value={d[k] || def[k] || def.accent} onInput={(e) => up({ [k]: e.currentTarget.value })} />{clear(k, label)}</>)
   const range = (k: 'scrim' | 'sheer' | 'fxAlpha' | 'round' | 'borderWidth' | 'size', label: string, min: number, max: number, fallback: number, step = 1, show = (v: number) => String(v)) =>
     row(label, <><input type="range" min={min} max={max} step={step} value={d[k] ?? fallback} onInput={(e) => up({ [k]: Number(e.currentTarget.value) })} /><output>{show(d[k] ?? fallback)}</output></>)
-  const select = (k: 'bgMode' | 'borderStyle' | 'font' | 'nameFx' | 'fx', label: string, options: readonly string[], names: Record<string, string> = {}) =>
-    row(label, <select value={d[k] || ''} onChange={(e) => up({ [k]: e.currentTarget.value || undefined })}><option value="">{t('Default')}</option>{options.map((o) => <option value={o}>{t(names[o] || cap(o))}</option>)}</select>)
-  const image = (k: 'bgImg' | 'barImg' | 'btnImg', label: string) => (
-    <div class="lk-row"><span>{label}</span><span class="lk-ctl">
-      {d[k] && <Img class="lk-thumb" src={ownMedia(d[k]!)} />}
-      <button type="button" class="btn ghost small" onClick={() => setGif({ pick: (u) => up({ [k]: u }) })}>{t('GIF')}</button>
-      <button type="button" class="btn ghost small" onClick={() => upload((u) => up({ [k]: u }))}>{t('Upload')}</button>
-      {clear(k, label)}
-    </span></div>
-  )
-  const group = (title: string, body: ComponentChildren, open = false) => <details class="lk-group" open={open}><summary>{title}</summary><div class="lk-gb">{body}</div></details>
   const times = (v: number) => `${v}×`
 
   return (
@@ -392,16 +349,7 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
       {/* the draft's stickers, draggable on the screen */}
       {(d.stickers || []).map((s, i) => <EditSticker s={s} i={i} set={set} at={onScreen} unit={screenUnit} class="th-stk" />)}
       <div class={`lk-edit th-edit${min ? ' min' : ''}`} role="dialog" aria-label={t('Theme editor')}>
-        <div class="lk-edit-head">
-          <button class="icon-btn" onClick={() => setMin(!min)} aria-label={min ? t('Show the editor') : t('Hide the editor')} aria-expanded={!min}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d={min ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} /></svg>
-          </button>
-          <b>{t('Theme')}</b>
-          <button class="btn ghost small" onClick={cancel}>{t('Cancel')}</button>
-          <button class="btn small" onClick={save}>{t('Save')}</button>
-        </div>
-        <input ref={file} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => (gotFile(e.currentTarget.files?.[0]), (e.currentTarget.value = ''))} />
-        {gif && <GifPicker stickers={gif.stickers} pick={(u) => (gif.pick(u), setGif(null))} close={() => setGif(null)} />}
+        {head(t('Theme'), cancel, save)}
         <div class="lk-edit-body" hidden={!!gif}>
           {group(t('Start from'), <>
             <div class="lk-presets">
@@ -410,7 +358,7 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
             </div>
             <label class="field"><span>{t('Name')}</span><input value={d.name || ''} maxLength={60} placeholder={t('My theme')} onInput={(e) => up({ name: e.currentTarget.value || undefined })} /></label>
             <div class="lk-row"><span>{t('Light or dark')}</span>
-              <div class="seg">{(['light', 'dark'] as const).map((b) => <button type="button" class={base === b ? 'on' : ''} onClick={() => up({ base: b })}>{b === 'light' ? t('Light') : t('Dark')}</button>)}</div>
+              <Seg<'light' | 'dark'> opts={[['light', t('Light')], ['dark', t('Dark')]]} on={base} set={(b) => up({ base: b })} />
             </div>
           </>, true)}
           {group(t('Colors'), <>
@@ -442,7 +390,7 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
             {range('borderWidth', t('Border width'), 0, 6, 1, 1, (v) => `${v}px`)}
             {select('borderStyle', t('Border style'), BORDERS)}
             <div class="lk-row"><span>{t('Glow')}</span>
-              <div class="seg">{[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button type="button" class={!!d.glow === v ? 'on' : ''} onClick={() => up({ glow: (v as boolean) || undefined })}>{label as string}</button>)}</div>
+              <Seg opts={[[true, t('On')], [false, t('Off')]]} on={!!d.glow} set={(v) => up({ glow: v || undefined })} />
             </div>
           </>)}
           {group(t('Text'), <>
@@ -457,18 +405,7 @@ export function Editor({ start, close }: { start: Theme | null; close: () => voi
             {d.fx && range('fxAlpha', t('Effect opacity'), 0, 100, 100, 1, (v) => `${v}%`)}
             <p class="hint">{t('Snow, confetti, fireflies and more, moving across the whole app behind its columns and cards, which Content opacity makes more or less solid. It stops for people who ask their device for less motion.')}</p>
           </>)}
-          {group(t('Stickers ({n}/{max})', { n: d.stickers?.length || 0, max: LIMITS.stickers }), <>
-            <div class="lk-wall edit">
-              {(d.stickers || []).map((st, i) => <span><Img src={st.src} /><button class="lk-x" aria-label={t('Remove')} onClick={() => set((x) => ({ ...x, stickers: x.stickers!.filter((_, j) => j !== i) }))}>×</button></span>)}
-            </div>
-            {(d.stickers?.length || 0) < LIMITS.stickers && (
-              <div class="btns">
-                <button class="btn ghost small" onClick={() => setGif({ pick: addSticker, stickers: true })}>{t('Add a sticker')}</button>
-                <button class="btn ghost small" onClick={() => upload(addSticker)}>{t('Upload')}</button>
-              </div>
-            )}
-            <p class="hint">{t('Stickers sit on your screen over the app and never get in the way of a tap. Drag one anywhere; tap it, then drag its corner dot to resize and turn it.')}</p>
-          </>)}
+          {stickers(addSticker, t('Stickers sit on your screen over the app and never get in the way of a tap. Drag one anywhere; tap it, then drag its corner dot to resize and turn it.'))}
           {group(t('Share'), <Share th={cleanTheme(d)} />)}
           <button class="btn danger small lk-reset" onClick={() => setD({ base })}>{t('Start over')}</button>
         </div>

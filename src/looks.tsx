@@ -211,40 +211,30 @@ const PRESETS: [string, Look][] = [
   ['Y2K chrome', { bg: '#c9d3e0', text: '#1a2233', muted: '#4c5a70', link: '#0057d9', box: '#eef2f8', boxAlpha: 92, border: '#8a9ab3', borderStyle: 'ridge', borderWidth: 4, radius: 12, font: 'trebuchet', nameFx: 'outline', nameColor: '#0057d9' }],
   ['Swamp', { bg: '#1c2a0c', text: '#e4eecb', muted: '#98a67a', link: '#9acd32', box: '#172010', boxAlpha: 88, border: '#4f6b00', borderStyle: 'groove', borderWidth: 3, radius: 14, font: 'rounded', nameFx: 'shadow', nameColor: '#7cb518' }],
 ]
-const FONT_NAMES: Record<keyof typeof FONTS, string> = { system: 'System', verdana: 'Verdana', arial: 'Arial', trebuchet: 'Trebuchet', georgia: 'Georgia', times: 'Times', courier: 'Courier', comic: 'Comic Sans', impact: 'Impact', rounded: 'Rounded', pixel: 'Console' }
+export const FONT_NAMES: Record<keyof typeof FONTS, string> = { system: 'System', verdana: 'Verdana', arial: 'Arial', trebuchet: 'Trebuchet', georgia: 'Georgia', times: 'Times', courier: 'Courier', comic: 'Comic Sans', impact: 'Impact', rounded: 'Rounded', pixel: 'Console' }
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
-// a YouTube link (watch, youtu.be, shorts, embed) and its start time (t=95, t=1m35s)
-const ytId = (s: string) => (s.match(/(?:youtu\.be\/|[?&]v=|\/(?:embed|shorts|live)\/)([\w-]{11})/) || s.trim().match(/^([\w-]{11})$/))?.[1]
-const ytStart = (s: string) => {
-  const m = s.match(/[?&](?:t|start)=(?:(\d+)m)?(\d+)s?\b/)
-  return m ? Number(m[1] || 0) * 60 + Number(m[2]) : undefined
+/** Stores a design or theme on our server and gives its link. */
+export async function shareUrl(kind: 'design' | 'theme', body: unknown) {
+  const r = await fetch(`/api/${kind}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  const j = await r.json().catch(() => null)
+  if (!r.ok || !j?.id) throw new Error(j?.error || 'Sharing failed.')
+  return `${location.origin}/${kind}/${j.id}`
 }
 
-type Set = (f: (d: Look) => Look) => void
-type Pick = { pick: (url: string) => void }
+// --- the controls this editor shares with the theme editor (themes.tsx) ---
+// controls are plain functions, not components, so typing or dragging doesn't remount them
+export const row = (label: string, ctl: ComponentChildren) => <label class="lk-row"><span>{label}</span><span class="lk-ctl">{ctl}</span></label>
+export const group = (title: string, body: ComponentChildren, open = false) => <details class="lk-group" open={open}><summary>{title}</summary><div class="lk-gb">{body}</div></details>
 
-export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set; close: () => void; saved: (l: Look | null) => void }) {
+/** The rest of the shared controls, on the draft `d`; `thumb` makes an image's preview link. */
+export function useEditorKit<D extends { stickers?: { src: string }[] }>(d: D, set: (f: (d: D) => D) => void, thumb = (u: string) => u) {
   const [min, setMin] = useState(false)
-  const [busy, setBusy] = useState(false)
   const [gif, setGif] = useState<(Pick & { stickers?: boolean }) | null>(null)
-  const [song, setSong] = useState(d.song ? `https://youtu.be/${d.song.id}${d.song.start ? `?t=${d.song.start}` : ''}` : '')
-  const [links, setLinks] = useState(() => (d.amp?.list || []).map(ytLink).join('\n'))
-  const [skins, setSkins] = useState(false)
-  const [q, setQ] = useState('')
-  const [link, setLink] = useState('')
-  const [found, setFound] = useState<User[]>([])
   const file = useRef<HTMLInputElement>(null)
   const onFile = useRef<(u: string) => void>(() => {})
-  const up = (p: Look) => set((x) => ({ ...x, ...p }))
-
-  useEffect(() => {
-    if (!q.trim()) return setFound([])
-    let live = true
-    const t = setTimeout(() => findUsers(q.trim()).then((r) => live && setFound(r.slice(0, 6)), () => {}), 300)
-    return () => ((live = false), clearTimeout(t))
-  }, [q])
-
+  const v = d as Record<string, any>
+  const up = (p: Partial<D>) => set((x) => ({ ...x, ...p }))
   const upload = (then: (u: string) => void) => ((onFile.current = then), file.current?.click())
   const gotFile = async (f?: File) => {
     if (!f) return
@@ -258,6 +248,72 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
       toast(e.message)
     }
   }
+  const clear = (k: keyof D & string, label: string) => v[k] !== undefined && <button type="button" class="lk-x" aria-label={t('Reset {name}', { name: label })} onClick={(e) => (e.preventDefault(), up({ [k]: undefined } as Partial<D>))}>×</button>
+  const select = (k: keyof D & string, label: string, options: readonly string[], names: Record<string, string> = {}) =>
+    row(label, <select value={v[k] || ''} onChange={(e) => up({ [k]: e.currentTarget.value || undefined } as Partial<D>)}><option value="">{t('Default')}</option>{options.map((o) => <option value={o}>{t(names[o] || cap(o))}</option>)}</select>)
+  const image = (k: keyof D & string, label: string) => (
+    <div class="lk-row"><span>{label}</span><span class="lk-ctl">
+      {v[k] && <Img class="lk-thumb" src={thumb(v[k])} />}
+      <button type="button" class="btn ghost small" onClick={() => setGif({ pick: (u) => up({ [k]: u } as Partial<D>) })}>{t('GIF')}</button>
+      <button type="button" class="btn ghost small" onClick={() => upload((u) => up({ [k]: u } as Partial<D>))}>{t('Upload')}</button>
+      {clear(k, label)}
+    </span></div>
+  )
+  const head = (title: string, cancel: () => void, save: () => void, busy = false) => (
+    <>
+      <div class="lk-edit-head">
+        <button class="icon-btn" onClick={() => setMin(!min)} aria-label={min ? t('Show the editor') : t('Hide the editor')} aria-expanded={!min}><Icon d={min ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} size={20} /></button>
+        <b>{title}</b>
+        <button class="btn ghost small" onClick={cancel}>{t('Cancel')}</button>
+        <button class="btn small" disabled={busy} onClick={save}>{busy ? t('Saving…') : t('Save')}</button>
+      </div>
+      <input ref={file} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => (gotFile(e.currentTarget.files?.[0]), (e.currentTarget.value = ''))} />
+      {/* the editor stays mounted under the picker, so its open groups and scroll survive a pick */}
+      {gif && <GifPicker stickers={gif.stickers} pick={(u) => (gif.pick(u), setGif(null))} close={() => setGif(null)} />}
+    </>
+  )
+  const stickers = (add: (src: string) => void, hint: string) => group(t('Stickers ({n}/{max})', { n: d.stickers?.length || 0, max: LIMITS.stickers }), <>
+    <div class="lk-wall edit">
+      {(d.stickers || []).map((st, i) => <span><Img src={st.src} /><button class="lk-x" aria-label={t('Remove')} onClick={() => set((x) => ({ ...x, stickers: x.stickers!.filter((_, j) => j !== i) }))}>×</button></span>)}
+    </div>
+    {(d.stickers?.length || 0) < LIMITS.stickers && (
+      <div class="btns">
+        <button class="btn ghost small" onClick={() => setGif({ pick: add, stickers: true })}>{t('Add a sticker')}</button>
+        <button class="btn ghost small" onClick={() => upload(add)}>{t('Upload')}</button>
+      </div>
+    )}
+    <p class="hint">{hint}</p>
+  </>)
+  return { min, setMin, gif, setGif, up, upload, clear, select, image, head, stickers }
+}
+
+// a YouTube link (watch, youtu.be, shorts, embed) and its start time (t=95, t=1m35s)
+const ytId = (s: string) => (s.match(/(?:youtu\.be\/|[?&]v=|\/(?:embed|shorts|live)\/)([\w-]{11})/) || s.trim().match(/^([\w-]{11})$/))?.[1]
+const ytStart = (s: string) => {
+  const m = s.match(/[?&](?:t|start)=(?:(\d+)m)?(\d+)s?\b/)
+  return m ? Number(m[1] || 0) * 60 + Number(m[2]) : undefined
+}
+
+type Set = (f: (d: Look) => Look) => void
+type Pick = { pick: (url: string) => void }
+
+export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set; close: () => void; saved: (l: Look | null) => void }) {
+  const { min, setMin, gif, setGif, up, upload, clear, select, image, head, stickers } = useEditorKit(d, set)
+  const [busy, setBusy] = useState(false)
+  const [song, setSong] = useState(d.song ? `https://youtu.be/${d.song.id}${d.song.start ? `?t=${d.song.start}` : ''}` : '')
+  const [links, setLinks] = useState(() => (d.amp?.list || []).map(ytLink).join('\n'))
+  const [skins, setSkins] = useState(false)
+  const [q, setQ] = useState('')
+  const [link, setLink] = useState('')
+  const [found, setFound] = useState<User[]>([])
+
+  useEffect(() => {
+    if (!q.trim()) return setFound([])
+    let live = true
+    const t = setTimeout(() => findUsers(q.trim()).then((r) => live && setFound(r.slice(0, 6)), () => {}), 300)
+    return () => ((live = false), clearTimeout(t))
+  }, [q])
+
   const save = async () => {
     setBusy(true)
     try {
@@ -282,24 +338,16 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
   const designLink = async () => {
     const des = cleanDesign(d)
     if (!Object.keys(des).length) throw new Error('Pick some colors or a background first.')
-    const r = await fetch('/api/design', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(des) })
-    const j = await r.json().catch(() => null)
-    if (!r.ok || !j?.id) throw new Error(j?.error || 'Sharing failed.')
-    return `${location.origin}/design/${j.id}`
+    return shareUrl('design', des)
   }
   const castIt = () => designLink().then((url) => shell.compose({ embeds: [url] }), (e) => toast(e.message))
   // Safari only lets a click write the clipboard if the write starts right away, so the link goes in as a promise
   const copy = () => copyText(designLink(), 'Link copied', "Couldn't copy the link.")
 
-  // controls are plain functions, not components, so typing or dragging doesn't remount them
-  const row = (label: string, ctl: ComponentChildren) => <label class="lk-row"><span>{label}</span><span class="lk-ctl">{ctl}</span></label>
-  const clear = (k: keyof Look, label: string) => d[k] !== undefined && <button type="button" class="lk-x" aria-label={t('Reset {name}', { name: label })} onClick={(e) => (e.preventDefault(), up({ [k]: undefined }))}>×</button>
   const color = (k: 'bg' | 'text' | 'muted' | 'link' | 'box' | 'border' | 'nameColor', label: string, fallback: string) =>
     row(label, <><input type="color" value={d[k] || fallback} onInput={(e) => up({ [k]: e.currentTarget.value })} />{clear(k, label)}</>)
   const range = (k: 'bgDim' | 'boxAlpha' | 'fxAlpha' | 'borderWidth' | 'radius', label: string, min: number, max: number, fallback: number, unit = '') =>
     row(label, <><input type="range" min={min} max={max} value={d[k] ?? fallback} onInput={(e) => up({ [k]: Number(e.currentTarget.value) })} /><output>{d[k] ?? fallback}{unit}</output></>)
-  const select = (k: 'bgMode' | 'borderStyle' | 'font' | 'size' | 'nameFx' | 'fx', label: string, options: readonly string[], names: Record<string, string> = {}) =>
-    row(label, <select value={d[k] || ''} onChange={(e) => up({ [k]: e.currentTarget.value || undefined })}><option value="">{t('Default')}</option>{options.map((o) => <option value={o}>{t(names[o] || cap(o))}</option>)}</select>)
   const text = (k: 'mood' | 'moodEmoji' | 'about' | 'meet' | 'topTitle' | 'wallTitle', label: string, max: number, ph = '', area = false) => {
     const p = { value: d[k] || '', maxLength: max, placeholder: ph, onInput: (e: { currentTarget: { value: string } }) => up({ [k]: e.currentTarget.value || undefined }) }
     return <label class="field"><span>{label}</span>{area ? <textarea rows={4} {...p} /> : <input {...p} />}</label>
@@ -312,14 +360,6 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
       <input type="color" value={d.marquee?.[k] || fallback} onInput={(e) => mq({ [k]: e.currentTarget.value })} />
       {d.marquee?.[k] && <button type="button" class="lk-x" aria-label={t('Reset {name}', { name: label })} onClick={(e) => (e.preventDefault(), mq({ [k]: undefined }))}>×</button>}
     </>)
-  const image = (k: 'bgImg' | 'banner', label: string) => (
-    <div class="lk-row"><span>{label}</span><span class="lk-ctl">
-      {d[k] && <Img class="lk-thumb" src={d[k]} />}
-      <button type="button" class="btn ghost small" onClick={() => setGif({ pick: (u) => up({ [k]: u }) })}>{t('GIF')}</button>
-      <button type="button" class="btn ghost small" onClick={() => upload((u) => up({ [k]: u }))}>{t('Upload')}</button>
-      {clear(k, label)}
-    </span></div>
-  )
   // a new sticker goes on the box in the middle of the screen, where it can be seen and dragged; on a phone the
   // editor folds away to show it
   const addSticker = (src: string) => {
@@ -331,19 +371,10 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
     toast('Drag it anywhere')
   }
   const addWall = (u: string) => set((x) => ({ ...x, wall: [...new Set([...(x.wall || []), u])].slice(0, LIMITS.wall) }))
-  const group = (title: string, body: ComponentChildren, open = false) => <details class="lk-group" open={open}><summary>{title}</summary><div class="lk-gb">{body}</div></details>
 
   return (
     <div class={`lk-edit${min ? ' min' : ''}`} role="dialog" aria-label={t('Customize your profile')}>
-      <div class="lk-edit-head">
-        <button class="icon-btn" onClick={() => setMin(!min)} aria-label={min ? t('Show the editor') : t('Hide the editor')} aria-expanded={!min}><Icon d={min ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} size={20} /></button>
-        <b>{t('Customize')}</b>
-        <button class="btn ghost small" onClick={close}>{t('Cancel')}</button>
-        <button class="btn small" disabled={busy} onClick={save}>{busy ? t('Saving…') : t('Save')}</button>
-      </div>
-      <input ref={file} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => (gotFile(e.currentTarget.files?.[0]), (e.currentTarget.value = ''))} />
-      {/* the editor stays mounted under the picker, so its open groups and scroll survive a pick */}
-      {gif && <GifPicker stickers={gif.stickers} pick={(u) => (gif.pick(u), setGif(null))} close={() => setGif(null)} />}
+      {head(t('Customize'), close, save, busy)}
       {skins && <SkinPicker pick={(skin) => (set((x) => ({ ...x, amp: { list: [], ...x.amp, skin } })), setSkins(false))} close={() => setSkins(false)} />}
       <div class="lk-edit-body" hidden={!!gif || skins}>
         {group(t('Layouts'), <>
@@ -369,18 +400,7 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
           {d.fx && range('fxAlpha', t('Effect opacity'), 0, 100, 100, '%')}
           <p class="hint">{t('Snow, confetti, fireflies and more, moving across your whole profile behind its boxes, which Box opacity makes more or less solid. Visitors who ask their device for less motion don\'t see it.')}</p>
         </>)}
-        {group(t('Stickers ({n}/{max})', { n: d.stickers?.length || 0, max: LIMITS.stickers }), <>
-          <div class="lk-wall edit">
-            {(d.stickers || []).map((st, i) => <span><Img src={st.src} /><button class="lk-x" aria-label={t('Remove')} onClick={() => set((x) => ({ ...x, stickers: x.stickers!.filter((_, j) => j !== i) }))}>×</button></span>)}
-          </div>
-          {(d.stickers?.length || 0) < LIMITS.stickers && (
-            <div class="btns">
-              <button class="btn ghost small" onClick={() => setGif({ pick: addSticker, stickers: true })}>{t('Add a sticker')}</button>
-              <button class="btn ghost small" onClick={() => upload(addSticker)}>{t('Upload')}</button>
-            </div>
-          )}
-          <p class="hint">{t('Drag a sticker anywhere on your profile. Tap it, then drag its corner dot to resize and turn it. Stickers stay on the box they sit on, so they land in the same place on phones and computers.')}</p>
-        </>)}
+        {stickers(addSticker, t('Drag a sticker anywhere on your profile. Tap it, then drag its corner dot to resize and turn it. Stickers stay on the box they sit on, so they land in the same place on phones and computers.'))}
         {group(t('Colors and text'), <>
           {color('text', t('Text'), '#000000')}
           {color('muted', t('Quiet text'), '#666666')}

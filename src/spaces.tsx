@@ -8,7 +8,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { Room as LiveKit, RoomEvent, Track, type RemoteTrack } from 'livekit-client'
 import { account, get, go, type Cast, type User } from './api.ts'
 import { t, tn } from './i18n.ts'
-import { ago, Avatar, CastCard, fetchCast, Header, Icon, Menu, nameOf, P, shell, Tabs, toast } from './ui.tsx'
+import { ago, Avatar, CastCard, fetchCast, Header, Icon, Menu, nameOf, P, shell, Tabs, toast, useRerenderOn } from './ui.tsx'
 import { spaceToken } from './write.ts'
 
 type Role = 'host' | 'cohost' | 'speaker' | 'listener'
@@ -67,12 +67,7 @@ const changed = () => dispatchEvent(new Event('space'))
 
 /** Re-render when the Space you're in changes. */
 function useSession() {
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('space', f)
-    return () => removeEventListener('space', f)
-  }, [])
+  useRerenderOn('space')
   return session
 }
 
@@ -535,12 +530,7 @@ function mountBar() {
 
 function Bar() {
   const s = useSession()
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('popstate', f)
-    return () => removeEventListener('popstate', f)
-  }, [])
+  useRerenderOn('popstate')
   if (!s || location.pathname === `/spaces/${s.room.id}`) return null
   const talking = [...s.speaking].map((fid) => s.participants.find((p) => p.user.fid === fid)).filter(Boolean)
   return (
