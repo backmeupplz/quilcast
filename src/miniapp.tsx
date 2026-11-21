@@ -19,7 +19,7 @@ import { addAppAction, APP_PUSH, askPush, castActions, channelOf, Choose, pushSu
 import { custodyOf, signEvent } from './write.ts'
 import { signSiwf } from './signin.ts'
 import { awake, displaced, sleepers } from './sleep.ts'
-import { castCtx, QUILCAST_FID, userCtx } from './inline.ts'
+import { castCtx, inApp, narrow, QUILCAST_FID, userCtx } from './inline.ts'
 import { isSaved, oneClick, oneClickPayload, shareHome } from './appsaved.ts'
 
 // viem's default Polygon RPC now wants a key, so Polygon reads and sends go through publicnode
@@ -154,7 +154,6 @@ document.addEventListener('fullscreenchange', () => {
   for (const app of apps) if (app.monitor !== undefined) ((app.full &&= app.monitor), (app.monitor = undefined))
   update()
 })
-const narrow = () => matchMedia('(max-width: 559px), (max-width: 699px) and (max-height: 599px)').matches
 
 /** An app in the middle of something (a call to us still running, a prompt, a wallet request, a pairing) or that may
  *  be using the camera and microphone never sleeps. */
@@ -771,8 +770,6 @@ export async function setNotify(m: AppMeta, on: boolean, event?: 'miniapp_added'
 // --- Farcaster actions ---
 
 const haptics = 'vibrate' in navigator
-// the Quilcast apps are phones however wide they are (an unfolded iPhone Duo has the sidebar)
-const inApp = navigator.userAgent.includes('QuilcastApp/')
 
 const context = async (app: App) => ({
   client: {

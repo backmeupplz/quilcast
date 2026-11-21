@@ -11,6 +11,10 @@ import { channelOf, handle, requireAccount, toast } from './ui.tsx'
 import { t } from './i18n.ts'
 
 export const QUILCAST_FID = 3356316
+// a phone, upright or on its side (layout.test.ts); the Quilcast apps are phones however wide they are (an unfolded
+// iPhone Duo has the sidebar)
+export const narrow = () => matchMedia('(max-width: 559px), (max-width: 699px) and (max-height: 599px)').matches
+export const inApp = navigator.userAgent.includes('QuilcastApp/')
 export const userCtx = (u: User) => ({ fid: u.fid, username: u.username?.startsWith('fid:') ? undefined : u.username, displayName: u.display_name, pfpUrl: u.pfp_url })
 export const castCtx = (c: Cast) => ({
   author: userCtx(c.author), hash: '0x' + c.hash.replace(/^0x/, ''), parentHash: c.parent_hash || undefined, parentFid: c.parent_author?.fid || undefined,
@@ -103,7 +107,7 @@ const calls: Record<string, (i: Inline, ...a: any[]) => unknown> = {
 const context = (i: Inline) => {
   const me = account?.done && myUser()
   return {
-    client: { platformType: matchMedia('(max-width: 559px)').matches ? 'mobile' : 'web', clientFid: QUILCAST_FID, added: false, safeAreaInsets: { top: 0, bottom: 0, left: 0, right: 0 }, inline: true },
+    client: { platformType: narrow() || inApp ? 'mobile' : 'web', clientFid: QUILCAST_FID, added: false, safeAreaInsets: { top: 0, bottom: 0, left: 0, right: 0 }, inline: true },
     // none for someone not signed in
     ...(me && { user: userCtx(me) }),
     // none in the composer's preview

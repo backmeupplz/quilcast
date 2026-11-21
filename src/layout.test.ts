@@ -1,6 +1,6 @@
 // Phones get the tab bar, and from 560px (an unfolded iPhone Duo is 669 points wide, or 585 beside a strip down its
 // edge) the sidebar, unless the screen is too short for the sidebar's rail (a phone on its side): every rule that tells
-// them apart, in the styles and in miniapp.tsx, has to draw the line in the same place, or a size in between gets half of
+// them apart, in the styles and in inline.ts, has to draw the line in the same place, or a size in between gets half of
 // each layout.
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -19,5 +19,5 @@ test('the phone layout ends in the same place everywhere', () => {
   const widths = [...rest.matchAll(/\((max|min)-width: (\d+)px\)/g)].map(([, edge, px]) => Number(px) + (edge === 'min' ? -1 : 0))
   // (600px is where dialogs fill the screen)
   assert.deepEqual(widths.filter((w) => w > 500 && w < 1099 && w !== 600), [], 'no other line between a phone and the sidebar')
-  assert.ok(read('./miniapp.tsx').includes(`const narrow = () => matchMedia('${phone}').matches`))
+  assert.ok(read('./inline.ts').includes(`export const narrow = () => matchMedia('${phone}').matches`))
 })
