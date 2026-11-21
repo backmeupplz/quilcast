@@ -46,3 +46,18 @@ test("the image's wasm stage copies every file outside wasm/ that wasm/build.sh 
   assert.ok(needed.some((f) => f.startsWith('public/')), 'build.sh copies files from public/')
   for (const f of needed.filter((f) => !f.startsWith('wasm/'))) assert.ok(has(f), `wasm/build.sh or the module reads ${f}, which the Dockerfile's wasm stage doesn't copy`)
 })
+
+// The runtime image installs only `dependencies` (npm ci --omit=dev), so each package the server loads has to be one,
+// and browser-only packages stay out of it (the mini app SDK brought npm audit advisories into the image for nothing).
+test('the runtime install holds every package the server loads, and not the mini app SDK', () => {
+  const { dependencies } = JSON.parse(read('package.json'))
+  const copied = read('Dockerfile').match(/cp -r (src\/[^&\n]*?) \/out\/src\//)[1].split(/\s+/).filter((f) => /\.(ts|mjs)$/.test(f))
+  const files = [...readdirSync(new URL('server', root)).filter((f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs')).map((f) => `server/${f}`), ...copied]
+  for (const file of files)
+    for (const [, spec] of read(file).matchAll(/(?:from|import\(|resolve\()\s*['"](@?[a-z][\w.-]*(?:\/[\w.-]+)*|node:[\w/]+)['"]/g)) {
+      if (spec.startsWith('node:')) continue
+      const pkg = spec.split('/').slice(0, spec.startsWith('@') ? 2 : 1).join('/')
+      assert.ok(Object.hasOwn(dependencies, pkg), `${file} loads ${pkg}, which isn't in dependencies`)
+    }
+  assert.ok(!Object.hasOwn(dependencies, '@farcaster/miniapp-sdk'))
+})

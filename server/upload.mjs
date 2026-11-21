@@ -106,6 +106,17 @@ let mediaBytes = 0
 readdir(MEDIA).then(async (names) => {
   for (const n of names) mediaBytes += (await stat(join(MEDIA, n)).catch(() => ({ size: 0 }))).size
 }, () => {})
+/** Keeps `body` on the volume as `name` outside an upload (Quorum skins' files, themes.mjs), under the same free-disk
+ *  floor and total cap; `room(size)` may refuse (or count) a new file first. One already here costs nothing. */
+export async function keepMedia(name, body, room = () => {}) {
+  await mkdir(MEDIA, { recursive: true })
+  if (await stat(join(MEDIA, name)).catch(() => null)) return
+  const disk = await statfs(join(MEDIA, '..')).catch(() => null)
+  if (!disk || disk.bavail * disk.bsize - body.length < FREE_FLOOR) throw fail(507, 'Upload storage is full right now.')
+  if (mediaBytes + body.length > MEDIA_CAP) throw fail(429, 'Upload limit reached for today.')
+  room(body.length)
+  if (await writeFile(join(MEDIA, name), body, { flag: 'wx' }).then(() => true, (e) => (e.code === 'EEXIST' ? false : Promise.reject(e)))) mediaBytes += body.length
+}
 // who put each file on the volume: <media>/owners/<fid> lists an account's uploads, one name a line (since 0.36.0), so
 // deleting an account (account.mjs) takes the files only it put here. owners/themes holds Quorum skins' pictures, and
 // owners/legacy every file that was here before 0.40.0, written once at start: nobody can tell whose those are, so they

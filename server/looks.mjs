@@ -140,9 +140,11 @@ export async function keySigned(req, what, fid, body, node, stale = () => fail(4
   return { key, ts }
 }
 
-export async function putLook(req, fid, node) {
+// `busy()`: the account's own save limit, counted only once the request is signed for it (as pins.mjs does)
+export async function putLook(req, fid, node, busy = () => false) {
   const body = await readText(req, 20e3)
   await keySigned(req, 'quilcast-look', fid, body, node, () => fail(401, 'Sign in again to save your look.'))
+  if (busy()) throw fail(429, 'Too many saves, try again in a few minutes.')
   const raw = parseJson(body)
   if (raw === null) return await dropLook(fid), null
   const look = cleanLook(raw)

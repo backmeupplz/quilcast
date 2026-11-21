@@ -13,7 +13,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanTheme, DEFAULTS } from '../src/shared.ts'
 import { fail, gate, keep, parseJson, readText } from './net.mjs'
-import { looksLike, MEDIA, ownThemes } from './upload.mjs'
+import { keepMedia, looksLike, ownThemes } from './upload.mjs'
 
 export const QUORUM = process.env.QUORUM_URL || 'https://api.quorummessenger.com'
 
@@ -78,14 +78,26 @@ const skinGate = gate(6)
 const skins = new Map()
 export const quorumSkin = (id) => skins.get(id) || keep(skins, 300, id, quorum(`/skins/${id}`, 8e6).then((r) => fromSkin(parseJson(String(r?.manifest || 'null')))))
 
-export const importSkin = async (req) => fromSkin(parseJson(await readText(req, 4e6)))
+// pasted skins need no account, so the new files they bring count against a daily allowance per address (IPv6 by its /64)
+const DAILY_IMPORT_PER_IP = 10e6
+const imported = new Map() // ip -> { day, bytes }
+const importedBy = (ip) => (imported.get(ip)?.day === Math.floor(Date.now() / 86400e3) ? imported.get(ip).bytes : 0)
+export const importSkin = async (req, ip) => fromSkin(parseJson(await readText(req, 4e6)), ip)
 
-// fonts: TrueType (00 01 00 00 or "true"), OpenType CFF ("OTTO"); collections ("ttcf") don't load in browsers
-const FONT = (b) => b.length > 12 && (b.readUInt32BE(0) === 0x10000 || ['OTTO', 'true'].includes(b.toString('latin1', 0, 4)))
+// fonts: TrueType (00 01 00 00 or "true"), OpenType CFF ("OTTO"); collections ("ttcf") don't load in browsers. Past the
+// tag, the table directory has to hold up: numTables 16-byte records after the 12-byte header, each table in the file.
+const FONT = (b) => {
+  if (b.length < 12 || !(b.readUInt32BE(0) === 0x10000 || ['OTTO', 'true'].includes(b.toString('latin1', 0, 4)))) return false
+  const n = b.readUInt16BE(4), head = 12 + 16 * n
+  if (!n || b.length < head) return false
+  for (let r = 12; r < head; r += 16) if (b.readUInt32BE(r + 8) < head || b.readUInt32BE(r + 8) + b.readUInt32BE(r + 12) > b.length) return false
+  return true
+}
 const TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'font/ttf': 'ttf', 'font/otf': 'otf', 'application/font-sfnt': 'ttf' }
 
-/** A skin's inline file, checked and kept in the media volume; its quilcast.com link, or undefined. */
-async function store(uri) {
+/** A skin's inline file, checked and kept in the media volume; its quilcast.com link, or undefined. `ip`: a pasted
+ *  skin's sender, whose daily allowance a new file counts against. */
+async function store(uri, ip) {
   const m = typeof uri === 'string' && uri.match(/^data:([\w/+.-]+);base64,([A-Za-z0-9+/=\s]+)$/)
   if (!m || !TYPES[m[1]]) return
   const b = Buffer.from(m[2], 'base64')
@@ -94,10 +106,13 @@ async function store(uri) {
   if (font ? !FONT(b) : !looksLike(m[1], b)) return
   const ext = font ? (b.toString('latin1', 0, 4) === 'OTTO' ? 'otf' : 'ttf') : TYPES[m[1]]
   const name = `${createHash('sha256').update(b).digest('hex').slice(0, 24)}.${ext}`
-  await mkdir(MEDIA, { recursive: true })
-  await writeFile(join(MEDIA, name), b, { flag: 'wx' }).catch((e) => {
-    if (e.code !== 'EEXIST') throw e
-  })
+  // checked and counted in one step, so imports sent all at once can't each find room
+  const room = (n) => {
+    if (!ip) return
+    if (importedBy(ip) + n > DAILY_IMPORT_PER_IP) throw fail(429, 'Upload limit reached for today.')
+    keep(imported, 5000, ip, { day: Math.floor(Date.now() / 86400e3), bytes: importedBy(ip) + n })
+  }
+  await keepMedia(name, b, room)
   // the themes' own too (once per run), so deleting an account that uploaded the same picture doesn't take it (account.mjs)
   await ownThemes(`/m/${name}`)
   return `https://quilcast.com/m/${name}`
@@ -125,7 +140,7 @@ const light = (h) => {
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {})
 
 /** A Quorum skin (theme/skins/types.ts SkinOverride) as a Quilcast theme. Spacing and icon swaps have no match here. */
-export async function fromSkin(skin) {
+export async function fromSkin(skin, ip) {
   const s = obj(skin)
   if (s.schemaVersion !== 1 || !['light', 'dark'].includes(s.base)) throw fail(400, "That isn't a Quorum theme.")
   const base = s.base
@@ -134,7 +149,7 @@ export async function fromSkin(skin) {
   const surf = obj(s.surfaces)
   // a slot's style: the slot itself or its first dotted variant (button.primary for button)
   const slot = (name) => obj(surf[name] || surf[Object.keys(surf).find((k) => k.startsWith(name + '.'))])
-  const img = async (v) => (typeof v === 'string' && v.startsWith('data:') ? store(v) : undefined)
+  const img = async (v) => (typeof v === 'string' && v.startsWith('data:') ? store(v, ip) : undefined)
   const wall = obj(s.wallpaper)
   const bgImg = (await img(obj(wall.source).dataUri)) || (await img(['feed', 'profile', 'messages', 'wallet', 'spaces'].map((k) => slot(k).background).find((b) => b?.startsWith?.('data:'))))
   const radii = obj(s.radii), borders = obj(s.borders), frame = obj(s.frame), border = obj(frame.accentBorder)

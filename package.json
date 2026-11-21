@@ -11,7 +11,6 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@farcaster/miniapp-sdk": "^0.3.0",
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
     "@resvg/resvg-js": "2.6.2",
@@ -21,6 +20,7 @@
     "unicode-emoji-json": "0.9.0"
   },
   "devDependencies": {
+    "@farcaster/miniapp-sdk": "^0.3.0",
     "@fontsource-variable/inter": "5.3.0",
     "@scure/bip39": "2.4.0",
     "@walletconnect/universal-provider": "2.26.0",
@@ -33,5 +33,5 @@
     "viem": "2.57.3",
     "vite": "8.3.4"
   },
-  "version": "0.107.1"
+  "version": "0.107.2"
 }

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readdir, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { createServer, request } from 'node:http'
 import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -51,12 +51,12 @@ const node = createServer(async (q, r) => {
   const u = new URL(q.url, 'http://x')
   if (u.pathname === '/v1/castById') castByIdAsked.push(String(u.searchParams.get('hash')).replace(/^0x/, ''))
   r.setHeader('content-type', 'application/json')
-  // Base: fid 77's card (token 0x4d) is collected, nothing else is
+  // Base: fid 77's card (token 0x4d) and the cast 0xce… are collected, nothing else is
   if (u.pathname === '/rpc') {
     let b = ''
     for await (const c of q) b += c
     const { data } = JSON.parse(b).params[0]
-    return r.end(JSON.stringify({ jsonrpc: '2.0', id: 1, ...(data === '0x6352211e' + '4d'.padStart(64, '0') ? { result: '0x' + 'ab'.repeat(20).padStart(64, '0') } : { error: { code: 3, message: 'execution reverted' } }) }))
+    return r.end(JSON.stringify({ jsonrpc: '2.0', id: 1, ...([ '4d', 'ce'.repeat(20)].some((t) => data === '0x6352211e' + t.padStart(64, '0')) ? { result: '0x' + 'ab'.repeat(20).padStart(64, '0') } : { error: { code: 3, message: 'execution reverted' } }) }))
   }
   // farcaster.xyz's direct casts: echo what arrived, so the relay test can check it
   if (u.pathname === '/v2/get-dc-nonce') return r.end(JSON.stringify({ result: { nonce: 'n1' } }))
@@ -136,7 +136,7 @@ const node = createServer(async (q, r) => {
   // @eight's casts, two pages, for finding a cast from a farcaster.xyz link's first digits (the Collect mini app)
   if (u.pathname === '/v2/farcaster/user/by-username' && u.searchParams.get('username') === 'eight') return r.end(JSON.stringify({ user: { fid: 8, username: 'eight' } }))
   if (u.pathname === '/v1/castsByFid' && u.searchParams.get('fid') === '8')
-    return r.end(JSON.stringify(u.searchParams.get('pageToken') === 'e2' ? { messages: [{ hash: '0x' + 'e8'.repeat(20) }], nextPageToken: '' } : { messages: [{ hash: '0x' + 'e1'.repeat(20) }], nextPageToken: 'e2' }))
+    return eightPages++, r.end(JSON.stringify(u.searchParams.get('pageToken') === 'e2' ? { messages: [{ hash: '0x' + 'e8'.repeat(20) }], nextPageToken: '' } : { messages: [{ hash: '0x' + 'e1'.repeat(20) }], nextPageToken: 'e2' }))
   // fid 7's casts (two pages) and profile, as the account-deletion test sets them
   if (u.pathname === '/v1/castsByFid' && u.searchParams.get('fid') === '7') {
     if (!fid7.casts) return (r.statusCode = 500), r.end('{}')
@@ -205,6 +205,8 @@ const SKIN = {
   borders: { scale: 2.2 }, fontScale: 1.25, spacing: { scale: 2 },
 }
 let sixDown = true
+// how many pages of @eight's casts the node was asked for
+let eightPages = 0
 const MEMES = 'chain://eip155:1/erc721:0xfd8427165df67df6d7fd689ae67c8ebf56d9ca61'
 const nodePort = await listen(node)
 const media = await mkdtemp(join(tmpdir(), 'qc-media-'))
@@ -390,7 +392,10 @@ test('casts are mini app embeds with a 3:2 card', async () => {
 })
 
 test('a collected cast: square art, metadata the mini app can read, the cast kept on disk, and the collection', async () => {
-  const hash = 'cd'.repeat(20)
+  // one nobody collected is shown as it is now and never kept, so deleting it takes it down here
+  assert.equal((await (await fetch(`${base}/nft/0x${'cd'.repeat(20)}`)).json()).external_url, `https://quilcast.test/c/${'cd'.repeat(20)}`)
+  assert.ok(!existsSync(join(media, 'nft', `${'cd'.repeat(20)}.json`)))
+  const hash = 'ce'.repeat(20)
   const r = await fetch(`${base}/nft/0x${hash}`)
   assert.equal(r.headers.get('access-control-allow-origin'), '*')
   const m = await r.json()
@@ -468,6 +473,10 @@ test('collect.quilcast.com finds a pasted cast link: a full hash anywhere in it,
   assert.equal(await find(`https://farcaster.xyz/eight/0x${'e8'.repeat(4)}`), 'e8'.repeat(20))
   assert.equal(await find(`https://warpcast.com/eight/0x${'e8'.repeat(4)}?x=1`), 'e8'.repeat(20))
   for (const link of [`https://farcaster.xyz/eight/0x${'ab'.repeat(4)}`, 'https://example.com/eight/0xe8e8e8e8', 'hello']) assert.equal(await find(link), undefined, link)
+  // a miss is kept too, so asking again doesn't page through the account's casts again
+  const pages = eightPages
+  for (let i = 0; i < 3; i++) assert.equal(await find('https://farcaster.xyz/eight/0xdeadbeef'), undefined)
+  assert.equal(eightPages - pages, 2)
 })
 
 test('RSS feeds: an account\'s casts (replies on request) and a channel\'s under its old-style URL, escaped, advertised by their pages', async () => {
@@ -1075,6 +1084,20 @@ test('profile looks: a marquee is saved as plain text with its settings, and emp
   assert.equal((await put(null)).status, 200)
 })
 
+test("profile looks: unsigned saves don't use up the account's own limit", async () => {
+  for (let i = 0; i < 31; i++) await fetch(`${base}/api/look/7`, { method: 'PUT', body: 'null', headers: { 'x-forwarded-for': '10.7.7.7' } })
+  const body = 'null', ts = Date.now()
+  const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-look:7:${ts}:${body}`), signer)).toString('hex')
+  const r = await fetch(`${base}/api/look/7`, { method: 'PUT', body, headers: { 'x-forwarded-for': '10.7.7.8', 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': sig } })
+  assert.equal(r.status, 200)
+})
+
+test('rate limits count an IPv6 address by its /64', async () => {
+  const put = (i) => fetch(`${base}/api/pin/9`, { method: 'PUT', body: 'null', headers: { 'x-forwarded-for': `2001:db8:5:6:${i.toString(16)}::1` } })
+  for (let i = 1; i <= 30; i++) assert.equal((await put(i)).status, 401)
+  assert.equal((await put(31)).status, 429)
+})
+
 test('pinned casts: only your own cast, signed with a key the node lists for that FID, public, and removable', async () => {
   const put = (fid, pin, { key = signer, ts = Date.now(), as = fid } = {}) => {
     const body = JSON.stringify(pin)
@@ -1176,6 +1199,20 @@ test('Quorum skins: the gallery is trimmed, a skin becomes a theme, and only rea
   assert.equal(bad.status, 400)
   // an id that isn't one never reaches Quorum: it's just the app's page
   assert.match((await fetch(base + '/api/quorum/skin/Qm..%2F..')).headers.get('content-type'), /^text\/html/)
+})
+
+test('a pasted Quorum skin keeps only a real font, and an address only so many new files a day', async () => {
+  const imp = (skin) => fetch(base + '/api/quorum/import', { method: 'POST', body: JSON.stringify({ schemaVersion: 1, base: 'dark', ...skin }), headers: { 'x-forwarded-for': '10.9.9.9' } })
+  const font = (b) => ({ font: { source: { dataUri: 'data:font/ttf;base64,' + b.toString('base64') } } })
+  // the right first bytes alone aren't a font: its table directory has to fit the file
+  assert.equal((await (await imp(font(Buffer.concat([Buffer.from('true'), Buffer.alloc(200, 0x41)])))).json()).fontUrl, undefined)
+  assert.match((await (await imp(font(await readFile(new URL('./fonts/Inter-Regular.ttf', import.meta.url))))).json()).fontUrl, /^https:\/\/quilcast\.com\/m\/[0-9a-f]{24}\.ttf$/)
+  // a big new picture a time (a real PNG, then filler): with the font, the fourth would pass 10 MB today
+  const big = (i) => ({ wallpaper: { source: { dataUri: 'data:image/png;base64,' + Buffer.concat([Buffer.from(PNG, 'base64'), Buffer.alloc(2.9e6, i)]).toString('base64') } } })
+  for (let i = 1; i <= 3; i++) assert.equal((await imp(big(i))).status, 200)
+  const over = await imp(big(4))
+  assert.equal(over.status, 429)
+  assert.equal((await over.json()).error, 'Upload limit reached for today.')
 })
 
 test('shared themes: cleaned, stored under a stable id, with their page and share card', async () => {

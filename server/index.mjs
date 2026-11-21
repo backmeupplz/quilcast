@@ -739,14 +739,15 @@ const COLLECTION = {
   featured_image: `${SITE}/nft/banner.png`,
   external_link: SITE,
 }
-// a collected cast is kept as it was first seen here, so its NFT stays when the cast is deleted
+// a collected cast is kept as it was first seen here, so its NFT stays when the cast is deleted; one nobody has collected
+// is only shown as it is now, so deleting it takes it down here too
 const NFT_DIR = join(DATA, 'nft')
 async function keptCast(hash) {
   const file = join(NFT_DIR, `${hash}.json`)
   const kept = await readFile(file, 'utf8').then(JSON.parse, () => null)
   if (kept) return kept
   const c = await getCast(hash)
-  if (c) await mkdir(NFT_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(c))).catch((e) => console.error('nft: keep', e))
+  if (c && (await ownerOf(hash))) await mkdir(NFT_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(c))).catch((e) => console.error('nft: keep', e))
   return c
 }
 
@@ -899,8 +900,10 @@ async function collectPage(hash, fid) {
 // A pasted cast link → its full hash, which is its token id, so every link to a cast collects the same NFT: anything
 // carrying all 40 hex digits (quilcast.com/c/<hash>, a bare hash, farcaster.xyz/~/conversations/0x…), or
 // farcaster.xyz / warpcast.com /<name>/0x<first digits>, found among that account's casts, newest first.
-// ponytail: at most 30 pages of 1000 casts are searched; an older cast of a very busy account needs its full hash
+// ponytail: at most 10 pages of 1000 casts are searched; an older cast of a very busy account needs its full hash.
+// Lookups are kept (a miss for 10 minutes, a node failure not at all) and page the node two at a time.
 const resolved = new Map()
+const finds = gate(2, 20)
 async function castFromLink(text) {
   const s = String(text || '').trim().slice(0, 500)
   const full = s.match(/(?:^|[^0-9a-f])(?:0x)?([0-9a-f]{40})(?![0-9a-f])/i)?.[1]?.toLowerCase()
@@ -909,17 +912,22 @@ async function castFromLink(text) {
   if (!m) return null
   const k = `${m[1]}/${m[2]}`.toLowerCase()
   if (resolved.has(k)) return resolved.get(k)
-  const u = await findUser(decodeURIComponent(m[1]))
-  if (!u) return null
-  const prefix = '0x' + m[2].toLowerCase()
-  let token = ''
-  for (let i = 0; i < 30; i++) {
-    const r = await nodeJson(`/v1/castsByFid?fid=${u.fid}&pageSize=1000&reverse=true${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`)
-    const hit = r?.messages?.find((x) => x.hash?.toLowerCase().startsWith(prefix))
-    if (hit) return keep(resolved, 1000, k, hit.hash.slice(2).toLowerCase())
-    if (!(token = r?.nextPageToken)) break
-  }
-  return null
+  const p = finds(async () => {
+    const u = await findUser(decodeURIComponent(m[1]))
+    if (!u) return null
+    const prefix = '0x' + m[2].toLowerCase()
+    let token = ''
+    for (let i = 0; i < 10; i++) {
+      const r = await nodeJson(`/v1/castsByFid?fid=${u.fid}&pageSize=1000&reverse=true${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`)
+      const hit = r?.messages?.find((x) => x.hash?.toLowerCase().startsWith(prefix))
+      if (hit) return hit.hash.slice(2).toLowerCase()
+      if (!(token = r?.nextPageToken)) break
+    }
+    return null
+  })
+  keep(resolved, 1000, k, p)
+  p.then((h) => h || setTimeout(() => resolved.get(k) === p && resolved.delete(k), 600e3).unref(), () => {})
+  return p
 }
 // A pasted profile link or name → its FID: quilcast.com/u/<name>, farcaster.xyz/<name>, warpcast.com/<name>, @name,
 // a bare name or FID
@@ -1194,7 +1202,8 @@ const server = createServer(async (req, res) => {
   } catch {
     return res.writeHead(400).end()
   }
-  const ip = clientIp(req)
+  // rate limits count IPv6 by its /64, which one connection can rotate through
+  const ip = ipGroup(clientIp(req))
   try {
     if (path === '/health') return res.end('ok')
 
@@ -1372,8 +1381,9 @@ const server = createServer(async (req, res) => {
       const fid = Number(look[1])
       if (req.method === 'GET') return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await getLook(fid))
       if (req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
-      if (limited(`lookput:${ip}`, 30, 600e3) || limited(`lookput:${fid}`, 30, 600e3)) return json(429, { error: 'Too many saves, try again in a few minutes.' })
-      const r = await putLook(req, fid, NODE).catch((e) => e)
+      if (limited(`lookput:${ip}`, 30, 600e3)) return json(429, { error: 'Too many saves, try again in a few minutes.' })
+      // the per-account limit counts signed saves only, like pins'
+      const r = await putLook(req, fid, NODE, () => limited(`lookfid:${fid}`, 30, 600e3)).catch((e) => e)
       const err = r instanceof Error
       if (err && !r.status) console.error('look', r)
       return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
@@ -1546,7 +1556,7 @@ const server = createServer(async (req, res) => {
       const imp = skin[1] === 'import'
       if (imp !== (req.method === 'POST')) return json(405, { error: 'GET /api/quorum/skins or /api/quorum/skin/<id>, POST /api/quorum/import' })
       if (imp ? limited(`skinput:${ip}`, 20, 600e3) : limited(`skins:${ip}`, 120)) return json(429, { error: 'Too many themes, try again in a few minutes.' })
-      const r = await (imp ? importSkin(req) : skin[2] ? quorumSkin(skin[2]) : gallery(url.searchParams)).catch((e) => e)
+      const r = await (imp ? importSkin(req, ip) : skin[2] ? quorumSkin(skin[2]) : gallery(url.searchParams)).catch((e) => e)
       if (r instanceof Error && !r.status) console.error('quorum', r)
       return r instanceof Error ? json(r.status || 500, { error: r.status ? r.message : "Couldn't load that theme." }) : json(200, r, skin[2] ? 'public, max-age=86400' : 'no-store')
     }
