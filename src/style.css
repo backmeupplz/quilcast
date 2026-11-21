@@ -578,8 +578,6 @@ small.warn { color: var(--warn); }
 .prefix span { position: absolute; inset-inline-start: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; font-weight: 400; pointer-events: none; }
 .join .prefix input { margin-top: 0; }
 .prefix input { padding-inline-start: 30px !important; }
-.check { display: flex; gap: 10px; align-items: center; font-weight: 500; }
-.check input { width: 18px; height: 18px; accent-color: var(--accent); }
 
 /* ---------- join ---------- */
 .join { padding: 8px 16px 24px; }
@@ -982,8 +980,6 @@ small.warn { color: var(--warn); }
 /* the look's colors arrive as variables on .look (vars()); boxes float on the background, MySpace style */
 .look.on { color: var(--ink); }
 .lk-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; background-repeat: repeat; background-position: center top; }
-.lk-bg.cover { background-size: cover; background-repeat: no-repeat; background-position: center; }
-.lk-bg.center { background-repeat: no-repeat; background-position: center; }
 .lk-bg::after { content: ''; position: absolute; inset: 0; background: rgb(0 0 0 / var(--lk-dim, 0)); }
 .look.on .lk-box {
   margin: 12px; background: var(--lk-box, color-mix(in srgb, var(--bg) var(--lk-box-a, 90%), transparent));
@@ -1048,14 +1044,14 @@ small.warn { color: var(--warn); }
 /* the look's effect (fx.ts) moves over the page background but behind the boxes, the header and menus, which are
    only as see-through as the owner makes them; a theme's effect (.th-fx) sits the same way, over the theme's picture */
 .lk-fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: var(--lk-fx-a, 1); }
-/* name effects; `--lk-name` is the owner's effect color */
-.lk-name.rainbow, .lk-name.glitter { -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 100%; animation: lk-slide 4s linear infinite; }
-.lk-name.rainbow { background-image: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #2bd44a, #00a2ff, #8a2be2, #ff004c); }
-.lk-name.glitter { background-image: linear-gradient(110deg, var(--lk-name, #ff3fa4) 30%, #fff 50%, var(--lk-name, #ff3fa4) 70%); animation-duration: 2.5s; }
+/* name effects; `--lk-name` is the owner's effect color. A theme's (data-th-name) shares some of them */
+.lk-name.rainbow, .lk-name.glitter, :root[data-th-name='rainbow'] .name:not(.lk-name), :root[data-th-name='glitter'] .name:not(.lk-name) { -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 100%; animation: lk-slide 4s linear infinite; }
+.lk-name.rainbow, :root[data-th-name='rainbow'] .name:not(.lk-name) { background-image: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #2bd44a, #00a2ff, #8a2be2, #ff004c); }
+.lk-name.glitter, :root[data-th-name='glitter'] .name:not(.lk-name) { background-image: linear-gradient(110deg, var(--lk-name, #ff3fa4) 30%, #fff 50%, var(--lk-name, #ff3fa4) 70%); animation-duration: 2.5s; }
 .lk-name.glitter::before, .lk-name.glitter::after { content: '✦'; color: #ffc928; -webkit-text-fill-color: #ffc928; margin: 0 0.25em; font-size: 0.8em; }
 .lk-name.glitter::after { content: '✧'; }
 .lk-name.glow { text-shadow: 0 0 4px var(--lk-name, var(--accent)), 0 0 10px var(--lk-name, var(--accent)), 0 0 18px var(--lk-name, var(--accent)); }
-.lk-name.shadow { color: var(--lk-name, var(--accent)); text-shadow: 2px 2px 0 var(--ink); }
+.lk-name.shadow, :root[data-th-name='shadow'] .name:not(.lk-name) { color: var(--lk-name, var(--accent)); text-shadow: 2px 2px 0 var(--ink); }
 .lk-name.outline { color: transparent; -webkit-text-stroke: 1.2px var(--lk-name, var(--accent)); }
 @keyframes lk-slide { to { background-position: 200% 0; } }
 @media (prefers-reduced-motion: reduce) { .lk-name { animation: none !important; } }
@@ -1517,8 +1513,8 @@ body:has(.space-bar) .dock { bottom: calc(84px + env(safe-area-inset-bottom)); }
 /* the background sits under everything, and the effect over it; over a picture the column, sidebars and header turn
    into glass, over an effect alone they're as solid as the theme's content opacity (--th-sheer) */
 .th-bg { position: fixed; inset: 0; z-index: -2; pointer-events: none; background: var(--bg) var(--th-img) center top / auto repeat; }
-.th-bg.cover { background-size: cover; background-repeat: no-repeat; background-position: center; }
-.th-bg.center { background-repeat: no-repeat; background-position: center; }
+.lk-bg.cover, .th-bg.cover { background-size: cover; background-repeat: no-repeat; background-position: center; }
+.lk-bg.center, .th-bg.center { background-repeat: no-repeat; background-position: center; }
 .th-bg::after { content: ''; position: absolute; inset: 0; background: var(--th-scrim, transparent); }
 :root[data-th-img]:not([data-look]) .col { background: color-mix(in srgb, var(--bg) var(--th-sheer, 88%), transparent); }
 :root[data-th-img]:not([data-look]) .side, :root[data-th-img]:not([data-look]) .extra { background: color-mix(in srgb, var(--bg) calc(var(--th-sheer, 88%) * 0.6), transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
@@ -1536,12 +1532,8 @@ body:has(.space-bar) .dock { bottom: calc(84px + env(safe-area-inset-bottom)); }
 /* a theme's stickers sit on the screen, over the app, and never take a click (except while editing) */
 .th-stk { position: fixed; z-index: 4; }
 .th-stk:not(.edit) { pointer-events: none; }
-/* everyone's names in the theme's name effect; a profile's own effect (.lk-name) wins on its page */
-:root[data-th-name='rainbow'] .name:not(.lk-name), :root[data-th-name='glitter'] .name:not(.lk-name) { -webkit-background-clip: text; background-clip: text; color: transparent; background-size: 200% 100%; animation: lk-slide 4s linear infinite; }
-:root[data-th-name='rainbow'] .name:not(.lk-name) { background-image: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #2bd44a, #00a2ff, #8a2be2, #ff004c); }
-:root[data-th-name='glitter'] .name:not(.lk-name) { background-image: linear-gradient(110deg, var(--lk-name, #ff3fa4) 30%, #fff 50%, var(--lk-name, #ff3fa4) 70%); animation-duration: 2.5s; }
+/* everyone's names in the theme's name effect (rainbow, glitter and shadow: with .lk-name's); a profile's own wins */
 :root[data-th-name='glow'] .name:not(.lk-name) { text-shadow: 0 0 4px var(--lk-name, var(--accent)), 0 0 10px var(--lk-name, var(--accent)); }
-:root[data-th-name='shadow'] .name:not(.lk-name) { color: var(--lk-name, var(--accent)); text-shadow: 2px 2px 0 var(--ink); }
 :root[data-th-name='outline'] .name:not(.lk-name) { color: transparent; -webkit-text-stroke: 1px var(--lk-name, var(--accent)); }
 @media (prefers-reduced-motion: reduce) { :root[data-th-name] .name { animation: none !important; } }
 :root[data-look] .th-fx { display: none; }

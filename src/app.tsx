@@ -7,7 +7,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, imagesIn, n, newOnTop, unmarkdown, peekOf, quotedOf, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, dropAppAction, syncAppActions, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, dropAppAction, syncAppActions, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn, Seg, useOn, useRerenderOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
@@ -563,10 +563,7 @@ function useReload(): [number, () => void] {
   const [, redraw] = useState(0)
   const round = stateOf<number>('round') || 0
   const reload = () => (forget(), scrollTo(0, 0), keepState('round', (stateOf<number>('round') || 0) + 1), redraw((n) => n + 1))
-  useEffect(() => {
-    addEventListener('refresh', reload)
-    return () => removeEventListener('refresh', reload)
-  }, [])
+  useOn('refresh', reload)
   return [round, reload]
 }
 
@@ -592,11 +589,7 @@ addEventListener('follows-unsaved', () => toast(t("Couldn't save that on this de
 addEventListener('follows-full', () => toast(t('You follow {max} accounts on this device, as many as it holds. Unfollow someone to follow someone new.', { max: IMPORT_MAX })))
 function useLocalFollows() {
   const [list, setList] = useState(localFollows)
-  useEffect(() => {
-    const f = () => setList(localFollows())
-    addEventListener('follows', f)
-    return () => removeEventListener('follows', f)
-  }, [])
+  useOn('follows', () => setList(localFollows()))
   return list
 }
 // `status` hears how many accounts have answered while the first page waits for them all (null once it's in), and
@@ -635,11 +628,7 @@ const RECENT_KEY = 'quilcast:browsed'
 /** Home's `?as=`, kept current as the page changes. */
 function useAs() {
   const [as, setAs] = useState(() => asOf(location.search))
-  useEffect(() => {
-    const f = () => setAs(asOf(location.search))
-    addEventListener('popstate', f)
-    return () => removeEventListener('popstate', f)
-  }, [])
+  useOn('popstate', () => setAs(asOf(location.search)))
   return as
 }
 const Recents = ({ skip }: { skip?: number }) => {
@@ -825,6 +814,16 @@ type AppNote = { id: string; app: string; name: string; icon?: string; notificat
 const appNotes = (): Promise<AppNote[]> =>
   account?.inbox ? fetch('/api/notify/inbox', { headers: { 'x-inbox': account.inbox } }).then((r) => (r.ok ? r.json() : { items: [] })).then((j) => j.items, () => []) : Promise.resolve([])
 const openNote = (n: AppNote) => requireAccount() && import('./miniapp.tsx').then((m) => m.launch({ url: n.targetUrl, name: n.name, icon: n.icon }, { notification: { notificationId: n.notificationId, title: n.title, body: n.body } }))
+// a tapped push notification lands on `path` with ?n=<id>, and that notification opens
+const openNoteParam = (path: string) => {
+  const n = new URLSearchParams(location.search).get('n')
+  if (!n) return
+  history.replaceState(null, '', path)
+  appNotes().then((all) => {
+    const hit = all.find((x) => x.id === n)
+    hit && openNote(hit)
+  })
+}
 
 function AppNotes() {
   const [list, setList] = useState<AppNote[] | null>(null)
@@ -851,15 +850,7 @@ function Notifications() {
   // a tapped mini app push lands here as ?tab=apps&n=<id> (server/notify.mjs), and that notification opens
   const [tab, setTab] = useState<'all' | 'replies' | 'apps'>(() => (new URLSearchParams(location.search).get('tab') === 'apps' && account?.inbox ? 'apps' : 'all'))
   const [round, reload] = useReload()
-  useEffect(() => {
-    const n = new URLSearchParams(location.search).get('n')
-    if (!n) return
-    history.replaceState(null, '', '/notifications')
-    appNotes().then((all) => {
-      const hit = all.find((x) => x.id === n)
-      hit && openNote(hit)
-    })
-  }, [])
+  useEffect(() => openNoteParam('/notifications'), [])
   useEffect(() => {
     // opening or refreshing the page marks everything up to now as seen
     localStorage.setItem(seenKey(), String(Date.now()))
@@ -1172,16 +1163,9 @@ function Profile({ id }: { id: string }) {
     })
     return () => void (live = false)
   }, [id, tries])
-  useEffect(() => {
-    const t = setTimeout(() => setTerm(q.trim()), 300)
-    return () => clearTimeout(t)
-  }, [q])
+  useTerm(q, setTerm)
   // Back and Forward between this profile's addresses, or its own link tapped mid-search, take the search they have
-  useEffect(() => {
-    const f = () => onProfile() && fromQ()
-    addEventListener('popstate', f)
-    return () => removeEventListener('popstate', f)
-  }, [])
+  useOn('popstate', () => onProfile() && fromQ())
   // the search goes in the address (other parameters stay), so it's a link and Back from a found cast comes back to it
   useEffect(() => {
     if (!onProfile()) return
@@ -1257,6 +1241,13 @@ function Profile({ id }: { id: string }) {
   const searchButton = u && (
     <button ref={searchBtn} class="btn ghost small icon" aria-label={t('Search @{name}\'s casts', { name: handle(u) })} title={t('Search @{name}\'s casts', { name: handle(u) })} aria-pressed={searching} onClick={() => (searching ? stopSearch() : ((focusBox.current = true), setSearching(true)))}><Icon d={P.search} /></button>
   )
+  // the ⋯ button and its menu, the same on everyone's profile
+  const moreMenu = (items: ComponentChildren) => (
+    <span class="wrap-menu">
+      <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
+      {menu && <Menu class="right" close={() => setMenu(false)}>{items}</Menu>}
+    </span>
+  )
   const wrapHead = (el: ComponentChildren) => (shown ? <L.At l={shown} at="head" edit={draft ? editLook : undefined}>{el}</L.At> : el)
   return (
     <>
@@ -1282,12 +1273,7 @@ function Profile({ id }: { id: string }) {
                     {searchButton}
                     <button class="btn ghost small" onClick={() => edit()} disabled={!!draft}>{t('Customize')}</button>
                     <a class="btn ghost small" href="/settings">{t('Edit profile')}</a>
-                    {rssItem && (
-                      <span class="wrap-menu">
-                        <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
-                        {menu && <Menu class="right" close={() => setMenu(false)}>{rssItem}</Menu>}
-                      </span>
-                    )}
+                    {rssItem && moreMenu(rssItem)}
                   </span>
                 ) : (
                   <span class="btns">
@@ -1296,16 +1282,11 @@ function Profile({ id }: { id: string }) {
                     {searchButton}
                     {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
                     <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done} aria-pressed={!!following} title={account?.done ? undefined : t('On this device only')}>{following ? t('Following') : t('Follow')}</button>
-                    <span class="wrap-menu">
-                      <button class="btn ghost small icon" aria-label={t('More')} aria-haspopup="menu" onClick={() => setMenu(!menu)}><Icon d={P.more} /></button>
-                      {menu && (
-                        <Menu class="right" close={() => setMenu(false)}>
-                          <button role="menuitem" onClick={() => (setMenu(false), go(browsePath(u)))}>{t('Browse as @{name}', { name: handle(u) })}</button>
-                          {rssItem}
-                          <SilenceItems u={u} done={() => setMenu(false)} />
-                        </Menu>
-                      )}
-                    </span>
+                    {moreMenu(<>
+                      <button role="menuitem" onClick={() => (setMenu(false), go(browsePath(u)))}>{t('Browse as @{name}', { name: handle(u) })}</button>
+                      {rssItem}
+                      <SilenceItems u={u} done={() => setMenu(false)} />
+                    </>)}
                   </span>
                 )}
               </div>
@@ -1391,6 +1372,12 @@ const cardButton = (fid: number) => (
     onClick={(e) => (sparkle(e.currentTarget), launchApp({ url: `https://collect.quilcast.com/p/${fid}`, name: 'Quilcast Collect', icon: 'https://collect.quilcast.com/icon.png', splash: 'https://collect.quilcast.com/splash.png', bg: '#0d0c11' }))}><Icon d={P.collect} /></button>
 )
 
+/** Sets the term to what's typed in `q` once typing stops for a moment. */
+const useTerm = (q: string, setTerm: (t: string) => void) => useEffect(() => {
+  const t = setTimeout(() => setTerm(q.trim()), 300)
+  return () => clearTimeout(t)
+}, [q])
+
 function Search() {
   const params = new URLSearchParams(location.search)
   const [q, setQ] = useState(params.get('q') || '')
@@ -1404,23 +1391,16 @@ function Search() {
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => input.current?.focus(), [])
   // a #hashtag tapped in a cast here, or Back to an earlier search, is still this page: it takes the search from the URL
-  useEffect(() => {
-    const f = () => {
-      if (location.pathname !== '/search') return
-      const p = new URLSearchParams(location.search)
-      const q = p.get('q') || '', tb = p.get('t')
-      setQ(q)
-      setTerm(q.trim())
-      setTab(tb === 'casts' ? 'casts' : tb === 'channels' ? 'channels' : 'people')
-      setPicked(p.get('s'))
-    }
-    addEventListener('popstate', f)
-    return () => removeEventListener('popstate', f)
-  }, [])
-  useEffect(() => {
-    const t = setTimeout(() => setTerm(q.trim()), 300)
-    return () => clearTimeout(t)
-  }, [q])
+  useOn('popstate', () => {
+    if (location.pathname !== '/search') return
+    const p = new URLSearchParams(location.search)
+    const q = p.get('q') || '', tb = p.get('t')
+    setQ(q)
+    setTerm(q.trim())
+    setTab(tb === 'casts' ? 'casts' : tb === 'channels' ? 'channels' : 'people')
+    setPicked(p.get('s'))
+  })
+  useTerm(q, setTerm)
   useEffect(() => {
     history.replaceState(null, '', term || tab === 'channels' ? `/search?${new URLSearchParams({ ...(term && { q: term }), ...(tab !== 'people' && { t: tab }), ...(tab === 'casts' && sortParam(picked, term) && { s: sortParam(picked, term) }) })}` : '/search')
   }, [term, tab, picked])
@@ -1479,10 +1459,7 @@ function ChannelList({ q }: { q: string }) {
 function Channels() {
   const [q, setQ] = useState('')
   const [term, setTerm] = useState('')
-  useEffect(() => {
-    const t = setTimeout(() => setTerm(q.trim()), 300)
-    return () => clearTimeout(t)
-  }, [q])
+  useTerm(q, setTerm)
   return (
     <>
       <Header title={t('Channels')}>
@@ -1555,12 +1532,9 @@ function Discover() {
   useDock()
   const box = useRef<HTMLInputElement>(null)
   useEffect(() => void loadListed().then(setList), [])
-  useEffect(() => {
-    const find = () => list && shell.findApp && ((shell.findApp = false), box.current?.focus())
-    find()
-    addEventListener('findapp', find)
-    return () => removeEventListener('findapp', find)
-  }, [list])
+  const find = () => list && shell.findApp && ((shell.findApp = false), box.current?.focus())
+  useEffect(() => void find(), [list])
+  useOn('findapp', find, [list])
   if (!list) return <div class="spinner" />
   if (!list.length) return <p class="hint">{t('The directory couldn\'t be loaded. Try again in a bit.')}</p>
   const cats = [...new Set(list.flatMap((a) => a.category ?? []))]
@@ -1595,14 +1569,7 @@ function Discover() {
 const appGrid = (rows: ComponentChildren[]) => (settings.quorum ? <div class="q-app-grid">{rows}</div> : rows)
 
 /** Re-render when pins change or mini apps open and close. */
-function useDock() {
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('dock', f)
-    return () => removeEventListener('dock', f)
-  }, [])
-}
+const useDock = () => useRerenderOn('dock')
 
 function PinButton({ m }: { m: AppMeta }) {
   const on = isPinned(m.url)
@@ -1620,16 +1587,7 @@ function Apps() {
   useDock()
   const m = () => import('./miniapp.tsx')
   useEffect(() => void appPushOn().then(setPush, () => {}), [])
-  useEffect(() => {
-    // a tapped push notification lands here as ?n=<id>
-    const n = new URLSearchParams(location.search).get('n')
-    if (!n) return
-    history.replaceState(null, '', '/apps')
-    appNotes().then((all) => {
-      const hit = all.find((x) => x.id === n)
-      hit && openNote(hit)
-    })
-  }, [])
+  useEffect(() => openNoteParam('/apps'), [])
   const origin = (a: AppMeta) => new URL(a.url).origin
   const on = (a: AppMeta) => !!account?.notify?.includes(origin(a))
   const run = async (key: string, f: () => Promise<unknown>) => {
@@ -2026,12 +1984,7 @@ type Left = { fid: number; server: Awaited<ReturnType<typeof import('./write.ts'
 const deletion: { fid?: number; busy: boolean; failed: boolean; note: string; gone: string[] | null; left?: Left | null; keys?: boolean } = { busy: false, failed: false, note: '', gone: deletedSummary() }
 const setDeletion = (o: Partial<typeof deletion>) => (Object.assign(deletion, o), dispatchEvent(new Event('deletion')))
 function useDeletion() {
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('deletion', f)
-    return () => removeEventListener('deletion', f)
-  }, [])
+  useRerenderOn('deletion')
   return deletion
 }
 
@@ -2184,8 +2137,17 @@ function CrosspostSettings() {
   )
 }
 
+/** A Settings section: its title and control on one row, `more` under them, then the hint. */
+const Setting = ({ title, hint, more, children }: { title: string; hint?: ComponentChildren; more?: ComponentChildren; children: ComponentChildren }) => (
+  <section><div class="setting"><h2>{title}</h2>{children}</div>{more}{hint && <p class="hint">{hint}</p>}</section>
+)
+
 function Settings() {
   const [, force] = useState(0)
+  // a setting is saved, then what it changes is told, in that order
+  const put = <K extends keyof typeof settings>(k: K, v: (typeof settings)[K], ...then: (() => void)[]) => ((settings[k] = v), saveSettings(), then.forEach((f) => f()), force((x) => x + 1))
+  const onOff: [boolean, string][] = [[true, t('On')], [false, t('Off')]]
+  const showHide: ['show' | 'hide', string][] = [['show', t('Show')], ['hide', t('Hide')]]
   const local = useLocalFollows()
   const [prof, setProf] = useState<Record<number, string>>({})
   const [orig, setOrig] = useState<Record<number, string>>({})
@@ -2206,11 +2168,7 @@ function Settings() {
   const photo = useRef<HTMLInputElement>(null)
   // theme sync (prefs.ts): turning it on signs with the account's key, and another device's settings may come in
   const [syncing, setSyncing] = useState(false)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('prefs', f)
-    return () => removeEventListener('prefs', f)
-  }, [])
+  useRerenderOn('prefs')
   const syncOn = () => {
     setSyncing(true)
     import('./prefs.ts').then((m) => m.turnOn()).then((r) => {
@@ -2395,107 +2353,53 @@ function Settings() {
           <h2>{t('Theme')}</h2>
           <ThemeSettings />
         </section>
-        <section>
-          <div class="setting">
-            <h2>{t('Light or dark')}</h2>
-            <div class="seg">
-              {[['system', t('System')], ['light', t('Light')], ['dark', t('Dark')]].map(([k, label]) => <button class={settings.theme === k ? 'on' : ''} onClick={() => ((settings.theme = k), saveSettings(), applyTheme(), themeChanged(), force((x) => x + 1))}>{label}</button>)}
-            </div>
-          </div>
-          {theme?.base && <p class="hint">{t('Your theme picks its own; this counts when you wear none.')}</p>}
-        </section>
-        <section>
-          <div class="setting">
-            <h2>{t('Holiday themes')}</h2>
-            <div class="seg">
-              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={(settings.holidays !== false) === v ? 'on' : ''} onClick={() => ((settings.holidays = v as boolean), saveSettings(), wear(dressed()), themeChanged(), force((x) => x + 1))}>{label}</button>)}
-            </div>
-          </div>
-          <p class="hint">{t('Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.')}</p>
-        </section>
+        <Setting title={t('Light or dark')} hint={theme?.base && t('Your theme picks its own; this counts when you wear none.')}>
+          <Seg opts={[['system', t('System')], ['light', t('Light')], ['dark', t('Dark')]]} on={settings.theme} set={(v) => put('theme', v, applyTheme, themeChanged)} />
+        </Setting>
+        <Setting title={t('Holiday themes')} hint={t('Quilcast dresses up for Halloween and Christmas, unless you wear a theme of your own.')}>
+          <Seg opts={onOff} on={settings.holidays !== false} set={(v) => put('holidays', v, () => wear(dressed()), themeChanged)} />
+        </Setting>
         {account?.done && (
-          <section>
-            <div class="setting">
-              <h2>{t('Sync themes')}</h2>
-              <div class="seg">
-                {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.syncThemes === v ? 'on' : ''} disabled={syncing} onClick={() => (v ? syncOn() : ((settings.syncThemes = false), saveSettings(), force((x) => x + 1)))}>{label}</button>)}
-              </div>
-            </div>
-            <p class="hint">{t('Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.')}</p>
-          </section>
+          <Setting title={t('Sync themes')} hint={t('Your theme, the themes you kept, light or dark, holiday themes and Quorum mode, the same on every device where this account syncs them. Your Farcaster key signs them, and Quilcast keeps them with your account.')}>
+            <Seg opts={onOff} on={!!settings.syncThemes} disabled={syncing} set={(v) => (v ? syncOn() : put('syncThemes', false))} />
+          </Setting>
         )}
-        <section>
-          <div class="setting">
-            <h2>{t('Japanese mode')}</h2>
-            <div class="seg">
-              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.jp === v ? 'on' : ''} onClick={() => ((settings.jp = v as boolean), saveSettings(), applyTheme(), force((x) => x + 1))}>{label}</button>)}
-            </div>
-          </div>
-          <p class="hint">{t('Dense pages, glossy buttons, a news ticker and rankings, the way Japanese websites look.')}</p>
-        </section>
-        <section>
-          <div class="setting">
-            <h2>{t('Quorum mode')}</h2>
-            <div class="seg">
-              {[[true, t('On')], [false, t('Off')]].map(([v, label]) => <button class={!!settings.quorum === v ? 'on' : ''} onClick={() => ((settings.quorum = v as boolean), saveSettings(), applyTheme(), dispatchEvent(new Event('quorum')), themeChanged(), force((x) => x + 1))}>{label}</button>)}
-            </div>
-          </div>
-          <p class="hint">{t("Quilcast laid out like Quilibrium's Quorum app: its sidebar, apps on the right, and the wallet docked beside an open mini app.")}</p>
-        </section>
-        <section>
-          <div class="setting">
-            <h2>{t('Language')}</h2>
-            {/* every string is picked when the page loads, so a switch reloads it */}
-            {/* (the language it's leaving stays on Don't translate from, as a pick that can go now) */}
-            <select class="pick" value={lang} onChange={(e) => ((settings.noTranslate = keepOld(lang, settings.noTranslate)), (settings.lang = e.currentTarget.value), saveSettings(), location.reload())}>
-              {Object.entries(LANGS).map(([k, name]) => <option value={k}>{name}</option>)}
-            </select>
-          </div>
-        </section>
+        <Setting title={t('Japanese mode')} hint={t('Dense pages, glossy buttons, a news ticker and rankings, the way Japanese websites look.')}>
+          <Seg opts={onOff} on={!!settings.jp} set={(v) => put('jp', v, applyTheme)} />
+        </Setting>
+        <Setting title={t('Quorum mode')} hint={t("Quilcast laid out like Quilibrium's Quorum app: its sidebar, apps on the right, and the wallet docked beside an open mini app.")}>
+          <Seg opts={onOff} on={!!settings.quorum} set={(v) => put('quorum', v, applyTheme, () => dispatchEvent(new Event('quorum')), themeChanged)} />
+        </Setting>
+        <Setting title={t('Language')}>
+          {/* every string is picked when the page loads, so a switch reloads it */}
+          {/* (the language it's leaving stays on Don't translate from, as a pick that can go now) */}
+          <select class="pick" value={lang} onChange={(e) => ((settings.noTranslate = keepOld(lang, settings.noTranslate)), (settings.lang = e.currentTarget.value), saveSettings(), location.reload())}>
+            {Object.entries(LANGS).map(([k, name]) => <option value={k}>{name}</option>)}
+          </select>
+        </Setting>
         <section>
           <h2>{t("Don't translate from")}</h2>
           {/* the app's own language is always on and can't be turned off */}
           <div class="chips wrap" role="group" aria-label={t("Don't translate from")}>
             {DETECTED.map((l) => [l, langName(l)] as const).sort((a, b) => a[1].localeCompare(b[1], lang)).map(([l, name]) => {
               const app = l === base(lang), on = noTranslate(lang, settings.noTranslate).has(l)
-              return <button key={l} class={`chip${on ? ' on' : ''}`} aria-pressed={on} disabled={app} title={app ? t('Quilcast is in this language') : undefined} onClick={() => ((settings.noTranslate = togglePick(lang, settings.noTranslate, l)), saveSettings(), force((x) => x + 1))}>{name}</button>
+              return <button key={l} class={`chip${on ? ' on' : ''}`} aria-pressed={on} disabled={app} title={app ? t('Quilcast is in this language') : undefined} onClick={() => put('noTranslate', togglePick(lang, settings.noTranslate, l))}>{name}</button>
             })}
           </div>
           <p class="hint">{t("Casts in these languages show no Translate button and are never translated for you. The language Quilcast is in is always one of them.")}</p>
         </section>
-        <section>
-          <div class="setting">
-            <h2>{t('Profile looks')}</h2>
-            <div class="seg">
-              {[[true, t('Show')], [false, t('Hide')]].map(([v, label]) => <button class={(settings.looks !== false) === v ? 'on' : ''} onClick={() => ((settings.looks = v as boolean), saveSettings(), force((x) => x + 1))}>{label}</button>)}
-            </div>
-          </div>
-          <p class="hint">{t('Backgrounds, colors, songs and GIFs people add to their profile pages.')}{account?.done && myUser() && <> <a href={`${userPath(myUser()!)}?customize`}>{t('Customize yours')}</a></>}</p>
-        </section>
-        <section>
-          <div class="setting">
-            <h2>{t('Spam')}</h2>
-            <div class="seg">
-              {(['show', 'hide'] as const).map((v) => <button class={(settings.spam || 'show') === v ? 'on' : ''} onClick={() => ((settings.spam = v), saveSettings(), spamChanged(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
-            </div>
-          </div>
-          <div class="lk-row"><span>{t('Spam accounts')}</span>
-            <div class="seg">
-              {(['show', 'hide'] as const).map((v) => <button class={(settings.spamAccounts || 'show') === v ? 'on' : ''} onClick={() => ((settings.spamAccounts = v), saveSettings(), spamChanged(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
-            </div>
-          </div>
-          <label class="lk-row"><span>{t('Spam threshold')}</span><span class="lk-ctl"><input type="range" min={50} max={99} value={spamAt()} onInput={(e) => ((settings.spamAt = Number(e.currentTarget.value)), saveSettings(), spamChanged(), force((x) => x + 1))} /><output>{spamAt()}%</output></span></label>
-          <p class="hint">{t('Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.')} {t('Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.')}</p>
-        </section>
-        <section>
-          <div class="setting">
-            <h2>{t('Train casts')}</h2>
-            <div class="seg">
-              {(['show', 'hide'] as const).map((v) => <button class={(settings.trains || 'show') === v ? 'on' : ''} onClick={() => ((settings.trains = v), saveSettings(), spamChanged(), force((x) => x + 1))}>{v === 'show' ? t('Show') : t('Hide')}</button>)}
-            </div>
-          </div>
-          <p class="hint">{t('Anyone can join a train with one tap, so one train can fill your feed with the same cast. Hiding trains takes them out of feeds, replies and notifications; your own still show, and so does one you open.')}</p>
-        </section>
+        <Setting title={t('Profile looks')} hint={<>{t('Backgrounds, colors, songs and GIFs people add to their profile pages.')}{account?.done && myUser() && <> <a href={`${userPath(myUser()!)}?customize`}>{t('Customize yours')}</a></>}</>}>
+          <Seg opts={[[true, t('Show')], [false, t('Hide')]]} on={settings.looks !== false} set={(v) => put('looks', v)} />
+        </Setting>
+        <Setting title={t('Spam')} hint={<>{t('Casts at least this likely to be spam get a label with the odds, or are hidden. Our own Laya model reads every new cast.')} {t('Accounts are judged from their profile and recent casts; hiding a spam account takes its casts and replies out everywhere.')}</>} more={<>
+          <div class="lk-row"><span>{t('Spam accounts')}</span><Seg opts={showHide} on={settings.spamAccounts || 'show'} set={(v) => put('spamAccounts', v, spamChanged)} /></div>
+          <label class="lk-row"><span>{t('Spam threshold')}</span><span class="lk-ctl"><input type="range" min={50} max={99} value={spamAt()} onInput={(e) => put('spamAt', Number(e.currentTarget.value), spamChanged)} /><output>{spamAt()}%</output></span></label>
+        </>}>
+          <Seg opts={showHide} on={settings.spam || 'show'} set={(v) => put('spam', v, spamChanged)} />
+        </Setting>
+        <Setting title={t('Train casts')} hint={t('Anyone can join a train with one tap, so one train can fill your feed with the same cast. Hiding trains takes them out of feeds, replies and notifications; your own still show, and so does one you open.')}>
+          <Seg opts={showHide} on={settings.trains || 'show'} set={(v) => put('trains', v, spamChanged)} />
+        </Setting>
         {account?.done && (
           <section id="crosspost">
             <h2>{t('X crossposting')}</h2>
@@ -2731,15 +2635,8 @@ function App() {
   // the theme editor sits over the whole app, so every page can be seen in the draft
   const [editing, setEditing] = useState<{ start: Theme | null } | null>(null)
   shell.editTheme = (th) => setEditing({ start: th === undefined ? theme : th })
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('account', f)
-    addEventListener('mutes', f)
-    addEventListener('quorum', f)
-    // the old-style channel URLs (channels.ts legacy) arrived, so casts can say their channel
-    addEventListener('channels', f)
-    return () => (removeEventListener('account', f), removeEventListener('mutes', f), removeEventListener('quorum', f), removeEventListener('channels', f))
-  }, [])
+  // ('channels': the old-style channel URLs arrived, channels.ts legacy, so casts can say their channel)
+  useRerenderOn('account', 'mutes', 'quorum', 'channels')
   // a tapped push notification (public/sw.js) opens its page here, in this window, as the account it was for
   useEffect(() => {
     const f = (e: MessageEvent) => {
@@ -2755,16 +2652,13 @@ function App() {
     return () => navigator.serviceWorker?.removeEventListener('message', f)
   }, [])
   // a failed scheduled cast's push (server/scheduled.mjs) opens /?scheduled: the composer with the account's list
-  useEffect(() => {
-    const f = () => {
-      if (!account?.done || !new URLSearchParams(location.search).has('scheduled')) return
-      history.replaceState(null, '', location.pathname)
-      setCompose({ scheduled: true })
-    }
-    f()
-    addEventListener('popstate', f)
-    return () => removeEventListener('popstate', f)
-  }, [account?.fid])
+  const scheduled = () => {
+    if (!account?.done || !new URLSearchParams(location.search).has('scheduled')) return
+    history.replaceState(null, '', location.pathname)
+    setCompose({ scheduled: true })
+  }
+  useEffect(scheduled, [account?.fid])
+  useOn('popstate', scheduled, [account?.fid])
   // a scheduled cast that failed since this browser last looked is told about once, also without push notifications
   useEffect(() => {
     if (!account?.done) return
