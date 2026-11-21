@@ -6,12 +6,11 @@ import { read, save, safeUrl, settings } from './api.ts'
 import { matches, newest, toActivity, type Activity } from './activity.ts'
 import { t } from './i18n.ts'
 import { proxied } from './shared.ts'
-import { ago, Header, Icon, Menu, P, shell, Tabs, toast } from './ui.tsx'
+import { ago, Header, Icon, Menu, P, shell, shortAddr as short, Tabs, toast } from './ui.tsx'
 import { balanceOf, erc20Meta, logoOf, pastedToken, tokensOn, type Rpc } from './tokens.ts'
 import { explorer, pending, SendSheet, SwapSheet } from './walletmove.tsx'
 import { activeWallet, addWallet, custodyAccounts, newPhrase, parseSecret, removeWallet, renameWallet, revealWallet, setActive, setCustodyWallet, walletList, type WalletEntry } from './vault.ts'
 
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
 /** Re-render when wallets are added, removed, renamed or switched. */
 function useWallets() {

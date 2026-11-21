@@ -2,7 +2,7 @@
 // /stickers (your packs, a new one, a Telegram import) and /stickers/<id> (a pack: add it, share it, change your own).
 // A sticker goes out as a picture at quilcast.com/st/<pack>/<hash>.webp; ui.tsx draws those as stickers.
 import { useEffect, useState } from 'preact/hooks'
-import { account, getUser, go, type User } from './api.ts'
+import { account, getJson, getUser, go, type User } from './api.ts'
 import { t, tn } from './i18n.ts'
 import { stickerUrl } from './shared.ts'
 import { handle, Header, Icon, P, shell, stop, toast, userPath } from './ui.tsx'
@@ -14,7 +14,6 @@ type Job = { id: string; pack: string; total: number; done: number; failed: numb
 
 const src = (p: string, h: string) => `/st/${p}/${h}.webp`
 const shareLink = (id: string) => `https://stickers.quilcast.com/${id}`
-const getJson = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null)
 
 // the account's packs, asked once (one request for every embed on a page) and kept in step with what's changed here
 let mine: Pack[] | null = null

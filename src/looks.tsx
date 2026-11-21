@@ -9,7 +9,7 @@ import { PRESETS as EFFECTS, start } from './fx.ts'
 import { ProfileAmp } from './amp.tsx'
 import { BASE, museum, skinShot, type MuseumSkin } from './skin.ts'
 import { ampItem, cleanDesign, cleanLook, cleanMarquee, DESIGN_KEYS, lookPage, marqueeStyle, type Marquee as MarqueeT, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, proxied, sized, type Look, type Sticker } from './shared.ts'
-import { Avatar, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
+import { Avatar, copyText, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 import { GifPicker } from './gifs.tsx'
 
 export const clean = cleanLook
@@ -289,13 +289,7 @@ export function Editor({ draft: d, set, close, saved }: { draft: Look; set: Set;
   }
   const castIt = () => designLink().then((url) => shell.compose({ embeds: [url] }), (e) => toast(e.message))
   // Safari only lets a click write the clipboard if the write starts right away, so the link goes in as a promise
-  const copy = () => {
-    const url = designLink()
-    const done = typeof ClipboardItem !== 'undefined'
-      ? navigator.clipboard.write([new ClipboardItem({ 'text/plain': url.then((u) => new Blob([u], { type: 'text/plain' })) })])
-      : url.then((u) => navigator.clipboard.writeText(u))
-    done.then(() => toast('Link copied'), () => url.then(() => toast("Couldn't copy the link."), (e) => toast(e.message)))
-  }
+  const copy = () => copyText(designLink(), 'Link copied', "Couldn't copy the link.")
 
   // controls are plain functions, not components, so typing or dragging doesn't remount them
   const row = (label: string, ctl: ComponentChildren) => <label class="lk-row"><span>{label}</span><span class="lk-ctl">{ctl}</span></label>

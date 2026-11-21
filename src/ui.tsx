@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, articleNow, articleOf, back, follow, get, go, LINK_RE, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
+import { account, ALERTS, articleNow, articleOf, back, follow, get, getJson, go, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
 import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, isTrain, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
@@ -45,6 +45,27 @@ export const shell = {
 }
 // errors thrown with English text (ours and the server's) are translated here too
 export const toast = (m: string) => shell.toast(t(m))
+/** Listens for window `events` while mounted; `deps` as for useEffect (the first render's `f` is kept until they change). */
+export function useOn(events: string | string[], f: () => void, deps: unknown[] = []) {
+  const l = [events].flat()
+  useEffect(() => (l.forEach((e) => addEventListener(e, f)), () => l.forEach((e) => removeEventListener(e, f))), deps)
+}
+/** Draws the component again on any of these window events. */
+export const useRerenderOn = (...events: string[]) => {
+  const [, force] = useState(0)
+  useOn(events, () => force((x) => x + 1))
+}
+/** Copies `text` (a promise, as Safari only lets a click write the clipboard at once) and toasts `done`, `fail` or its error. */
+export const copyText = (text: Promise<string>, done: string, fail?: string) => {
+  const write = typeof ClipboardItem !== 'undefined'
+    ? navigator.clipboard.write([new ClipboardItem({ 'text/plain': text.then((s) => new Blob([s], { type: 'text/plain' })) })])
+    : text.then((s) => navigator.clipboard.writeText(s))
+  write.then(() => toast(done), () => text.then(() => (fail ? toast(fail) : toast("Couldn't copy it.")), (e) => toast(e.message)))
+}
+/** A segmented control: one button per [value, label] (labels come translated), the one equal to `on` lit. */
+export const Seg = <V,>({ opts, on, set, disabled }: { opts: [V, string][]; on: V; set: (v: V) => void; disabled?: boolean }) => <div class="seg">{opts.map(([v, label]) => <button type="button" class={on === v ? 'on' : ''} disabled={disabled} onClick={() => set(v)}>{label}</button>)}</div>
+/** A wallet address as 0x1234…abcd. */
+export const shortAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 export const requireAccount = () => (account?.done ? true : (go('/join'), false))
 /** Ask the browser to show notifications. It has to run straight from a click: Firefox drops the prompt
  *  if anything (a lazy import) is awaited first. */
@@ -54,7 +75,7 @@ export const pushOn = async () => !!(await (await navigator.serviceWorker?.getRe
 export const APP_PUSH = 'quilcast:apppush'
 /** Whether mini apps' notifications are pushed here (Mini apps → Push notifications on this device). The subscription
  *  alone doesn't say: accounts' own notifications (src/alerts.ts) use it too. Before that flag, a subscription was this. */
-export const appPushOn = async () => (await pushOn()) && (read<boolean | null>(APP_PUSH, null) ?? !Object.keys(read<{ on?: object } | null>('quilcast:alerts', null)?.on || {}).length)
+export const appPushOn = async () => (await pushOn()) && (read<boolean | null>(APP_PUSH, null) ?? !Object.keys(read<{ on?: object } | null>(ALERTS, null)?.on || {}).length)
 /** This browser's push subscription for Quilcast, made on first use; mini apps' notifications and the account's own
  *  (src/alerts.ts) share it. The permission is asked first (see askPush). */
 export async function pushSubscription() {
@@ -549,12 +570,10 @@ addEventListener('popstate', (e) => {
 /** The image viewer, while one is open (shell.view). */
 export function Viewer() {
   const [v, setV] = useState(viewing)
-  useEffect(() => {
-    const f = () => setV(viewing)
-    f()
-    addEventListener('lightbox', f)
-    return () => removeEventListener('lightbox', f)
-  }, [])
+  const sync = () => setV(viewing)
+  // one may have opened between the render and the listener
+  useEffect(sync, [])
+  useOn('lightbox', sync)
   return v && <Lightbox {...v} close={closeViewer} />
 }
 
@@ -851,11 +870,7 @@ export const screenUnit = (w: number) => `calc(min(1vw, 6px) * ${w})`
 export function ThemeLayers({ stickers = true }: { stickers?: boolean }) {
   const [th, setTh] = useState(worn)
   const fx = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const f = () => setTh(worn)
-    addEventListener('theme', f)
-    return () => removeEventListener('theme', f)
-  }, [])
+  useOn('theme', () => setTh(worn))
   useEffect(() => {
     if (!th?.fx) return
     let stop: (() => void) | undefined
@@ -875,11 +890,12 @@ export function ThemeLayers({ stickers = true }: { stickers?: boolean }) {
   )
 }
 
-const shared = new Map<string, Promise<Theme | null>>()
-export const themeOf = (id: string) => {
-  if (!shared.has(id)) shared.set(id, fetch(`/api/theme/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => j && cleanTheme(j), () => null))
-  return shared.get(id)!
+/** A shared theme's or design's loader: each id is asked once, and one that's gone stays null (no TTL, unlike once()). */
+export const sharedOf = <T,>(kind: 'theme' | 'design', clean: (j: unknown) => T) => {
+  const m = new Map<string, Promise<T | null>>()
+  return (id: string) => m.get(id) || (m.set(id, getJson(`/api/${kind}/${id}`).then((j) => j && clean(j))), m.get(id)!)
 }
+export const themeOf = sharedOf('theme', cleanTheme)
 
 /** Wear a theme and keep it in the list; the one it replaced comes back with undo(). */
 export function useApply(th: Theme | null | undefined, meta: Omit<Saved, 'theme'> = {}) {
@@ -898,12 +914,7 @@ export const CARD = { '--rs': '1', '--bw': '1px', '--bs': 'solid', '--th-font': 
 export function ThemeCard({ id, by, big }: { id: string; by?: User; big?: boolean }) {
   const [th, setTh] = useState<Theme | null>()
   useEffect(() => void themeOf(id).then(setTh), [id])
-  const [, force] = useState(0)
-  useEffect(() => {
-    const f = () => force((x) => x + 1)
-    addEventListener('theme', f)
-    return () => removeEventListener('theme', f)
-  }, [])
+  useRerenderOn('theme')
   const a = useApply(th, { id })
   if (th === null) return <div class="quote muted">{t('This theme is unavailable.')}</div>
   if (!th) return <div class="quote skeleton" />
@@ -1046,11 +1057,7 @@ const ownPath = (u?: string) => {
   return x && (x.host === 'quilcast.com' || x.host === location.host) ? x.pathname : ''
 }
 
-const designs = new Map<string, Promise<Look | null>>()
-export const designOf = (id: string) => {
-  if (!designs.has(id)) designs.set(id, fetch(`/api/design/${id}`).then((r) => (r.ok ? r.json() : null)).then((j) => j && cleanDesign(j), () => null))
-  return designs.get(id)!
-}
+export const designOf = sharedOf('design', cleanDesign)
 
 /** A shared profile design (quilcast.com/design/<id>): one box in its colors, border, font and name effect, on its
  *  background, naming whoever shared it (`by`), with a button that opens it in the viewer's editor. */

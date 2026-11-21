@@ -301,6 +301,11 @@ export function marqueeStyle(l: Look, m: Marquee) {
   return { ink, bg, secs }
 }
 
+// a look's or a theme's sticker: [] when its picture, place or size is off (a look's also needs `at`, where it sits)
+const sticker = (x: any): ScreenSticker[] => {
+  const [px, py, w, r] = [num(x?.x, 0, 100), num(x?.y, 0, 100), num(x?.w, 4, 80), num(x?.r, -180, 180)]
+  return isLookImg(x?.src) && px !== undefined && py !== undefined && w !== undefined ? [{ src: x.src, x: px, y: py, w, ...(r ? { r } : {}) }] : []
+}
 /** The valid part of a look; anything unknown or out of range is dropped. */
 export function cleanLook(x: unknown): Look {
   if (!x || typeof x !== 'object' || Array.isArray(x)) return {}
@@ -326,11 +331,8 @@ export function cleanLook(x: unknown): Look {
     wall: Array.isArray(o.wall) ? [...new Set(o.wall.filter(isLookImg))].slice(0, LIMITS.wall) as string[] : undefined,
     wallTitle: text(o.wallTitle, LIMITS.title),
     song, amp: cleanAmp(o.amp), fx: pick(o.fx, FX), fxAlpha: int(o.fxAlpha, 0, 100),
-    stickers: Array.isArray(o.stickers) ? o.stickers.flatMap((x: any): Sticker[] => {
-      const [px, py, w, r] = [num(x?.x, 0, 100), num(x?.y, 0, 100), num(x?.w, 4, 80), num(x?.r, -180, 180)]
-      if (!isLookImg(x?.src) || !STICKER_AT.includes(x.at) || px === undefined || py === undefined || w === undefined) return []
-      return [{ src: x.src, at: x.at, x: px, y: py, w, ...(r ? { r } : {}) }]
-    }).slice(0, LIMITS.stickers) : undefined,
+    // `at` stays right after `src`, where it always was in the stored JSON
+    stickers: Array.isArray(o.stickers) ? o.stickers.flatMap((x: any): Sticker[] => (STICKER_AT.includes(x?.at) ? sticker(x).map(({ src, ...s }) => ({ src, at: x.at, ...s })) : [])).slice(0, LIMITS.stickers) : undefined,
     marquee: cleanMarquee(o.marquee),
   }
   if (!l.top?.length) delete l.top
@@ -448,10 +450,7 @@ export function cleanTheme(x: unknown): Theme {
     round: num(o.round, 0, 3), borderWidth: int(o.borderWidth, 0, 6), borderStyle: pick(o.borderStyle, BORDERS), glow: o.glow === true || undefined,
     font: Object.hasOwn(FONTS, o.font) ? o.font : undefined, fontUrl: isThemeFont(o.fontUrl) ? o.fontUrl : undefined, size: num(o.size, 0.8, 1.4),
     nameFx: pick(o.nameFx, NAME_FX), fx: pick(o.fx, FX), fxAlpha: int(o.fxAlpha, 0, 100),
-    stickers: Array.isArray(o.stickers) ? o.stickers.flatMap((x: any): ScreenSticker[] => {
-      const [px, py, w, r] = [num(x?.x, 0, 100), num(x?.y, 0, 100), num(x?.w, 4, 80), num(x?.r, -180, 180)]
-      return isLookImg(x?.src) && px !== undefined && py !== undefined && w !== undefined ? [{ src: x.src, x: px, y: py, w, ...(r ? { r } : {}) }] : []
-    }).slice(0, LIMITS.stickers) : undefined,
+    stickers: Array.isArray(o.stickers) ? o.stickers.flatMap(sticker).slice(0, LIMITS.stickers) : undefined,
   }
   if (th.size === 1) delete th.size
   if (th.nameFx === 'none') delete th.nameFx
@@ -1051,6 +1050,13 @@ export const settlePicture = (text: string, token: string, url?: string, put = '
   const from = text.lastIndexOf('![', at)
   if (from > text.lastIndexOf('\n', at)) return text.slice(0, from) + text.slice(from + 2, at) + text.slice(at + token.length + 3)
   return text.slice(0, at) + text.slice(at + token.length + 3)
+}
+
+/** A JSON-RPC call's result. An error answer throws its message, with the node's `code` on the error. */
+export async function rpc(url: string, method: string, params: unknown[] = [], signal?: AbortSignal) {
+  const r = await (await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal })).json()
+  if (r.error) throw Object.assign(new Error(r.error.message), { code: r.error.code })
+  return r.result
 }
 
 /** At most `n` jobs at a time; the rest wait their turn, in order, each starting once one before it is done or failed. */

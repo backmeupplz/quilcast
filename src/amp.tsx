@@ -5,7 +5,7 @@
 // Winamp as a window over the app, and it comes back (paused) after a reload until it's closed.
 import { render } from 'preact'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
-import { go } from './api.ts'
+import { getJson, go } from './api.ts'
 import { t } from './i18n.ts'
 import { ampItem, type Amp, type AmpItem } from './shared.ts'
 import { loadSkin, type Skin } from './skin.ts'
@@ -240,8 +240,8 @@ function edit(list: AmpItem[]) {
 }
 
 const oembed = (it: AmpItem) =>
-  fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(it.pl ? `https://www.youtube.com/playlist?list=${it.id}` : `https://www.youtube.com/watch?v=${it.id}`)}`)
-    .then((r) => (r.ok ? r.json() : null)).then((j) => (j?.title ? String(j.title) : null), () => null)
+  getJson(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(it.pl ? `https://www.youtube.com/playlist?list=${it.id}` : `https://www.youtube.com/watch?v=${it.id}`)}`)
+    .then((j) => (j?.title ? String(j.title) : null))
 /** Winamp's "Play URL": a YouTube link, added to the list, and played at once unless `later`. */
 async function addUrl(later = false) {
   const it = ampItem(prompt(t('YouTube link (a video or a playlist)')) || '')

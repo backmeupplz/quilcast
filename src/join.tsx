@@ -7,7 +7,7 @@ import { address, custodyKey } from './fc.ts'
 import { dropEd } from './keys.ts'
 import { t } from './i18n.ts'
 import { inHost, offered, useHost } from './host.ts'
-import { Avatar, Choose, handle } from './ui.tsx'
+import { Avatar, Choose, handle, shortAddr as short } from './ui.tsx'
 import type { Choice } from './wallet.ts'
 import { custodyOf, ensureSigner, fidFor, nativeFid, registerNative, sendSignup, setUserData } from './write.ts'
 import { firstSignIn } from './campaign.ts'
@@ -121,7 +121,6 @@ function Create({ wallet }: { wallet?: string }) {
   )
 }
 
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 
 // the account exists: add a signing key for this browser, then load the profile
 async function enter(a: Account, step: (i: number) => void) {

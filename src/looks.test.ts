@@ -44,6 +44,7 @@ test('stickers keep a known box, an allowed image and in-range numbers; effects 
   assert.equal(l.fx, 'snow')
   assert.deepEqual(l.stickers!.slice(0, 2), [{ src, at: 'about', x: 12.3, y: 100, w: 4 }, { src, at: 'head', x: 0, y: 50, w: 30, r: 45.1 }])
   assert.equal(l.stickers!.length, 16)
+  assert.deepEqual(Object.keys(l.stickers![1]), ['src', 'at', 'x', 'y', 'w', 'r'])
   assert.equal(cleanLook({ fx: 'alert(1)' }).fx, undefined)
   assert.deepEqual(cleanLook({ stickers: [{ src: 'x' }] }), {})
   assert.deepEqual(lookImages({ stickers: [{ src, at: 'head', x: 1, y: 1, w: 9 }, { src, at: 'top', x: 1, y: 1, w: 9 }] }), [[src, 4e6]])

@@ -7,10 +7,10 @@ import { blake3 } from '@noble/hashes/blake3.js'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { HDKey } from '@scure/bip32'
-import type { Ed } from './keys.ts'
+import { hex, type Ed } from './keys.ts'
 import { MENTION_NAME, mentionTries } from './shared.ts'
 
-export const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
+export { hex }
 export const unhex = (s: string) => {
   s = s.replace(/^0x/, '')
   return Uint8Array.from(s.match(/../g) || [], (x) => parseInt(x, 16))

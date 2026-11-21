@@ -16,6 +16,13 @@ export function audio(): AudioContext | undefined {
   return ctx
 }
 
+/** One second of white noise, for a looped or band-passed hiss. */
+export const whiteNoise = (a: AudioContext) => {
+  const buf = a.createBuffer(1, a.sampleRate, a.sampleRate), d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+  return buf
+}
+
 export function swoosh(ms: number) {
   const a = audio()
   if (!a) return quiet
@@ -24,10 +31,8 @@ export function swoosh(ms: number) {
   out.connect(a.destination)
   out.gain.setValueAtTime(0.0001, t)
   out.gain.exponentialRampToValueAtTime(0.3, end)
-  const buf = a.createBuffer(1, a.sampleRate, a.sampleRate), d = buf.getChannelData(0)
-  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
   const noise = a.createBufferSource()
-  noise.buffer = buf
+  noise.buffer = whiteNoise(a)
   noise.loop = true
   const band = a.createBiquadFilter()
   band.type = 'bandpass'

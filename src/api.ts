@@ -243,6 +243,8 @@ export function follow(e: MouseEvent) {
 }
 
 export { LINK_RE, safeUrl, toUrl }
+/** A GET's JSON; null when it fails, answers other than 2xx or isn't JSON. */
+export const getJson = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null)
 
 export const USER_DATA = { PFP: 1, DISPLAY: 2, BIO: 3, URL: 5, USERNAME: 6 }
 

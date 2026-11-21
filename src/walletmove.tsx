@@ -6,7 +6,7 @@ import { createPublicClient, createWalletClient, encodeFunctionData, erc20Abi, f
 import { arbitrum, base, mainnet, optimism, polygon } from 'viem/chains'
 import { account, askUser, getUser, type User } from './api.ts'
 import { t } from './i18n.ts'
-import { Icon, P, toast } from './ui.tsx'
+import { Icon, P, shortAddr as short, toast } from './ui.tsx'
 import { allowance, approveTx, quote, SENDCLAP_CONTRACT, SENDCLAP_PERIOD, sendclapAllowance, sendclapOk, tokensOn, tipAddress, transferStatus, transferTx, USDC, type ListedToken, type Quote } from './tokens.ts'
 import { activeWallet, signerOf, type WalletEntry } from './vault.ts'
 import { CHAINS, Coin, type Holding } from './walletui.tsx'
@@ -15,7 +15,6 @@ const VIEM: Record<number, Chain> = { 8453: base, 1: mainnet, 10: optimism, 4216
 // our RPC per chain (viem's default for Polygon now wants a key)
 const rpcOf = (chain: number) => CHAINS.find((c) => c.id === chain)!.rpc
 const pub = (chain: number) => createPublicClient({ chain: VIEM[chain], transport: http(rpcOf(chain)) })
-const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
 const num = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: n >= 1 ? 4 : 6 })
 const usd = (n?: number) => (n === undefined ? '' : n > 0 && n < 0.01 ? '< $0.01' : n.toLocaleString(undefined, { style: 'currency', currency: 'USD' }))
 // a holding as the token helpers know it

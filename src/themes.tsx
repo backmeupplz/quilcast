@@ -9,7 +9,7 @@ import { PRESETS as EFFECTS } from './fx.ts'
 import { GifPicker } from './gifs.tsx'
 import { EditSticker, focusSticker } from './looks.tsx'
 import { BG_MODES, BORDERS, cleanTheme, DEFAULTS, FONTS, FX, HOLIDAYS, isLookImg, LIMITS, NAME_FX, ownMedia, sized, themeId, themeVars, type Theme } from './shared.ts'
-import { CARD, dressed, Img, keepLibrary, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
+import { CARD, copyText, dressed, Img, keepLibrary, library, remember, screenUnit, shell, theme, themeOf, toast, useApply, w, wear, type Saved } from './ui.tsx'
 
 // --- built-in themes ---
 // two of Quorum's sample skins (theme/skins/samples.ts) and a few of our own; GIFs are Tenor's
@@ -64,13 +64,6 @@ async function shareLink(th: Theme) {
   const j = await r.json().catch(() => null)
   if (!r.ok || !j?.id) throw new Error(j?.error || 'Sharing failed.')
   return `${location.origin}/theme/${j.id}`
-}
-// Safari only lets a click write the clipboard if the write starts right away, so the text goes in as a promise
-const copyText = (text: Promise<string>, done: string) => {
-  const write = typeof ClipboardItem !== 'undefined'
-    ? navigator.clipboard.write([new ClipboardItem({ 'text/plain': text.then((s) => new Blob([s], { type: 'text/plain' })) })])
-    : text.then((s) => navigator.clipboard.writeText(s))
-  write.then(() => toast(done), () => text.then(() => toast("Couldn't copy it."), (e) => toast(e.message)))
 }
 const castTheme = (th: Theme) => shareLink(th).then((url) => shell.compose({ embeds: [url] }), (e) => toast(e.message))
 

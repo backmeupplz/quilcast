@@ -2,7 +2,7 @@
 // Audio like the tip's swoosh (no file to load), and a little train crossing the screen with puffs of steam. Both run
 // in the tap itself (iOS and the app shells only let sound start from one) and neither waits for anything, so the
 // cast goes out at once. With reduced motion there's no train, only the sound.
-import { audio } from './swoosh.ts'
+import { audio, whiteNoise } from './swoosh.ts'
 
 // the two blasts, [start, length] in seconds: a short "choo" and a longer one
 export const BLASTS: [number, number][] = [[0, 0.3], [0.4, 0.55]]
@@ -19,8 +19,7 @@ export function choochoo() {
     out.gain.value = 0.22
     out.connect(a.destination)
     // the steam: noise through a band-pass, under the chord
-    const buf = a.createBuffer(1, a.sampleRate, a.sampleRate), d = buf.getChannelData(0)
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+    const buf = whiteNoise(a)
     for (const [at, len] of BLASTS) {
       const s = t + at, end = s + len
       const env = a.createGain()

@@ -2,7 +2,7 @@ import { render, type ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { crashed, started } from './crash.ts'
 import { confirmSignOut, warning, type Waiting } from './signout.ts'
-import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follow, followsMe, forget, forgetFollows, get, urlOf, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, setAside, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
+import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follow, followsMe, forget, forgetFollows, get, getJson, urlOf, getUser, once, go, hydrateParents, idOf, isFollowing, loadMine, loadUsers, myUser, posting, read, removeAccount, save, saveSettings, setAccount, setAside, settings, switchAccount, updateAccount, users, USER_DATA, type Account, type Cast, type User } from './api.ts'
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
@@ -978,7 +978,7 @@ function Follows({ id, kind }: { id: string; kind: keyof typeof FOLLOWS }) {
 const conversation = (hash: string) => get('/v2/farcaster/cast/conversation', { identifier: hash.replace(/^0x/, ''), type: 'hash', reply_depth: 2 })
 const userCasts = (fid: number, tab: 'casts' | 'replies', cursor?: string) =>
   get(tab === 'casts' ? '/v2/farcaster/feed/user/casts' : '/v2/farcaster/feed/user/replies_and_recasts', { fid, limit: 25, cursor })
-const lookOf = (fid: number) => once<Look | null>(`/api/look/${fid}`, () => fetch(`/api/look/${fid}`).then((r) => (r.ok ? r.json() : null)).then(async (j) => j && (await looksMod()).clean(j)).catch(() => null))
+const lookOf = (fid: number) => once<Look | null>(`/api/look/${fid}`, () => getJson(`/api/look/${fid}`).then(async (j) => j && (await looksMod()).clean(j)).catch(() => null))
 // a user we already have from a feed, so their profile draws before the node answers
 const known = (id: string) => (/^\d+$/.test(id) ? users.get(+id) : [...users.values()].find((u) => u.username?.toLowerCase() === id.toLowerCase())) || null
 

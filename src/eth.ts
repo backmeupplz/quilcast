@@ -1,12 +1,8 @@
 // Just enough Optimism for the mini app notification key (write.ts ensureAppKey): JSON-RPC, RLP, EIP-1559 signing.
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { address, concat, ecSign, hex, KEY_REGISTRY, unhex } from './fc.ts'
+import { rpc } from './shared.ts'
 
-export async function rpc(url: string, method: string, params: unknown[] = []) {
-  const r = await (await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })).json()
-  if (r.error) throw new Error(r.error.message)
-  return r.result
-}
 const sel = (sig: string) => hex(keccak_256(new TextEncoder().encode(sig)).slice(0, 4))
 const arg = (a: string) => a.replace(/^0x/, '').padStart(64, '0')
 
