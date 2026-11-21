@@ -766,10 +766,21 @@ export async function setNotify(m: AppMeta, on: boolean, event?: 'miniapp_added'
 
 const haptics = 'vibrate' in navigator
 
+// on a phone the window covers the whole screen, so the app gets the screen's insets that its frame reaches into (the
+// header already clears the top one, style.css .mini)
+function insets() {
+  if (!narrow()) return { top: 0, bottom: 0, left: 0, right: 0 }
+  const d = document.body.appendChild(document.createElement('div'))
+  d.style.cssText = 'position:fixed;visibility:hidden;padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)'
+  const c = getComputedStyle(d), px = (v: string) => Math.round(parseFloat(v)) || 0
+  const r = { top: 0, bottom: px(c.paddingBottom), left: px(c.paddingLeft), right: px(c.paddingRight) }
+  return d.remove(), r
+}
+
 const context = async (app: App) => ({
   client: {
     platformType: narrow() || inApp ? 'mobile' : 'web', clientFid: QUILCAST_FID, added: isSaved(savedApps(), app),
-    notificationDetails: notifying(app.origin) ? await details(app).catch(() => undefined) : undefined, safeAreaInsets: { top: 0, bottom: 0, left: 0, right: 0 },
+    notificationDetails: notifying(app.origin) ? await details(app).catch(() => undefined) : undefined, safeAreaInsets: insets(),
   },
   user: userCtx(myUser()!),
   location: app.notification ? { type: 'notification', notification: app.notification }

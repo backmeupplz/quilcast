@@ -810,7 +810,10 @@ small.warn { color: var(--warn); }
 .app-main b, .app-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-main small { color: var(--muted); font-size: 13px; }
 @media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
-  .mini { inset: 0; width: auto; height: auto; border: 0; border-radius: 0; padding-bottom: env(safe-area-inset-bottom); }
+  /* the app draws under the home indicator itself (context.client.safeAreaInsets, miniapp.tsx); a primary button and the cards over the app clear it */
+  .mini { inset: 0; width: auto; height: auto; border: 0; border-radius: 0; }
+  .mini-primary { margin-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .mini-body:last-child .ask-card { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
   .mini-top { padding-top: calc(6px + env(safe-area-inset-top)); }
   .mini-top .mini-full { display: none; }
   /* above the tab bar, clear of the cast button */
