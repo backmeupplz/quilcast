@@ -5,8 +5,9 @@
 //                             count them twice; the next day replaces the file, salt and all
 // Nothing ties a campaign to an account: which accounts brought a sign-up today is kept in memory only, never written.
 import { createHmac, randomBytes } from 'node:crypto'
-import { mkdir, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
+import { writeAtomic } from './net.mjs'
 
 export const CAMPAIGN = /^[A-Za-z0-9_-]{1,64}$/
 const DAY = /^\d{4}-\d{2}-\d{2}$/
@@ -28,10 +29,7 @@ let dir = ''
 let counts = { since: '', signedIn: map(), campaigns: map() }
 let today = null
 
-async function put(name, v) {
-  await writeFile(join(dir, name + '.tmp'), JSON.stringify(v))
-  await rename(join(dir, name + '.tmp'), join(dir, name))
-}
+const put = (name, v) => writeAtomic(join(dir, name), JSON.stringify(v))
 
 // a kept file that's missing reads as nothing; one that won't parse (torn by a crash) is set aside and counting goes on.
 // The counts file (numbers only) is moved aside, so the next save doesn't write over what's left of it; today's file

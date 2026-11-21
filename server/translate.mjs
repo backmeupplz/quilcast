@@ -6,9 +6,9 @@
 // The cast's words come from the node, never from the browser, so a translation can only ever be of the real cast.
 // Free means free: only ":free" models, and every request caps the price at zero, so OpenRouter refuses rather
 // than bills.
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fail, gate, keep } from './net.mjs'
+import { fail, gate, keep, readJsonFile, writeAtomic } from './net.mjs'
 
 // the app's languages (src/i18n.ts)
 const TO = {
@@ -28,7 +28,7 @@ export const loadTranslations = async (data) => {
 }
 const kept = new Map()
 const file = (to, hash) => join(dir, to, `${hash}.json`)
-const get = (to, hash) => kept.get(`${to}:${hash}`) || keep(kept, 20000, `${to}:${hash}`, readFile(file(to, hash), 'utf8').then(JSON.parse, () => null))
+const get = (to, hash) => kept.get(`${to}:${hash}`) || keep(kept, 20000, `${to}:${hash}`, readJsonFile(file(to, hash)))
 
 /** The kept translations of these casts go (an account being deleted); how many files that was. */
 export async function dropTranslations(hashes) {
@@ -69,8 +69,7 @@ export async function translate(body, getCast, env) {
     // free models drop a request now and then, so a failed one is asked once more (after a moment) before giving up
     const once = () => model(() => ask(text.slice(0, 2000), TO[to], env))
     const r = await once().catch(() => new Promise((ok) => setTimeout(ok, 1500)).then(once))
-    await writeFile(file(to, hash) + '.tmp', JSON.stringify(r))
-    await rename(file(to, hash) + '.tmp', file(to, hash))
+    await writeAtomic(file(to, hash), JSON.stringify(r))
     kept.set(k, Promise.resolve(r))
     return r
   }

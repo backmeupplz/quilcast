@@ -4,6 +4,7 @@ import { createServer } from 'node:http'
 import { after, mock, test } from 'node:test'
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { keySigned } from './looks.mjs'
+import { signed } from './testkit.mjs'
 
 const key = ed25519.utils.randomSecretKey()
 const soon = ed25519.utils.randomSecretKey()
@@ -21,11 +22,7 @@ await new Promise((r) => srv.listen(0, '127.0.0.1', r))
 const url = `http://127.0.0.1:${srv.address().port}`
 after(() => srv.close())
 
-const check = (fid, k = key, outage = true, what = 'w') => {
-  const ts = Date.now()
-  const headers = { 'x-key': hexOf(k), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:`), k)).toString('hex') }
-  return keySigned({ headers }, what, fid, '', url, undefined, outage).then(() => 200, (e) => e.status || 500)
-}
+const check = (fid, k = key, outage = true, what = 'w') => keySigned({ headers: signed(k, what, fid) }, what, fid, '', url, undefined, outage).then(() => 200, (e) => e.status || 500)
 
 test("keySigned: X crossposting's cast-only key may upload media and nothing else, the node down or not", async () => {
   node = 'up'

@@ -5,10 +5,9 @@
 //                        x-sig (ed25519 over "quilcast-pin:<fid>:<ts>:<body>")
 // A pin has to be a top-level cast the node has from that FID (a reply can't be pinned). One that's deleted later stays
 // here, and the app quietly skips it.
-import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fail, keep, parseJson, readText } from './net.mjs'
+import { fail, keep, parseJson, readText, writeAtomic } from './net.mjs'
 import { keySigned } from './looks.mjs'
 
 let dir = ''
@@ -53,10 +52,7 @@ export async function putPin(req, fid, node, busy = () => false) {
   if (Number(m?.data?.fid) !== fid || String(m?.hash).toLowerCase() !== hash) throw fail(400, 'You can only pin your own casts.')
   if (m.data.castAddBody?.parentCastId) throw fail(400, "Replies can't be pinned.")
   const pin = { hash }
-  // its own temporary file, so two saves at once can't trip over each other
-  const tmp = `${file(fid)}.${randomUUID()}.tmp`
-  await writeFile(tmp, JSON.stringify(pin))
-  await rename(tmp, file(fid)).catch((e) => rm(tmp, { force: true }).then(() => Promise.reject(e)))
+  await writeAtomic(file(fid), JSON.stringify(pin))
   pins.set(fid, Promise.resolve(pin))
   return pin
 }

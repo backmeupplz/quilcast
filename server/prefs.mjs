@@ -2,10 +2,10 @@
 //   GET /api/prefs/<fid>   the account's theme settings or null, signed "quilcast-prefs-read:<fid>:<ts>:" (empty body)
 //   PUT /api/prefs/<fid>   replace them, signed "quilcast-prefs:<fid>:<ts>:<body>"
 // Both are signed by one of the account's Farcaster keys (x-key, x-ts, x-sig), like mutes.
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanPrefs } from '../src/shared.ts'
-import { fail, parseJson, readText } from './net.mjs'
+import { fail, parseJson, readJsonFile, readText, writeAtomic } from './net.mjs'
 import { keySigned } from './looks.mjs'
 
 let dir = ''
@@ -14,7 +14,7 @@ const file = (fid) => join(dir, `${fid}.json`)
 
 export async function getPrefs(req, fid, node) {
   await keySigned(req, 'quilcast-prefs-read', fid, '', node)
-  return cleanPrefs(await readFile(file(fid), 'utf8').then(JSON.parse, () => null))
+  return cleanPrefs(await readJsonFile(file(fid)))
 }
 
 /** The account's theme settings go; whether it had them. */
@@ -25,7 +25,6 @@ export async function putPrefs(req, fid, node) {
   await keySigned(req, 'quilcast-prefs', fid, body, node)
   const p = cleanPrefs(parseJson(body))
   if (!p) throw fail(400, 'bad prefs')
-  await writeFile(file(fid) + '.tmp', JSON.stringify(p))
-  await rename(file(fid) + '.tmp', file(fid))
+  await writeAtomic(file(fid), JSON.stringify(p))
   return p
 }

@@ -15,12 +15,11 @@
 // within one server process).
 //   POST /api/action  a one-click "Remind me in…" from a cast's ⋯ menu (public/developers/cast-actions.html#one-click):
 //                     a JSON Farcaster Signature of the tap, checked here (oneClickReminder), answered { message }
-import { ed25519 } from '@noble/curves/ed25519.js'
 import { createHash, randomBytes } from 'node:crypto'
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fail, fetchJson, safeGet } from './net.mjs'
-import { known, send } from './notify.mjs'
+import { fail, fetchJson, safeGet, writeAtomic } from './net.mjs'
+import { jfs, known, send } from './notify.mjs'
 
 // from a minute to a year away (this server's clock; the browser's may be a little off)
 export const SOONEST = 60e3
@@ -130,7 +129,6 @@ export async function holdsKey(fid, key, nodes) {
   return false
 }
 
-const b64 = (s) => Buffer.from(String(s), 'base64url')
 // addReminder's short codes, worded for the toast (the page words them itself)
 const WORDS = {
   'bad time': 'Pick a time from a minute to a year away.', 'too many reminders': 'Too many reminders right now. Try again later.',
@@ -139,17 +137,9 @@ const WORDS = {
 /** A one-click tap (POST /api/action): a JSON Farcaster Signature whose key `fid` holds, for `https://<host>/api/action`
  *  (with ?in= or the text typed), made within 5 minutes. Keeps the reminder; the answer's message is the toast. */
 export async function oneClickReminder(body, host, { nodes, node, isKey = holdsKey, now = Date.now() }) {
-  let header, p
-  try {
-    header = JSON.parse(b64(body.header))
-    p = JSON.parse(b64(body.payload))
-  } catch {
-    throw fail(401, 'Could not check who you are.')
-  }
-  const key = String(header?.key || '').toLowerCase()
-  const sig = b64(body.signature || '')
-  if (!Number.isSafeInteger(header?.fid) || header.type !== 'app_key' || !/^0x[0-9a-f]{64}$/.test(key) || sig.length !== 64) throw fail(401, 'Could not check who you are.')
-  if (!ed25519.verify(sig, Buffer.from(`${body.header}.${body.payload}`), Buffer.from(key.slice(2), 'hex'))) throw fail(401, 'Could not check who you are.')
+  const j = jfs(body, true)
+  if (!j?.signed) throw fail(401, 'Could not check who you are.')
+  const { header, payload: p, key } = j
   let url
   try {
     url = new URL(p?.url)
@@ -173,11 +163,7 @@ export async function oneClickReminder(body, host, { nodes, node, isKey = holdsK
   return { message: `I'll remind you in ${human(ms)}.` }
 }
 
-async function put(r, due) {
-  const file = join(dir, `${due}-${r.id}-${r.key}.json`)
-  await writeFile(file + '.tmp', JSON.stringify(r), { mode: 0o600 })
-  await rename(file + '.tmp', file)
-}
+const put = (r, due) => writeAtomic(join(dir, `${due}-${r.id}-${r.key}.json`), JSON.stringify(r), { mode: 0o600 })
 
 // what no retry will fix: an address that isn't allowed or doesn't exist
 const PERMANENT = new Set(['bad url', 'url not allowed'])

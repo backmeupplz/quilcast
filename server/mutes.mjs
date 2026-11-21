@@ -2,10 +2,10 @@
 //   GET /api/mutes/<fid>   the list, signed "quilcast-mutes-read:<fid>:<ts>:" (empty body)
 //   PUT /api/mutes/<fid>   replace it, signed "quilcast-mutes:<fid>:<ts>:<body>"
 // Both are signed by one of the account's Farcaster keys (x-key, x-ts, x-sig), like profile looks.
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanMutes } from '../src/shared.ts'
-import { parseJson, readText } from './net.mjs'
+import { parseJson, readJsonFile, readText, writeAtomic } from './net.mjs'
 import { keySigned } from './looks.mjs'
 
 let dir = ''
@@ -14,11 +14,11 @@ const file = (fid) => join(dir, `${fid}.json`)
 
 export async function getMutes(req, fid, node) {
   await keySigned(req, 'quilcast-mutes-read', fid, '', node)
-  return cleanMutes(await readFile(file(fid), 'utf8').then(JSON.parse, () => null))
+  return cleanMutes(await readJsonFile(file(fid)))
 }
 
 /** The account's list as kept, for its push notifications (server/alerts.mjs). */
-export const readMutes = (fid) => readFile(file(fid), 'utf8').then(JSON.parse, () => null).then((m) => cleanMutes(m))
+export const readMutes = (fid) => readJsonFile(file(fid)).then((m) => cleanMutes(m))
 
 /** The account's list goes; whether it had one. */
 export const dropMutes = (fid) => rm(file(fid)).then(() => true, () => false)
@@ -27,7 +27,6 @@ export async function putMutes(req, fid, node) {
   const body = await readText(req, 300e3)
   await keySigned(req, 'quilcast-mutes', fid, body, node)
   const m = cleanMutes(parseJson(body))
-  await writeFile(file(fid) + '.tmp', JSON.stringify(m))
-  await rename(file(fid) + '.tmp', file(fid))
+  await writeAtomic(file(fid), JSON.stringify(m))
   return m
 }

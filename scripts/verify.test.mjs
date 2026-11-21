@@ -60,12 +60,6 @@ test('build.json: every file but the HTML and itself, the inline scripts the CSP
   assert.notEqual(digest({ ...build, files: { ...build.files, '/sw.js': sha('x') } }), build.build)
 })
 
-test('a site serving the build passes, against a build of your own', async () => {
-  const v = await check()
-  assert.deepEqual(v.problems, [])
-  assert.ok(v.ok)
-})
-
 test("against CI's published build: passes and names the commit; an unpublished or mislabelled build fails", async () => {
   site.published[`${build.build}.json`] = JSON.stringify({ ...build, commit: 'c0ffee' })
   const v = await check({ dist: undefined, bases })
@@ -250,11 +244,6 @@ test('cspProblems: script-src, its default-src fallback, the -elem/-attr overrid
   assert.match(cspProblems("default-src * 'unsafe-inline';\u00a0script-src 'self'", inline)[0], /other than printable ASCII/)
   assert.match(cspProblems("script-src 'self'\u00a0'unsafe-inline'", inline)[0], /other than printable ASCII/)
   assert.deepEqual(cspProblems(`\tscript-src\t'self'\t${b64(HEAD)}\t`, inline), [])
-})
-
-test('a CSP with a non-ASCII space fails the page, as Chrome then runs inline handlers', async () => {
-  site.csp = "default-src * 'unsafe-inline';\u00a0script-src 'self'"
-  assert.ok((await check()).problems.some((p) => /^\/: the CSP has a character other than printable ASCII/.test(p)))
 })
 
 test('"http-equiv" as text in a page (a cast, a bio) passes; as an attribute of a <meta> it fails', async () => {

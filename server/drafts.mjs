@@ -3,9 +3,9 @@
 //   GET /api/drafts/<fid>   [{ id, box }], signed "quilcast-drafts-read:<fid>:<ts>:" (empty body)
 //   PUT /api/drafts/<fid>   { id, box } saves one, { id, box: null } deletes it, signed "quilcast-drafts:<fid>:<ts>:<body>"
 // Both are signed by one of the account's Farcaster keys (x-key, x-ts, x-sig), like mutes.
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fail, parseJson, readText } from './net.mjs'
+import { fail, parseJson, readText, writeAtomic } from './net.mjs'
 import { keySigned } from './looks.mjs'
 
 const MAX = 200
@@ -38,7 +38,6 @@ export async function putDraft(req, fid, node) {
   await mkdir(at, { recursive: true })
   const ids = await readdir(at)
   if (!ids.includes(id) && ids.filter((x) => ID.test(x)).length >= MAX) throw fail(400, 'Too many drafts. Delete some first.')
-  await writeFile(join(at, id + '.tmp'), box)
-  await rename(join(at, id + '.tmp'), join(at, id))
+  await writeAtomic(join(at, id), box)
   return { id }
 }

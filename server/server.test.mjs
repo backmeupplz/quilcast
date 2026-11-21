@@ -7,7 +7,6 @@ import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { createServer, request } from 'node:http'
-import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,8 +16,9 @@ import { after, before, test } from 'node:test'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { address, castAt, castBody, ecSign, rawEd } from '../src/fc.ts'
+import { address, ecSign, rawEd } from '../src/fc.ts'
 import { verify } from '../scripts/verify.mjs'
+import { embedOf, hostGet, pngStub, signed, sizeOf, thread, uploaded } from './testkit.mjs'
 
 const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(srv.address().port)))
 let internalHits = 0
@@ -217,7 +217,7 @@ await writeFile(join(wasmDir, 'index.html'), '<!doctype html><title>Quilcast WAS
 await writeFile(join(wasmDir, 'assets/b1/app.wasm'), Buffer.concat([Buffer.from([0, 0x61, 0x73, 0x6d, 1, 0, 0, 0]), Buffer.alloc(4096)]))
 await writeFile(join(media, '0123456789abcdef01234567.png'), Buffer.from('0123456789'))
 // a real picture someone uploaded before uploads were recorded (0.36.0), named after its content as uploads are
-const OLD_PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 1]), Buffer.alloc(40, 99)])
+const OLD_PNG = pngStub(1, 99)
 const OLD_NAME = `${createHash('sha256').update(OLD_PNG).digest('hex').slice(0, 24)}.png`
 await writeFile(join(media, OLD_NAME), OLD_PNG)
 // and one 0.36–0.39 recorded as fid 7's alone (a re-upload then replaced someone else's file and kept only its uploader)
@@ -249,17 +249,7 @@ before(async () => {
 after(() => (srv.kill(), internal.close(), node.close()))
 
 test('wasm.quilcast.com serves the WebAssembly build, with its own CSP, and the same /api/', async () => {
-  // a raw request, as Node's own client insists the Host header name the address it connects to
-  const get = (path, headers = {}) => new Promise((ok, no) => {
-    const s = connect(port, '127.0.0.1', () => s.write(`GET ${path} HTTP/1.1\r\nHost: wasm.quilcast.com\r\nConnection: close\r\n${Object.entries(headers).map(([k, v]) => `${k}: ${v}\r\n`).join('')}\r\n`))
-    const chunks = []
-    s.on('data', (c) => chunks.push(c)).on('error', no).on('end', () => {
-      const all = Buffer.concat(chunks)
-      const cut = all.indexOf('\r\n\r\n')
-      const [line, ...rest] = String(all.subarray(0, cut)).split('\r\n')
-      ok({ status: Number(line.split(' ')[1]), headers: Object.fromEntries(rest.map((h) => [h.slice(0, h.indexOf(':')).toLowerCase(), h.slice(h.indexOf(':') + 1).trim()])), body: all.subarray(cut + 4) })
-    })
-  })
+  const get = (path, headers) => hostGet(port, 'wasm.quilcast.com', path, { headers })
   // every page is the app's one page, which reads the address itself
   for (const path of ['/', '/u/dwr', '/c/6ba6089bb1d3304b82fa17dbb34aa7c691713b0f']) {
     const r = await get(path)
@@ -384,11 +374,9 @@ test('scripts/verify.mjs finds the server serving exactly its build: every file,
 
 test('casts are mini app embeds with a 3:2 card', async () => {
   const hash = 'cd'.repeat(20)
-  const meta = (await (await fetch(`${base}/c/${hash}`)).text()).match(/<meta name="fc:miniapp" content="([^"]*)"/)[1]
-  const e = JSON.parse(meta.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+  const e = embedOf(await (await fetch(`${base}/c/${hash}`)).text())
   assert.equal(e.button.action.url, `https://quilcast.test/c/${hash}`)
-  const png = Buffer.from(await (await fetch(e.imageUrl.replace('https://quilcast.test', base))).arrayBuffer())
-  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 800])
+  assert.deepEqual(sizeOf(Buffer.from(await (await fetch(e.imageUrl.replace('https://quilcast.test', base))).arrayBuffer())), [1200, 800])
 })
 
 test('a collected cast: square art, metadata the mini app can read, the cast kept on disk, and the collection', async () => {
@@ -402,21 +390,17 @@ test('a collected cast: square art, metadata the mini app can read, the cast kep
   assert.equal(m.image, `https://quilcast.test/nft/0x${hash}.png`)
   assert.equal(m.external_url, `https://quilcast.test/c/${hash}`)
   assert.ok(m.attributes.some((a) => a.trait_type === 'Author'))
-  const png = Buffer.from(await (await fetch(`${base}/nft/0x${hash}.png`)).arrayBuffer())
-  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 1200])
+  assert.deepEqual(sizeOf(Buffer.from(await (await fetch(`${base}/nft/0x${hash}.png`)).arrayBuffer())), [1200, 1200])
   assert.ok(existsSync(join(media, 'nft', `${hash}.json`)))
   assert.equal((await (await fetch(`${base}/nft/collection.json`)).json()).name, 'Quilcast Collect')
 })
 
 test('collect.quilcast.com: the mini app, a page per cast whose link shows its NFT, and only its own files', async () => {
   const hash = 'cd'.repeat(20)
-  const get = (path) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path, headers: { host: 'collect.quilcast.com' } }, (r) => {
-    const parts = []
-    r.on('data', (d) => parts.push(d)).on('end', () => ok({ status: r.statusCode, headers: r.headers, body: Buffer.concat(parts).toString() }))
-  }).on('error', no).end())
+  const get = (path) => hostGet(port, 'collect.quilcast.com', path)
   const page = await get(`/c/${hash}`)
   assert.match(page.headers['content-security-policy'], /frame-ancestors \*/)
-  const e = JSON.parse(page.body.match(/<meta name="fc:miniapp" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+  const e = embedOf(page.body)
   assert.equal(e.button.action.url, `https://collect.quilcast.com/c/${hash}`)
   assert.match(e.imageUrl, new RegExp(`^https://quilcast\\.test/nft/0x${hash}\\.3x2\\.png\\?v=`))
   assert.match(page.body, new RegExp(`<meta property="og:image" content="https://quilcast\\.test/nft/0x${hash}\\.og\\.png`))
@@ -428,24 +412,24 @@ test('collect.quilcast.com: the mini app, a page per cast whose link shows its N
   for (const path of [`/c/${lost}`, `/?castHash=0x${lost}`]) {
     const down = await get(path)
     assert.equal(down.status, 200, path)
-    const ed = JSON.parse(down.body.match(/<meta name="fc:miniapp" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+    const ed = embedOf(down.body)
     assert.equal(ed.button.action.url, `https://collect.quilcast.com/c/${lost}`, path)
     assert.match(down.body, new RegExp(`<link rel="canonical" href="https://collect\\.quilcast\\.com/c/${lost}"`), path)
   }
   assert.equal((await get('/app.js')).headers['content-type'], 'text/javascript')
+  // the mini app side is the cast actions' own file
+  const side = await get('/miniapp.js')
+  assert.equal(side.headers['content-type'], 'text/javascript')
+  assert.match(side.body, /export const signIn/)
   assert.equal((await get('/.well-known/farcaster.json')).headers['access-control-allow-origin'], '*')
   for (const path of ['/index.html', '/../server/index.mjs', '/nope']) assert.equal((await get(path)).status, 404, path)
   for (const [kind, h] of [['3x2', 800], ['og', 630]]) {
-    const png = Buffer.from(await (await fetch(`${base}/nft/0x${hash}.${kind}.png`)).arrayBuffer())
-    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, h], kind)
+    assert.deepEqual(sizeOf(Buffer.from(await (await fetch(`${base}/nft/0x${hash}.${kind}.png`)).arrayBuffer())), [1200, h], kind)
   }
 })
 
 test('the cast action hosts: each its own page and manifest with a castShareUrl, the shared files, nothing else', async () => {
-  const get = (host, path) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path, headers: { host } }, (r) => {
-    const parts = []
-    r.on('data', (d) => parts.push(d)).on('end', () => ok({ status: r.statusCode, headers: r.headers, body: Buffer.concat(parts).toString() }))
-  }).on('error', no).end())
+  const get = (host, path) => hostGet(port, host, path)
   for (const [name, host] of [['spamcheck', 'spamcheck.quilcast.com'], ['tip', 'tip.quilcast.com'], ['remindme', 'remind.quilcast.com']]) {
     const page = await get(host, `/?castHash=0x${'ab'.repeat(20)}&castFid=3`)
     assert.equal(page.status, 200, host)
@@ -463,10 +447,7 @@ test('the cast action hosts: each its own page and manifest with a castShareUrl,
 })
 
 test('collect.quilcast.com finds a pasted cast link: a full hash anywhere in it, or a farcaster.xyz link by its first digits', async () => {
-  const find = (link) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path: `/api/find?url=${encodeURIComponent(link)}`, headers: { host: 'collect.quilcast.com' } }, (r) => {
-    let b = ''
-    r.on('data', (d) => (b += d)).on('end', () => ok(JSON.parse(b).hash))
-  }).on('error', no).end())
+  const find = async (link) => JSON.parse((await hostGet(port, 'collect.quilcast.com', `/api/find?url=${encodeURIComponent(link)}`)).body).hash
   assert.equal(await find(`https://quilcast.com/c/${'cd'.repeat(20)}`), 'cd'.repeat(20))
   assert.equal(await find(`0x${'cd'.repeat(20)}`), 'cd'.repeat(20))
   // on the second page of @eight's casts; warpcast.com links are the same
@@ -547,17 +528,13 @@ test('a profile card: square art, metadata, the profile kept once collected, its
   // collected (the mock Base says so), so it's kept as it is now
   assert.ok(existsSync(join(media, 'nft', 'card-77.json')))
   for (const [kind, h] of [['', 1200], ['.3x2', 800], ['.og', 630]]) {
-    const png = Buffer.from(await (await fetch(`${base}/nft/card/77${kind}.png`)).arrayBuffer())
-    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, h], kind)
+    assert.deepEqual(sizeOf(Buffer.from(await (await fetch(`${base}/nft/card/77${kind}.png`)).arrayBuffer())), [1200, h], kind)
   }
   assert.equal((await fetch(`${base}/nft/card/0`)).status, 404)
   assert.equal((await (await fetch(`${base}/nft/cards.json`)).json()).name, 'Quilcast Cards')
-  const get = (path) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path, headers: { host: 'collect.quilcast.com' } }, (r) => {
-    let b = ''
-    r.on('data', (d) => (b += d)).on('end', () => ok(b))
-  }).on('error', no).end())
+  const get = async (path) => (await hostGet(port, 'collect.quilcast.com', path)).body
   const page = await get('/p/77')
-  const e = JSON.parse(page.match(/<meta name="fc:miniapp" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+  const e = embedOf(page)
   assert.equal(e.button.action.url, 'https://collect.quilcast.com/p/77')
   assert.match(e.imageUrl, /^https:\/\/quilcast\.test\/nft\/card\/77\.3x2\.png\?v=abababab$/)
   assert.match(page, /<title>@bell&#39;s card, collected by/)
@@ -569,8 +546,7 @@ test('a control character in a name, bio or cast still gets the full card', asyn
   for (const path of [`/og/c/${'07'.repeat(20)}.png`, `/og/c/${'07'.repeat(20)}.3x2.png`, '/og/u/77.png', '/og/u/77.3x2.png']) {
     const r = await fetch(base + path)
     assert.equal(r.headers.get('content-type'), 'image/png', path)
-    const png = Buffer.from(await r.arrayBuffer())
-    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, path.includes('3x2') ? 800 : 630], path)
+    assert.deepEqual(sizeOf(Buffer.from(await r.arrayBuffer())), [1200, path.includes('3x2') ? 800 : 630], path)
   }
   // the pages' own tags drop them too
   const html = await (await fetch(`${base}/c/${'07'.repeat(20)}`)).text()
@@ -579,7 +555,7 @@ test('a control character in a name, bio or cast still gets the full card', asyn
 })
 
 test("a profile link's embed is its own 3:2 card, and a shared support link's button opens Supporters", async () => {
-  const embed = async (q) => JSON.parse((await (await fetch(`${base}/u/bell${q}`)).text()).match(/<meta name="fc:miniapp" content="([^"]*)"/)[1].replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)))
+  const embed = async (q) => embedOf(await (await fetch(`${base}/u/bell${q}`)).text())
   const plain = await embed('')
   assert.match(plain.imageUrl, /^https:\/\/quilcast\.test\/og\/u\/\d+\.3x2\.png\?v=2$/)
   assert.equal(plain.button.title, 'Open in Quilcast')
@@ -590,8 +566,7 @@ test("a profile link's embed is its own 3:2 card, and a shared support link's bu
 })
 
 test('any page opens itself as a mini app', async () => {
-  const meta = (await (await fetch(`${base}/search`)).text()).match(/<meta name="fc:miniapp" content="([^"]*)"/)[1]
-  assert.equal(JSON.parse(meta.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))).button.action.url, 'https://quilcast.test/search')
+  assert.equal(embedOf(await (await fetch(`${base}/search`)).text()).button.action.url, 'https://quilcast.test/search')
 })
 
 test("a train cast's quilcast.com/train link is a train card whose button joins the train, and only that exact path is", async () => {
@@ -673,7 +648,7 @@ const login = (ts, highS = false) => {
 }
 
 test('an upload signature works once, also when re-encoded, and the file lands on the volume', async () => {
-  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 1]), Buffer.alloc(40)])
+  const png = pngStub(1)
   const start = (auth) => fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(png.length), 'x-fid': '1', ...auth } })
   const ts = Date.now()
   const r = await start(login(ts))
@@ -681,9 +656,7 @@ test('an upload signature works once, also when re-encoded, and the file lands o
   const { id } = await r.json()
   assert.equal((await start(login(ts))).status, 401)
   assert.equal((await start(login(ts, true))).status, 401)
-  assert.equal((await fetch(`${base}/api/upload/${id}?offset=0`, { method: 'PUT', body: png })).status, 200)
-  let st = await (await fetch(`${base}/api/upload/${id}/done`, { method: 'POST' })).json()
-  for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
+  const st = await uploaded(base, id, png)
   assert.equal(st.state, 'ready')
   assert.match(st.url, /^https:\/\/quilcast\.test\/m\/[0-9a-f]{24}\.png$/)
   // giving up on it now changes nothing (#407)
@@ -691,30 +664,28 @@ test('an upload signature works once, also when re-encoded, and the file lands o
 })
 
 test('an upload signed by one of the account\'s keys works once; a key the node doesn\'t list, or none, is refused', async () => {
-  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 2]), Buffer.alloc(40)])
+  const png = pngStub(2)
   // as write.ts keySigned builds it
-  const signed = (k, ts) => ({ 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(k)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`quilcast-upload:7:${ts}:`), k)).toString('hex') })
+  const up = (k, ts) => signed(k, 'quilcast-upload', 7, '', ts)
   const start = (auth) => fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(png.length), 'x-fid': '7', ...auth } })
   const ts = Date.now()
-  const r = await start(signed(signer, ts))
+  const r = await start(up(signer, ts))
   assert.equal(r.status, 200)
-  assert.equal((await start(signed(signer, ts))).status, 401)
-  assert.equal((await start(signed(ed25519.utils.randomSecretKey(), ts + 1))).status, 403)
-  assert.equal((await start(signed(signer, ts - 600e3))).status, 401)
+  assert.equal((await start(up(signer, ts))).status, 401)
+  assert.equal((await start(up(ed25519.utils.randomSecretKey(), ts + 1))).status, 403)
+  assert.equal((await start(up(signer, ts - 600e3))).status, 401)
   assert.equal((await start({})).status, 401)
   const { id } = await r.json()
-  assert.equal((await fetch(`${base}/api/upload/${id}?offset=0`, { method: 'PUT', body: png })).status, 200)
-  let st = await (await fetch(`${base}/api/upload/${id}/done`, { method: 'POST' })).json()
-  for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
+  const st = await uploaded(base, id, png)
   assert.equal(st.state, 'ready')
   assert.match(st.url, /^https:\/\/quilcast\.test\/m\/[0-9a-f]{24}\.png$/)
 })
 
 test('an upload given up on stops holding one of the account\'s 3 places: at once when cancelled, after a while idle (#407)', async () => {
-  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 3]), Buffer.alloc(40)])
+  const png = pngStub(3)
   // timestamps of their own, and an address of its own so these starts don't eat into the other tests' rate limit
   let ts = Date.now() - 120e3
-  const start = () => fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(png.length), 'x-fid': '7', 'x-forwarded-for': '203.0.113.7', 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`quilcast-upload:7:${ts++}:`), signer)).toString('hex') } })
+  const start = () => fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(png.length), 'x-fid': '7', 'x-forwarded-for': '203.0.113.7', ...signed(signer, 'quilcast-upload', 7, '', ts++) } })
   const open = async () => {
     const r = await start()
     assert.equal(r.status, 200)
@@ -764,10 +735,9 @@ test('reports: kept and sent to the webhook, anonymous or signed by the reporter
   assert.equal((await send({ fid: 9, hash, reason: 'abuse', text: 'mean' })).status, 200)
   const body = JSON.stringify({ fid: 9, reason: 'spam' })
   const ts = Date.now()
-  const signed = (key, what = 'quilcast-report') => ({ 'x-fid': '7', 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:7:${ts}:${body}`), key)).toString('hex') })
-  assert.equal((await send(body, signed(ed25519.utils.randomSecretKey()))).status, 403)
-  assert.equal((await send(body, signed(signer, 'quilcast-look'))).status, 401)
-  assert.equal((await send(body, signed(signer))).status, 200)
+  const by = (key, what = 'quilcast-report') => ({ 'x-fid': '7', ...signed(key, what, 7, body, ts) })
+  assert.equal((await send(body, by(signer, 'quilcast-look'))).status, 401)
+  assert.equal((await send(body, by(signer))).status, 200)
   for (let i = 0; i < 50 && hookHits.length < 2; i++) await new Promise((r) => setTimeout(r, 50))
   assert.deepEqual(hookHits.map((h) => h.path), ['/report-hook?to=mods', '/report-hook?to=mods'])
   assert.match(hookHits[0].body.text, /Harassment or hate[\s\S]*\/c\/0xabab[\s\S]*From: signed out[\s\S]*mean/)
@@ -855,11 +825,8 @@ test('mini app notifications: tokens per inbox, the spec answer, rate limits, sa
 })
 
 test('mutes: private to the account, read and written only with its key', async () => {
-  const call = (method, fid, body = '', { key = signer, what = method === 'GET' ? 'quilcast-mutes-read' : 'quilcast-mutes' } = {}) => {
-    const ts = Date.now()
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex')
-    return fetch(`${base}/api/mutes/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
-  }
+  const call = (method, fid, body = '', { key = signer, what = method === 'GET' ? 'quilcast-mutes-read' : 'quilcast-mutes' } = {}) =>
+    fetch(`${base}/api/mutes/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: signed(key, what, fid, body) })
   assert.equal((await fetch(`${base}/api/mutes/7`)).status, 401)
   assert.deepEqual(await (await call('GET', 7)).json(), { words: [], users: [], blocks: [] })
   const body = JSON.stringify({ words: [{ v: '$BASED', until: Date.now() + 864e5 }, { v: 'gone', until: 1 }], users: [{ v: 3 }], blocks: [{ v: 4 }] })
@@ -870,24 +837,18 @@ test('mutes: private to the account, read and written only with its key', async 
   const got = await (await call('GET', 7)).json()
   assert.deepEqual(got, await r.json())
   assert.deepEqual([got.words.map((x) => x.v), got.users, got.blocks], [['$based'], [{ v: 3 }], [{ v: 4 }]])
-  assert.equal((await call('GET', 7, '', { key: ed25519.utils.randomSecretKey() })).status, 403)
 })
 
 test('alerts: an account signs up a browser with its own key; the browser alone can check or stop it', async () => {
   const keys = { p256dh: 'BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4', auth: 'BTBZMqHH6r4Tts7J_aSIgg' }
   const endpoint = 'https://fcm.googleapis.com/fcm/send/alerts-test'
-  const put = (fid, b, { key = signer, what = 'quilcast-alerts' } = {}) => {
-    const body = JSON.stringify(b)
-    const ts = Date.now()
-    return fetch(`${base}/api/alerts/${fid}`, { method: 'PUT', body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex') } })
-  }
+  const put = (fid, b, { key = signer, what = 'quilcast-alerts' } = {}) => fetch(`${base}/api/alerts/${fid}`, { method: 'PUT', body: JSON.stringify(b), headers: signed(key, what, fid, JSON.stringify(b)) })
   const post = (fid, what, b) => fetch(`${base}/api/alerts/${fid}/${what}`, { method: 'POST', body: JSON.stringify(b) })
   const sub = { endpoint, keys }
   const good = { subscription: sub, kinds: ['likes', 'replies', 'nonsense'], lang: 'de', spam: { casts: true, at: 80 } }
   // unsigned, signed for something else, with another account's key or for another account: refused
   assert.equal((await fetch(`${base}/api/alerts/7`, { method: 'PUT', body: JSON.stringify(good) })).status, 401)
   assert.equal((await put(7, good, { what: 'quilcast-mutes' })).status, 401)
-  assert.equal((await put(7, good, { key: signer9 })).status, 403)
   assert.equal((await put(8, good)).status, 403)
   // pushes only go to browsers' push services, and something has to be asked for
   assert.equal((await put(7, { ...good, subscription: { ...sub, endpoint: 'https://evil.example/push' } })).status, 400)
@@ -907,12 +868,7 @@ test('alerts: an account signs up a browser with its own key; the browser alone 
 })
 
 test('sticker packs: made, filled from a picture and from Telegram, shared, added and changed only by their owner', async () => {
-  const call = (fid, body, key = fid === 9 ? signer9 : signer) => {
-    const ts = Date.now()
-    const b = JSON.stringify(body)
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-stickers:${fid}:${ts}:${b}`), key)).toString('hex')
-    return fetch(`${base}/api/stickers/${fid}`, { method: 'POST', body: b, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
-  }
+  const call = (fid, body, key = fid === 9 ? signer9 : signer) => fetch(`${base}/api/stickers/${fid}`, { method: 'POST', body: JSON.stringify(body), headers: signed(key, 'quilcast-stickers', fid, JSON.stringify(body)) })
   assert.equal((await call(7, { op: 'create', title: 'x' }, ed25519.utils.randomSecretKey())).status, 403)
   const { pack } = await (await call(7, { op: 'create', title: '  My   pack ' })).json()
   assert.deepEqual([pack.title, pack.fid, pack.stickers], ['My pack', 7, []])
@@ -971,31 +927,24 @@ test('sticker packs: made, filled from a picture and from Telegram, shared, adde
 })
 
 test('stats: accounts a day and campaign sign-ups, counts only', async () => {
-  const signed = (what, fid, body = '', key = signer11) => {
-    const ts = Date.now()
-    return { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex') }
-  }
+  const sign = (what, fid, body = '', key = signer11) => signed(key, what, fid, body)
   const get = async () => {
     const r = await fetch(`${base}/api/stats`)
     assert.equal(r.status, 200)
     assert.match(r.headers.get('cache-control'), /public/)
     return r.json()
   }
-  const signup = (body, key) => fetch(`${base}/api/signup`, { method: 'POST', body, headers: { 'x-fid': '11', ...signed('quilcast-signup', 11, body, key) } })
-  const s0 = await get()
-  assert.deepEqual(Object.keys(s0), ['signedIn', 'campaigns'])
-  const today = s0.signedIn.at(-1)
-  assert.match(today.day, /^\d{4}-\d{2}-\d{2}$/)
-  assert.ok(s0.signedIn.length <= 90 && s0.signedIn.every((d) => Object.keys(d).join() === 'day,count' && Number.isInteger(d.count)))
+  const signup = (body, key) => fetch(`${base}/api/signup`, { method: 'POST', body, headers: { 'x-fid': '11', ...sign('quilcast-signup', 11, body, key) } })
+  const today = (await get()).signedIn.at(-1)
   // a signed request moves today's count by one, however often it comes; a refused one doesn't
-  assert.equal((await fetch(`${base}/api/mutes/11`, { headers: signed('quilcast-mutes-read', 11, '', signer) })).status, 403)
+  assert.equal((await fetch(`${base}/api/mutes/11`, { headers: sign('quilcast-mutes-read', 11, '', signer) })).status, 403)
   assert.equal((await get()).signedIn.at(-1).count, today.count)
-  for (let i = 0; i < 2; i++) assert.equal((await fetch(`${base}/api/mutes/11`, { headers: signed('quilcast-mutes-read', 11) })).status, 200)
+  for (let i = 0; i < 2; i++) assert.equal((await fetch(`${base}/api/mutes/11`, { headers: sign('quilcast-mutes-read', 11) })).status, 200)
   assert.deepEqual((await get()).signedIn.at(-1), { day: today.day, count: today.count + 1 })
   // a campaign sign-up: only with the account's key, a valid name, once a day per account
   assert.equal((await fetch(`${base}/api/signup`, { method: 'POST', body: '{"campaign":"p7-a"}', headers: { 'x-fid': '11' } })).status, 401)
   // the account goes in x-fid only: without it the sign-up is refused
-  assert.equal((await fetch(`${base}/api/signup`, { method: 'POST', body: '{"campaign":"p7-a"}', headers: signed('quilcast-signup', 11, '{"campaign":"p7-a"}') })).status, 400)
+  assert.equal((await fetch(`${base}/api/signup`, { method: 'POST', body: '{"campaign":"p7-a"}', headers: sign('quilcast-signup', 11, '{"campaign":"p7-a"}') })).status, 400)
   assert.equal((await signup('{"campaign":"p7-a"}', signer)).status, 403)
   assert.deepEqual(await (await signup('{"campaign":"p7 a"}')).json(), { counted: false })
   assert.deepEqual(await (await signup('{"campaign":"p7-a"}')).json(), { counted: true })
@@ -1008,11 +957,8 @@ test('stats: accounts a day and campaign sign-ups, counts only', async () => {
 })
 
 test('prefs: theme sync kept per account, read and written only with its key', async () => {
-  const call = (method, fid, body = '', what = method === 'GET' ? 'quilcast-prefs-read' : 'quilcast-prefs') => {
-    const ts = Date.now()
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), signer)).toString('hex')
-    return fetch(`${base}/api/prefs/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: { 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': sig } })
-  }
+  const call = (method, fid, body = '', what = method === 'GET' ? 'quilcast-prefs-read' : 'quilcast-prefs') =>
+    fetch(`${base}/api/prefs/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: signed(signer, what, fid, body) })
   assert.equal((await fetch(`${base}/api/prefs/7`)).status, 401)
   assert.equal(await (await call('GET', 7)).json(), null)
   const body = JSON.stringify({ theme: { name: 'Xmas', base: 'dark', bg: '#102030', evil: 'x' }, library: [{ theme: { name: 'Kept' }, id: 'abcdefghij' }, { theme: {} }], mode: 'nope', holidays: false, quorum: true, at: 5 })
@@ -1024,11 +970,8 @@ test('prefs: theme sync kept per account, read and written only with its key', a
 })
 
 test('drafts: sealed boxes kept per account, read and written only with its key', async () => {
-  const call = (method, fid, body = '', { key = signer, what = method === 'GET' ? 'quilcast-drafts-read' : 'quilcast-drafts' } = {}) => {
-    const ts = Date.now()
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex')
-    return fetch(`${base}/api/drafts/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
-  }
+  const call = (method, fid, body = '', { key = signer, what = method === 'GET' ? 'quilcast-drafts-read' : 'quilcast-drafts' } = {}) =>
+    fetch(`${base}/api/drafts/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: signed(key, what, fid, body) })
   const id = crypto.randomUUID()
   const body = JSON.stringify({ id, box: 'aXY=.c2VhbGVk' })
   assert.equal((await fetch(`${base}/api/drafts/7`)).status, 401)
@@ -1045,16 +988,10 @@ test('drafts: sealed boxes kept per account, read and written only with its key'
 })
 
 test('profile looks: saved only with a key the node lists for that FID, cleaned, and removable', async () => {
-  const put = (fid, look, { key = signer, ts = Date.now(), as = fid } = {}) => {
-    const body = JSON.stringify(look)
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-look:${as}:${ts}:${body}`), key)).toString('hex')
-    return fetch(`${base}/api/look/${fid}`, { method: 'PUT', body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
-  }
+  const put = (fid, look, { key = signer, as = fid } = {}) => fetch(`${base}/api/look/${fid}`, { method: 'PUT', body: JSON.stringify(look), headers: signed(key, 'quilcast-look', as, JSON.stringify(look)) })
   const look = { bg: '#FF00FF', text: 'red;background:url(//evil)', about: 'hi', top: [1, 1, 2], bgImg: 'https://evil.example/x.gif' }
   assert.equal((await put(8, look)).status, 403)
-  assert.equal((await put(7, look, { key: ed25519.utils.randomSecretKey() })).status, 403)
   assert.equal((await put(7, look, { as: 8 })).status, 401)
-  assert.equal((await put(7, look, { ts: Date.now() - 600e3 })).status, 401)
   const r = await put(7, look)
   assert.equal(r.status, 200)
   const saved = { bg: '#ff00ff', about: 'hi', top: [1, 2] }
@@ -1068,11 +1005,7 @@ test('profile looks: saved only with a key the node lists for that FID, cleaned,
 })
 
 test('profile looks: a marquee is saved as plain text with its settings, and empty text saves none', async () => {
-  const put = (look) => {
-    const body = JSON.stringify(look), ts = Date.now()
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-look:7:${ts}:${body}`), signer)).toString('hex')
-    return fetch(`${base}/api/look/7`, { method: 'PUT', body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
-  }
+  const put = (look) => fetch(`${base}/api/look/7`, { method: 'PUT', body: JSON.stringify(look), headers: signed(signer, 'quilcast-look', 7, JSON.stringify(look)) })
   const r = await put({ about: 'hi', marquee: { text: ' <script>alert(1)</script>\nwelcome\u202e ', speed: 'fast', dir: 'right', color: '#FFFF00', bg: 'url(//evil)', onclick: 'x' } })
   assert.equal(r.status, 200)
   const saved = { about: 'hi', marquee: { text: '<script>alert(1)</script> welcome', speed: 'fast', dir: 'right', color: '#ffff00' } }
@@ -1086,9 +1019,7 @@ test('profile looks: a marquee is saved as plain text with its settings, and emp
 
 test("profile looks: unsigned saves don't use up the account's own limit", async () => {
   for (let i = 0; i < 31; i++) await fetch(`${base}/api/look/7`, { method: 'PUT', body: 'null', headers: { 'x-forwarded-for': '10.7.7.7' } })
-  const body = 'null', ts = Date.now()
-  const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-look:7:${ts}:${body}`), signer)).toString('hex')
-  const r = await fetch(`${base}/api/look/7`, { method: 'PUT', body, headers: { 'x-forwarded-for': '10.7.7.8', 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': sig } })
+  const r = await fetch(`${base}/api/look/7`, { method: 'PUT', body: 'null', headers: { 'x-forwarded-for': '10.7.7.8', ...signed(signer, 'quilcast-look', 7, 'null') } })
   assert.equal(r.status, 200)
 })
 
@@ -1099,23 +1030,15 @@ test('rate limits count an IPv6 address by its /64', async () => {
 })
 
 test('pinned casts: only your own cast, signed with a key the node lists for that FID, public, and removable', async () => {
-  const put = (fid, pin, { key = signer, ts = Date.now(), as = fid } = {}) => {
-    const body = JSON.stringify(pin)
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-pin:${as}:${ts}:${body}`), key)).toString('hex')
-    return fetch(`${base}/api/pin/${fid}`, { method: 'PUT', body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
-  }
+  const put = (fid, pin, { key = signer, as = fid } = {}) => fetch(`${base}/api/pin/${fid}`, { method: 'PUT', body: JSON.stringify(pin), headers: signed(key, 'quilcast-pin', as, JSON.stringify(pin)) })
   const get = async (fid) => (await fetch(`${base}/api/pin/${fid}`)).json()
   const mine = '0x' + '7a'.repeat(20)
   assert.equal(await get(7), null)
-  // someone else's key, another FID's signature, an old one, or a look's signature: nothing is pinned
-  assert.equal((await put(7, { hash: mine }, { key: ed25519.utils.randomSecretKey() })).status, 403)
+  // another FID's key or signature, or a look's signature: nothing is pinned
   assert.equal((await put(8, { hash: mine })).status, 403)
   assert.equal((await put(7, { hash: mine }, { as: 8 })).status, 401)
-  assert.equal((await put(7, { hash: mine }, { ts: Date.now() - 600e3 })).status, 401)
   const body = JSON.stringify({ hash: mine })
-  const ts = Date.now()
-  const lookSig = Buffer.from(ed25519.sign(Buffer.from(`quilcast-look:7:${ts}:${body}`), signer)).toString('hex')
-  assert.equal((await fetch(`${base}/api/pin/7`, { method: 'PUT', body, headers: { 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': lookSig } })).status, 401)
+  assert.equal((await fetch(`${base}/api/pin/7`, { method: 'PUT', body, headers: signed(signer, 'quilcast-look', 7, body) })).status, 401)
   // not a hash, someone else's cast (or none at all), its own reply, or a node that fails or rate-limits
   assert.equal((await put(7, { hash: 'nope' })).status, 400)
   const theirs = await put(7, { hash: '0x' + '9a'.repeat(20) })
@@ -1326,19 +1249,16 @@ test('translations: asked once per cast and language, from the node\'s words, fr
 })
 
 test('deleting an account: only with its own key, and only files it alone put here go', async () => {
-  const sign = (what, fid, key, ts = Date.now(), body = '') => ({ 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex') })
+  const sign = (what, fid, key, ts, body) => signed(key, what, fid, body, ts)
   const del = (fid, { key = signer, what = 'quilcast-delete', ts, run = '' } = {}) => fetch(`${base}/api/account/${fid}?run=${run}`, { method: 'DELETE', headers: sign(what, fid, key, ts) })
   // a different PNG each time: same header, its own trailing bytes
   let pngs = 0
-  const png = () => Buffer.concat([Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex'), Buffer.from([0, 0, 0, 1, 0, 0, 0, 1]), Buffer.alloc(40, ++pngs + 100)])
+  const png = () => pngStub(1, ++pngs + 100)
   let ts = Date.now() + 1000
   const upload = async (fid, key, body) => {
     const r = await fetch(base + '/api/upload', { method: 'POST', headers: { 'content-type': 'image/png', 'x-size': String(body.length), 'x-fid': String(fid), ...sign('quilcast-upload', fid, key, ts++) } })
     assert.equal(r.status, 200)
-    const { id } = await r.json()
-    assert.equal((await fetch(`${base}/api/upload/${id}?offset=0`, { method: 'PUT', body })).status, 200)
-    let st = await (await fetch(`${base}/api/upload/${id}/done`, { method: 'POST' })).json()
-    for (let i = 0; i < 50 && st.state === 'sending'; i++) await new Promise((r) => setTimeout(r, 100)), (st = await (await fetch(`${base}/api/upload/${id}`)).json())
+    const st = await uploaded(base, (await r.json()).id, body)
     assert.equal(st.state, 'ready')
     return st.url.split('/m/')[1]
   }
@@ -1378,8 +1298,7 @@ test('deleting an account: only with its own key, and only files it alone put he
   await writeFile(join(media, 'translations', 'de', `${'7a'.repeat(20)}.json`), '{"from":"en","text":"x"}')
   await writeFile(join(media, 'translations', 'de', `${'9a'.repeat(20)}.json`), '{"from":"en","text":"y"}')
 
-  // someone else's key, fid 9's own key for fid 7, an old or missing signature, another kind of signature: nothing happens
-  assert.equal((await del(7, { key: ed25519.utils.randomSecretKey() })).status, 403)
+  // fid 9's own key for fid 7, an old or missing signature, another kind of signature: nothing happens
   assert.equal((await del(7, { key: signer9 })).status, 403)
   assert.equal((await del(8)).status, 403)
   assert.equal((await del(7, { ts: Date.now() - 600e3 })).status, 401)
@@ -1420,7 +1339,7 @@ test('deleting an account: only with its own key, and only files it alone put he
 })
 
 test('X crossposting goes to its own service as it came', async () => {
-  const sign = (what, fid, ts = Date.now(), body = '') => ({ 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(signer)).toString('hex'), 'x-ts': String(ts), 'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), signer)).toString('hex') })
+  const sign = (what, fid, ts, body) => signed(signer, what, fid, body, ts)
   const read = sign('quilcast-crosspost-read', 7)
   assert.deepEqual(await (await fetch(`${base}/api/crosspost/7`, { headers: read })).json(), { handle: 'someone', on: true })
   const body = JSON.stringify({ handle: 'someone' })
@@ -1478,24 +1397,12 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
   // the server's clock (testclock.mjs) may run ahead of this one: requests are signed, and casts timed, by it
   let ahead = await later(0)
   const now = () => Date.now() + ahead
-  const call = (method, fid, body = '', { key = signer, what = { GET: 'quilcast-scheduled-read', PUT: 'quilcast-scheduled', DELETE: 'quilcast-scheduled-cancel' }[method] } = {}) => {
-    const ts = now()
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex')
-    return fetch(`${base}/api/scheduled/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: { 'x-key': '0x' + Buffer.from(ed25519.getPublicKey(key)).toString('hex'), 'x-ts': String(ts), 'x-sig': sig } })
-  }
-  const thread = async (texts, at, { fid = 7, k = signer } = {}) => {
-    const out = []
-    let prev
-    for (const [i, text] of texts.entries()) {
-      const m = await castAt(fid, castBody({ text, parent: prev }), rawEd(k), at + i * 1000)
-      out.push(m)
-      prev = { fid, hash: m.hash }
-    }
-    return out
-  }
+  const call = (method, fid, body = '', { key = signer, what = { GET: 'quilcast-scheduled-read', PUT: 'quilcast-scheduled', DELETE: 'quilcast-scheduled-cancel' }[method] } = {}) =>
+    fetch(`${base}/api/scheduled/${fid}`, { method, body: method === 'GET' ? undefined : body, headers: signed(key, what, fid, body, now()) })
+  const cast = (texts, at, k = signer) => thread(texts, at, 7, rawEd(k))
   const b64 = (m) => Buffer.from(m.msg).toString('base64')
   const at = Math.ceil((now() + 90e3) / 1000) * 1000
-  const ms = await thread(['in ninety seconds', 'and its reply'], at)
+  const ms = await cast(['in ninety seconds', 'and its reply'], at)
   const id = crypto.randomUUID()
   const body = JSON.stringify({ id, msgs: ms.map(b64), draft: { parts: [{ text: 'in ninety seconds', media: [] }, { text: 'and its reply', media: [] }], as: 7 } })
   assert.equal((await fetch(`${base}/api/scheduled/7`)).status, 401)
@@ -1503,19 +1410,16 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
   // a body signed for reading, another account's casts, a key the node doesn't list, bytes changed on the way
   assert.equal((await call('PUT', 7, body, { what: 'quilcast-scheduled-read' })).status, 401)
   assert.equal((await call('PUT', 9, body, { key: signer9 })).status, 400)
-  const stranger = await thread(['x'], at, { k: ed25519.utils.randomSecretKey() })
+  const stranger = await cast(['x'], at, ed25519.utils.randomSecretKey())
   assert.equal((await call('PUT', 7, JSON.stringify({ id, msgs: stranger.map(b64) }))).status, 403)
-  const tampered = Buffer.from(ms[0].msg)
-  tampered[tampered.lastIndexOf(Buffer.from('ninety'))] ^= 1
-  assert.equal((await call('PUT', 7, JSON.stringify({ id, msgs: [tampered.toString('base64')] }))).status, 400)
-  const soon = await thread(['too soon'], now() + 20e3)
+  const soon = await cast(['too soon'], now() + 20e3)
   assert.match((await (await call('PUT', 7, JSON.stringify({ id, msgs: soon.map(b64) }))).json()).error, /at least a minute/)
   // scheduled
   const saved = await (await call('PUT', 7, body)).json()
   assert.deepEqual([saved.id, saved.at, saved.hash, saved.status], [id, at, ms[0].hash, 'scheduled'])
   // another one, cancelled before its time
   const gone = crypto.randomUUID()
-  assert.equal((await call('PUT', 7, JSON.stringify({ id: gone, msgs: (await thread(['never'], at)).map(b64) }))).status, 200)
+  assert.equal((await call('PUT', 7, JSON.stringify({ id: gone, msgs: (await cast(['never'], at)).map(b64) }))).status, 200)
   assert.deepEqual(await (await call('DELETE', 7, JSON.stringify({ id: gone }))).json(), { id: gone, was: 'scheduled' })
   const list = await (await call('GET', 7)).json()
   assert.deepEqual(list.map((s) => [s.id, s.status, s.draft.parts.length]), [[id, 'scheduled', 2]])
@@ -1531,12 +1435,12 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
   let shown = [id]
   for (let i = 0; i < 50 && shown.includes(id); i++) shown = (await (await call('GET', 7)).json()).map((s) => s.id)
   assert.deepEqual(shown, [])
-  const edit = await thread(['edited after it went out'], Math.ceil((now() + 90e3) / 1000) * 1000)
+  const edit = await cast(['edited after it went out'], Math.ceil((now() + 90e3) / 1000) * 1000)
   assert.equal((await call('PUT', 7, JSON.stringify({ id, msgs: edit.map(b64) }))).status, 409)
   // a signer revoked before its time: the node refuses, and the list says why
   refuse = 'invalid signer'
   const doomed = crypto.randomUUID()
-  assert.equal((await call('PUT', 7, JSON.stringify({ id: doomed, msgs: (await thread(['doomed'], Math.ceil((now() + 61e3) / 1000) * 1000)).map(b64) }))).status, 200)
+  assert.equal((await call('PUT', 7, JSON.stringify({ id: doomed, msgs: (await cast(['doomed'], Math.ceil((now() + 61e3) / 1000) * 1000)).map(b64) }))).status, 200)
   ahead = await later(65e3)
   let failed
   for (let i = 0; i < 50 && failed?.status !== 'failed'; i++) {
@@ -1552,13 +1456,7 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
 
 // last: it moves the server's clock three minutes on, past what other tests' signed timestamps allow
 test("Remind me's one-click endpoint answers CORS, and refuses a tap it can't check in words the toast can show", async () => {
-  const call = (method, body) => new Promise((ok, no) => {
-    const r = request({ host: '127.0.0.1', port, path: '/api/action', method, headers: { host: 'remind.quilcast.com', 'content-type': 'application/json' } }, (res) => {
-      const parts = []
-      res.on('data', (d) => parts.push(d)).on('end', () => ok({ status: res.statusCode, headers: res.headers, body: Buffer.concat(parts).toString() }))
-    })
-    r.on('error', no).end(body && JSON.stringify(body))
-  })
+  const call = (method, body) => hostGet(port, 'remind.quilcast.com', '/api/action', { method, headers: { 'content-type': 'application/json' }, body: body && JSON.stringify(body) })
   const pre = await call('OPTIONS')
   assert.equal(pre.status, 204)
   assert.equal(pre.headers['access-control-allow-origin'], '*')
@@ -1572,13 +1470,10 @@ test("Remind me's one-click endpoint answers CORS, and refuses a tap it can't ch
 test('Remind me: a reminder is kept with its notification token and sent to the Mini apps inbox when due', async () => {
   const ahead = await later(0)
   const now = () => Date.now() + ahead
-  const call = (path, body, host = 'remind.quilcast.com') => new Promise((ok, no) => {
-    const r = request({ host: '127.0.0.1', port, path, method: 'POST', headers: { host, 'content-type': 'application/json' } }, (res) => {
-      const parts = []
-      res.on('data', (d) => parts.push(d)).on('end', () => ok({ status: res.statusCode, body: JSON.parse(Buffer.concat(parts).toString() || 'null') }))
-    })
-    r.on('error', no).end(JSON.stringify(body))
-  })
+  const call = async (path, body) => {
+    const r = await hostGet(port, 'remind.quilcast.com', path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    return { status: r.status, body: JSON.parse(r.body || 'null') }
+  }
   const post = (path, body) => fetch(base + path, { method: 'POST', body: JSON.stringify(body) })
   // turning notifications on for the action: Quilcast's token for remind.quilcast.com, as addMiniApp hands it over
   const inbox = 'cd'.repeat(32)
@@ -1615,13 +1510,10 @@ test('Remind me: a reminder is kept with its notification token and sent to the 
 
 // last: it uses up this address's day of reminders and moves the clock on a few minutes
 test("Remind me's one-click taps count toward the same 200-a-day cap as /api/remind", async () => {
-  const call = (path) => new Promise((ok, no) => {
-    const r = request({ host: '127.0.0.1', port, path, method: 'POST', headers: { host: 'remind.quilcast.com', 'content-type': 'application/json' } }, (res) => {
-      const parts = []
-      res.on('data', (d) => parts.push(d)).on('end', () => ok({ status: res.statusCode, body: JSON.parse(Buffer.concat(parts).toString() || 'null') }))
-    })
-    r.on('error', no).end(JSON.stringify({ header: 'x', payload: 'y', signature: 'z' }))
-  })
+  const call = async (path) => {
+    const r = await hostGet(port, 'remind.quilcast.com', path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ header: 'x', payload: 'y', signature: 'z' }) })
+    return { status: r.status, body: JSON.parse(r.body || 'null') }
+  }
   let capped = false
   // past 30 a minute the minute's limit answers first, so the clock moves on a minute every 30
   for (let i = 1; i <= 201 && !capped; i++) {

@@ -8,13 +8,14 @@
 // <data>/poll/<id>.json is a poll and <data>/poll/<id>/<fid> a vote (the option's index), created only if it isn't
 // there yet, so an FID votes once even while two servers run during a deploy.
 import { randomBytes } from 'node:crypto'
-import { link, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { link, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { join } from 'node:path'
-import { fail, fetchJson } from './net.mjs'
+import { fail, fetchJson, readJsonFile, writeAtomic } from './net.mjs'
 import { textSvg, wrap } from './text.mjs'
 import { personalSigner } from './upload.mjs'
-import { LOGO } from '../src/shared.ts'
+import { rpc } from '../src/shared.ts'
+import { logoTile } from './cards.mjs'
 
 export const MAX_QUESTION = 320
 export const MAX_OPTION = 60
@@ -40,14 +41,12 @@ export async function addPoll(b, host) {
   if (options.length < 2 || options.length > 4 || options.some((o) => !o)) throw no(400, 'A poll has 2 to 4 options, none of them empty.')
   if (new Set(options.map((o) => o.toLowerCase())).size < options.length) throw no(400, 'Each option has to be different.')
   const id = randomBytes(6).toString('hex')
-  const file = join(dir, `${id}.json`)
-  await writeFile(file + '.tmp', JSON.stringify({ question, options, at: Date.now() }))
-  await rename(file + '.tmp', file)
+  await writeAtomic(join(dir, `${id}.json`), JSON.stringify({ question, options, at: Date.now() }))
   return { id, url: `https://${host}/p/${id}` }
 }
 
 /** The poll `id`, or null. */
-export const getPoll = (id) => (ID.test(id) ? readFile(join(dir, `${id}.json`), 'utf8').then(JSON.parse, () => null) : Promise.resolve(null))
+export const getPoll = (id) => (ID.test(id) ? readJsonFile(join(dir, `${id}.json`)) : Promise.resolve(null))
 
 // each poll's votes counted so far, by file name: a count reads only the votes that came in since (from either
 // server), and counts of one poll take turns, so many at once after a restart read its votes once
@@ -100,9 +99,8 @@ export async function contractSigned(address, message, sig) {
   const digest = keccak_256(Buffer.concat([Buffer.from(`\x19Ethereum Signed Message:\n${message.length}`), message]))
   const word = (n) => n.toString(16).padStart(64, '0')
   const data = '0x1626ba7e' + Buffer.from(digest).toString('hex') + word(64) + word(sig.length) + sig.toString('hex').padEnd(Math.ceil(sig.length / 32) * 64, '0')
-  const r = await fetch(OP_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: address, data }, 'latest'] }), signal: AbortSignal.timeout(5000) })
-    .then((r) => r.json(), () => null)
-  return r?.result === '0x1626ba7e' + '0'.repeat(56)
+  // a revert or no answer is a no
+  return (await rpc(OP_RPC, 'eth_call', [{ to: address, data }, 'latest'], AbortSignal.timeout(5000)).catch(() => null)) === '0x1626ba7e' + '0'.repeat(56)
 }
 
 // some hosts sign the app's launch URL, not its origin; the signed domain already ties it to this host
@@ -163,7 +161,7 @@ export function pollCard(p) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
   <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d1540"/><stop offset="0.6" stop-color="#110e1f"/><stop offset="1" stop-color="#0d0c11"/></linearGradient></defs>
   <rect width="1200" height="800" fill="url(#bg)"/>
-  <g transform="translate(64 52) scale(1.5)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
+  ${logoTile(64, 52, 1.5)}
   <text x="124" y="87" font-family="Inter" font-weight="800" font-size="28" letter-spacing="3" fill="#a594ff">POLL</text>
   ${textSvg(q, { x: 64, y: 180, lh: 62, size: 50, bold: true, weight: 800, fill: '#f4f2fa' })}
   ${rows.join('\n  ')}

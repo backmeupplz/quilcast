@@ -2,9 +2,8 @@
 // own channel list is made up from casts' parent URLs, so it has no names, images or real member counts, and its ids
 // for the oldest channels (/memes is chain://eip155:1/erc721:0xfd84…) point at empty buckets. If farcaster.xyz fails,
 // the last good list stays.
-import { fetchJson } from './net.mjs'
+import { fetchJson, httpsUrl } from './net.mjs'
 
-const https_ = (u) => (typeof u === 'string' && /^https:\/\//.test(u) && u.length < 1024 ? u : undefined)
 const text = (v, n) => (typeof v === 'string' && v ? v.slice(0, n) : undefined)
 // where the directory comes from (tests point it at a fake)
 const API = process.env.FARCASTER_API_URL || 'https://api.farcaster.xyz'
@@ -14,7 +13,7 @@ export function trim(raw) {
   return (raw || []).flatMap((c) => {
     if (typeof c?.id !== 'string' || !/^[a-z0-9-]{1,64}$/.test(c.id) || typeof c.url !== 'string' || c.url.length > 512) return []
     return [{
-      id: c.id, url: c.url, name: text(c.name, 80) || c.id, desc: text(c.description, 300), image: https_(c.imageUrl), header: https_(c.headerImageUrl),
+      id: c.id, url: c.url, name: text(c.name, 80) || c.id, desc: text(c.description, 300), image: httpsUrl(c.imageUrl), header: httpsUrl(c.headerImageUrl),
       followers: +c.followerCount || 0, members: +c.memberCount || 0, open: c.publicCasting !== false,
     }]
   }).sort((a, b) => b.followers - a.followers)

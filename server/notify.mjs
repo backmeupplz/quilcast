@@ -6,9 +6,8 @@
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { createHash, randomBytes } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fail, keep, readJson, safeGet } from './net.mjs'
+import { fail, fresh, httpsUrl, readJson, safeGet, writeAtomic } from './net.mjs'
 import { push, validSubscription } from './push.mjs'
 import { proxied } from '../src/shared.ts'
 
@@ -22,11 +21,7 @@ let db = { inboxes: {}, tokens: {} }
 let timer
 const persist = () => {
   clearTimeout(timer)
-  timer = setTimeout(async () => {
-    const file = join(dir, 'notify.json')
-    await writeFile(file + '.tmp', JSON.stringify(db), { mode: 0o600 })
-    await rename(file + '.tmp', file)
-  }, 1000)
+  timer = setTimeout(() => writeAtomic(join(dir, 'notify.json'), JSON.stringify(db), { mode: 0o600 }), 1000)
 }
 export function load(dataDir) {
   dir = dataDir
@@ -179,24 +174,35 @@ const manifests = new Map()
 /** The app's /.well-known/farcaster.json (miniapp or frame part), cached for ten minutes. */
 export function manifest(o) {
   o = origin(o)
-  const hit = manifests.get(o)
-  if (hit && hit.at > Date.now() - 600e3) return hit.m
-  const m = safeGet(`${o}/.well-known/farcaster.json`, { max: 64e3, headers: { accept: 'application/json' } }).then((r) => {
+  return fresh(manifests, 2000, 600e3, o, () => safeGet(`${o}/.well-known/farcaster.json`, { max: 64e3, headers: { accept: 'application/json' } }).then((r) => {
     if (r.status !== 200 || r.truncated) return null
     const j = JSON.parse(r.body.toString('utf8'))
     const a = j?.miniapp || j?.frame
     if (!a || typeof a !== 'object') return null
-    const url = (u) => (typeof u === 'string' && /^https:\/\//.test(u) && u.length < 1024 ? u : undefined)
     // a cast action (the share extension spec) and a composer action (public/developers/composer-actions.html): each
     // URL has to be on the app's own origin
     const share = shareUrl(a.castShareUrl, o)
     return {
-      name: str(a.name, 60), iconUrl: url(a.iconUrl), homeUrl: url(a.homeUrl), splashImageUrl: url(a.splashImageUrl), splashBackgroundColor: str(a.splashBackgroundColor, 9), webhookUrl: url(a.webhookUrl),
+      name: str(a.name, 60), iconUrl: httpsUrl(a.iconUrl), homeUrl: httpsUrl(a.homeUrl), splashImageUrl: httpsUrl(a.splashImageUrl), splashBackgroundColor: str(a.splashBackgroundColor, 9), webhookUrl: httpsUrl(a.webhookUrl),
       castShareUrl: share, composerActionUrl: shareUrl(a.composerActionUrl, o), description: str(a.subtitle, 30) || str(a.description, 170),
     }
-  }).catch(() => null)
-  keep(manifests, 2000, o, { at: Date.now(), m })
-  return m
+  }).catch(() => null))
+}
+
+/** A JSON Farcaster Signature's { header, payload, key, signed }, or null when it isn't one: an app key's 64-byte signature
+ *  over `header.payload` (both base64url JSON). `lower`: the key may come in any case. */
+export function jfs(e, lower = false) {
+  let header, payload
+  try {
+    header = JSON.parse(Buffer.from(String(e.header), 'base64url'))
+    payload = JSON.parse(Buffer.from(String(e.payload), 'base64url'))
+  } catch {
+    return null
+  }
+  const key = lower ? String(header?.key || '').toLowerCase() : header?.key
+  const sig = Buffer.from(String(e.signature), 'base64url')
+  if (!Number.isSafeInteger(header?.fid) || header.type !== 'app_key' || !/^0x[0-9a-f]{64}$/.test(key) || sig.length !== 64) return null
+  return { header, payload, key, signed: ed25519.verify(sig, Buffer.from(`${e.header}.${e.payload}`), Buffer.from(key.slice(2), 'hex')) }
 }
 
 const EVENTS = new Set(['miniapp_added', 'miniapp_removed', 'notifications_enabled', 'notifications_disabled'])
@@ -205,18 +211,11 @@ async function event(req, site) {
   const b = await readJson(req, 8000)
   const o = origin(b.origin)
   const e = b.event
-  let header, payload
-  try {
-    header = JSON.parse(Buffer.from(e.header, 'base64url'))
-    payload = JSON.parse(Buffer.from(e.payload, 'base64url'))
-  } catch {
-    throw fail(400, 'bad event')
-  }
-  const sig = Buffer.from(String(e.signature), 'base64url')
   // only well-formed events signed by the key they name, about our own notification URL
-  if (!Number.isSafeInteger(header?.fid) || header.type !== 'app_key' || !/^0x[0-9a-f]{64}$/.test(header.key) || sig.length !== 64 || !EVENTS.has(payload?.event)) throw fail(400, 'bad event')
-  if (!ed25519.verify(sig, Buffer.from(`${e.header}.${e.payload}`), Buffer.from(header.key.slice(2), 'hex'))) throw fail(400, 'bad signature')
-  const d = payload.notificationDetails
+  const j = jfs(e)
+  if (!j || !EVENTS.has(j.payload?.event)) throw fail(400, 'bad event')
+  if (!j.signed) throw fail(400, 'bad signature')
+  const d = j.payload.notificationDetails
   if (d && (d.url !== `${site}/api/notify` || db.tokens[d.token]?.origin !== o)) throw fail(400, 'bad notification details')
   const m = await manifest(o)
   if (!m) throw fail(404, 'This app has no manifest.')

@@ -25,11 +25,11 @@
 // address, so the same post would make two different casts.
 import { randomBytes } from 'node:crypto'
 import { createServer } from 'node:http'
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { castAt, castBody, hex, keyAddMsg, keyRemoveSelf, MT, rawEd, unhex } from '../src/fc.ts'
 import { keysOf, keySigned } from './looks.mjs'
-import { fail, parseJson, readText, safeGet } from './net.mjs'
+import { fail, parseJson, readJsonFile, readText, safeGet, writeAtomic } from './net.mjs'
 import { submitTo } from './scheduled.mjs'
 
 const HANDLE = /^[A-Za-z0-9_]{1,15}$/
@@ -45,13 +45,8 @@ const MEDIA_MAX = { photo: 10e6, video: 100e6 }
 let dir = ''
 export const loadCrosspost = (d) => mkdir((dir = d), { recursive: true, mode: 0o700 })
 const fileOf = (fid) => join(dir, `${fid}.json`)
-export const read = (fid) => readFile(fileOf(fid), 'utf8').then(JSON.parse, () => null)
-async function save(c) {
-  const f = fileOf(c.fid)
-  const tmp = `${f}.${randomBytes(6).toString('hex')}.tmp`
-  await writeFile(tmp, JSON.stringify(c), { mode: 0o600 })
-  await rename(tmp, f)
-}
+export const read = (fid) => readJsonFile(fileOf(fid))
+const save = (c) => writeAtomic(fileOf(c.fid), JSON.stringify(c), { mode: 0o600 })
 // one account's file is changed by one thing at a time here (a round, Turn on, Turn off), so a round that read it before
 // a Turn off can't write it back afterwards
 const locks = new Map()

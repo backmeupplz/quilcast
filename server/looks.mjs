@@ -8,13 +8,12 @@
 //   GET /api/design/<id>  a shared design, or null
 // The look is cut down to what src/shared.ts allows, and every image in it has to be a real image under its size cap.
 import { ed25519 } from '@noble/curves/ed25519.js'
-import { createHash } from 'node:crypto'
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanDesign, cleanLook, lookImages } from '../src/shared.ts'
-import { fail, fetchJson, gate, imageInfo, keep, parseJson, readText, safeGet } from './net.mjs'
+import { fail, fetchJson, fresh, gate, imageInfo, keep, parseJson, readJsonFile, readText, safeGet, writeAtomic } from './net.mjs'
 import { seen } from './stats.mjs'
-import { ownThemes } from './upload.mjs'
+import { keepHashed } from './themes.mjs'
 
 let dir = ''
 let designs = ''
@@ -25,16 +24,9 @@ export const loadLooks = (dataDir) =>
 export async function putDesign(req) {
   const design = cleanDesign(parseJson(await readText(req, 4e3)))
   if (!Object.keys(design).length) throw fail(400, 'That design is empty.')
-  const body = JSON.stringify(design)
-  const id = createHash('sha256').update(body).digest('base64url').slice(0, 10)
-  await writeFile(join(designs, `${id}.json`), body, { flag: 'wx' }).catch((e) => {
-    if (e.code !== 'EEXIST') throw e
-  })
-  // its pictures stay when the account that uploaded them is deleted (upload.mjs)
-  await ownThemes(body)
-  return { id }
+  return keepHashed(designs, JSON.stringify(design))
 }
-export const getDesign = (id) => readFile(join(designs, `${id}.json`), 'utf8').then(JSON.parse, () => null)
+export const getDesign = (id) => readJsonFile(join(designs, `${id}.json`))
 
 const looks = new Map()
 const file = (fid) => join(dir, `${fid}.json`)
@@ -61,7 +53,7 @@ export async function dropLook(fid) {
   return had
 }
 
-export const getLook = (fid) => looks.get(fid) || keep(looks, 5000, fid, readFile(file(fid), 'utf8').then(JSON.parse, () => null))
+export const getLook = (fid) => looks.get(fid) || keep(looks, 5000, fid, readJsonFile(file(fid)))
 
 // fid → Map(key → { at, exp }) of keys the node listed when they signed, for when it can't be asked (haatz stalls for
 // minutes now and then); only keys the node listed get in, so nobody can crowd real ones out with keys of their own
@@ -71,24 +63,17 @@ const held = new Map()
 // key that may only post casts (X crossposting's, server/crosspost.mjs).
 const signers = new Map()
 const castOnly = (scopes) => Array.isArray(scopes) && scopes.length === 1 && (scopes[0] === 'MESSAGE_TYPE_CAST_ADD' || scopes[0] === 1)
-const rowsOf = (node, fid, fresh) => {
-  const hit = signers.get(fid)
-  if (hit && hit.at > Date.now() - fresh) return hit.rows
+const rowsOf = (node, fid, ttl) =>
   // a timeout or a dropped connection reads the same as an error answer
-  const rows = fetchJson(`${node}/v1/signersByFid?fid=${fid}`).catch(() => null).then((r) => {
+  fresh(signers, 2000, ttl, fid, () => fetchJson(`${node}/v1/signersByFid?fid=${fid}`).catch(() => null).then((r) => {
     if (!r?.signers) throw fail(502, "Couldn't reach the Farcaster node. Try again.")
     const rows = r.signers.map((s) => ({ key: String(s.key).toLowerCase(), exp: s.expiresAt ? s.expiresAt * 1000 : Infinity, cast: castOnly(s.scopes) }))
     // a key the node no longer lists is forgotten for outages too, whichever request asked
     const h = held.get(fid)
     if (h) for (const k of h.keys()) if (!rows.some((r) => r.key === k)) h.delete(k)
     return rows
-  })
-  // a failed lookup isn't kept, so the next save asks the node again
-  keep(signers, 2000, fid, { at: Date.now(), rows })
-  rows.catch(() => signers.get(fid)?.rows === rows && signers.delete(fid))
-  return rows
-}
-export const keysOf = (node, fid, fresh = 60e3) => rowsOf(node, fid, fresh).then((rows) => rows.filter((r) => r.exp > Date.now()).map((r) => r.key))
+  }))
+export const keysOf = (node, fid, ttl = 60e3) => rowsOf(node, fid, ttl).then((rows) => rows.filter((r) => r.exp > Date.now()).map((r) => r.key))
 
 // images are checked once each: fetched up to their cap, so a 1 GB "GIF" stops at the cap and fails
 const probes = gate(4)
@@ -116,7 +101,7 @@ export async function keySigned(req, what, fid, body, node, stale = () => fail(4
   const sig = String(req.headers['x-sig'] || '')
   if (!/^0x[0-9a-f]{64}$/.test(key) || !/^[0-9a-f]{128}$/.test(sig) || !(Math.abs(Date.now() - ts) < 300e3)) throw stale()
   if (!ed25519.verify(Buffer.from(sig, 'hex'), Buffer.from(`${what}:${fid}:${ts}:${body}`), Buffer.from(key.slice(2), 'hex'))) throw fail(401, 'Bad signature.')
-  const listed = async (fresh) => (await rowsOf(node, fid, fresh)).find((r) => r.key === key && r.exp > Date.now())
+  const listed = async (ttl) => (await rowsOf(node, fid, ttl)).find((r) => r.key === key && r.exp > Date.now())
   const ok = await listed(60e3).then((r) => r || listed(3e3)).then((r) => {
     if (r) {
       // re-adding moves the account to the back of the line
@@ -163,8 +148,7 @@ export async function putLook(req, fid, node, busy = () => false) {
       x.title = String(title).slice(0, 100)
     }))
   }
-  await writeFile(file(fid) + '.tmp', JSON.stringify(look))
-  await rename(file(fid) + '.tmp', file(fid))
+  await writeAtomic(file(fid), JSON.stringify(look))
   looks.set(fid, Promise.resolve(look))
   listed = null
   return look

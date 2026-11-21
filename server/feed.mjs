@@ -3,14 +3,13 @@
 // app shows it (shared.ts markdown, links absolute) with its pictures and links below.
 import { castText, isImg, markdown, proxied, taggable, unmarkdown, urlsOf } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
-import { clip, fname, nameOf } from './profile.mjs'
+import { clip, esc as html, fname, nameOf } from './profile.mjs'
 
 // what XML 1.0 can't hold at all, even escaped (most C0 controls, U+FFFE and U+FFFF, half a surrogate pair), is dropped
 const BAD = /[\0-\x08\x0b\x0c\x0e-\x1f￾￿]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g
 const XML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }
 /** Text (or HTML) as XML character data or an attribute value. */
 export const xml = (s) => String(s ?? '').replace(BAD, '').replace(/[&<>"']/g, (c) => XML[c])
-const html = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const HASH = /^(0x)?[0-9a-f]{40}$/
 const handle = (u) => (fname(u) ? `@${fname(u)}` : `!${u.fid}`)
 /** A picture's address for a reader: another site's through our /api/img (shared.ts proxied), absolute against `site`. */

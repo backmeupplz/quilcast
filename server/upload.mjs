@@ -15,11 +15,28 @@ import { createWriteStream } from 'node:fs'
 import { appendFile, mkdir, readdir, readFile, rename, rm, stat, statfs, truncate, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { keySigned } from './looks.mjs'
-import { fail, fetchJson, gate, imageInfo } from './net.mjs'
+import { fail, fetchJson, gate, imageInfo, readJson, writeAtomic } from './net.mjs'
 
 export const FC = process.env.FC_URL || 'https://client.farcaster.xyz'
 // farcaster.xyz's API answers its own site only
 export const FC_HEADERS = { origin: 'https://farcaster.xyz', referer: 'https://farcaster.xyz/', accept: 'application/json' }
+/** One call to farcaster.xyz's API, `token` its Authorization; resolves { status, body } with its own answer. */
+export async function fcCall(method, path, token, body, ms = 15000) {
+  const headers = { ...FC_HEADERS, ...(token && { authorization: `Bearer ${token}` }), ...(body && { 'content-type': 'application/json', 'idempotency-key': randomUUID() }) }
+  const r = await fetch(FC + path, { method, headers, body, signal: AbortSignal.timeout(ms) })
+  return { status: r.status, body: await r.json().catch(() => ({})) }
+}
+/** The browser's call `op` (a key of `ops`: [method, path, query params it may pass]) relayed to farcaster.xyz with its
+ *  token (dm.mjs, spaces.mjs); each param is cut to `cap`, and `missing()` is thrown when there's no token. */
+export async function relay(ops, req, op, url, { cap, missing }) {
+  if (!Object.hasOwn(ops, op)) throw fail(404, 'not found')
+  const [method, path, params = []] = ops[op]
+  if (req.method !== method) throw fail(405, `${method} only`)
+  const qs = new URLSearchParams(params.flatMap((k) => (url.searchParams.has(k) ? [[k, url.searchParams.get(k).slice(0, cap)]] : [])))
+  const token = String(req.headers.authorization || '').match(/^Bearer (\S{10,500})$/)?.[1]
+  if (!token && missing) throw missing()
+  return fcCall(method, path + (qs.size ? `?${qs}` : ''), token, method === 'GET' ? undefined : JSON.stringify(await readJson(req)))
+}
 export const MEDIA = process.env.MEDIA_DIR || '/data/media'
 const TMP = join(MEDIA, '..', 'incoming')
 export const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' }
@@ -31,24 +48,19 @@ const MAX_ACTIVE = 40, MAX_ACTIVE_PER_FID = 3, MAX_INCOMING = 2e9
 const DAILY_LOCAL_PER_FID = 300e6, MEDIA_CAP = 20e9, FREE_FLOOR = Number(process.env.FREE_FLOOR || 40e9)
 const known = (type) => typeof type === 'string' && Object.hasOwn(EXT, type)
 
-// the first bytes must match the declared type, so nothing else can be stored under a media name
+// the first bytes must match the declared type, so nothing else can be stored under a media name (an image's are
+// imageInfo's, read from its header)
 const MAGIC = {
-  'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
-  'image/png': (b) => b.length > 8 && b.readUInt32BE(0) === 0x89504e47,
-  'image/gif': (b) => /^GIF8[79]a/.test(b.toString('latin1', 0, 6)),
-  'image/webp': (b) => b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP',
   'video/mp4': (b) => b.toString('latin1', 4, 8) === 'ftyp',
   'video/quicktime': (b) => ['ftyp', 'moov', 'mdat', 'wide', 'free', 'skip'].includes(b.toString('latin1', 4, 8)),
   'video/webm': (b) => b.length > 4 && b.readUInt32BE(0) === 0x1a45dfa3,
 }
 export function looksLike(type, b) {
-  if (!known(type) || !MAGIC[type](b)) return false
+  if (!known(type)) return false
+  if (!type.startsWith('image/')) return MAGIC[type](b)
   // images also get a pixel budget, so nobody can host a decompression bomb for viewers' browsers
-  if (type.startsWith('image/')) {
-    const info = imageInfo(b)
-    return !!info && info.type === type && info.w > 0 && info.h > 0 && info.w * info.h <= 100e6
-  }
-  return true
+  const info = imageInfo(b)
+  return !!info && info.type === type && info.w > 0 && info.h > 0 && info.w * info.h <= 100e6
 }
 
 const canon = (o) => (o === null || typeof o !== 'object' ? JSON.stringify(o) : Array.isArray(o) ? `[${o.map(canon).join(',')}]` : `{${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}:${canon(o[k])}`).join(',')}}`)
@@ -140,8 +152,7 @@ async function legacyReady() {
       // owner, so a record from then says nothing for sure. A volume that can't be listed is an error, not "empty";
       // one that isn't there yet has no files.
       const names = (await readdir(MEDIA).catch((e) => (e.code === 'ENOENT' ? [] : Promise.reject(e)))).filter((n) => NAME.test(n))
-      await writeFile(legacyFile + '.tmp', names.map((n) => n + '\n').join(''))
-      await rename(legacyFile + '.tmp', legacyFile)
+      await writeAtomic(legacyFile, names.map((n) => n + '\n').join(''))
     }
     return (legacyOk = true)
   } catch (e) {
@@ -263,8 +274,7 @@ async function signedBy(req, fid, node) {
 /** farcaster.xyz session token for a signed login request, or undefined. */
 async function fcToken({ bearer, authRequest }) {
   try {
-    const r = await fetch(FC + '/v2/onboarding-state', { method: 'PUT', headers: { ...FC_HEADERS, 'content-type': 'application/json', authorization: `Bearer ${bearer}` }, body: JSON.stringify({ authRequest }), signal: AbortSignal.timeout(20000) })
-    return (await r.json()).result?.token?.secret
+    return (await fcCall('PUT', '/v2/onboarding-state', bearer, JSON.stringify({ authRequest }), 20000)).body.result?.token?.secret
   } catch {}
 }
 

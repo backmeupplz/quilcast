@@ -9,10 +9,10 @@
 // Quorum skins carry their pictures and font inline as data: URIs; those are checked, kept in the media volume by
 // their hash and linked as quilcast.com/m/<hash>.<ext>, so a converted theme is small and shares like any other.
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { cleanTheme, DEFAULTS } from '../src/shared.ts'
-import { fail, gate, keep, parseJson, readText } from './net.mjs'
+import { fail, fresh, gate, keep, parseJson, readJsonFile, readText } from './net.mjs'
 import { keepMedia, looksLike, ownThemes } from './upload.mjs'
 
 export const QUORUM = process.env.QUORUM_URL || 'https://api.quorummessenger.com'
@@ -20,19 +20,23 @@ export const QUORUM = process.env.QUORUM_URL || 'https://api.quorummessenger.com
 let dir = ''
 export const loadThemes = (dataDir) => mkdir((dir = join(dataDir, 'themes')), { recursive: true })
 
-export async function putTheme(req) {
-  const theme = cleanTheme(parseJson(await readText(req, 12e3)))
-  if (!Object.keys(theme).length) throw fail(400, 'That theme is empty.')
-  const body = JSON.stringify(theme)
+/** `body` (a theme's or a design's JSON) kept once in `at` under a hash of itself, so a link always shows the same one: { id }. */
+export async function keepHashed(at, body) {
   const id = createHash('sha256').update(body).digest('base64url').slice(0, 10)
-  await writeFile(join(dir, `${id}.json`), body, { flag: 'wx' }).catch((e) => {
+  await writeFile(join(at, `${id}.json`), body, { flag: 'wx' }).catch((e) => {
     if (e.code !== 'EEXIST') throw e
   })
   // its pictures stay when the account that uploaded them is deleted (upload.mjs)
   await ownThemes(body)
   return { id }
 }
-export const getTheme = (id) => readFile(join(dir, `${id}.json`), 'utf8').then(JSON.parse, () => null)
+
+export async function putTheme(req) {
+  const theme = cleanTheme(parseJson(await readText(req, 12e3)))
+  if (!Object.keys(theme).length) throw fail(400, 'That theme is empty.')
+  return keepHashed(dir, JSON.stringify(theme))
+}
+export const getTheme = (id) => readJsonFile(join(dir, `${id}.json`))
 
 // --- Quorum ---
 
@@ -53,10 +57,7 @@ export function gallery(q) {
   const sort = q.get('sort') === 'new' ? 'new' : 'popular'
   const search = String(q.get('search') || '').slice(0, 60)
   const offset = Math.min(Math.max(Number(q.get('offset')) || 0, 0), 5000)
-  const k = `${sort}:${offset}:${search}`
-  const hit = lists.get(k)
-  if (hit && hit.at > Date.now() - 300e3) return hit.list
-  const list = quorum(`/skins?${new URLSearchParams({ sort, offset: String(offset), limit: '30', ...(search && { search }) })}`, 4e6).then((r) => ({
+  return fresh(lists, 200, 300e3, `${sort}:${offset}:${search}`, () => quorum(`/skins?${new URLSearchParams({ sort, offset: String(offset), limit: '30', ...(search && { search }) })}`, 4e6).then((r) => ({
     more: !!r?.has_more,
     skins: (Array.isArray(r?.entries) ? r.entries : []).filter((e) => typeof e?.id === 'string' && /^Qm\w{44}$/.test(e.id)).map((e) => ({
       id: e.id, name: String(e.name || '').slice(0, 80), description: e.description ? String(e.description).slice(0, 200) : undefined,
@@ -67,10 +68,7 @@ export function gallery(q) {
     // fails just shows without a preview
     await Promise.all(l.skins.map((s) => skinGate(() => quorumSkin(s.id)).then((theme) => (s.theme = theme), () => {})))
     return l
-  })
-  keep(lists, 200, k, { at: Date.now(), list })
-  list.catch(() => lists.delete(k))
-  return list
+  }))
 }
 
 const skinGate = gate(6)

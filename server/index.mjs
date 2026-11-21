@@ -9,10 +9,9 @@ import { createServer } from 'node:http'
 import { extname, join, normalize, relative } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, imagesIn, queue, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, stickerPack, urlsOf, X_LOGO } from '../src/shared.ts'
-import { PRESETS as EFFECTS } from '../src/fx.ts'
+import { castText, imagesIn, queue, rpc, safeUrl, unmarkdown, cleanDesign, cleanTheme, isImg, isVid, n, sized, stickerPack, urlsOf } from '../src/shared.ts'
 import { classify, classifyPart, coverOf, fromV2, headOf, isArticle, maybeArticle, partNow, plainOpening } from '../src/article.ts'
-import { clientIp, fetchJson, gate, imageInfo, ipGroup, keep, lru, parseJson, proxiedPic, readJson, readText, safeGet, sendOn } from './net.mjs'
+import { clientIp, fail, fetchJson, fresh, gate, httpsUrl, imageInfo, ipGroup, keep, lru, parseJson, proxiedPic, readJson, readJsonFile, readText, safeGet, sendOn } from './net.mjs'
 import { loadTranslations, lookup as translations, translate } from './translate.mjs'
 import { dm } from './dm.mjs'
 import { space } from './spaces.mjs'
@@ -39,8 +38,8 @@ import { body as profileBody, clip, describe, fname, hidden, ld, nameOf, pathOf 
 import { rss, shown } from './feed.mjs'
 import { body as homeBody, FOLD, lean, trending, wants } from './home.mjs'
 import { channels, search } from './channels.mjs'
-import { cardArt, cardMeta, tierOf } from './cards.mjs'
-import { cut, ends, esc, exactly, FONTS, initial, layout, pictures, richSvg, textSvg, width, wrap } from './text.mjs'
+import { cardArt, cardMeta, castSvg, designSvg, nftMeta, nftSvg, ownerName, packSvg, profileSvg, shareSvg, tall, themeSvg, tierOf } from './cards.mjs'
+import { cut, esc, FONTS, pictures } from './text.mjs'
 
 const NODE = process.env.NODE_URL || 'https://haatz.quilibrium.com'
 // a public Snapchain node, for keys added on Optimism since Hypersnap's fork (Remind me's one-click check); '' turns it off
@@ -141,16 +140,15 @@ setInterval(() => {
 // farcaster.xyz's public top mini apps (its CORS doesn't allow us), trimmed to what the Discover list shows.
 // Kept ten minutes; if farcaster.xyz fails, the last good list stays.
 let directory = { at: 0, apps: null }
-const https_ = (u) => (typeof u === 'string' && /^https:\/\//.test(u) && u.length < 1024 ? u : undefined)
 const text = (v, n) => (typeof v === 'string' ? v.slice(0, n) : undefined)
 async function apps() {
   if (directory.apps && directory.at > Date.now() - 600e3) return directory.apps
   const r = await fetchJson('https://api.farcaster.xyz/v1/top-frameapps?limit=100', 8000).catch(() => null)
   const list = (r?.result?.frames || []).flatMap((f) => {
-    const url = https_(f.homeUrl)
+    const url = httpsUrl(f.homeUrl)
     return url ? [{
-      url, name: text(f.name, 60) || new URL(url).host, tagline: text(f.tagline || f.subtitle || f.description, 140), icon: https_(f.iconUrl),
-      splash: https_(f.splashImageUrl), bg: /^#[0-9a-f]{3,8}$/i.test(f.splashBackgroundColor) ? f.splashBackgroundColor : undefined,
+      url, name: text(f.name, 60) || new URL(url).host, tagline: text(f.tagline || f.subtitle || f.description, 140), icon: httpsUrl(f.iconUrl),
+      splash: httpsUrl(f.splashImageUrl), bg: /^#[0-9a-f]{3,8}$/i.test(f.splashBackgroundColor) ? f.splashBackgroundColor : undefined,
       category: typeof f.primaryCategory === 'string' && /^[a-z-]{1,30}$/.test(f.primaryCategory) ? f.primaryCategory : undefined,
     }] : []
   })
@@ -249,161 +247,31 @@ const pictureOf = (v, w) =>
     : v?.theme ? themePng(v.theme, v.th).then((p) => `data:image/png;base64,${p.toString('base64')}`, () => null)
     : v?.sticker ? stickerStill(v.sticker) : v?.src ? dataUri(sized(v.src, w)) : null
 
-// card text's colors: words, links and mentions, code, quotes
-const INK = { fill: '#edebf3', accent: '#a99bff', code: '#f0c48a', muted: '#9893a5' }
+// the CDN's resized copies are a fraction of the originals and decode faster
+const pfpOf = (u, w) => (u?.pfp_url ? dataUri(sized(u.pfp_url, w)) : null)
+/** A cast's share card (castSvg), with its pictures */
 async function card(c) {
-  const a = c.author || {}
-  const replies = Number(c.replies?.count) || 0
-  const recasts = Number(c.reactions?.recasts_count) || 0
-  const likes = Number(c.reactions?.likes_count) || 0
-  // only the first ~8 lines fit, so long casts are cut before wrapping
-  // its Markdown drawn (richSvg)
-  const md = styled(castText(c, true))
-  const text = cut(md.text, 600)
   const v = await visualOf(c)
-  // the CDN's resized copies are a fraction of the originals and decode faster
-  const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=176')) : null, pictureOf(v, 'w=840')])
-  const tile = !!(pic || v?.video || v?.tweet)
-  // link previews are ~1.91:1, so they get a landscape tile; everything else a square
-  const [ty, th] = v?.wide ? [172, 220] : [72, 420]
-  const textW = tile ? 600 : 1040
-  const size = text.length < 90 ? 46 : text.length < 200 ? 38 : 32
-  // (links already show short, as the app does; bold text is measured as such, so a line of it can't run long)
-  const lines = layout(text, md.marks, size, textW, 300 / (size * 1.32))
-  const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <radialGradient id="g" cx="0.9" cy="0.05" r="0.8"><stop offset="0" stop-color="#3a2a9a"/><stop offset="1" stop-color="#0d0c11" stop-opacity="0"/></radialGradient>
-    <clipPath id="av"><circle cx="128" cy="120" r="44"/></clipPath>
-    <clipPath id="pic"><rect x="712" y="${ty}" width="420" height="${th}" rx="28"/></clipPath>
-  </defs>
-  <rect width="1200" height="630" fill="#0d0c11"/><rect width="1200" height="630" fill="url(#g)"/>
-  <circle cx="128" cy="120" r="44" fill="#2a2735"/>
-  ${pfp ? `<image href="${pfp}" x="84" y="76" width="88" height="88" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : initial(name, 128, 136, 40, '#9893a5')}
-  ${textSvg([wrap(name, 34, (tile ? 680 : 1100) - 196, 1)[0] || ''], { x: 196, y: 112, size: 34, bold: true, fill: '#edebf3' })}
-  ${textSvg([`@${cut(a.username || a.fid, 40)}`], { x: 196, y: 150, size: 26, fill: '#9893a5' })}
-  ${richSvg(lines, { x: 84, y: 232, lh: size * 1.32, size, ...INK })}
-  ${tile && !v?.sticker ? `<rect x="712" y="${ty}" width="420" height="${th}" rx="28" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>` : ''}
-  ${pic ? `<image href="${pic}" x="712" y="${ty}" width="420" height="${th}" preserveAspectRatio="xMidYMid ${v?.sticker ? 'meet' : 'slice'}" clip-path="url(#pic)"/>` : ''}
-  ${v?.video ? `<circle cx="922" cy="282" r="46" fill="#000" fill-opacity="0.55"/><path d="M908 258v48l40-24z" fill="#fff"/>` : ''}
-  ${v?.label ? `<rect x="728" y="${ty + th - 48}" width="${Math.min(388, Math.round(width(v.label, 20) + 28))}" height="34" rx="17" fill="#000" fill-opacity="0.6"/><text x="742" y="${ty + th - 25}" font-family="Inter" font-weight="700" font-size="20" fill="#fff">${esc(wrap(v.label, 20, 360, 1)[0] || '')}</text>` : ''}
-  ${v?.tweet ? `<g transform="translate(744 104) scale(1.4)"><path d="${X_LOGO}" fill="#edebf3"/></g>
-  ${textSvg([wrap(v.tweet.author.name || '', 24, 320, 1)[0] || ''], { x: 790, y: 128, size: 24, bold: true, fill: '#edebf3' })}
-  ${textSvg([`@${v.tweet.author.handle || ''}`], { x: 744, y: 168, size: 20, fill: '#9893a5' })}
-  ${textSvg(wrap(cut((v.tweet.text || '').replace(/https?:\/\/\S+/g, '').trim(), 600) || ' ', 24, 356, 9), { x: 744, y: 214, lh: 32, size: 24, fill: '#edebf3' })}` : ''}
-  <line x1="84" y1="540" x2="1116" y2="540" stroke="#25232d" stroke-width="2"/>
-  <g transform="translate(84 562) scale(1.25)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
-  <text x="138" y="593" font-family="Inter" font-weight="700" font-size="28" fill="#edebf3">Quilcast</text>
-  <text x="1116" y="592" xml:space="preserve" font-family="Inter" font-size="24" fill="#9893a5" text-anchor="end">${n(replies)} ${replies === 1 ? 'reply' : 'replies'}  ·  ${n(recasts)} ${recasts === 1 ? 'recast' : 'recasts'}  ·  <tspan fill="#ff5c8a">♥ ${n(likes)}</tspan></text>
-</svg>`
+  return castSvg(c, v, ...(await Promise.all([pfpOf(c.author, 'w=176'), pictureOf(v, 'w=840')])))
 }
-/** The share card of a shared design: a profile wearing it, drawn at about twice its size on screen. */
-async function designCard(d) {
-  const ink = d.text || '#edebf3'
-  const muted = d.muted || '#9893a5'
-  const link = d.link || '#6447f5'
-  const box = d.box || '#16151c'
-  const line = d.border || '#2a2735'
-  const fx = d.nameFx || 'none'
-  const fxColor = d.nameColor || link
-  const bw = d.borderStyle === 'none' ? 0 : (d.borderWidth ?? 1) * 2
-  const r = (d.radius ?? 14) * 2
-  // resvg can't decode animated WebP, Tenor's usual format; its small GIF of the same picture ("AAAAe") works
-  const img = d.bgImg && (await imageData(d.bgImg.replace(/^(https:\/\/media\.tenor\.com\/[\w-]+AAAA)\w(\/[\w-]+)\.\w+$/, '$1e$2.gif'), 6e6))
-  // the background as the profile shows it: tiled at its own size, filling the card, or once in the middle
-  const bg = !img ? '' : d.bgMode === 'cover'
-    ? `<image href="${img.uri}" width="1200" height="630" preserveAspectRatio="xMidYMid slice"/>`
-    : d.bgMode === 'center'
-      ? `<image href="${img.uri}" x="${(1200 - Math.min(img.w, 1200)) / 2}" y="${(630 - Math.min(img.h, 630)) / 2}" width="${Math.min(img.w, 1200)}" height="${Math.min(img.h, 630)}" preserveAspectRatio="xMidYMid meet"/>`
-      : `<rect width="1200" height="630" fill="url(#tile)"/>`
-  // SVG strokes for the CSS border styles; double is two thin lines, groove and ridge stay solid
-  const frame = (x, y, w, h) => {
-    if (!bw) return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${box}" fill-opacity="${(d.boxAlpha ?? 90) / 100}"/>`
-    const base = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${box}" fill-opacity="${(d.boxAlpha ?? 90) / 100}"`
-    if (d.borderStyle === 'double' && bw >= 6) {
-      const t = bw / 3
-      return `${base} stroke="${line}" stroke-width="${t}"/><rect x="${x + 2 * t}" y="${y + 2 * t}" width="${w - 4 * t}" height="${h - 4 * t}" rx="${Math.max(0, r - 2 * t)}" fill="none" stroke="${line}" stroke-width="${t}"/>`
-    }
-    const dash = d.borderStyle === 'dashed' ? ` stroke-dasharray="${bw * 3} ${bw * 2}"` : d.borderStyle === 'dotted' ? ` stroke-dasharray="0 ${bw * 2}" stroke-linecap="round"` : ''
-    return `${base} stroke="${line}" stroke-width="${bw}"${dash}/>`
-  }
-  const name = (x, y) => {
-    const t = (attrs) => `<text x="${x}" y="${y}" font-family="Inter" font-weight="800" font-size="64" ${attrs}>Profile design</text>`
-    if (fx === 'rainbow') return t('fill="url(#rainbow)"')
-    if (fx === 'glitter') return t('fill="url(#glitter)"')
-    if (fx === 'glow') return t(`fill="${fxColor}" filter="url(#glow)"`) + t(`fill="${ink}"`)
-    if (fx === 'shadow') return `<g transform="translate(5 5)">${t(`fill="${ink}"`)}</g>` + t(`fill="${fxColor}"`)
-    if (fx === 'outline') return t(`fill="none" stroke="${fxColor}" stroke-width="2.4"`)
-    return t(`fill="${d.nameColor || ink}"`)
-  }
-  const tw = img && d.bgMode !== 'cover' && d.bgMode !== 'center' ? Math.max(40, img.w) : 0
-  const th = tw ? Math.round((img.h * tw) / img.w) : 0
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    ${tw ? `<pattern id="tile" width="${tw}" height="${th}" patternUnits="userSpaceOnUse"><image href="${img.uri}" width="${tw}" height="${th}"/></pattern>` : ''}
-    <linearGradient id="rainbow"><stop offset="0" stop-color="#ff004c"/><stop offset="0.2" stop-color="#ff8a00"/><stop offset="0.4" stop-color="#ffe600"/><stop offset="0.6" stop-color="#2bd44a"/><stop offset="0.8" stop-color="#00a2ff"/><stop offset="1" stop-color="#8a2be2"/></linearGradient>
-    <linearGradient id="glitter" x2="1" y2="0.3"><stop offset="0.3" stop-color="${fxColor}"/><stop offset="0.5" stop-color="#fff"/><stop offset="0.7" stop-color="${fxColor}"/></linearGradient>
-    <filter id="glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
-  </defs>
-  <rect width="1200" height="630" fill="${d.bg || '#0d0c11'}"/>${bg}
-  ${d.bgDim ? `<rect width="1200" height="630" fill="#000" fill-opacity="${d.bgDim / 100}"/>` : ''}
-  ${frame(80, 64, 1040, 196)}
-  <g transform="translate(124 114) scale(3)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
-  ${name(250, 166)}
-  <text x="252" y="214" font-family="Inter" font-size="30" fill="${muted}">A Quilcast profile design</text>
-  ${frame(80, 292, 1040, 274)}
-  <clipPath id="sec"><rect x="${80 + bw / 2}" y="${292 + bw / 2}" width="${1040 - bw}" height="${274 - bw}" rx="${Math.max(0, r - bw / 2)}"/></clipPath>
-  <rect x="80" y="292" width="1040" height="${64 + bw}" fill="${link}" fill-opacity="0.16" clip-path="url(#sec)"/>
-  <text x="122" y="${336 + bw / 2}" font-family="Inter" font-weight="800" font-size="30" fill="${link}">Profile design</text>
-  <text x="122" y="${426 + bw / 2}" font-family="Inter" font-size="32" fill="${ink}">Colors, background and fonts for your profile.</text>
-  <rect x="122" y="${462 + bw / 2}" width="330" height="64" rx="32" fill="${link}"/>
-  <text x="287" y="${505 + bw / 2}" font-family="Inter" font-weight="700" font-size="28" fill="${d.box || '#fff'}" text-anchor="middle">Use this design</text>
-</svg>`
-}
+// resvg can't decode animated WebP, Tenor's usual format; its small GIF of the same picture ("AAAAe") works, and a
+// sticker's transparent one is "AAAAi"
+const tenorGif = (u, v = 'e') => u.replace(/^(https:\/\/media\.tenor\.com\/[\w-]+AAAA)\w(\/[\w-]+)\.\w+$/, `$1${v}$2.gif`)
+/** A shared design's card (designSvg), with its background */
+const designCard = async (d) => designSvg(d, d.bgImg && (await imageData(tenorGif(d.bgImg), 6e6)))
 
 /** What a pack's card shows, as a short hash: its name and first stickers. */
 const packVersion = (p) => createHash('sha256').update(p.title + p.stickers.slice(0, 12).map((s) => s.h).join()).digest('hex').slice(0, 8)
 
-/** A sticker pack's share card, 1200×630 (or 1200×800, `tall`, for mini app embeds, which Farcaster shows at 3:2): its
- *  name, count and maker on the left, a sheet of its first stickers (their first frames) on soft tiles on the right. */
+/** A sticker pack's share card (packSvg), with its stickers' first frames and its maker */
 async function packCard(p, tall = false) {
-  const H = tall ? 800 : 630
-  const rows = tall ? 4 : 3
-  const cell = 172, gap = 14
-  const stills = (await Promise.all(p.stickers.slice(0, 24).map((s) => stickerStill(s.h)))).filter(Boolean).slice(0, rows * 3)
-  const owner = await lookup(`fid:${p.fid}`, `/v2/farcaster/user?fid=${p.fid}`, (r) => (r?.user?.custody_address ? r.user : null)).catch(() => null)
-  const gx = 1200 - 64 - 3 * cell - 2 * gap
-  const gy = (H - rows * cell - (rows - 1) * gap) / 2
-  const tiles = Array.from({ length: rows * 3 }, (_, i) => {
-    const x = gx + (i % 3) * (cell + gap), y = gy + Math.floor(i / 3) * (cell + gap)
-    const b = stills[i]
-    return `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="26" fill="#fff" fill-opacity="${b ? 0.06 : 0.03}"/>` +
-      (b ? `<image href="${b}" x="${x + 12}" y="${y + 12}" width="${cell - 24}" height="${cell - 24}" preserveAspectRatio="xMidYMid meet"/>` : '')
-  }).join('')
-  const title = wrap(p.title, 58, gx - 64 - 48, 3, { bold: true })
-  const ty = H / 2 - ((title.length - 1) * 66) / 2 + 6
-  const count = p.stickers.length === 1 ? '1 sticker' : `${p.stickers.length} stickers`
-  const meta = owner?.username ? `${count} · by @${owner.username}` : count
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${H}" viewBox="0 0 1200 ${H}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d1540"/><stop offset="0.6" stop-color="#110e1f"/><stop offset="1" stop-color="#0d0c11"/></linearGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#6447f5" stop-opacity="0.35"/><stop offset="1" stop-color="#6447f5" stop-opacity="0"/></radialGradient>
-  </defs>
-  <rect width="1200" height="${H}" fill="url(#bg)"/>
-  <circle cx="${gx + 1.5 * cell + gap}" cy="${H / 2}" r="${H * 0.62}" fill="url(#glow)"/>
-  <g transform="translate(64 60) scale(1.5)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
-  <text x="124" y="95" font-family="Inter" font-weight="800" font-size="30" fill="#edebf3">Quilcast</text>
-  <text x="64" y="${ty - 74}" font-family="Inter" font-weight="800" font-size="22" letter-spacing="3" fill="#a594ff">STICKER PACK</text>
-  ${textSvg(title, { x: 64, y: ty, lh: 66, size: 58, bold: true, weight: 800, fill: '#f4f2fa' })}
-  ${textSvg([meta], { x: 64, y: ty + (title.length - 1) * 66 + 54, size: 26, fill: '#a7a2b8' })}
-  <rect x="64" y="${H - 124}" width="272" height="60" rx="30" fill="#6447f5"/>
-  <text x="200" y="${H - 85}" font-family="Inter" font-weight="700" font-size="24" fill="#fff" text-anchor="middle">Add in Quilcast</text>
-  ${tiles}
-</svg>`
+  const stills = (await Promise.all(p.stickers.slice(0, 24).map((s) => stickerStill(s.h)))).filter(Boolean).slice(0, (tall ? 4 : 3) * 3)
+  const owner = await userByFid(p.fid).catch(() => null)
+  return packSvg(p, tall, stills, owner)
 }
 
 // a design never changes, so neither does its card; called inside a render slot already (renders() isn't reentrant)
-const designPng = (id, d) => pngs.get(`design:${id}`) || keep(pngs, 100, `design:${id}`, designCard(cleanDesign(d)).then(render))
+const designPng = (id, d) => once(`design:${id}`, () => designCard(cleanDesign(d)))
 
 /** A theme's picture: our own media from the volume, Tenor's animated WebP as its GIF (resvg can't decode animated
  *  WebP; Tenor's "AAAAe" variant is a small GIF of the same picture), anything else fetched. */
@@ -413,180 +281,15 @@ const themeImage = (u, max = 6e6, sticker = false) => {
     const info = imageInfo(b)
     return info && info.w * info.h <= 16e6 ? { uri: `data:${info.type};base64,${b.toString('base64')}`, w: info.w, h: info.h } : null
   }, () => null)
-  // a sticker's transparent GIF is "AAAAi"
-  return imageData(u.replace(/^(https:\/\/media\.tenor\.com\/[\w-]+AAAA)\w(\/[\w-]+)\.\w+$/, `$1${sticker ? 'i' : 'e'}$2.gif`), max)
+  return imageData(tenorGif(u, sticker ? 'i' : 'e'), max)
 }
-// the same random spread every time a theme's card is drawn
-// the feed's icons (ui.tsx P)
-const ICONS = {
-  reply: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.9L3 20l1.1-4.6A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4z',
-  recast: 'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3',
-  like: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z',
-}
-const seeded = (s) => {
-  let h = [...s].reduce((a, c) => Math.imul(a ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0
-  return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)), (h >>>= 0) / 4294967296)
-}
-const mixHex = (a, b, t) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, '0')).join('')
 
-// how far past a name's end glitter's sparkle reaches, in em: its middle is 0.4 em past it, its points 0.3 em around
-const SPARKLE = 0.7
-
-/** The share card of a theme: Quilcast itself wearing it (sidebar, a feed of casts, its effect and stickers), next
- *  to the theme's name, its colors and an "Apply theme" button. */
+/** A theme's share card (themeSvg), with its pictures */
 async function themeCard(id, raw) {
   const th = cleanTheme(raw)
-  const base = th.base || 'dark'
-  const c = { ...DEFAULTS[base], ...Object.fromEntries(Object.entries(th).filter(([k, v]) => typeof v === 'string' && v.startsWith('#'))) }
-  const rs = th.round ?? 1
-  const bw = th.borderStyle === 'none' ? 0 : (th.borderWidth ?? 1) * 1.5
-  const dash = th.borderStyle === 'dashed' ? ` stroke-dasharray="${bw * 3} ${bw * 2}"` : th.borderStyle === 'dotted' ? ` stroke-dasharray="0 ${bw * 2}" stroke-linecap="round"` : ''
-  const stroke = (color = c.line) => (bw ? ` stroke="${color}" stroke-width="${bw}"${dash}` : '')
-  const R = (px) => Math.min(px * rs, 999)
   const [img, bar, btn] = await Promise.all([th.bgImg && themeImage(th.bgImg), th.barImg && themeImage(th.barImg, 4e6), th.btnImg && themeImage(th.btnImg, 4e6)])
   const stickers = (await Promise.all((th.stickers || []).slice(0, 16).map(async (s) => ({ s, i: await themeImage(s.src, 4e6, true) })))).filter((x) => x.i)
-  // over a picture or an effect the column turns see-through, as it does in the app
-  const p = th.fx && EFFECTS[th.fx]
-  const sheer = img || p ? (th.sheer ?? 88) / 100 : 1
-  const rnd = seeded(id)
-  const defs = []
-  const fill = (k, im, w, h) => {
-    if (!im) return null
-    defs.push(`<pattern id="${k}" width="1" height="1" patternContentUnits="objectBoundingBox"><image href="${im.uri}" width="1" height="1" preserveAspectRatio="xMidYMid slice"/></pattern>`)
-    return `url(#${k})`
-  }
-  // the page background as the app draws it: tiled at its own size, filling the screen, or once in the middle
-  let bg = ''
-  if (img) {
-    if (th.bgMode === 'tile' || !th.bgMode) {
-      const tw = Math.max(40, Math.min(img.w, 600)), tht = Math.round((img.h * tw) / img.w)
-      defs.push(`<pattern id="tile" width="${tw}" height="${tht}" patternUnits="userSpaceOnUse"><image href="${img.uri}" width="${tw}" height="${tht}"/></pattern>`)
-      bg = `<rect width="1200" height="630" fill="url(#tile)"/>`
-    } else if (th.bgMode === 'center') bg = `<image href="${img.uri}" x="${(1200 - Math.min(img.w, 1200)) / 2}" y="${(630 - Math.min(img.h, 630)) / 2}" width="${Math.min(img.w, 1200)}" height="${Math.min(img.h, 630)}" preserveAspectRatio="xMidYMid meet"/>`
-    else bg = `<image href="${img.uri}" width="1200" height="630" preserveAspectRatio="xMidYMid slice"/>`
-    if (th.scrim) bg += `<rect width="1200" height="630" fill="${base === 'light' ? '#fff' : '#000'}" fill-opacity="${th.scrim / 100}"/>`
-  }
-  // the effect, frozen: a scatter of its particles in its own colors
-  let fx = ''
-  if (p) {
-    const count = Math.max(8, Math.min(46, Math.round(p.n / 3)))
-    for (let i = 0; i < count; i++) {
-      const x = rnd() * 1200, y = rnd() * 630
-      // the sidebar sits on the background itself, so nothing lands on its words
-      if (x < 250 && y < 470) continue
-      const size = (p.size[0] + rnd() * (p.size[1] - p.size[0])) * 1.6
-      const col = p.colors ? p.colors[Math.floor(rnd() * p.colors.length)] : '#fff'
-      const a = p.alpha ?? 0.9
-      const ch = Array.isArray(p.draw) && p.draw[Math.floor(rnd() * p.draw.length)].replace(/\uFE0F/g, '')
-      // Inter and Noto Emoji have no ✦ ✧ ⋆, katakana or ❅ ❆: stars are drawn, code rains as digits, flakes are ❄
-      if (ch && /[✦✧⋆]/.test(ch)) fx += `<path d="M0 -1C.1 -.3 .3 -.1 1 0C.3 .1 .1 .3 0 1C-.1 .3 -.3 .1 -1 0C-.3 -.1 -.1 -.3 0 -1z" fill="${col}" fill-opacity="${a}" transform="translate(${x} ${y}) scale(${size * 0.7})"/>`
-      else if (ch && th.fx === 'matrix') fx += `<text font-family="Inter" font-weight="700" font-size="${size}" fill="${col}" text-anchor="middle">${[...Array(6)].map((_, j) => `<tspan x="${x}" y="${y + j * size * 1.1}" fill-opacity="${(1 - j / 6).toFixed(2)}">${rnd() < 0.5 ? 0 : 1}</tspan>`).join('')}</text>`
-      else if (ch) fx += `<text x="${x}" y="${y}" font-family="Noto Emoji, Inter" font-size="${size * 1.3}" fill="${p.colors ? col : c.accent}" fill-opacity="${a}" transform="rotate(${Math.round((rnd() - 0.5) * 60)} ${x} ${y})">${esc(/[❅❆]/.test(ch) ? '❄' : ch)}</text>`
-      else if (p.draw === 'rect') fx += `<rect x="${x}" y="${y}" width="${size}" height="${size * 0.5}" fill="${col}" transform="rotate(${Math.round(rnd() * 180)} ${x} ${y})"/>`
-      else if (p.draw === 'line') fx += `<line x1="${x}" y1="${y}" x2="${x - size * (p.slant || 0.15)}" y2="${y + size}" stroke="${col}" stroke-opacity="${a}" stroke-width="2" stroke-linecap="round"/>`
-      else if (p.draw === 'ring') fx += `<circle cx="${x}" cy="${y}" r="${size / 2}" fill="none" stroke="${col}" stroke-opacity="${a}" stroke-width="2"/>`
-      else fx += (p.draw === 'glow' ? `<circle cx="${x}" cy="${y}" r="${size * 2.4}" fill="${col}" fill-opacity="0.25" filter="url(#soft)"/>` : '') + `<circle cx="${x}" cy="${y}" r="${size / 2}" fill="${col}" fill-opacity="${a}"/>`
-    }
-  }
-  // a name in the theme's name effect; glitter's sparkle follows where the name is drawn to
-  const fxColor = th.nameColor || c.accent
-  // (emoji in it are Twemoji's pictures, on top of the effect)
-  const named = (x, y, size, s, base = c.ink) => {
-    const t = (...paint) => textSvg([s], { x, y, size, weight: 800, paint })
-    const fx = th.nameFx
-    if (fx === 'rainbow') return t('fill="url(#rainbow)"')
-    if (fx === 'glitter') return t('fill="url(#glitter)"') + `<path d="M0 -1C.1 -.3 .3 -.1 1 0C.3 .1 .1 .3 0 1C-.1 .3 -.3 .1 -1 0C-.3 -.1 -.1 -.3 0 -1z" fill="#ffc928" transform="translate(${x + ends(s, size, true) + size * (SPARKLE - 0.3)} ${y - size * 0.35}) scale(${size * 0.3})"/>`
-    if (fx === 'glow') return t(`fill="${fxColor}" filter="url(#glow)"`, `fill="${base}"`)
-    if (fx === 'shadow') return t(`fill="${base}" transform="translate(3 3)"`, `fill="${fxColor}"`)
-    if (fx === 'outline') return t(`fill="none" stroke="${fxColor}" stroke-width="1.6"`)
-    return t(`fill="${th.nameColor || base}"`)
-  }
-  const btnFill = fill('btn', btn) || c.accent
-  // words on a button picture are white with a dark edge, as in the app
-  const btnText = btn ? 'fill="#fff" stroke="#000" stroke-opacity="0.55" stroke-width="4" paint-order="stroke"' : `fill="${c.onAccent}"`
-  const barFill = fill('bar', bar)
-  // the feed: three casts as a phone or desktop would show them
-  const X = 256, W = 452
-  const casts = [
-    ['Quilcast', 'quilcast', 'gm! trying on a brand new theme today ☀️', [3, 12, 48]],
-    ['Ada', 'ada', 'the colors, the background, the stickers… everything changes ✨', [9, 31, 212]],
-    ['Satoshi', 'sats', 'ok this one is going in my rotation', [1, 4, 27]],
-  ].map(([name, user, text, [rep, rc, lk]], i) => {
-    const y = 120 + i * 156
-    const lines = wrap(text, 21, W - 108, 2)
-    const ay = y + 40
-    const hue = [c.accent, c.like, c.recast][i]
-    return `<circle cx="${X + 44}" cy="${ay}" r="26" fill="${hue}"/><text x="${X + 44}" y="${ay + 9}" font-family="Inter" font-weight="800" font-size="24" fill="${c.onAccent}" text-anchor="middle">${name[0]}</text>
-    ${named(X + 84, y + 34, 21, name)}<text x="${X + 92 + ends(name, 21, true) + (th.nameFx === 'glitter' ? SPARKLE * 21 : 0)}" y="${y + 34}" font-family="Inter" font-size="19" fill="${c.muted}">@${user} · ${i + 2}h</text>
-    ${textSvg(lines, { x: X + 84, y: y + 66, lh: 28, size: 21, fill: c.ink })}
-    ${[[ICONS.reply, rep, c.muted], [ICONS.recast, rc, c.recast], [ICONS.like, lk, c.like]].map(([d, k, col], j) => `<g transform="translate(${X + 84 + j * 110} ${y + 112}) scale(0.85)"><path d="${d}" fill="none" stroke="${col}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g><text x="${X + 112 + j * 110}" y="${y + 130}" font-family="Inter" font-size="18" fill="${col}">${k}</text>`).join('')}
-    <rect x="${X}" y="${y + 154}" width="${W}" height="${bw}" fill="${c.line}"/>`
-  }).join('')
-  const nav = ['Home', 'Search', 'Notifications', 'Messages', 'Profile'].map((label, i) => {
-    const y = 132 + i * 54
-    return `<circle cx="78" cy="${y - 8}" r="11" fill="none" stroke="${c.ink}" stroke-width="2.4"/><text x="104" y="${y}" font-family="Inter" font-weight="${i ? 400 : 800}" font-size="22" fill="${c.ink}">${label}</text>`
-  }).join('')
-  // the name in up to two lines, smaller when it doesn't fit at 52 px; measured as it's drawn, bold. It (and glitter's
-  // sparkle after each line) may reach into the panel's right padding, up to 8 px from its edge (1152). Wrapped and drawn
-  // measured, every run of it (a name is at most 60 characters): a guess past the card's budget runs wider
-  // than resvg draws a tightly kerned line ("TyTy"), which would put the sparkle outside
-  const title = th.name || 'Untitled theme'
-  const room = (ts) => 364 - (th.nameFx === 'glitter' ? SPARKLE * ts : 0)
-  const ts = exactly(() => wrap(title, 52, room(52), 3, { bold: true })).length > 2 ? 40 : 52
-  const tl = exactly(() => wrap(title, ts, room(ts), 2, { bold: true }))
-  const facts = [base === 'light' ? 'Light' : 'Dark', p?.name, th.font && th.font !== 'system' ? FONT_STACKS[th.font].split(',')[0].replace(/'/g, '') : th.fontUrl ? 'Own font' : null, stickers.length ? `${stickers.length} sticker${stickers.length > 1 ? 's' : ''}` : null].filter(Boolean).join(' · ')
-  const swatches = ['bg', 'card', 'ink', 'accent', 'like', 'recast'].map((k, i) => `<circle cx="${790 + i * 52}" cy="${320 + (tl.length - 1) * ts * 1.1}" r="19" fill="${c[k]}" stroke="${mixHex(c.card, c.ink, 0.25)}" stroke-width="2"/>`).join('')
-  const fl = wrap(facts, 20, 352, 2)
-  // everything under the facts moves down by a second line of them
-  const ty = (tl.length - 1) * ts * 1.1 + (fl.length - 1) * 26
-  const panelH = 352 + ty
-  const py = Math.round((630 - panelH) / 2)
-  const panel = `<g transform="translate(0 ${py - 150})">
-    ${th.glow ? `<rect x="748" y="150" width="404" height="${panelH}" rx="${R(28)}" fill="${c.accent}" fill-opacity="0.55" filter="url(#soft)"/>` : ''}
-    <rect x="748" y="150" width="404" height="${panelH}" rx="${R(28)}" fill="${c.card}" fill-opacity="${Math.max(sheer, 0.9)}"${stroke()}/>
-    <rect x="780" y="182" width="${width('QUILCAST THEME', 16) * 1.12 + 32}" height="34" rx="${R(17)}" fill="${c.accent}" fill-opacity="0.16"/>
-    <text x="796" y="205" font-family="Inter" font-weight="800" font-size="16" letter-spacing="1.6" fill="${c.accent}">QUILCAST THEME</text>
-    ${exactly(() => tl.map((l, i) => named(780, 266 + i * ts * 1.1, ts, l)).join(''))}
-    ${swatches}
-    ${textSvg(fl, { x: 780, y: 380 + ty, lh: 26, size: 20, fill: c.muted })}
-    <rect x="780" y="${412 + ty}" width="340" height="60" rx="${R(30)}" fill="${btnFill}"/>
-    <text x="950" y="${451 + ty}" font-family="Inter" font-weight="800" font-size="24" ${btnText} text-anchor="middle">Apply theme</text>
-  </g>`
-  const stk = stickers.map(({ s, i }) => {
-    const w = s.w * 6, h = (w * i.h) / i.w, x = (s.x / 100) * 1200, y = (s.y / 100) * 630
-    return `<image href="${i.uri}" x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}"${s.r ? ` transform="rotate(${s.r} ${x} ${y})"` : ''}/>`
-  }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <linearGradient id="rainbow"><stop offset="0" stop-color="#ff004c"/><stop offset="0.2" stop-color="#ff8a00"/><stop offset="0.4" stop-color="#ffe600"/><stop offset="0.6" stop-color="#2bd44a"/><stop offset="0.8" stop-color="#00a2ff"/><stop offset="1" stop-color="#8a2be2"/></linearGradient>
-    <linearGradient id="glitter" x2="1" y2="0.3"><stop offset="0.3" stop-color="${fxColor}"/><stop offset="0.5" stop-color="#fff"/><stop offset="0.7" stop-color="${fxColor}"/></linearGradient>
-    <filter id="glow" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="5"/></filter>
-    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
-    <clipPath id="col"><rect x="${X}" y="0" width="${W}" height="630"/></clipPath>
-    ${defs.join('')}
-  </defs>
-  <rect width="1200" height="630" fill="${c.bg}"/>${bg}
-  ${fx && th.fxAlpha !== undefined ? `<g opacity="${th.fxAlpha / 100}">${fx}</g>` : fx}
-  <g transform="translate(64 40)"><rect width="34" height="34" rx="${R(10)}" fill="${c.accent}"/><g transform="translate(1 1)"><path d="${LOGO}" fill="${c.onAccent}"/></g></g>
-  <text x="110" y="66" font-family="Inter" font-weight="800" font-size="25" fill="${c.ink}">Quilcast</text>
-  ${nav}
-  <rect x="64" y="404" width="170" height="54" rx="${R(27)}" fill="${btnFill}"/><text x="149" y="439" font-family="Inter" font-weight="800" font-size="22" ${btnText} text-anchor="middle">Cast</text>
-  ${th.glow ? `<rect x="${X}" y="0" width="${W}" height="630" fill="${c.accent}" fill-opacity="0.45" filter="url(#soft)"/>` : ''}
-  <g clip-path="url(#col)">
-    <rect x="${X}" y="0" width="${W}" height="630" fill="${c.bg}" fill-opacity="${sheer}"/>
-    <rect x="${X}" y="0" width="${W}" height="112" fill="${th.bar || c.bg}" fill-opacity="${img ? 0.9 : 0.97}"/>
-    ${barFill ? `<rect x="${X}" y="0" width="${W}" height="112" fill="${barFill}"/>` : ''}
-    <text x="${X + 24}" y="44" font-family="Inter" font-weight="800" font-size="24" fill="${c.ink}">Home</text>
-    <text x="${X + W / 4}" y="94" font-family="Inter" font-weight="700" font-size="19" fill="${c.ink}" text-anchor="middle">Following</text>
-    <text x="${X + (W * 3) / 4}" y="94" font-family="Inter" font-weight="700" font-size="19" fill="${c.muted}" text-anchor="middle">Trending</text>
-    <rect x="${X + W / 4 - 32}" y="106" width="64" height="5" rx="2.5" fill="${c.accent}"/>
-    <rect x="${X}" y="111" width="${W}" height="${bw}" fill="${c.line}"/>
-    ${casts}
-  </g>
-  ${bw ? `<line x1="${X}" y1="0" x2="${X}" y2="630"${stroke()}/><line x1="${X + W}" y1="0" x2="${X + W}" y2="630"${stroke()}/>` : ''}
-  ${panel}
-  ${stk}
-</svg>`
+  return themeSvg(id, th, img, bar, btn, stickers)
 }
 // Sendclap (sendclap.com) keeps who supports whom (src/support.tsx); a profile's card shows its supporters
 const SENDCLAP = (process.env.SENDCLAP_URL || 'https://sendclap.com').replace(/\/$/, '')
@@ -599,138 +302,20 @@ async function supportersOf(fid) {
   const pfps = (await Promise.all(users.map((x) => (x.pfp_url ? dataUri(sized(x.pfp_url, 'w=112')).catch(() => null) : null)))).filter(Boolean)
   return { n: list.length, monthly: list.reduce((a, s) => a + (Number(s.monthly_cents) || 0), 0), pfps }
 }
-/** A row of overlapping supporter faces and "N supporters · $X/mo", its left edge at x, centered on y. */
-function supportRow(s, x, y) {
-  const faces = s.pfps.map((p, i) => `<clipPath id="sp${i}"><circle cx="${x + 30 + i * 44}" cy="${y}" r="28"/></clipPath>
-  <circle cx="${x + 30 + i * 44}" cy="${y}" r="31" fill="#0d0c11"/><image href="${p}" x="${x + 2 + i * 44}" y="${y - 28}" width="56" height="56" preserveAspectRatio="xMidYMid slice" clip-path="url(#sp${i})"/>`).join('')
-  const tx = x + (s.pfps.length ? 30 + (s.pfps.length - 1) * 44 + 52 : 0)
-  const monthly = s.monthly ? `  ·  $${(s.monthly / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })}/mo` : ''
-  return `${faces}<text x="${tx}" y="${y + 10}" xml:space="preserve" font-family="Inter" font-size="28" fill="#9893a5"><tspan font-weight="700" fill="#edebf3">${n(s.n)}</tspan> ${s.n === 1 ? 'supporter' : 'supporters'}${monthly}</text>`
-}
-/** A profile's share card: their picture, name, bio, supporters and follower counts. */
-async function profileCard(u) {
-  const name = cut(nameOf(u), 80)
-  const [pfp, s] = await Promise.all([u.pfp_url ? dataUri(sized(u.pfp_url, 'w=352')) : null, supportersOf(u.fid)])
-  // supporters take the bio's last two lines
-  const bio = wrap(cut(u.profile?.bio?.text || '', 400) || ' ', 34, 1032, s.n ? 2 : 4)
-  const f = u.follower_count || 0
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <radialGradient id="g" cx="0.9" cy="0.05" r="0.8"><stop offset="0" stop-color="#3a2a9a"/><stop offset="1" stop-color="#0d0c11" stop-opacity="0"/></radialGradient>
-    <clipPath id="av"><circle cx="172" cy="172" r="88"/></clipPath>
-  </defs>
-  <rect width="1200" height="630" fill="#0d0c11"/><rect width="1200" height="630" fill="url(#g)"/>
-  <circle cx="172" cy="172" r="88" fill="#2a2735"/>
-  ${pfp ? `<image href="${pfp}" x="84" y="84" width="176" height="176" preserveAspectRatio="xMidYMid slice" clip-path="url(#av)"/>` : initial(name, 172, 198, 72, '#9893a5')}
-  ${textSvg([wrap(name, 52, 816, 1)[0] || ''], { x: 300, y: 160, size: 52, bold: true, fill: '#edebf3' })}
-  ${textSvg([`@${fname(u) || u.fid}`], { x: 300, y: 214, size: 32, fill: '#9893a5' })}
-  ${textSvg(bio, { x: 84, y: 336, lh: 45, size: 34, fill: '#edebf3' })}
-  ${s.n ? supportRow(s, 84, 466) : ''}
-  <line x1="84" y1="540" x2="1116" y2="540" stroke="#25232d" stroke-width="2"/>
-  <g transform="translate(84 562) scale(1.25)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
-  <text x="138" y="593" font-family="Inter" font-weight="700" font-size="28" fill="#edebf3">Quilcast</text>
-  <text x="1116" y="592" xml:space="preserve" font-family="Inter" font-size="26" fill="#9893a5" text-anchor="end"><tspan font-weight="700" fill="#edebf3">${n(u.following_count || 0)}</tspan> following  ·  <tspan font-weight="700" fill="#edebf3">${n(f)}</tspan> ${f === 1 ? 'follower' : 'followers'}</text>
-</svg>`
-}
+/** A profile's share card (profileSvg) */
+const profileCard = async (u) => profileSvg(u, ...(await Promise.all([pfpOf(u, 'w=352'), supportersOf(u.fid)])))
 
-// a theme never changes, so neither does its card; called inside a render slot already (renders() isn't reentrant)
-const themePng = (id, th) => pngs.get(`theme:${id}`) || keep(pngs, 100, `theme:${id}`, themeCard(id, th).then(render))
+// a theme never changes, so neither does its card (as designPng)
+const themePng = (id, th) => once(`theme:${id}`, () => themeCard(id, th))
 
-// rendering runs on libuv's pool, so it never blocks the event loop (laying out the text measures a bounded number of
-// runs on the main thread first: server/text.mjs)
-/** A 1200×630 cast card grown to 1200×800, its background carried into the new space above and below. */
-const tall = (svg) => svg.replace('height="630" viewBox="0 0 1200 630"', 'height="800" viewBox="0 -85 1200 800"').replace(/<rect width="1200" height="630" fill="(#0d0c11|url\(#g\))"\/>/g, '<rect y="-85" width="1200" height="800" fill="$1"/>')
 // --- Quilcast Collect: a cast as a 1/1 NFT (contract in backmeupplz/quilcast-collect, token id = the cast's hash) ---
 
-const dateOf = (c) => new Date(c.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-/** The NFT's picture, 1200×1200: the author on top, then the text, then its picture or quoted post filling what's left,
- *  and the footer. Text alone sits in the middle of the space, at a size its length allows. No counts: they'd go stale. */
+/** The NFT's picture (nftSvg) */
 async function collectible(c) {
-  const a = c.author || {}
-  const name = cut(a.display_name || a.username || `!${a.fid}`, 80)
-  // its Markdown drawn, as on the share card (card); links already show short
-  const md = styled(castText(c, true))
-  const short = cut(md.text, 1000)
   const v = await visualOf(c)
-  const [pfp, pic] = await Promise.all([a.pfp_url ? dataUri(sized(a.pfp_url, 'w=240')) : null, pictureOf(v, 'w=1100')])
-  const box = !!(pic || v?.video || v?.tweet)
-  // the content area: 88 px margins, between the author row and the footer
-  const X = 88, W = 1024, TOP = 272, BOTTOM = 1032
-  let body = ''
-  let y = TOP
-  if (short) {
-    const size = box ? (short.length < 90 ? 48 : short.length < 200 ? 40 : 34) : short.length < 60 ? 72 : short.length < 140 ? 60 : short.length < 280 ? 48 : short.length < 500 ? 40 : 34
-    const lh = Math.round(size * 1.3)
-    const lines = layout(short, md.marks, size, W, (box ? 280 : BOTTOM - TOP) / lh)
-    const h = lines.reduce((a, l) => a + l.h, 0) * lh
-    // alone, the text is centered in the space; the first baseline is about one size below the line's top
-    const top = box ? TOP : TOP + Math.max(0, (BOTTOM - TOP - h) / 2)
-    body += richSvg(lines, { x: X, y: top + size, lh, size, ...INK })
-    y = top + h + 36
-  }
-  if (v?.sticker && pic) {
-    // on the background, as the app shows it, no larger than twice its 320 px
-    const s = Math.min(BOTTOM - y, 640)
-    body += `<image href="${pic}" x="${X + (W - s) / 2}" y="${y + (BOTTOM - y - s) / 2}" width="${s}" height="${s}" preserveAspectRatio="xMidYMid meet"/>`
-  } else if (box) {
-    const h = BOTTOM - y
-    body += `<clipPath id="nft-pic"><rect x="${X}" y="${y}" width="${W}" height="${h}" rx="32"/></clipPath>
-  <rect x="${X}" y="${y}" width="${W}" height="${h}" rx="32" fill="#1c1a23" stroke="#2a2735" stroke-width="2"/>`
-    if (pic) body += `<image href="${pic}" x="${X}" y="${y}" width="${W}" height="${h}" preserveAspectRatio="xMidYMid slice" clip-path="url(#nft-pic)"/>`
-    if (v?.video) body += `<circle cx="${X + W / 2}" cy="${y + h / 2}" r="56" fill="#000" fill-opacity="0.55"/><path d="M${X + W / 2 - 17} ${y + h / 2 - 29}v58l48-29z" fill="#fff"/>`
-    if (v?.label) {
-      const l = wrap(v.label, 24, 600, 1)[0] || ''
-      body += `<rect x="${X + 20}" y="${y + h - 64}" width="${Math.round(width(l, 24) + 36)}" height="44" rx="22" fill="#000" fill-opacity="0.6"/>${textSvg([l], { x: X + 38, y: y + h - 33, size: 24, fill: '#fff' })}`
-    }
-    if (v?.tweet && !pic) {
-      const tl = wrap(cut((v.tweet.text || '').replace(/https?:\/\/\S+/g, '').trim(), 800) || ' ', 32, W - 96, Math.max(1, Math.floor((h - 180) / 44)))
-      body += `<g transform="translate(${X + 48} ${y + 52}) scale(1.6)"><path d="${X_LOGO}" fill="#edebf3"/></g>
-  ${textSvg([wrap(v.tweet.author.name || '', 32, W - 200, 1, { bold: true })[0] || ''], { x: X + 112, y: y + 84, size: 32, bold: true, fill: '#edebf3' })}
-  ${textSvg([`@${v.tweet.author.handle || ''}`], { x: X + 48, y: y + 140, size: 26, fill: '#9893a5' })}
-  ${textSvg(tl, { x: X + 48, y: y + 196, lh: 44, size: 32, fill: '#edebf3' })}`
-    }
-  }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
-  <defs>
-    <radialGradient id="nft-g" cx="0.92" cy="0.04" r="0.75"><stop offset="0" stop-color="#3a2a9a"/><stop offset="1" stop-color="#0d0c11" stop-opacity="0"/></radialGradient>
-    <clipPath id="nft-av"><circle cx="148" cy="148" r="60"/></clipPath>
-  </defs>
-  <rect width="1200" height="1200" fill="#0d0c11"/><rect width="1200" height="1200" fill="url(#nft-g)"/>
-  <circle cx="148" cy="148" r="60" fill="#2a2735"/>
-  ${pfp ? `<image href="${pfp}" x="88" y="88" width="120" height="120" preserveAspectRatio="xMidYMid slice" clip-path="url(#nft-av)"/>` : initial(name, 148, 166, 52, '#9893a5')}
-  ${textSvg([wrap(name, 44, 1112 - 240, 1, { bold: true })[0] || ''], { x: 240, y: 140, size: 44, bold: true, fill: '#edebf3' })}
-  ${textSvg([wrap(`@${a.username || a.fid}`, 32, 1112 - 240, 1)[0] || ''], { x: 240, y: 192, size: 32, fill: '#9893a5' })}
-  ${body}
-  <line x1="88" y1="1068" x2="1112" y2="1068" stroke="#25232d" stroke-width="2"/>
-  <g transform="translate(88 1092) scale(1.25)"><rect width="32" height="32" rx="9" fill="#5b3df5"/><path d="${LOGO}" fill="#fff"/></g>
-  <text x="144" y="1123" font-family="Inter" font-weight="700" font-size="30" fill="#edebf3">Quilcast Collect</text>
-  <text x="1112" y="1122" font-family="Inter" font-size="28" fill="#9893a5" text-anchor="end">${esc(dateOf(c))}</text>
-</svg>`
+  return nftSvg(c, v, ...(await Promise.all([pfpOf(c.author, 'w=240'), pictureOf(v, 'w=1100')])))
 }
 
-/** The token's metadata, as OpenSea and Blockscout read it. */
-function nftMeta(c, hash) {
-  const a = c.author || {}
-  const who = `@${a.username || a.fid}`
-  // marketplaces draw Markdown in a description, not in a name
-  const text = castText(c).trim()
-  const urls = urlsOf(c)
-  const media = urls.some(isImg) ? 'Image' : urls.some(isVid) ? 'Video' : urls.length ? 'Link' : 'Text'
-  const channel = c.parent_url?.match(/\/~\/channel\/([\w-]+)$/)?.[1] || c.channel?.id
-  return {
-    name: `${who}: ${cut(unmarkdown(text).replace(/\s+/g, ' '), 60) || 'a cast'}`,
-    description: `${text}\n\nA cast by ${who} on Farcaster, collected on Quilcast.`.trim(),
-    image: `${SITE}/nft/0x${hash}.png`,
-    external_url: `${SITE}/c/${hash}`,
-    attributes: [
-      { trait_type: 'Author', value: who },
-      { trait_type: 'FID', value: Number(a.fid) || 0, display_type: 'number' },
-      { trait_type: 'Cast', value: Math.floor(new Date(c.timestamp).getTime() / 1000), display_type: 'date' },
-      { trait_type: 'Media', value: media },
-      ...(channel ? [{ trait_type: 'Channel', value: `/${channel}` }] : []),
-    ],
-  }
-}
 const COLLECTION = {
   name: 'Quilcast Collect',
   description: 'Casts from Farcaster, collected on Quilcast. Every cast can be collected once, for free, as a 1/1: open a cast on quilcast.com and tap Collect.',
@@ -742,12 +327,13 @@ const COLLECTION = {
 // a collected cast is kept as it was first seen here, so its NFT stays when the cast is deleted; one nobody has collected
 // is only shown as it is now, so deleting it takes it down here too
 const NFT_DIR = join(DATA, 'nft')
+const keepNft = (file, v, tag) => mkdir(NFT_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(v))).catch((e) => console.error(tag, e))
 async function keptCast(hash) {
   const file = join(NFT_DIR, `${hash}.json`)
-  const kept = await readFile(file, 'utf8').then(JSON.parse, () => null)
+  const kept = await readJsonFile(file)
   if (kept) return kept
   const c = await getCast(hash)
-  if (c && (await ownerOf(hash))) await mkdir(NFT_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(c))).catch((e) => console.error('nft: keep', e))
+  if (c && (await ownerOf(hash))) await keepNft(file, c, 'nft: keep')
   return c
 }
 
@@ -778,79 +364,41 @@ function ownerOf(id, to = CONTRACT) {
   const hash = `${to}:${id}`
   const hit = owners.get(hash)
   if (hit && Date.now() - hit.at < 300e3) return hit.p
-  const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data: '0x6352211e' + id.padStart(64, '0') }, 'latest'] })
-  const p = fetch(BASE_RPC, { method: 'POST', headers: { 'content-type': 'application/json' }, body, signal: AbortSignal.timeout(5000) })
-    .then((r) => r.json())
-    .then(async (r) => {
-      // ownerOf reverts for a cast nobody has; that isn't kept, so a link shared right after collecting shows the collector
-      if (!/^0x[0-9a-f]{64}$/i.test(r?.result || '')) return owners.get(hash)?.p === p && owners.delete(hash), null
-      const address = '0x' + r.result.slice(-40).toLowerCase()
+  const p = rpc(BASE_RPC, 'eth_call', [{ to, data: '0x6352211e' + id.padStart(64, '0') }, 'latest'], AbortSignal.timeout(5000))
+    .then(async (result) => {
+      // ownerOf reverts for a cast nobody has (an error answer, which lands below); that isn't kept, so a link shared right
+      // after collecting shows the collector
+      if (!/^0x[0-9a-f]{64}$/i.test(result || '')) return owners.get(hash)?.p === p && owners.delete(hash), null
+      const address = '0x' + result.slice(-40).toLowerCase()
       const u = (await nodeJson(`/v2/farcaster/user/bulk-by-address?addresses=${address}`).catch(() => null))?.users?.[0]
       return { address, user: u?.username ? u : null }
     })
-    // Base didn't answer: asked again next time
+    // a revert, or Base didn't answer: asked again next time
     .catch(() => (owners.get(hash)?.p === p && owners.delete(hash), null))
   keep(owners, 2000, hash, { at: Date.now(), p })
   return p
 }
-const ownerName = (o) => (o.user ? `@${o.user.username}` : `${o.address.slice(0, 6)}…${o.address.slice(-4)}`)
 // each cast's square picture is drawn once and reused by the wide ones
 const squares = new Map()
 const squareOf = (hash, c) => squares.get(hash) || keep(squares, 100, hash, collectible(c))
-/** A share picture, 1200 wide and `H` tall: the NFT (`square`, its SVG) on the left, and on the right who collected it
- *  (or that it's free to collect) under the Quilcast Collect name. A profile's card (`card`) brings its own frame. */
-async function shareCard(square, o, H, card = false) {
-  const m = card ? 40 : 56, S = H - 2 * m, x = S + 2 * m + 8, w = 1200 - x - 64
-  const inner = square.replace(/<svg [^>]*>/, `<svg x="${m}" y="${m}" width="${S}" height="${S}" viewBox="0 0 1200 1200">`).replace('<rect width="1200" height="1200" fill="#0b0a10"/>', '')
-  const pfp = o?.user?.pfp_url ? await dataUri(sized(o.user.pfp_url, 'w=176')) : null
-  // the column (logo row, then who has it) is centered on the card's height
-  let who, top
-  if (o) {
-    const name = o.user ? cut(o.user.display_name || o.user.username, 80) : ownerName(o)
-    top = (H - 232) / 2
-    who = `${textSvg(['Collected by'], { x, y: top + 136, size: 30, fill: '#9893a5' })}
-  <clipPath id="cw-av"><circle cx="${x + 36}" cy="${top + 196}" r="36"/></clipPath><circle cx="${x + 36}" cy="${top + 196}" r="36" fill="#2a2735"/>
-  ${pfp ? `<image href="${pfp}" x="${x}" y="${top + 160}" width="72" height="72" preserveAspectRatio="xMidYMid slice" clip-path="url(#cw-av)"/>` : initial(name, x + 36, top + 210, 32, '#9893a5')}
-  ${textSvg([wrap(name, 34, w - 92, 1, { bold: true })[0] || ''], { x: x + 92, y: top + (o.user ? 190 : 208), size: 34, bold: true, fill: '#edebf3' })}
-  ${o.user ? textSvg([wrap(`@${o.user.username}`, 26, w - 92, 1)[0] || ''], { x: x + 92, y: top + 226, size: 26, fill: '#9893a5' }) : ''}`
-  } else {
-    const lines = wrap(card ? 'Collect this card' : 'Collect this cast', 46, w, 2, { bold: true })
-    const sub = 150 + (lines.length - 1) * 56 + 64
-    top = (H - sub - 8) / 2
-    who = `${textSvg(lines, { x, y: top + 150, lh: 56, size: 46, bold: true, fill: '#edebf3' })}
-  ${textSvg(['A free 1/1 on Base'], { x, y: top + sub, size: 28, fill: '#9893a5' })}`
-  }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${H}" viewBox="0 0 1200 ${H}">
-  <defs>
-    <radialGradient id="cw-g" cx="0.95" cy="0" r="0.9"><stop offset="0" stop-color="#3a2a9a"/><stop offset="1" stop-color="#0d0c11" stop-opacity="0"/></radialGradient>
-    <linearGradient id="cw-tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a61ff"/><stop offset="1" stop-color="#4a2fd6"/></linearGradient>
-    <clipPath id="cw-nft"><rect x="${m}" y="${m}" width="${S}" height="${S}" rx="28"/></clipPath>
-  </defs>
-  <rect width="1200" height="${H}" fill="#0d0c11"/><rect width="1200" height="${H}" fill="url(#cw-g)"/>
-  ${card ? inner : `<g clip-path="url(#cw-nft)">${inner}</g>
-  <rect x="${m}" y="${m}" width="${S}" height="${S}" rx="28" fill="none" stroke="#2f2c3b" stroke-width="3"/>`}
-  <rect x="${x}" y="${top}" width="64" height="64" rx="14" fill="url(#cw-tile)"/>
-  <g transform="translate(${x + 13} ${top + 13}) scale(${38 / 24})"><path d="${P.collect}" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></g>
-  <text x="${x + 84}" y="${top + 43}" font-family="Inter" font-weight="700" font-size="30" fill="#edebf3">Quilcast Collect</text>
-  ${who}
-</svg>`
-}
+/** shareSvg with the owner's picture */
+const shareCard = async (square, o, H, card = false) => shareSvg(square, o, H, card, o?.user?.pfp_url ? await dataUri(sized(o.user.pfp_url, 'w=176')) : null)
 // A profile's card shows it as it was when the card was collected: kept then (the first time it's asked for after), and
 // until then drawn from the profile as it is now. { u, at, kept }, or null for no such account.
 async function keptCard(fid) {
   const file = join(NFT_DIR, `card-${fid}.json`)
-  const kept = await readFile(file, 'utf8').then(JSON.parse, () => null)
+  const kept = await readJsonFile(file)
   if (kept) return kept
   const owned = !!(await ownerOf(fid.toString(16), CARDS))
   // collected: the profile right now, not a cached one
   if (owned) cache.delete(`fid:${fid}`)
-  const u = await lookup(`fid:${fid}`, `/v2/farcaster/user?fid=${fid}`, (r) => (r?.user?.custody_address ? r.user : null)).catch(() => null)
+  const u = await userByFid(fid).catch(() => null)
   if (!u) return null
   const k = { u, at: Date.now(), kept: owned }
-  if (owned) await mkdir(NFT_DIR, { recursive: true }).then(() => writeFile(file, JSON.stringify(k))).catch((e) => console.error('nft: keep card', e))
+  if (owned) await keepNft(file, k, 'nft: keep card')
   return k
 }
-const cardSquare = async (k) => cardArt(k.u, k.u.pfp_url ? await dataUri(sized(k.u.pfp_url, 'w=600')) : null, k.at)
+const cardSquare = async (k) => cardArt(k.u, await pfpOf(k.u, 'w=600'), k.at)
 const CARDS_COLLECTION = {
   name: 'Quilcast Cards',
   description: 'Farcaster profiles as trading cards, collected on Quilcast. Every profile has one card, free to collect as a 1/1: it shows the profile as it was the day it was collected. The lower the FID, the rarer the card: Legendary (up to 1,000), Epic (up to 20,000), Rare (up to 250,000) and Common.',
@@ -890,12 +438,8 @@ async function collectPage(hash, fid) {
     embed = `${SITE}/nft/0x${hash}.3x2.png?v=${v}`
     button = o ? 'See the collected cast' : 'Collect this cast'
   }
-  let h = collectIndex.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`)
-  for (const [a, k, v] of [['name', 'description', desc], ['property', 'og:title', title], ['property', 'og:description', desc], ['property', 'og:url', COLLECT + path], ['property', 'og:image', og], ['name', 'twitter:title', title], ['name', 'twitter:description', desc], ['name', 'twitter:image', og]]) h = meta(h, a, k, v)
-  for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
-    h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: embed, button: { title: button, action: { type, name: 'Quilcast Collect', url: COLLECT + path, splashImageUrl: `${COLLECT}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
-  }
-  return h.replace(/(<link rel="canonical" href=")[^"]*/, (_, p) => p + esc(COLLECT + path))
+  const h = shareTags(collectIndex.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`), title, desc, COLLECT + path, og)
+  return embedTags(h, embed, button, 'Quilcast Collect', COLLECT + path, `${COLLECT}/splash.png`).replace(/(<link rel="canonical" href=")[^"]*/, (_, p) => p + esc(COLLECT + path))
 }
 // A pasted cast link → its full hash, which is its token id, so every link to a cast collects the same NFT: anything
 // carrying all 40 hex digits (quilcast.com/c/<hash>, a bare hash, farcaster.xyz/~/conversations/0x…), or
@@ -950,11 +494,16 @@ const ACTION_CSP = `default-src 'self'; script-src 'self'; style-src 'self'; con
 /** The file an action's host serves at `path`, or undefined. */
 const actionFile = (name, path) => [`/${name}${path === '/' ? '/index.html' : path}`, `/shared${path}`].find((f) => actionFiles.has(f))
 
+// rendering runs on libuv's pool, so it never blocks the event loop (laying out the text measures a bounded number of
+// runs on the main thread first: server/text.mjs)
 const render = (svg) => renderAsync(pictures(svg), { font: { fontFiles: FONTS, loadSystemFonts: false, defaultFontFamily: 'Inter' } }).then((img) => img.asPng())
 
 // small caches; failures drop out so they're retried. Rendered PNGs get their own, smaller one.
 const cache = new Map()
 const pngs = new Map()
+/** `make()`'s SVG as a PNG, kept in pngs under `k`, rendered in its turn (renders); `once` is for inside a turn already. */
+const png = (k, make) => pngs.get(k) || keep(pngs, 100, k, renders(async () => render(await make())))
+const once = (k, make) => pngs.get(k) || keep(pngs, 100, k, make().then(render))
 // a miss isn't kept, so the next request asks the node again
 const lookup = (k, path, pick) => cache.get(k) || keep(cache, 1000, k, fetchJson(NODE + path).then((r) => pick(r) || (cache.delete(k), null)))
 // follow counts move, so people and the pictures showing their counts are looked up again every 10 minutes
@@ -962,6 +511,7 @@ const lookup = (k, path, pick) => cache.get(k) || keep(cache, 1000, k, fetchJson
 const STALE = /^(fid:|u:|card:\d+:live)/
 setInterval(() => { for (const m of [cache, pngs]) for (const k of m.keys()) STALE.test(k) && m.delete(k) }, 600e3).unref()
 const getCast = (hash) => lookup(hash, `/v2/farcaster/cast?identifier=${hash}&type=hash`, (r) => r?.cast)
+const userByFid = (fid) => lookup(`fid:${fid}`, `/v2/farcaster/user?fid=${fid}`, (r) => (r?.user?.custody_address ? r.user : null))
 // the node's answer; null when it says there's no such thing, a throw when it fails
 async function nodeJson(path) {
   const r = await fetch(NODE + path, { signal: AbortSignal.timeout(5000) })
@@ -994,7 +544,7 @@ function articleOf(c) {
 /** Marks each cast that's part of an article (`article`, as the app's api.ts articleOf has it), waiting at most `ms`:
  *  one not back by then is left for the app to ask about. */
 const markArticles = (casts, ms) =>
-  Promise.race([Promise.allSettled(casts.map((c) => articleOf(c).then((a) => a !== undefined && (c.article = a)))), new Promise((ok) => setTimeout(ok, ms))])
+  Promise.race([Promise.allSettled(casts.map((c) => articleOf(c).then((a) => a !== undefined && (c.article = a)))), wait(ms)])
 // by-username only knows fnames; ENS names ("shoni.eth") are found by search, exact match only. An unused FID comes
 // back as an empty user.
 async function findUser(name) {
@@ -1007,33 +557,19 @@ async function findUser(name) {
 // a profile page's user and latest casts, kept ten minutes (a "no such user" too), so crawlers don't send every hit to
 // the node; a failure isn't kept
 const profiles = new Map()
-function getProfile(name) {
-  const k = name.toLowerCase()
-  const hit = profiles.get(k)
-  if (hit && hit.at > Date.now() - 600e3) return hit.p
-  const p = findUser(name).then(async (u) => {
-    if (!u) return u
-    const casts = (await nodeJson(`/v2/farcaster/feed/user/casts?fid=${u.fid}&limit=25`).catch(() => null))?.casts || []
-    await markArticles(casts, 2000)
-    return { u, casts }
-  })
-  keep(profiles, 2000, k, { at: Date.now(), p })
-  p.catch(() => profiles.delete(k))
-  return p
-}
+const getProfile = (name) => fresh(profiles, 2000, 600e3, name.toLowerCase(), () => findUser(name).then(async (u) => {
+  if (!u) return u
+  const casts = (await nodeJson(`/v2/farcaster/feed/user/casts?fid=${u.fid}&limit=25`).catch(() => null))?.casts || []
+  await markArticles(casts, 2000)
+  return { u, casts }
+}))
 // RSS feeds (server/feed.mjs) as finished XML, kept ten minutes like profiles (a "no such feed" too), so readers polling
 // every few minutes don't each reach the node; a failure isn't kept
 // (a feed can run to a few hundred KB, so fewer are kept than profiles)
 const feeds = new Map()
-const fresh = (k) => feeds.get(k)?.at > Date.now() - 600e3
-function getFeed(k, make) {
-  if (fresh(k)) return feeds.get(k).p
-  // `packed` holds its br/gzip bodies (send), which go when it does
-  const p = make().then((x) => x && { at: Date.now(), xml: Buffer.from(x), packed: {} })
-  keep(feeds, 300, k, { at: Date.now(), p })
-  p.catch(() => feeds.delete(k))
-  return p
-}
+const feedKept = (k) => feeds.get(k)?.at > Date.now() - 600e3
+// `packed` holds its br/gzip bodies (send), which go when it does
+const getFeed = (k, make) => fresh(feeds, 300, 600e3, k, () => make().then((x) => x && { at: Date.now(), xml: Buffer.from(x), packed: {} }))
 // a feed's cache key: a name in any case, or a FID however it's written (the node reads "003" as 3)
 const feedKey = (user, name, replies) => (user ? `u:${/^\d{1,10}$/.test(name) ? +name : name.toLowerCase()}:${+replies}` : `ch:${name}`)
 // an account's latest casts; replies only with ?replies=1. Taken-down and nameless accounts have no feed, as their
@@ -1097,7 +633,7 @@ async function drawHome() {
     ...w.quotes.map((h) => getCast(h).then((c) => c && (got[`c:${h}`] = lean(c)))),
     ...w.lone.map((u) => (shapes.get(u) || keep(shapes, 2000, u, previews(() => shapeOfAny(u)).catch(() => null))).then((x) => (sizes[u] = x))),
     markArticles(casts, 3000),
-  ]), new Promise((ok) => setTimeout(ok, 3000))])
+  ]), wait(3000)])
   const data = { casts, got: { ...got }, shapes: { ...sizes } }
   const { html: app, css, lead, meta } = homeBody(data, VERSION)
   if (lead) leads.add(lead), (data.lead = lead), leads.size > 20 && leads.delete(leads.values().next().value)
@@ -1123,23 +659,23 @@ setInterval(refresh, 6 * 3600e3).unref()
 // swap the default title/description/url/image in index.html for page-specific ones; replacements
 // are functions so `$` sequences in user text are never treated as replacement patterns
 const meta = (h, attr, k, v) => h.replace(new RegExp(`(<meta ${attr}="${k}" content=")[^"]*`), (_, p) => p + esc(v))
-// in Farcaster clients (and Quilcast) a link is a card that opens that same page as a mini app; fc:frame is the older name
-/** The mini app embed's tags: `embed` its 3:2 picture, `launch` a button other than "Open in Quilcast" and where it goes. */
-function launchAt(h, path, embed = `${SITE}/embed.png`, launch = { title: 'Open in Quilcast', url: SITE + path }) {
-  for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
-    h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: embed, button: { title: launch.title, action: { type, name: 'Quilcast', url: launch.url, splashImageUrl: `${SITE}/splash.png`, splashBackgroundColor: '#0d0c11' } } }))
-  }
+/** The tags a shared link shows: its title, description, address and (if any) picture. */
+function shareTags(h, title, desc, url, image) {
+  for (const [a, k, v] of [['name', 'description', desc], ['property', 'og:title', title], ['property', 'og:description', desc], ['property', 'og:url', url], ['name', 'twitter:title', title], ['name', 'twitter:description', desc], ...(image ? [['property', 'og:image', image], ['name', 'twitter:image', image]] : [])]) h = meta(h, a, k, v)
   return h
 }
+// in Farcaster clients (and Quilcast) a link is a card that opens that same page as a mini app; fc:frame is the older name
+/** The mini app embed's tags: `imageUrl` its 3:2 picture, a button `title` that opens `url` as the mini app `name`. */
+function embedTags(h, imageUrl, title, name, url, splashImageUrl) {
+  for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']])
+    h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl, button: { title, action: { type, name, url, splashImageUrl, splashBackgroundColor: '#0d0c11' } } }))
+  return h
+}
+/** Quilcast's embed: `embed` its 3:2 picture, `launch` a button other than "Open in Quilcast" and where it goes. */
+const launchAt = (h, path, embed = `${SITE}/embed.png`, launch = { title: 'Open in Quilcast', url: SITE + path }) => embedTags(h, embed, launch.title, 'Quilcast', launch.url, `${SITE}/splash.png`)
 function page({ title, desc, path, image, alt, embed, launch, type = 'article', robots, json, body, feed }) {
-  let h = launchAt(index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`), path, embed, launch)
-  const set = (attr, keys, v) => keys.forEach((k) => (h = meta(h, attr, k, v)))
-  set('name', ['description', 'twitter:description'], desc)
-  set('property', ['og:description'], desc)
-  set('property', ['og:title'], title)
-  set('name', ['twitter:title'], title)
-  set('property', ['og:url'], SITE + path)
-  if (image) set('property', ['og:image'], image), set('name', ['twitter:image'], image), set('property', ['og:image:alt'], alt), set('name', ['twitter:image:alt'], alt)
+  let h = shareTags(launchAt(index.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(title)}</title>`), path, embed, launch), title, desc, SITE + path, image)
+  if (image) h = meta(meta(h, 'property', 'og:image:alt', alt), 'name', 'twitter:image:alt', alt)
   h = h.replace(/(<link rel="canonical" href=")[^"]*/, (_, p) => p + esc(SITE + path)).replace('<meta property="og:type" content="website" />', () => `<meta property="og:type" content="${type}" />`)
   // JSON-LD isn't run, so the CSP leaves it be; "<" is escaped so user text can't close the script
   if (json) h = h.replace('</head>', () => `<script type="application/ld+json">${JSON.stringify(json).replace(/</g, '\\u003c')}</script>\n</head>`)
@@ -1150,6 +686,20 @@ function page({ title, desc, path, image, alt, embed, launch, type = 'article', 
 }
 // out of search: no canonical, a robots tag instead
 const noindex = (h) => h.replace(/\s*<link rel="canonical" href="[^"]*" \/>/, '').replace('</head>', '<meta name="robots" content="noindex, follow" />\n</head>')
+
+// an account's own stores, signed for it (server/mutes, prefs, drafts, scheduled.mjs): its handlers by method, how many
+// requests an address may make in 10 minutes, and the 405's answer
+const STORES = {
+  mutes: [{ GET: getMutes, PUT: putMutes }, 120, { error: 'GET or PUT' }],
+  prefs: [{ GET: getPrefs, PUT: putPrefs }, 120, { error: 'GET or PUT' }],
+  drafts: [{ GET: getDrafts, PUT: putDraft }, 300, { error: 'GET or PUT' }],
+  scheduled: [{ GET: getScheduled, PUT: putScheduled, DELETE: cancelScheduled }, 300, { error: 'use GET, PUT or DELETE' }],
+}
+// shared designs (server/looks.mjs) and app themes (server/themes.mjs): get, put, the 405's and the 429's answers
+const SHARED = {
+  design: [getDesign, putDesign, { error: 'POST /api/design or GET /api/design/<id>' }, { error: 'Too many designs, try again in a few minutes.' }],
+  theme: [getTheme, putTheme, { error: 'POST /api/theme or GET /api/theme/<id>' }, { error: 'Too many themes, try again in a few minutes.' }],
+}
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.json': 'application/json', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.wasm': 'application/wasm' }
 
@@ -1186,11 +736,15 @@ const server = createServer(async (req, res) => {
   // scripts/verify.mjs, which takes one as a sign of another encoding
   const html = (body, memo) => send(req, res, 200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache, no-transform' }, Buffer.from(String(body).replace(/[\0-\x08\x0b\x0e-\x1f\x7f]/g, '')), memo)
   const json = (code, body, cache = 'no-store') => send(req, res, code, { 'content-type': 'application/json', 'cache-control': cache }, Buffer.from(JSON.stringify(body)))
+  // a handler's result; its error's own message when it carries a status, else one logged under `tag` and answered `fallback`
+  const answer = (tag, p, fallback, cache) => p.then((r) => json(200, r, cache), (e) => (e.status || console.error(tag, e), json(e.status || 500, { error: e.status ? e.message : fallback })))
+  // a static file, typed by its name
+  const serve = (file, body, cache, memo, more) => send(req, res, 200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': cache, ...more }, body, memo)
   // every other page is the app as is, its embed opening that page
   const app = () => (path === '/' || !path ? html(index, 'index.html') : html(launchAt(index, path)))
   // the home page with the signed-out feed drawn in, or the bare app when there's none yet (2 s at most)
   const homePage = async () => {
-    const h = await Promise.race([getHome(), new Promise((ok) => setTimeout(ok, 2000))])
+    const h = await Promise.race([getHome(), wait(2000)])
     if (!h) return app()
     res.setHeader('content-security-policy', h.csp)
     return html(h.page, `home:${h.at}`)
@@ -1204,11 +758,12 @@ const server = createServer(async (req, res) => {
   }
   // rate limits count IPv6 by its /64, which one connection can rotate through
   const ip = ipGroup(clientIp(req))
+  const host = String(req.headers.host || '').split(':')[0]
   try {
     if (path === '/health') return res.end('ok')
 
     // collect.quilcast.com: the Collect mini app, a page per cast (/c/<hash>, or ?cast=<hash> as Quilcast first opened it)
-    if (String(req.headers.host || '').split(':')[0] === COLLECT_HOST) {
+    if (host === COLLECT_HOST) {
       res.setHeader('content-security-policy', COLLECT_CSP)
       if (path === '/api/find') {
         // the mini app words the errors itself
@@ -1231,13 +786,13 @@ const server = createServer(async (req, res) => {
         if (hash && !cache.has(hash) && limited(`look:${ip}`, 120)) return res.writeHead(429).end()
         return html(await collectPage(hash))
       }
+      // the mini app side is the cast actions' (actions/shared/miniapp.js)
+      if (path === '/miniapp.js') return serve(path, await readFile(join(ACTIONS_DIR, 'shared/miniapp.js')), 'public, max-age=300', 'action:/shared/miniapp.js')
       if (!collectFiles.has(path)) return res.writeHead(404).end()
-      const body = await readFile(join(COLLECT_DIR, path))
-      return send(req, res, 200, { 'content-type': TYPES[extname(path)] || 'application/octet-stream', 'cache-control': 'public, max-age=300', ...(path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' }) }, body, 'collect:' + path)
+      return serve(path, await readFile(join(COLLECT_DIR, path)), 'public, max-age=300', 'collect:' + path, path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' })
     }
 
-    const actionHost = String(req.headers.host || '').split(':')[0]
-    const action = ACTION_HOSTS[actionHost]
+    const action = ACTION_HOSTS[host]
     // Remind me's one-click entries POST here from people's browsers (any client's), so it answers CORS
     if (action === 'remindme' && path === '/api/action') {
       const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST' }
@@ -1248,7 +803,7 @@ const server = createServer(async (req, res) => {
       const who = ipGroup(ip)
       if (limited(`remind:action:${who}`, 30)) return reply(429, { message: 'Slow down a little.' })
       if (limited(`remind:day:${who}`, 200, 86400e3)) return reply(429, { message: 'Too many reminders right now. Try again later.' })
-      const r = await readJson(req, 8000).then((b) => oneClickReminder(b, actionHost, { nodes: [NODE, SNAPCHAIN].filter(Boolean), node: NODE })).catch((e) => e)
+      const r = await readJson(req, 8000).then((b) => oneClickReminder(b, host, { nodes: [NODE, SNAPCHAIN].filter(Boolean), node: NODE })).catch((e) => e)
       if (r instanceof Error && !r.status) console.error('remind action', r)
       return r instanceof Error ? reply(r.status || 500, { message: r.status ? r.message : 'Something went wrong.' }) : reply(200, r)
     }
@@ -1259,51 +814,39 @@ const server = createServer(async (req, res) => {
       if (limited(`remind:${path}:${who}`, 30)) return json(429, { error: 'Slow down a little.' })
       if (path === '/webhook') return json(200, { ok: true })
       if (limited(`remind:day:${who}`, 200, 86400e3)) return json(429, { error: 'too many reminders' })
-      const r = await readJson(req, 8000).then((b) => addReminder(b, actionHost)).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('remind', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Something went wrong.' } : r)
+      return answer('remind', readJson(req, 8000).then((b) => addReminder(b, host)), 'Something went wrong.')
     }
     // Poll keeps polls and votes (server/poll.mjs); a poll's page is the app with its own embed tags and picture
     if (action === 'poll') {
       const who = ipGroup(ip)
-      const answer = (r) => {
-        const err = r instanceof Error
-        if (err && !r.status) console.error('poll', r)
-        return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Something went wrong. Try again.' } : r)
-      }
+      const polled = (p) => answer('poll', p, 'Something went wrong. Try again.')
       if (path === '/api/poll' && req.method === 'POST') {
-        if (limited(`poll:new:${who}`, 20) || limited(`poll:day:${who}`, 200, 86400e3)) return answer(no(429, 'Too many polls right now. Try again later.'))
-        return answer(await readJson(req, 8000).then((b) => addPoll(b, actionHost)).catch((e) => e))
+        if (limited(`poll:new:${who}`, 20) || limited(`poll:day:${who}`, 200, 86400e3)) return polled(Promise.reject(no(429, 'Too many polls right now. Try again later.')))
+        return polled(readJson(req, 8000).then((b) => addPoll(b, host)))
       }
       const api = path.match(/^\/api\/poll\/([0-9a-f]{12})(\/vote)?$/)
       if (api && api[2] && req.method === 'POST') {
-        if (limited(`poll:vote:${who}`, 30)) return answer(no(429, 'Slow down a little.'))
-        return answer(await readJson(req, 8000).then((b) => vote(api[1], b, actionHost, { node: NODE, snapchain: SNAPCHAIN })).catch((e) => e))
+        if (limited(`poll:vote:${who}`, 30)) return polled(Promise.reject(no(429, 'Slow down a little.')))
+        return polled(readJson(req, 8000).then((b) => vote(api[1], b, host, { node: NODE, snapchain: SNAPCHAIN })))
       }
       if (api && !api[2]) {
         const p = await getPoll(api[1])
-        return answer(p ? await tally(api[1], p).catch((e) => e) : no(404, 'That poll is gone.'))
+        return polled(p ? tally(api[1], p) : Promise.reject(no(404, 'That poll is gone.')))
       }
       const card = path === '/embed.png' ? 'home' : path.match(/^\/p\/([0-9a-f]{12})\.png$/)?.[1]
       if (card) {
         const p = card === 'home' ? { question: 'What should we ask?', options: ['Write 2 to 4 options', 'Put the poll in your cast', 'Everyone votes once'] } : await getPoll(card)
         if (!p) return res.writeHead(404).end()
-        const k = `poll:${card}`
         // a poll never changes, so neither does its picture
-        const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => render(pollCard(p)))))
-        return send(req, res, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }, png)
+        return send(req, res, 200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }, await png(`poll:${card}`, () => pollCard(p)))
       }
       const id = path.match(/^\/p\/([0-9a-f]{12})$/)?.[1]
       if (id) {
         const p = await getPoll(id)
         let h = await readFile(join(ACTIONS_DIR, 'poll/index.html'), 'utf8')
         if (p) {
-          const url = `https://${actionHost}/p/${id}`, title = p.question.replace(/\s+/g, ' ').slice(0, 120), desc = p.options.join(' · ')
-          for (const [a, k, v] of [['name', 'description', desc], ['property', 'og:title', title], ['property', 'og:description', desc], ['property', 'og:url', url], ['property', 'og:image', `${url}.png`], ['name', 'twitter:title', title], ['name', 'twitter:description', desc], ['name', 'twitter:image', `${url}.png`]]) h = meta(h, a, k, v)
-          for (const [k, type] of [['fc:miniapp', 'launch_miniapp'], ['fc:frame', 'launch_frame']]) {
-            h = meta(h, 'name', k, JSON.stringify({ version: '1', imageUrl: `${url}.png`, button: { title: 'Vote', action: { type, name: 'Poll', url, splashImageUrl: `https://${actionHost}/icon.png`, splashBackgroundColor: '#0d0c11' } } }))
-          }
+          const url = `https://${host}/p/${id}`
+          h = embedTags(shareTags(h, p.question.replace(/\s+/g, ' ').slice(0, 120), p.options.join(' · '), url, `${url}.png`), `${url}.png`, 'Vote', 'Poll', url, `https://${host}/icon.png`)
           // its options, or the bars once voted, then a line for the count (actions/poll/app.js inline)
           h = meta(h, 'name', 'fc:miniapp:inline', JSON.stringify({ url: `${url}?inline`, height: 36 + 48 * p.options.length }))
         }
@@ -1314,25 +857,22 @@ const server = createServer(async (req, res) => {
     if (action) {
       const f = actionFile(action, path)
       if (!f) return res.writeHead(404).end()
-      return send(req, res, 200, {
-        'content-type': TYPES[extname(f)] || 'application/octet-stream', 'cache-control': 'public, max-age=300', 'content-security-policy': ACTION_CSP,
-        ...(path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' }),
-      }, await readFile(join(ACTIONS_DIR, f)), 'action:' + f)
+      return serve(f, await readFile(join(ACTIONS_DIR, f)), 'public, max-age=300', 'action:' + f, { 'content-security-policy': ACTION_CSP, ...(path.startsWith('/.well-known/') && { 'access-control-allow-origin': '*' }) })
     }
 
     // stickers.quilcast.com/<pack> is a sticker pack's short link; the packs live in the app (src/stickers.tsx)
-    if (String(req.headers.host || '').split(':')[0] === STICKERS_HOST) {
+    if (host === STICKERS_HOST) {
       const id = path.match(/^\/([\w-]{8})$/)?.[1]
       return res.writeHead(301, { location: `${SITE}/stickers${id ? `/${id}` : ''}`, 'cache-control': 'public, max-age=86400' }).end()
     }
 
-    if (String(req.headers.host || '').split(':')[0] === WASM_HOST && !path.startsWith('/api/')) {
+    if (host === WASM_HOST && !path.startsWith('/api/')) {
       res.setHeader('content-security-policy', WASM_CSP)
       const file = normalize(join(WASM_DIR, path))
       if (file.startsWith(WASM_DIR) && extname(file) && extname(file) !== '.html') {
         const body = await readFile(file).catch(() => null)
         if (!body) return res.writeHead(404).end()
-        return send(req, res, 200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600' }, body, 'wasm:' + file)
+        return serve(file, body, path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600', 'wasm:' + file)
       }
       // every page is the app, which reads the address itself
       const page = await readFile(join(WASM_DIR, 'index.html')).catch(() => null)
@@ -1348,19 +888,15 @@ const server = createServer(async (req, res) => {
     if (up) {
       const [, id, fin] = up
       if (!id && req.method === 'POST' && limited(`up:${ip}`, 30, 600e3)) return json(429, { error: 'Too many uploads, try again in a few minutes.' })
-      const r = await Promise.resolve()
-        .then(() =>
-          !id && req.method === 'POST' ? start(req, { node: NODE })
-            : id && fin && req.method === 'POST' ? done(req, id, { site: SITE, node: NODE })
-              : id && req.method === 'PUT' ? chunk(req, id, Number(url.searchParams.get('offset')))
-                : id && req.method === 'GET' ? status(id)
-                  : id && !fin && req.method === 'DELETE' ? cancel(id)
-                    : Promise.reject(Object.assign(new Error('not found'), { status: 404 })),
-        )
-        .catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('upload', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Upload failed' } : r)
+      const r = Promise.resolve().then(() =>
+        !id && req.method === 'POST' ? start(req, { node: NODE })
+          : id && fin && req.method === 'POST' ? done(req, id, { site: SITE, node: NODE })
+            : id && req.method === 'PUT' ? chunk(req, id, Number(url.searchParams.get('offset')))
+              : id && req.method === 'GET' ? status(id)
+                : id && !fin && req.method === 'DELETE' ? cancel(id)
+                  : Promise.reject(fail(404, 'not found')),
+      )
+      return answer('upload', r, 'Upload failed')
     }
 
     if (path === '/api/translate' || path === '/api/translations') {
@@ -1369,10 +905,7 @@ const server = createServer(async (req, res) => {
       if (req.method !== 'POST') return json(405, { error: 'POST' })
       const one = path === '/api/translate'
       if (one ? limited(`tr:${ip}`, 30, 600e3) : limited(`look:${ip}`, 300)) return json(429, { error: 'Too many translations at once, try again in a few minutes.' })
-      const r = await readJson(req, 4e3).then((b) => (one ? translate(b, getCast, TRANSLATOR) : translations(b))).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('translate', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : "Couldn't translate that right now." } : r)
+      return answer('translate', readJson(req, 4e3).then((b) => (one ? translate(b, getCast, TRANSLATOR) : translations(b))), "Couldn't translate that right now.")
     }
     // profile looks (server/looks.mjs) and their GIF search
     if (path === '/api/looks') return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await listLooks())
@@ -1383,10 +916,7 @@ const server = createServer(async (req, res) => {
       if (req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
       if (limited(`lookput:${ip}`, 30, 600e3)) return json(429, { error: 'Too many saves, try again in a few minutes.' })
       // the per-account limit counts signed saves only, like pins'
-      const r = await putLook(req, fid, NODE, () => limited(`lookfid:${fid}`, 30, 600e3)).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('look', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+      return answer('look', putLook(req, fid, NODE, () => limited(`lookfid:${fid}`, 30, 600e3)), 'Saving failed.')
     }
     // pinned casts (server/pins.mjs): public like looks, saved signed
     const pin = path.match(/^\/api\/pin\/([1-9]\d{0,9})$/)
@@ -1397,10 +927,7 @@ const server = createServer(async (req, res) => {
       if (limited(`pinip:${ip}`, 30, 600e3)) return json(429, { error: 'Too many pins, try again in a few minutes.' })
       // the per-account limit counts signed saves only, or anyone could lock someone's pin with unsigned ones; its own
       // prefix, as an address (the last X-Forwarded-For hop, unchecked) may look like a FID
-      const r = await putPin(req, fid, NODE, () => limited(`pinfid:${fid}`, 30, 600e3)).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('pin', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+      return answer('pin', putPin(req, fid, NODE, () => limited(`pinfid:${fid}`, 30, 600e3)), 'Saving failed.')
     }
     // sticker packs (server/stickers.mjs)
     if (path.startsWith('/api/stickers/')) {
@@ -1413,31 +940,22 @@ const server = createServer(async (req, res) => {
       if (req.method === 'GET') return limited(`look:${ip}`, 300) ? json(429, null) : json(200, await listPacks(fid))
       if (req.method !== 'POST') return json(405, { error: 'GET or POST' })
       if (limited(`stickip:${ip}`, 300, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
-      const r = await postStickers(req, fid, NODE, () => limited(`stickfid:${fid}`, 300, 600e3)).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('stickers', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+      return answer('stickers', postStickers(req, fid, NODE, () => limited(`stickfid:${fid}`, 300, 600e3)), 'Saving failed.')
     }
 
     // the ⋯ menu's Report (server/report.mjs)
     if (path === '/api/report') {
       if (req.method !== 'POST') return json(405, { error: 'only POST' })
       if (limited(`report:${ip}`, 20, 600e3)) return json(429, { error: 'Too many reports, try again in a few minutes.' })
-      const r = await report(req, { node: NODE, site: SITE }).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('report', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : "The report couldn't be sent. Try again." } : r)
+      return answer('report', report(req, { node: NODE, site: SITE }), "The report couldn't be sent. Try again.")
     }
-    // mutes and blocks (server/mutes.mjs)
-    const mutes = path.match(/^\/api\/mutes\/([1-9]\d{0,9})$/)
-    if (mutes) {
-      const fid = Number(mutes[1])
-      if (req.method !== 'GET' && req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
-      if (limited(`mutes:${ip}`, 120, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
-      const r = await (req.method === 'GET' ? getMutes : putMutes)(req, fid, NODE).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('mutes', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+    // an account's own signed stores (STORES)
+    const store = path.match(/^\/api\/(mutes|prefs|drafts|scheduled)\/([1-9]\d{0,9})$/)
+    if (store) {
+      const [by, max, methods] = STORES[store[1]]
+      if (!by[req.method]) return json(405, methods)
+      if (limited(`${store[1]}:${ip}`, max, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
+      return answer(store[1], by[req.method](req, Number(store[2]), NODE), 'Saving failed.')
     }
     // push notifications for the account's activity (server/alerts.mjs)
     const alerts = path.match(/^\/api\/alerts\/([1-9]\d{0,9})(?:\/(state|off))?$/)
@@ -1445,44 +963,7 @@ const server = createServer(async (req, res) => {
       const fid = Number(alerts[1])
       if (alerts[2] ? req.method !== 'POST' : req.method !== 'PUT') return json(405, { error: alerts[2] ? 'POST' : 'PUT' })
       if (limited(`alerts:${ip}`, 120, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
-      const r = await (alerts[2] === 'state' ? alertState(req, fid) : alerts[2] === 'off' ? offAlerts(req, fid) : putAlerts(req, fid, NODE)).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('alerts', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
-    }
-    // theme sync (server/prefs.mjs)
-    const prefs = path.match(/^\/api\/prefs\/([1-9]\d{0,9})$/)
-    if (prefs) {
-      const fid = Number(prefs[1])
-      if (req.method !== 'GET' && req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
-      if (limited(`prefs:${ip}`, 120, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
-      const r = await (req.method === 'GET' ? getPrefs : putPrefs)(req, fid, NODE).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('prefs', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
-    }
-    // drafts, sealed in the browser (server/drafts.mjs)
-    const drafts = path.match(/^\/api\/drafts\/([1-9]\d{0,9})$/)
-    if (drafts) {
-      const fid = Number(drafts[1])
-      if (req.method !== 'GET' && req.method !== 'PUT') return json(405, { error: 'GET or PUT' })
-      if (limited(`drafts:${ip}`, 300, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
-      const r = await (req.method === 'GET' ? getDrafts : putDraft)(req, fid, NODE).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('drafts', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
-    }
-    // scheduled casts, signed in the browser (server/scheduled.mjs)
-    const scheduled = path.match(/^\/api\/scheduled\/([1-9]\d{0,9})$/)
-    if (scheduled) {
-      const fid = Number(scheduled[1])
-      const f = { GET: getScheduled, PUT: putScheduled, DELETE: cancelScheduled }[req.method]
-      if (!f) return json(405, { error: 'use GET, PUT or DELETE' })
-      if (limited(`scheduled:${ip}`, 300, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
-      const r = await f(req, fid, NODE).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('scheduled', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Saving failed.' } : r)
+      return answer('alerts', alerts[2] === 'state' ? alertState(req, fid) : alerts[2] === 'off' ? offAlerts(req, fid) : putAlerts(req, fid, NODE), 'Saving failed.')
     }
     // counts only (server/stats.mjs): accounts a day, and the sign-ups each campaign link brought
     if (path === '/api/stats') {
@@ -1496,12 +977,8 @@ const server = createServer(async (req, res) => {
       if (limited(`signup:${ip}`, 10, 600e3)) return json(429, { error: 'Slow down a little.' })
       const fid = /^[1-9]\d{0,9}$/.test(String(req.headers['x-fid'] || '')) ? Number(req.headers['x-fid']) : 0
       if (!fid) return json(400, { error: 'x-fid missing' })
-      const r = await readText(req, 1e3)
-        .then(async (body) => (await keySigned(req, 'quilcast-signup', fid, body, NODE), await statsReady, { counted: joined(fid, parseJson(body)?.campaign) }))
-        .catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('signup', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Failed.' } : r)
+      const r = readText(req, 1e3).then(async (body) => (await keySigned(req, 'quilcast-signup', fid, body, NODE), await statsReady, { counted: joined(fid, parseJson(body)?.campaign) }))
+      return answer('signup', r, 'Failed.')
     }
     // X crossposting: its own service holds the keys (server/crosspost.mjs); requests go there as they came
     const xp = path.match(/^\/api\/crosspost\/([1-9]\d{0,19})$/)
@@ -1517,48 +994,30 @@ const server = createServer(async (req, res) => {
     if (del) {
       if (req.method !== 'DELETE') return json(405, { error: 'use DELETE' })
       if (limited(`del:${ip}`, 60, 600e3)) return json(429, { error: 'Too many changes, try again in a few minutes.' })
-      const r = await deleteAccount(req, Number(del[1]), url.searchParams.get('run'), { node: NODE, site: SITE }).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('account', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Deleting failed. Try again.' } : r)
+      return answer('account', deleteAccount(req, Number(del[1]), url.searchParams.get('run'), { node: NODE, site: SITE }), 'Deleting failed. Try again.')
     }
-    const design = path.match(/^\/api\/design(?:\/([\w-]{10}))?$/)
-    if (design) {
-      if (req.method === 'GET' && design[1]) {
+    // shared designs and app themes (SHARED)
+    const shared = path.match(/^\/api\/(design|theme)(?:\/([\w-]{10}))?$/)
+    if (shared) {
+      const [, kind, id] = shared
+      const [get, put, methods, busy] = SHARED[kind]
+      if (req.method === 'GET' && id) {
         if (limited(`look:${ip}`, 300)) return json(429, null)
-        // the id is a hash of the content, so a design never changes once found
-        const found = await getDesign(design[1])
+        // the id is a hash of the content, so it never changes once found
+        const found = await get(id)
         return json(200, found, found ? 'public, max-age=31536000, immutable' : 'no-store')
       }
-      if (req.method !== 'POST' || design[1]) return json(405, { error: 'POST /api/design or GET /api/design/<id>' })
-      if (limited(`design:${ip}`, 30, 600e3)) return json(429, { error: 'Too many designs, try again in a few minutes.' })
-      const r = await putDesign(req).catch((e) => e)
-      if (r instanceof Error && !r.status) console.error('design', r)
-      return r instanceof Error ? json(r.status || 500, { error: r.status ? r.message : 'Sharing failed.' }) : json(200, r)
+      if (req.method !== 'POST' || id) return json(405, methods)
+      if (limited(`${kind}:${ip}`, 30, 600e3)) return json(429, busy)
+      return answer(kind, put(req), 'Sharing failed.')
     }
-    // app themes and Quorum's skins (server/themes.mjs)
-    const theme = path.match(/^\/api\/theme(?:\/([\w-]{10}))?$/)
-    if (theme) {
-      if (req.method === 'GET' && theme[1]) {
-        if (limited(`look:${ip}`, 300)) return json(429, null)
-        // the id is a hash of the content, so a theme never changes once found
-        const found = await getTheme(theme[1])
-        return json(200, found, found ? 'public, max-age=31536000, immutable' : 'no-store')
-      }
-      if (req.method !== 'POST' || theme[1]) return json(405, { error: 'POST /api/theme or GET /api/theme/<id>' })
-      if (limited(`theme:${ip}`, 30, 600e3)) return json(429, { error: 'Too many themes, try again in a few minutes.' })
-      const r = await putTheme(req).catch((e) => e)
-      if (r instanceof Error && !r.status) console.error('theme', r)
-      return r instanceof Error ? json(r.status || 500, { error: r.status ? r.message : 'Sharing failed.' }) : json(200, r)
-    }
+    // Quorum's skins (server/themes.mjs)
     const skin = path.match(/^\/api\/quorum\/(skins|skin\/(Qm\w{44})|import)$/)
     if (skin) {
       const imp = skin[1] === 'import'
       if (imp !== (req.method === 'POST')) return json(405, { error: 'GET /api/quorum/skins or /api/quorum/skin/<id>, POST /api/quorum/import' })
       if (imp ? limited(`skinput:${ip}`, 20, 600e3) : limited(`skins:${ip}`, 120)) return json(429, { error: 'Too many themes, try again in a few minutes.' })
-      const r = await (imp ? importSkin(req, ip) : skin[2] ? quorumSkin(skin[2]) : gallery(url.searchParams)).catch((e) => e)
-      if (r instanceof Error && !r.status) console.error('quorum', r)
-      return r instanceof Error ? json(r.status || 500, { error: r.status ? r.message : "Couldn't load that theme." }) : json(200, r, skin[2] ? 'public, max-age=86400' : 'no-store')
+      return answer('quorum', imp ? importSkin(req, ip) : skin[2] ? quorumSkin(skin[2]) : gallery(url.searchParams), "Couldn't load that theme.", skin[2] ? 'public, max-age=86400' : 'no-store')
     }
     if (path === '/api/gifs') {
       const q = (url.searchParams.get('q') || '').trim().slice(0, 60)
@@ -1605,10 +1064,7 @@ const server = createServer(async (req, res) => {
     if (path === '/api/notify' || path.startsWith('/api/notify/') || path === '/api/manifest') {
       // apps' servers send notifications in bursts; everything else is one browser's own calls
       if (limited(`notify:${path === '/api/notify' ? 'send' : path}:${ip}`, path === '/api/notify' ? 600 : path === '/api/notify/inbox' ? 120 : 30)) return json(429, { error: 'Slow down a little.' })
-      const r = await (notifyRoute(req, path, url, SITE, () => vapidKeys(DATA).public) || Promise.reject(Object.assign(new Error('not found'), { status: 404 }))).catch((e) => e)
-      const err = r instanceof Error
-      if (err && !r.status) console.error('notify', r)
-      return json(err ? r.status || 500 : 200, err ? { error: r.status ? r.message : 'Something went wrong.' } : r)
+      return answer('notify', notifyRoute(req, path, url, SITE, () => vapidKeys(DATA).public) || Promise.reject(fail(404, 'not found')), 'Something went wrong.')
     }
 
     const sop = path.match(/^\/api\/space\/(\w{1,20})$/)?.[1]
@@ -1724,8 +1180,7 @@ const server = createServer(async (req, res) => {
       if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
       const c = await getCast(hash)
       if (!c) return res.writeHead(404).end()
-      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => card(c).then((svg) => render(og[2] ? tall(svg) : svg)))))
-      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600' }).end(png)
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600' }).end(await png(k, () => card(c).then((svg) => (og[2] ? tall(svg) : svg))))
     }
 
     if (path === '/nft/collection.json') return json(200, COLLECTION, 'public, max-age=3600')
@@ -1742,9 +1197,9 @@ const server = createServer(async (req, res) => {
       const o = wide ? await ownerOf(fid.toString(16), CARDS) : null
       const key = `card:${fid}:${k.kept ? k.at : 'live'}${wide ? `:${wide}:${o?.address || ''}` : ''}`
       if (!pngs.has(key) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
-      const png = await (pngs.get(key) || keep(pngs, 100, key, renders(() => cardSquare(k).then((sq) => (wide ? shareCard(sq, o, wide, true) : sq)).then(render))))
+      const p = await png(key, () => cardSquare(k).then((sq) => (wide ? shareCard(sq, o, wide, true) : sq)))
       // until it's collected, the card follows the profile
-      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': `public, max-age=${wide ? 300 : k.kept ? 86400 : 600}`, 'access-control-allow-origin': '*' }).end(png)
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': `public, max-age=${wide ? 300 : k.kept ? 86400 : 600}`, 'access-control-allow-origin': '*' }).end(p)
     }
     // .png: the NFT itself; .3x2.png and .og.png: the pictures a shared Collect link shows, with who owns it
     const nft = path.match(/^\/nft\/0x([0-9a-f]{40})(\.png|\.3x2\.png|\.og\.png)?$/i)
@@ -1758,9 +1213,9 @@ const server = createServer(async (req, res) => {
       const c = await keptCast(hash)
       if (!c) return res.writeHead(404, { 'access-control-allow-origin': '*' }).end()
       // the Collect mini app (collect.quilcast.com) reads it too
-      if (!nft[2]) return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' }).end(JSON.stringify(nftMeta(c, hash)))
-      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => (wide ? squareOf(hash, c).then((sq) => shareCard(sq, o, wide)) : squareOf(hash, c)).then(render))))
-      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': `public, max-age=${wide ? 300 : 86400}` }).end(png)
+      if (!nft[2]) return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' }).end(JSON.stringify(nftMeta(c, hash, SITE)))
+      const p = await png(k, () => (wide ? squareOf(hash, c).then((sq) => shareCard(sq, o, wide)) : squareOf(hash, c)))
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': `public, max-age=${wide ? 300 : 86400}` }).end(p)
     }
 
     const cast = path.match(/^\/c\/(?:0x)?([0-9a-f]{40})$/i)
@@ -1771,7 +1226,7 @@ const server = createServer(async (req, res) => {
       if (!c) return app()
       const by = `${c.author?.display_name || c.author?.username} (@${c.author?.username})`
       // an article shares as its title, opening and cover
-      const a = await Promise.race([articleOf(c), new Promise((ok) => setTimeout(() => ok(null), 2000))])
+      const a = await Promise.race([articleOf(c), wait(2000)])
       if (isArticle(a)) {
         const { title, opening } = headOf(castText(c))
         const cover = coverOf(c.embeds)
@@ -1816,7 +1271,7 @@ const server = createServer(async (req, res) => {
       const ofUser = path.startsWith('/u/')
       const k = feedKey(ofUser, feedOf[1], replies)
       const plain = (code, more = {}) => res.writeHead(code, { 'content-type': 'text/plain; charset=utf-8', ...more }).end(code === 404 ? 'No such feed.' : code === 429 ? 'Slow down a little.' : 'Try again in a minute.')
-      if (!fresh(k) && limited(`look:${ip}`, 120)) return plain(429, { 'retry-after': '60' })
+      if (!feedKept(k) && limited(`look:${ip}`, 120)) return plain(429, { 'retry-after': '60' })
       const f = await (ofUser ? userFeed(feedOf[1], replies) : channelFeed(feedOf[1])).catch(() => undefined)
       if (f === undefined) return plain(502, { 'retry-after': '60' })
       if (!f) return plain(404, { 'cache-control': 'public, max-age=600' })
@@ -1830,9 +1285,8 @@ const server = createServer(async (req, res) => {
       if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
       const p = await getProfile(ogUser[1]).catch(() => null)
       if (!p) return res.writeHead(404).end()
-      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => profileCard(p.u).then((svg) => render(ogUser[2] ? tall(svg) : svg)))))
       // supporters change, so a few hours rather than a day
-      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=10800' }).end(png)
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=10800' }).end(await png(k, () => profileCard(p.u).then((svg) => (ogUser[2] ? tall(svg) : svg))))
     }
 
     const channelPage = path.match(/^\/channel\/([a-z0-9-]{1,64})$/)
@@ -1849,14 +1303,15 @@ const server = createServer(async (req, res) => {
       const found = await getDesign(designPage[1])
       return html(page({ title: 'A profile design on Quilcast', desc, path, ...(found && { image: `${SITE}/og/design/${designPage[1]}.png`, alt: 'A preview of the profile design' }) }))
     }
-    const ogDesign = path.match(/^\/og\/design\/([\w-]{10})\.png$/)
-    if (ogDesign) {
-      const k = `design:${ogDesign[1]}`
+    const ogShared = path.match(/^\/og\/(design|theme)\/([\w-]{10})\.png$/)
+    if (ogShared) {
+      const [, kind, id] = ogShared
+      const k = `${kind}:${id}`
       if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
-      const d = await getDesign(ogDesign[1])
-      if (!d) return res.writeHead(404).end()
-      const png = await (pngs.get(k) || renders(() => designPng(ogDesign[1], d)))
-      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
+      const x = await SHARED[kind][0](id)
+      if (!x) return res.writeHead(404).end()
+      const p = await (pngs.get(k) || renders(() => (kind === 'design' ? designPng : themePng)(id, x)))
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(p)
     }
 
     const packPage = path.match(/^\/stickers\/([\w-]{8})$/)
@@ -1875,8 +1330,7 @@ const server = createServer(async (req, res) => {
       if (!p) return res.writeHead(404).end()
       const k = `stickers:${ogPack[1]}${ogPack[2] || ''}:${packVersion(p)}`
       if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
-      const png = await (pngs.get(k) || keep(pngs, 100, k, renders(() => packCard(p, !!ogPack[2]).then(render))))
-      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=600' }).end(png)
+      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=600' }).end(await png(k, () => packCard(p, !!ogPack[2])))
     }
 
     const themePage = path.match(/^\/theme\/([\w-]{10})$/)
@@ -1885,15 +1339,6 @@ const server = createServer(async (req, res) => {
       const name = th?.name || 'A Quilcast theme'
       const desc = 'A theme for Quilcast: colors, a background, fonts and more for the whole app. Open it to try it on.'
       return html(page({ title: th?.name ? `${th.name}, a theme for Quilcast` : 'A theme for Quilcast', desc, path, ...(th && { image: `${SITE}/og/theme/${themePage[1]}.png`, alt: `A preview of ${name}` }) }))
-    }
-    const ogTheme = path.match(/^\/og\/theme\/([\w-]{10})\.png$/)
-    if (ogTheme) {
-      const k = `theme:${ogTheme[1]}`
-      if (!pngs.has(k) && limited(`og:${ip}`, 30)) return res.writeHead(429).end()
-      const th = await getTheme(ogTheme[1])
-      if (!th) return res.writeHead(404).end()
-      const png = await (pngs.get(k) || renders(() => themePng(ogTheme[1], th)))
-      return res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' }).end(png)
     }
 
     // the link every train cast carries (TRAIN in src/shared.ts): Quilcast hides it, other Farcaster clients show it as a
@@ -1918,7 +1363,7 @@ const server = createServer(async (req, res) => {
       // no-transform on pages: Cloudflare leaves them as we sent them (no analytics beacon, which the CSP would block anyway)
       // /build.json names the build the pages load, so it has to change with them, never an hour late (verify.mjs)
       const cache = path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : page ? 'public, max-age=3600, no-transform' : path === '/build.json' ? 'no-cache' : 'public, max-age=3600'
-      return send(req, res, 200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': cache }, body, file)
+      return serve(file, body, cache, file)
     }
     return app()
   } catch (e) {

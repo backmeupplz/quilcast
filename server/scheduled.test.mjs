@@ -9,23 +9,14 @@ import { ed25519 } from '@noble/curves/ed25519.js'
 import { castAt, castBody, envelope, MT, pb, rawEd } from '../src/fc.ts'
 import { createServer } from 'node:http'
 import { dropScheduled, fields, LATEST, loadScheduled, readCast, readItem, SOONEST, submitTo, tick } from './scheduled.mjs'
+import { signed, thread as chain } from './testkit.mjs'
 
 const priv = ed25519.utils.randomSecretKey()
 const key = { ...rawEd(priv), priv }
 const keyHex = '0x' + Buffer.from(key.pub).toString('hex')
 const NOW = Date.parse('2026-11-13T12:00:00Z')
 const b64 = (m) => Buffer.from(m.msg).toString('base64')
-/** A thread of `texts` for `at`, each next cast replying to the one before, a second later, as write.ts schedule signs it. */
-async function thread(texts, at, { fid = 7, k = key } = {}) {
-  const out = []
-  let prev
-  for (const [i, text] of texts.entries()) {
-    const m = await castAt(fid, castBody({ text, parent: prev }), k, at + i * 1000)
-    out.push(m)
-    prev = { fid, hash: m.hash }
-  }
-  return out
-}
+const thread = (texts, at, { fid = 7, k = key } = {}) => chain(texts, at, fid, k)
 
 let dir
 before(async () => {
@@ -199,11 +190,7 @@ test('an item being sent is neither cancelled nor replaced; one removed while it
   const srv = createServer((q, r) => r.end(JSON.stringify({ signers: q.url.includes('fid=12') ? [{ key: keyHex }] : [] })))
   await new Promise((ok) => srv.listen(0, '127.0.0.1', ok))
   const node = `http://127.0.0.1:${srv.address().port}`
-  const req = (what, body) => {
-    const ts = Date.now()
-    const sig = Buffer.from(ed25519.sign(Buffer.from(`${what}:12:${ts}:${body}`), key.priv)).toString('hex')
-    return Object.assign(Readable.from([body]), { headers: { 'x-key': keyHex, 'x-ts': String(ts), 'x-sig': sig } })
-  }
+  const req = (what, body) => Object.assign(Readable.from([body]), { headers: signed(key.priv, what, 12, body) })
   try {
     const it = await item(uuid(7), NOW - 1000, ['busy'], 12)
     await put(it)

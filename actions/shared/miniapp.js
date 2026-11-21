@@ -1,4 +1,4 @@
-// Copied from collect/miniapp.js (itself from backmeupplz/poidh public/miniapp.js), plus sendToken, close and viewCast.
+// From backmeupplz/poidh public/miniapp.js, plus sendToken, close and viewCast; collect.quilcast.com serves it too.
 // Your own cast action can use the official @farcaster/miniapp-sdk instead; this is the same wire, minus the bundle.
 // Farcaster mini app guest side, without @farcaster/miniapp-sdk: the host speaks Comlink over postMessage
 // (an iframe on web, window.ReactNativeWebView in the mobile apps). Loaded only when framed.

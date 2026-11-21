@@ -2,7 +2,9 @@
 // hosts on ports 80/443 only. The address check runs inside the socket's DNS lookup, so the IP
 // that gets checked is the IP we connect to (no DNS-rebinding window), and every redirect hop
 // goes through the same path. Bodies are capped and the whole fetch has a deadline.
+import { randomUUID } from 'node:crypto'
 import { lookup } from 'node:dns'
+import { readFile, rename, rm, writeFile } from 'node:fs/promises'
 import http from 'node:http'
 import https from 'node:https'
 import { BlockList, isIP } from 'node:net'
@@ -223,6 +225,16 @@ export function gate(n, wait = 30) {
 /** Put `v` (a value or a promise) in a cache of at most `max` entries, oldest out first; a rejected promise drops out, so it's retried. */
 export const keep = (map, max, k, v) => (map.size >= max && map.delete(map.keys().next().value), map.set(k, v), Promise.resolve(v).catch(() => map.delete(k)), v)
 
+/** `load()`'s promise for `k`, kept `ttl` ms (at most `max` keys); a rejection drops out at once, so it's retried. */
+export function fresh(map, max, ttl, k, load) {
+  const hit = map.get(k)
+  if (hit && hit.at > Date.now() - ttl) return hit.p
+  const p = load()
+  keep(map, max, k, { at: Date.now(), p })
+  p.catch(() => map.get(k)?.p === p && map.delete(k))
+  return p
+}
+
 /** A cache of loads by key, least recently used out first once its values' `body`s pass `bytes` or it holds `count`:
  *  a value is kept `ttl` ms, a null (nothing there) `miss` ms, and one with a body over `big` or a `rest` still to
  *  come (a stream only one reader can have) not at all. A load that
@@ -261,6 +273,24 @@ export function lru({ bytes, count, big, ttl, miss }) {
 
 /** An error that carries the HTTP status to answer with. */
 export const fail = (status, message) => Object.assign(new Error(message), { status })
+
+/** A kept JSON file, or `empty` when it isn't there (one that won't parse still throws). */
+export const readJsonFile = (f, empty = null) => readFile(f, 'utf8').then(JSON.parse, () => empty)
+
+/** Writes `f` whole or not at all, through a temporary file of its own, so two writes at once can't trip over each other. */
+export async function writeAtomic(f, data, opts) {
+  const tmp = `${f}.${randomUUID()}.tmp`
+  try {
+    await writeFile(tmp, data, opts)
+    await rename(tmp, f)
+  } catch (e) {
+    await rm(tmp, { force: true })
+    throw e
+  }
+}
+
+/** `u` when it's an https URL of a sane length. */
+export const httpsUrl = (u) => (typeof u === 'string' && /^https:\/\//.test(u) && u.length < 1024 ? u : undefined)
 
 /** A request's body as text, up to `max` characters. */
 export async function readText(req, max = 16e3) {

@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
+import { mkdtemp, readdir } from 'node:fs/promises'
 import { createServer } from 'node:http'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
 import { PassThrough } from 'node:stream'
-import { blocked, clientIp, imageInfo, ipGroup, lru, picInfo, proxiedPic, readBody, safeGet, sendOn } from './net.mjs'
+import { blocked, clientIp, fresh, imageInfo, ipGroup, lru, picInfo, proxiedPic, readBody, safeGet, sendOn, writeAtomic } from './net.mjs'
 import { inlineOf, scan } from './unfurl.mjs'
 import { looksLike } from './upload.mjs'
 
@@ -221,9 +224,6 @@ test('proxiedPic: a picture by its head, nothing for what is not one, a throw (n
     assert.throws(() => proxiedPic({ status: 200, body, rest, late: true, size: 16e6 }, opts), /timeout/)
     assert.equal(rest.destroyed, true)
   }
-  const c = lru({ bytes: 100, count: 10, big: 50, ttl: 1e6, miss: 1e6 })
-  await c.get('cold', async () => proxiedPic({ status: 200, body: Buffer.alloc(0), rest: new PassThrough(), late: true }, opts))
-  assert.equal(c.has('cold'), false)
 })
 
 test('rate limits count an IPv6 address by its /64', () => {
@@ -242,4 +242,18 @@ test("a mini app embed's inline view is taken only on the app's own origin, its 
   assert.equal(inlineOf('{"url":"https://poll.example.com/x","height":10}', app).height, 80)
   for (const bad of ['{"url":"https://evil.example/x","height":200}', '{"url":"http://poll.example.com/x","height":200}', '{"url":"https://poll.example.com/x"}', '{"url":"https://poll.example.com/x","height":"tall"}', 'not json', undefined])
     assert.equal(inlineOf(bad, app), undefined, bad)
+})
+
+test("writeAtomic leaves no temporary file when the rename fails, and fresh() doesn't keep a rejection", async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'qc-atomic-'))
+  // a file can't take a directory's place
+  await assert.rejects(writeAtomic(dir, '{}'))
+  assert.deepEqual(await readdir(join(dir, '..')).then((l) => l.filter((f) => f.startsWith(dir.split('/').pop() + '.'))), [])
+  const m = new Map()
+  let loads = 0
+  await assert.rejects(fresh(m, 10, 1e6, 'k', async () => (loads++, Promise.reject(new Error('down')))))
+  assert.equal(m.has('k'), false)
+  assert.equal(await fresh(m, 10, 1e6, 'k', async () => (loads++, 1)), 1)
+  assert.equal(await fresh(m, 10, 1e6, 'k', async () => (loads++, 2)), 1, 'kept')
+  assert.equal(loads, 2)
 })

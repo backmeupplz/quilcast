@@ -15,13 +15,12 @@
 // up (below) are kept in memory only.
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { castText, isTrain, PLURALS, proxied, wordsRe } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { keySigned } from './looks.mjs'
 import { readMutes } from './mutes.mjs'
-import { fail, keep, parseJson, readText } from './net.mjs'
+import { fail, keep, parseJson, readText, writeAtomic } from './net.mjs'
 import { push, validSubscription } from './push.mjs'
 
 // the node's notification types, by the kind people turn on
@@ -74,9 +73,8 @@ function sync(fid, subs = readSubs(fid)) {
 }
 // a file is written whole or not at all, through a temporary file of its own (both servers write here during a
 // deploy, each as pid 1 in its container), which goes when the write fails
-const tmpOf = (file) => `${file}.${randomUUID()}.tmp`
 function putSync(file, json) {
-  const tmp = tmpOf(file)
+  const tmp = `${file}.${randomUUID()}.tmp`
   try {
     writeFileSync(tmp, json, { mode: 0o600 })
     renameSync(tmp, file)
@@ -85,16 +83,7 @@ function putSync(file, json) {
     throw e
   }
 }
-async function put(file, json) {
-  const tmp = tmpOf(file)
-  try {
-    await writeFile(tmp, json, { mode: 0o600 })
-    await rename(tmp, file)
-  } catch (e) {
-    await rm(tmp, { force: true })
-    throw e
-  }
-}
+const put = (file, json) => writeAtomic(file, json, { mode: 0o600 })
 /** Change the account's browsers from what's on disk now and write them back before answering (no await between, so
  *  the other server's change to the same file isn't lost). */
 function edit(fid, change) {

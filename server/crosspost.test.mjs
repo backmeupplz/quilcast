@@ -10,6 +10,7 @@ import { ed25519 } from '@noble/curves/ed25519.js'
 import { hex, keyAddAuth, keyCustody, MT } from '../src/fc.ts'
 import { castParent, castText, getCrosspost, idAt, loadCrosspost, mediaUrl, newKey, PER_DAY, read, revoke, round, step, toCast, turnOff, turnOn } from './crosspost.mjs'
 import { fields } from './scheduled.mjs'
+import { signed } from './testkit.mjs'
 
 const T0 = Date.parse('2026-11-19T12:00:00Z')
 let n = 0
@@ -255,10 +256,8 @@ test('only accounts that turned it on take one of the places, not unfinished Tur
     const node = createServer((q, r) => r.end(JSON.stringify({ signers: [{ key: signerHex }] })))
     await new Promise((ok) => node.listen(0, ok))
     const ask = (fid) => {
-      const ts = Date.now()
       const body = '{"handle":"me"}'
-      const r = Readable.from([Buffer.from(body)])
-      r.headers = { 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': hex(ed25519.sign(Buffer.from(`quilcast-crosspost-key:${fid}:${ts}:${body}`), signer)) }
+      const r = Object.assign(Readable.from([Buffer.from(body)]), { headers: signed(signer, 'quilcast-crosspost-key', fid, body) })
       return fresh(r, fid, `http://127.0.0.1:${node.address().port}`, { profile: async () => ({ screen_name: 'me' }) })
     }
     try {
@@ -291,12 +290,7 @@ test('turning it on adds a cast-only key; turning it off revokes it and forgets 
   })
   await new Promise((ok) => node.listen(0, ok))
   const NODE = `http://127.0.0.1:${node.address().port}`
-  const req = (what, body = '') => {
-    const ts = Date.now()
-    const r = Readable.from(body ? [Buffer.from(body)] : [])
-    r.headers = { 'x-key': signerHex, 'x-ts': String(ts), 'x-sig': hex(ed25519.sign(Buffer.from(`${what}:11:${ts}:${body}`), signer)) }
-    return r
-  }
+  const req = (what, body = '') => Object.assign(Readable.from(body ? [Buffer.from(body)] : []), { headers: signed(signer, what, 11, body) })
   const submit = async (b) => void submitted.push(Buffer.from(b))
   try {
     assert.deepEqual(await getCrosspost(req('quilcast-crosspost-read'), 11, NODE), {})

@@ -12,13 +12,13 @@
 // Telegram packs come through the Bot API (TELEGRAM_BOT_TOKEN, the one reports use): still stickers are kept as they
 // are, video ones (VP9 WebM with alpha) go through ffmpeg and animated ones (.tgs Lottie) through server/tgs.mjs,
 // both into img2webp.
-import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, open, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { fail, gate, imageInfo, keep, parseJson, readText } from './net.mjs'
+import { fail, gate, imageInfo, keep, parseJson, readJsonFile, readText, writeAtomic } from './net.mjs'
 import { keySigned } from './looks.mjs'
 import { renderAsync } from '@resvg/resvg-js'
 
@@ -47,16 +47,9 @@ export const stickerFile = (h) => join(dir, 'files', `${h}.webp`)
 export const isSticker = (pack, h) => ID.test(pack) && HASH.test(h)
 
 const packs = new Map()
-const read = (f, empty) => readFile(f, 'utf8').then(JSON.parse, () => empty)
-export const getPack = (id) => (!ID.test(id) ? Promise.resolve(null) : packs.get(id) || keep(packs, 5000, id, read(packFile(id), null)))
-const savedOf = (fid) => read(savedFile(fid), []).then((l) => (Array.isArray(l) ? l.filter((x) => ID.test(x)) : []))
-// its own temporary file, so two saves at once can't trip over each other
-async function write(f, v) {
-  const tmp = `${f}.${randomUUID()}.tmp`
-  await writeFile(tmp, Buffer.isBuffer(v) ? v : JSON.stringify(v))
-  await rename(tmp, f).catch((e) => rm(tmp, { force: true }).then(() => Promise.reject(e)))
-}
-const putPack = (p) => (packs.set(p.id, Promise.resolve(p)), write(packFile(p.id), p))
+export const getPack = (id) => (!ID.test(id) ? Promise.resolve(null) : packs.get(id) || keep(packs, 5000, id, readJsonFile(packFile(id))))
+const savedOf = (fid) => readJsonFile(savedFile(fid), []).then((l) => (Array.isArray(l) ? l.filter((x) => ID.test(x)) : []))
+const putPack = (p) => (packs.set(p.id, Promise.resolve(p)), writeAtomic(packFile(p.id), JSON.stringify(p)))
 
 /** The account's packs in its order; packs deleted since quietly drop out. */
 export const listPacks = async (fid) => (await Promise.all((await savedOf(fid)).map(getPack))).filter(Boolean)
@@ -108,8 +101,8 @@ export const toWebp = (buf, kind) =>
 /** Keep a sticker's WebP (and its still); its name is its hash. */
 async function keepFile({ webp, still }) {
   const h = createHash('sha256').update(webp).digest('hex').slice(0, 24)
-  if (still) await write(stillFile(h), still)
-  if (!(await stat(stickerFile(h)).catch(() => null))) await write(stickerFile(h), webp)
+  if (still) await writeAtomic(stillFile(h), still)
+  if (!(await stat(stickerFile(h)).catch(() => null))) await writeAtomic(stickerFile(h), webp)
   return h
 }
 const stillFile = (h) => join(dir, 'files', `${h}.png`)
@@ -178,7 +171,7 @@ async function firstFrame(h) {
       // the whole canvas
       if (box && (box.x || box.y || box.w !== box.cw || box.h !== box.ch))
         png = (await renderAsync(`<svg xmlns="http://www.w3.org/2000/svg" width="${box.cw}" height="${box.ch}"><image href="data:image/png;base64,${png.toString('base64')}" x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}"/></svg>`)).asPng()
-      await write(stillFile(h), png)
+      await writeAtomic(stillFile(h), png)
       return png
     })
   } catch (e) {
@@ -252,7 +245,7 @@ async function own(fid, id) {
   if (p.fid !== fid) throw fail(400, "Only the pack's creator can change it.")
   return p
 }
-const setSaved = (fid, list) => write(savedFile(fid), list.slice(0, MAX_PACKS))
+const setSaved = (fid, list) => writeAtomic(savedFile(fid), JSON.stringify(list.slice(0, MAX_PACKS)))
 
 /** A deleted account's packs and list go (server/account.mjs). Their sticker files stay, as casts still show them. */
 export async function dropStickers(fid) {

@@ -5,7 +5,7 @@ import { headOf, isArticle, isArticlePart, plainOpening } from '../src/article.t
 import { castText, n, sized } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const flat = (s) => String(s || '').replace(/\s+/g, ' ').trim()
 const DAY = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 

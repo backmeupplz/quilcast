@@ -3,9 +3,8 @@
 // opens its direct casts and nothing else (minted from a custody-signed message, see write.ts); it rides
 // along on each request and is never kept or logged, and only these endpoints are reachable. Live updates
 // don't come through here: the browser listens on farcaster.xyz's websocket itself (dms.ts).
-import { randomUUID } from 'node:crypto'
 import { fail, readJson as json } from './net.mjs'
-import { FC, FC_HEADERS } from './upload.mjs'
+import { fcCall, relay } from './upload.mjs'
 
 const OPS = {
   nonce: ['GET', '/v2/get-dc-nonce'],
@@ -27,19 +26,7 @@ export async function dm(req, op, url) {
     if (req.method !== 'POST') throw fail(405, 'POST only')
     const { message, signature } = await json(req)
     if (typeof message !== 'string' || message.length > 2000 || !/^0x[0-9a-f]{130}$/i.test(signature)) throw fail(400, 'bad signature')
-    return call('GET', `/v2/get-dc-auth-token?${new URLSearchParams({ message, signature })}`)
+    return fcCall('GET', `/v2/get-dc-auth-token?${new URLSearchParams({ message, signature })}`)
   }
-  if (!Object.hasOwn(OPS, op)) throw fail(404, 'not found')
-  const [method, path, params = []] = OPS[op]
-  if (req.method !== method) throw fail(405, `${method} only`)
-  const qs = new URLSearchParams(params.flatMap((k) => (url.searchParams.has(k) ? [[k, url.searchParams.get(k).slice(0, 2000)]] : [])))
-  const token = String(req.headers.authorization || '').match(/^Bearer (\S{10,500})$/)?.[1]
-  if (!token && op !== 'nonce') throw fail(401, 'Open messages first.')
-  return call(method, path + (qs.size ? `?${qs}` : ''), token, method === 'GET' ? undefined : JSON.stringify(await json(req)))
-}
-
-async function call(method, path, token, body) {
-  const headers = { ...FC_HEADERS, ...(token && { authorization: `Bearer ${token}` }), ...(body && { 'content-type': 'application/json', 'idempotency-key': randomUUID() }) }
-  const r = await fetch(FC + path, { method, headers, body, signal: AbortSignal.timeout(15000) })
-  return { status: r.status, body: await r.json().catch(() => ({})) }
+  return relay(OPS, req, op, url, { cap: 2000, missing: op !== 'nonce' && (() => fail(401, 'Open messages first.')) })
 }

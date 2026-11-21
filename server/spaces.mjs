@@ -4,9 +4,8 @@
 // rides along on each call and is never kept or logged, and only these endpoints are reachable. The audio itself
 // goes straight from the browser to LiveKit with the room token `join` returns, and live events come over
 // farcaster.xyz's websocket (spaces.tsx).
-import { randomUUID } from 'node:crypto'
 import { fail, readJson as json } from './net.mjs'
-import { FC, FC_HEADERS } from './upload.mjs'
+import { fcCall, relay } from './upload.mjs'
 
 const OPS = {
   live: ['GET', '/v1/audio-rooms', ['limit', 'cursor']],
@@ -41,21 +40,9 @@ export async function space(req, op, url) {
     const { authRequest, bearer } = await json(req)
     const { timestamp, expiresAt } = authRequest?.params || {}
     if (authRequest?.method !== 'generateToken' || !Number.isSafeInteger(timestamp) || !Number.isSafeInteger(expiresAt) || typeof bearer !== 'string' || !/^eip191:[\w+/=]{80,200}$/.test(bearer)) throw fail(400, 'bad signature')
-    const r = await call('PUT', '/v2/onboarding-state', bearer, JSON.stringify({ authRequest }))
+    const r = await fcCall('PUT', '/v2/onboarding-state', bearer, JSON.stringify({ authRequest }))
     const token = r.body?.result?.token
     return token?.secret ? { status: 200, body: { secret: token.secret, expiresAt: token.expiresAt ?? expiresAt } } : r
   }
-  if (!Object.hasOwn(OPS, op)) throw fail(404, 'not found')
-  const [method, path, params = []] = OPS[op]
-  if (req.method !== method) throw fail(405, `${method} only`)
-  const qs = new URLSearchParams(params.flatMap((k) => (url.searchParams.has(k) ? [[k, url.searchParams.get(k).slice(0, 200)]] : [])))
-  const token = String(req.headers.authorization || '').match(/^Bearer (\S{10,500})$/)?.[1]
-  if (!token) throw fail(401, 'Turn on Spaces first.')
-  return call(method, path + (qs.size ? `?${qs}` : ''), token, method === 'GET' ? undefined : JSON.stringify(await json(req)))
-}
-
-async function call(method, path, token, body) {
-  const headers = { ...FC_HEADERS, authorization: `Bearer ${token}`, ...(body && { 'content-type': 'application/json', 'idempotency-key': randomUUID() }) }
-  const r = await fetch(FC + path, { method, headers, body, signal: AbortSignal.timeout(15000) })
-  return { status: r.status, body: await r.json().catch(() => ({})) }
+  return relay(OPS, req, op, url, { cap: 200, missing: () => fail(401, 'Turn on Spaces first.') })
 }

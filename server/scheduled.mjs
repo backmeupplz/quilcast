@@ -17,10 +17,9 @@
 // deploy both servers see the same list; if both send the same message, the node keeps one (the same hash).
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { blake3 } from '@noble/hashes/blake3.js'
-import { randomUUID } from 'node:crypto'
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fail, parseJson, readText } from './net.mjs'
+import { fail, parseJson, readText, writeAtomic } from './net.mjs'
 import { keySigned, keysOf } from './looks.mjs'
 import { pushTo, say } from './alerts.mjs'
 
@@ -161,18 +160,8 @@ async function readOne(fid, id) {
     throw e
   }
 }
-// a file is written whole or not at all, through a temporary file of its own (both servers write here during a deploy)
-async function write(item) {
-  const file = fileOf(item.fid, item.id)
-  const tmp = `${file}.${randomUUID()}.tmp`
-  try {
-    await writeFile(tmp, JSON.stringify(item))
-    await rename(tmp, file)
-  } catch (e) {
-    await rm(tmp, { force: true })
-    throw e
-  }
-}
+// a file is written whole or not at all (both servers write here during a deploy)
+const write = (item) => writeAtomic(fileOf(item.fid, item.id), JSON.stringify(item))
 const idsOf = async (fid) => (await readdir(join(dir, String(fid))).catch(() => [])).filter((f) => f.endsWith('.json') && ID.test(f.slice(0, -5))).map((f) => f.slice(0, -5))
 const listOf = async (fid) => (await Promise.all((await idsOf(fid)).map((id) => readOne(fid, id)))).filter(Boolean)
 // what the app is told: everything but the bytes
