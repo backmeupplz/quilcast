@@ -1551,8 +1551,9 @@ test('Remind me: a reminder is kept with its notification token and sent to the 
   for (const bad of [{ at: now() + 5e3 }, { at: now() + 400 * 86400e3 }, { url: 'http://quilcast.test/api/notify' }, { hash: '0x12' }, { fid: 0 }, { token: '' }]) assert.equal((await ask(bad)).status, 400, JSON.stringify(bad))
   const one = await ask({})
   assert.equal(one.status, 200)
-  // a second one for the same token and time is held back by Quilcast's 30 s limit, then sent a minute on
-  const two = await ask({ text: 'second' })
+  // a second one for the same token and time is held back by Quilcast's 30 s limit, then sent a minute on (a
+  // millisecond later, so the two never share a due time, which random ids would order)
+  const two = await ask({ text: 'second', at: now() + 120e3 + 1 })
   // a token Quilcast didn't give this action isn't kept
   assert.equal((await ask({ token: 'not-a-token', text: 'nobody' })).status, 400)
   assert.equal((await call('/webhook', { header: 'x', payload: 'y', signature: 'z' })).status, 200)

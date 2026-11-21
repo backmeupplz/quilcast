@@ -937,11 +937,13 @@ const calls: Record<string, (app: App, ...a: any[]) => unknown> = {
     await launchUrl(u, app.host)
   },
   viewCast: (app, o) => {
+    foreground(app)
     const h = String(o?.hash || '').replace(/^0x/, '')
     if (!/^[0-9a-f]{40}$/i.test(h)) throw new Error('Invalid cast hash.')
     leave(app, `/c/${h}`)
   },
   viewProfile: (app, o) => {
+    foreground(app)
     if (!Number.isSafeInteger(o?.fid) || o.fid <= 0) throw new Error('Invalid fid.')
     leave(app, `/u/${o.fid}`)
   },

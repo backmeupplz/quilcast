@@ -2,7 +2,7 @@
 // they support, and casts that share it. Sendclap keeps the records (sendclap.com/api/v1/farcaster/<fid>); a page there
 // is made on the first payment.
 import { useEffect, useState } from 'preact/hooks'
-import { account, loadUsers, users, type User } from './api.ts'
+import { account, loadUsers, safeUrl, users, type User } from './api.ts'
 import { joinAsk, perPeriod } from './billing.ts'
 import { t, tn } from './i18n.ts'
 import { Avatar, handle, Icon, nameOf, P, requireAccount, shell, toast, userPath } from './ui.tsx'
@@ -110,6 +110,8 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
   const monthly = info.supporters.reduce((s, r) => s + r.monthly_cents, 0)
   const summary = [tn(info.supporters.length, '{n} supporter', '{n} supporters'), monthly > 0 && perMonth(monthly)].filter(Boolean).join(' · ')
   const rank = (tier: string | null) => info.tiers.findIndex((x) => x.name === tier)
+  // Sendclap's API names the page; only a web link gets through
+  const page = safeUrl(info.page)
   const tip = (amount: number, key: string, idle: string, cls: string) => btn(key, idle, t('Send {amount}?', { amount: dollars(amount) }),
     () => wm().then((m) => m.support(u, { type: 'tip', amount }, t('Tip @{name} {amount}', { name, amount: dollars(amount) }))),
     t('Tipped @{name} {amount}', { name, amount: dollars(amount) }), cls, supportLine(u, { tier: null, tips_cents: amount * 100, monthly_cents: 0 }))
@@ -194,11 +196,11 @@ export function SupportTab({ u, self }: { u: User; self: boolean }) {
             </div>
           </>
         )}
-        {(!self || info.page) && (
+        {(!self || page) && (
           <p class="sp-fine">
             {!self && t('USDC on Base, straight to their wallet. Sendclap keeps 1%.')}
-            {!self && info.page && ' · '}
-            {info.page && <a href={info.page} target="_blank" rel="noopener noreferrer">{t('@{name} on Sendclap', { name })}</a>}
+            {!self && page && ' · '}
+            {page && <a href={page} target="_blank" rel="noopener noreferrer">{t('@{name} on Sendclap', { name })}</a>}
           </p>
         )}
       </section>

@@ -35,11 +35,12 @@ const text = (m: unknown) => {
 // signing in to these with the person's wallet could hand over their Farcaster account
 const FARCASTER_SITES = /(^|\.)(farcaster\.xyz|warpcast\.com|quilcast\.com)$/i
 
-/** For a message about to be signed (Ethereum or Solana). Throws for Farcaster logins, which only Quilcast's own
- *  prompts may sign. Returns the site a Sign-In message is for when that isn't the app's own host, so the person
- *  can be asked: one app could otherwise sign you in somewhere else as you. */
+/** For a message about to be signed (Ethereum or Solana). Throws for Farcaster logins and Quilcast's own custody
+ *  messages (write.ts; the drafts key's signature is that key's secret), which only Quilcast's own prompts may sign.
+ *  Returns the site a Sign-In message is for when that isn't the app's own host, so the person can be asked: one app
+ *  could otherwise sign you in somewhere else as you. */
 export function signInCheck(host: string, m: string): string | undefined {
-  if (/farcaster:\/\/fid\/|Direct cast authorization|"method"\s*:\s*"generateToken"/i.test(m)) throw rpcError(4100, "Mini apps can't ask for Farcaster account signatures.")
+  if (/farcaster:\/\/fid\/|Direct cast authorization|"method"\s*:\s*"generateToken"|Quilcast drafts key for FID/i.test(m)) throw rpcError(4100, "Mini apps can't ask for Farcaster account signatures.")
   const site = m.match(/^(?:https?:\/\/)?(\S+) wants you to sign in with your (?:Ethereum|Solana) account:/)?.[1]
   if (!site || site === host) return
   if (FARCASTER_SITES.test(site.replace(/:\d+$/, ''))) throw rpcError(4100, `Mini apps can't sign you in to ${site}.`)
@@ -64,7 +65,7 @@ export function checkWallet(host: string, me: string, method: string, params: an
       t = typeof params[1] === 'string' ? JSON.parse(params[1]) : params[1]
     } catch {}
     if (!t || typeof t !== 'object') no("The wallet can't read that request.")
-    if (/farcaster/i.test(String(t.domain?.name)) || FARCASTER.has(String(t.domain?.verifyingContract).toLowerCase())) no("Mini apps can't ask for Farcaster account signatures.")
+    if (/farcaster|hypersnap/i.test(String(t.domain?.name)) || FARCASTER.has(String(t.domain?.verifyingContract).toLowerCase())) no("Mini apps can't ask for Farcaster account signatures.")
   } else if (method === 'eth_sendTransaction') {
     const tx = params[0]
     if (!tx || typeof tx !== 'object') no('Missing transaction.')

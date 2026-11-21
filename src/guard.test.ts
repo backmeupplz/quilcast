@@ -24,9 +24,15 @@ test('wallet requests that could take over the Farcaster account or another site
   refused('personal_sign', [hexed('app.example wants you to sign in with your Ethereum account:\n…\n- farcaster://fid/1'), me])
   refused('personal_sign', ['Direct cast authorization for Farcaster FID 1', me])
   refused('personal_sign', [hexed('{"method":"generateToken","params":{}}'), me])
+  // the drafts key's signature is the secret the key comes from (write.ts draftKey)
+  const drafts = 'Quilcast drafts key for FID 1\n\nSigning this lets Quilcast encrypt your drafts so only you can read them. It sends nothing and costs nothing.'
+  refused('personal_sign', [hexed(drafts), me])
+  refused('personal_sign', [drafts, me])
   refused('eth_signTypedData_v4', [me, JSON.stringify({ domain: { name: 'Farcaster KeyGateway' } })])
   refused('eth_signTypedData_v4', [me, { domain: { name: 'x', verifyingContract: '0x00000000FC6C5F01FC30151999387BB99A9F489B' } }])
   refused('eth_signTypedData_v4', [me, 'not json'])
+  // Hypersnap's native registration hands over a new account
+  refused('eth_signTypedData_v4', [me, { domain: { name: 'HypersnapNativeOnboard', version: '1', chainId: 10 } }])
   refused('eth_sendTransaction', [{ to: '0x00000000fc6c5f01fc30151999387bb99a9f489b' }])
   refused('eth_sendTransaction', [{ from: '0x0000000000000000000000000000000000000001', to: '0x1111111111111111111111111111111111111111' }])
   refused('wallet_sendCalls', [{ calls: [{ to: '0x1111111111111111111111111111111111111111' }, { to: '0x00000000fc56947c7e7183f8ca4b62398caadf0b' }] }])
