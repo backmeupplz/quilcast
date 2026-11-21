@@ -110,6 +110,17 @@ export async function nativeFid(addr: string) {
   throw new Error(j.error || `HTTP ${r.status}`)
 }
 
+/** The FID whose custody address this is, or 0 when there's none: Hypersnap's custody index, then its native
+ *  accounts. Only a 404 means "none": a node that can't answer throws, so an existing account isn't registered again.
+ *  A wrong FID can't sign in anyway: the network only takes a key signed by that FID's custody address. */
+export async function fidFor(addr: string) {
+  const u = (await get('/v2/farcaster/user/custody-address', { custody_address: addr }).catch((e) => {
+    if (e?.status === 404) return null
+    throw e
+  }))?.user
+  return u?.fid > 0 && String(u.custody_address).toLowerCase() === addr.toLowerCase() ? Number(u.fid) : nativeFid(addr)
+}
+
 /** Ask Hypersnap for a free native FID: proof of work, then the custody's signature. The FID shows up in nativeFid()
  *  once shard 0 takes it, usually within seconds. */
 export async function registerNative(c: Custody) {

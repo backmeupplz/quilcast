@@ -1,20 +1,16 @@
-// Just enough Optimism to register an FID: JSON-RPC, RLP, EIP-1559 signing.
+// Just enough Optimism for the mini app notification key (write.ts ensureAppKey): JSON-RPC, RLP, EIP-1559 signing.
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { address, concat, ecSign, hex, KEY_REGISTRY, unhex } from './fc.ts'
-
-const ID_REGISTRY = '0x00000000fc6c5f01fc30151999387bb99a9f489b'
 
 export async function rpc(url: string, method: string, params: unknown[] = []) {
   const r = await (await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) })).json()
   if (r.error) throw new Error(r.error.message)
   return r.result
 }
-const call = async (url: string, to: string, data: string) => BigInt(await rpc(url, 'eth_call', [{ to, data }, 'latest']))
 const sel = (sig: string) => hex(keccak_256(new TextEncoder().encode(sig)).slice(0, 4))
 const arg = (a: string) => a.replace(/^0x/, '').padStart(64, '0')
 
 export const balance = async (url: string, addr: string) => BigInt(await rpc(url, 'eth_getBalance', [addr, 'latest']))
-export const fidOf = async (url: string, addr: string) => Number(await call(url, ID_REGISTRY, '0x' + sel('idOf(address)') + arg(addr)))
 
 /** A key of `fid` in Farcaster's KeyRegistry, what mini app webhooks are checked against: 0 never added, 1 added,
  *  2 removed. Throws when the RPC can't be asked or answers with something that isn't a KeyData (callers catch it,

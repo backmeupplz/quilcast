@@ -1,16 +1,15 @@
 import { generateMnemonic, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { account, accounts, get, getUser, go, idOf, removeAccount, resumesSetup, setAccount, setAside, settings, updateAccount, USER_DATA, type Account, type User } from './api.ts'
+import { account, accounts, get, getUser, go, idOf, removeAccount, resumesSetup, setAccount, setAside, updateAccount, USER_DATA, type Account, type User } from './api.ts'
 import { browsePath } from './browse.ts'
-import { fidOf } from './eth.ts'
 import { address, custodyKey } from './fc.ts'
 import { dropEd } from './keys.ts'
 import { t } from './i18n.ts'
 import { inHost, offered, useHost } from './host.ts'
 import { Avatar, Choose, handle } from './ui.tsx'
 import type { Choice } from './wallet.ts'
-import { custodyOf, ensureSigner, nativeFid, registerNative, sendSignup, setUserData } from './write.ts'
+import { custodyOf, ensureSigner, fidFor, nativeFid, registerNative, sendSignup, setUserData } from './write.ts'
 import { firstSignIn } from './campaign.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -123,13 +122,6 @@ function Create({ wallet }: { wallet?: string }) {
 }
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`
-
-/** The FID whose custody address this is: Hypersnap first (fast), Optimism when the node doesn't know it.
- *  A wrong FID can't sign in anyway: the network only takes a key signed by that FID's custody address. */
-async function fidFor(addr: string) {
-  const u = (await get('/v2/farcaster/user/custody-address', { custody_address: addr }).catch(() => null))?.user
-  return u?.fid > 0 && String(u.custody_address).toLowerCase() === addr.toLowerCase() ? Number(u.fid) : (await nativeFid(addr)) || fidOf(settings.rpc, addr)
-}
 
 // the account exists: add a signing key for this browser, then load the profile
 async function enter(a: Account, step: (i: number) => void) {

@@ -35,7 +35,7 @@ const casts = `<div class="casts">
   <div class="cast"><i style="background:linear-gradient(135deg,#ff9a6b,#ff5f8a)"></i><div><b>ada</b> <span>@ada · 2m</span>
     <p>Just cast this from a plain browser tab. The keys never left my laptop.</p><small>12 replies · 48 recasts · ♥ 310</small></div></div>
   <div class="cast"><i style="background:linear-gradient(135deg,#6bc5ff,#5b3df5)"></i><div><b>quill</b> <span>@quill · 5m</span>
-    <p>Hypersnap node, a phrase and twenty cents of ETH on Optimism. That's the whole setup.</p><small>4 replies · 9 recasts · ♥ 87</small></div></div>
+    <p>Hypersnap node and a phrase. Signing up was free. That's the whole setup.</p><small>4 replies · 9 recasts · ♥ 87</small></div></div>
 </div>`
 const card = (p) => `<!doctype html><meta charset="utf-8"><style>
   * { box-sizing: border-box; margin: 0 }

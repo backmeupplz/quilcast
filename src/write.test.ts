@@ -139,3 +139,21 @@ test('a train car carries the cast\'s uploads and links, within the embed cap', 
   // pictures and links the text shows with Markdown are hidden embeds, so they don't take the car's slots
   assert.deepEqual(carMedia({ text: `![](${pic}) [app](${app})`, embeds: [{ url: pic }, { url: app }, { url: vid }] }), [vid, TRAIN])
 })
+
+test("a custody's FID: the node's custody index, then its native accounts; a node that can't answer is never \"no account\"", async () => {
+  const { fidFor } = await import('./write.ts')
+  let custody = 404
+  ;(globalThis as any).fetch = async (url: string) => {
+    const u = new URL(url, 'https://quilcast.test')
+    const res = (status: number, body: unknown) => new Response(JSON.stringify(body), { status })
+    if (u.pathname === '/v2/farcaster/user/custody-address') return custody === 200 ? res(200, { user: { fid: 5, custody_address: '0xAB' } }) : res(custody, {})
+    if (u.pathname === '/v1/nativeAccount') return res(400, { error_detail: 'NotFound' })
+    throw new Error(`unexpected ${url}`)
+  }
+  assert.equal(await fidFor('0xab'), 0)
+  custody = 200
+  assert.equal(await fidFor('0xab'), 5)
+  // a pre-fork account whose lookup fails must not look like a new custody, which would register it again
+  custody = 503
+  await assert.rejects(fidFor('0xac'))
+})
