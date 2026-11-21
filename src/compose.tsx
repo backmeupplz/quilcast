@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, get, go, idOf, loadUsers, myUser, posting, users, type Account, type Cast, type User } from './api.ts'
 import { lang, t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, fillPost, safeUrl, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, unholdPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
+import { castText, embedRoom, unmarkdown, fillPost, safeUrl, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, unholdPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
 import { ago, AppIcon, Avatar, composerActions, fetchCast, handle, Icon, launchApp, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w, type CastAction, type Drafting } from './ui.tsx'
 import type { Draft, Scheduled, ThreadStart } from './write.ts'
 import { trainOk } from './trainask.ts'
@@ -514,6 +514,9 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
     const el = document.activeElement
     spot.current = el instanceof HTMLTextAreaElement ? { el, text: el.value, start: el.selectionStart, end: el.selectionEnd } : null
   }
+  // a picker opened from the keyboard (a click with no mousedown, detail 0) puts its pick on the end, never at a spot
+  // left from an earlier mousedown (dragged off the button, a picker closed without a pick, a plain-mode sticker)
+  const keyed = (e: MouseEvent) => void (e.detail || (spot.current = null))
   const openEmoji = () => import('./emoji.tsx').then(setEmoji, () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.'))
   const insert = (ch: string) => {
     const s = spot.current
@@ -537,7 +540,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
     setGifs(false)
   }
   // in Markdown mode a sticker goes into the text at the caret instead, as ![emoji](url) (public/developers/stickers.html),
-  // which takes no embed slot (castEmbeds). Its alt text is the pack's emoji, less anything Markdown would read.
+  // which takes no embed slot (castEmbeds). Its alt text is the sticker's own emoji, less anything Markdown would read.
   const sticker = (url: string, e: string) => (md ? (setGifs(false), insert(`![${e.replace(/[[\]\n`*_~|\\]/g, '').trim() || 'sticker'}](${url})`)) : gif(url))
   // every attachment counts here, even one the text shows inline (not sent, see slots): the author may take that picture
   // out of the text again, and then all of them go out, never more than MAX_EMBEDS
@@ -696,7 +699,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
         {parent && !drafts && !scheduledOpen && (
           <div class="ctx">
             <Avatar u={parent.author} size={28} link={false} />
-            <div><b>{nameOf(parent.author)}</b> <span class="handle">@{handle(parent.author)}</span><p>{castText(parent).slice(0, 200)}</p></div>
+            <div><b>{nameOf(parent.author)}</b> <span class="handle">@{handle(parent.author)}</span>{unmarkdown(castText(parent)) && <p>{unmarkdown(castText(parent)).slice(0, 200)}</p>}</div>
           </div>
         )}
         {gifs === 'gif' && <GifPicker cast start="trending" pick={gif} close={() => setGifs(false)} />}
@@ -729,8 +732,8 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           <input ref={pick} type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden onChange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
           <button class="icon-btn" aria-label={t('Add photo or video')} disabled={!room} onClick={() => pick.current?.click()}><Icon d={P.image} /></button>
           <button class="icon-btn" aria-label={t('Add a GIF')} title={t('Add a GIF')} disabled={!room} onClick={() => setGifs('gif')}><Icon d={P.gif} /></button>
-          <button class="icon-btn" aria-label={t('Add a sticker')} title={t('Add a sticker')} disabled={md ? busy : !room} onMouseDown={grabCaret} onClick={openStickers}><Icon d={P.sticker} /></button>
-          <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={openEmoji}><Icon d={P.smile} /></button>
+          <button class="icon-btn" aria-label={t('Add a sticker')} title={t('Add a sticker')} disabled={md ? busy : !room} onMouseDown={grabCaret} onClick={(e) => (keyed(e), openStickers())}><Icon d={P.sticker} /></button>
+          <button class="icon-btn" aria-label={t('Add an emoji')} title={t('Add an emoji')} onMouseDown={grabCaret} onClick={(e) => (keyed(e), openEmoji())}><Icon d={P.smile} /></button>
           <button class={`icon-btn${md ? ' on' : ''}`} aria-label={t('Markdown')} title={t('Markdown')} aria-pressed={md} onClick={() => setMd(!md)}><Icon d={P.markdown} /></button>
           {canDraft && <button class={`icon-btn${timing ? ' on' : ''}`} aria-label={t('Schedule')} title={t('Schedule')} aria-pressed={timing} disabled={busy} onClick={() => (timing ? (setTiming(false), setWhen(undefined)) : (setTiming(true), setWhen((x) => x || Math.ceil((Date.now() + 3600e3) / 300e3) * 300e3)))}><Icon d={P.clock} /></button>}
           {!cont && <button class={`icon-btn${train ? ' on' : ''}`} aria-label={t('Train')} title={t('Train: anyone can tap the train button to quote this cast with the same text')} aria-pressed={train} disabled={busy} onClick={() => (train ? setTrain(false) : trainOk('start').then((ok) => ok && setTrain(true)))}><Icon d={P.train} /></button>}
