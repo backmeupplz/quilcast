@@ -16,6 +16,7 @@ const PAGES = [
   { file: 'actions', title: 'Cast actions', line: 'Buttons in the ⋯ menu under every cast, built as Farcaster mini apps.', glyph: '⚡' },
   { file: 'composer-actions', title: 'Composer actions', line: 'Mini apps that fill in the post you are writing.', glyph: '✍️' },
   { file: 'inline-embeds', title: 'Inline embeds', line: 'A mini app’s small view, run right in the cast.', glyph: '🗳️', url: 'quilcast.com/developers/inline-embeds' },
+  { file: 'stickers', title: 'Inline stickers', line: 'A sticker in the line of a cast’s text, like an emoji.', glyph: '🌅', url: 'quilcast.com/developers/stickers' },
   { file: 'hypersnap', title: 'Mini apps on Hypersnap', line: 'Sign in and notifications that work for every Hypersnap account.', glyph: '🧩', url: 'quilcast.com/developers/mini-apps' },
 ]
 

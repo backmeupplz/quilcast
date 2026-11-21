@@ -51,7 +51,7 @@ const Empty = ({ go: open, title = t('No stickers yet'), about = t('No sticker p
 
 /** The composer's and messages' sticker picker: a tab per pack the account has. `manage` leaves for /stickers (the
  *  composer closes itself first, as it sits over the page). */
-export function StickerPicker({ pick, close, manage = () => (close(), go('/stickers')) }: { pick: (url: string) => void; close: () => void; manage?: () => void }) {
+export function StickerPicker({ pick, close, manage = () => (close(), go('/stickers')) }: { pick: (url: string, emoji: string) => void; close: () => void; manage?: () => void }) {
   // empty packs get no tab
   const packs = useMine()?.filter((x) => x.stickers.length)
   const [at, setAt] = useState(0)
@@ -70,7 +70,7 @@ export function StickerPicker({ pick, close, manage = () => (close(), go('/stick
         <button class="btn ghost small" onClick={close}>{t('Back')}</button>
       </div>
       {!packs ? <div class="spinner" /> : !p ? <Empty go={manage} /> : (
-        <div class="stk-grid">{p.stickers.map((s) => <button aria-label={s.e || t('Sticker')} title={s.e} onClick={() => pick(stickerUrl(p.id, s.h))}><img src={src(p.id, s.h)} alt="" loading="lazy" /></button>)}</div>
+        <div class="stk-grid">{p.stickers.map((s) => <button aria-label={s.e || t('Sticker')} title={s.e} onClick={() => pick(stickerUrl(p.id, s.h), s.e)}><img src={src(p.id, s.h)} alt="" loading="lazy" /></button>)}</div>
       )}
     </div>
   )

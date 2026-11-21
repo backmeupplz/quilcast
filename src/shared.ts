@@ -930,7 +930,10 @@ function inline(s: string, tags: Set<string> | null, before = '', after = '', re
     if (g.code !== undefined) out += `<code>${html(unhide(g.code.replace(/^ (.*[^ ].*) $/s, '$1'), re))}</code>`
     else if (g.src !== undefined) {
       const u = safeUrl(bare(unescaped(g.src, re)))
-      out += u ? `<img class="md-img" src="${html(proxied(u))}" alt="${html(g.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : html(g.alt)
+      // a sticker sits in the line, like an emoji (public/developers/stickers.html), from whichever server this is (as
+      // ui.tsx Sticker; feed.mjs makes it absolute); styled() reads its alt text
+      out += !u ? html(g.alt) : stickerPack(u) ? `<img class="md-sticker" src="${html(new URL(u).pathname)}" alt="${html(g.alt)}" title="${html(g.alt)}" width="28" height="28" loading="lazy" decoding="async">`
+        : `<img class="md-img" src="${html(proxied(u))}" alt="${html(g.alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
     } else if (g.label !== undefined) {
       const u = safeUrl(bare(unescaped(g.href, re)))
       // its text can say anything, so the app shows where it really goes before opening it (ui.tsx LinkSheet)
@@ -1099,6 +1102,8 @@ export function styled(text: string): { text: string; marks: number[] } {
   }
   for (const [all, close, tag, start, ent] of markdown(text).matchAll(/<(\/?)(\w+)[^>]*?(?: start="(\d+)")?>|&#(\d+);|[^<&]+/g)) {
     if (ent) put(String.fromCharCode(+ent))
+    // an inline sticker reads as its alt text (an emoji, or :name:)
+    else if (tag === 'img' && all.startsWith('<img class="md-sticker"')) put(all.match(/ alt="([^"]*)"/)![1].replace(/&#(\d+);/g, (_, c) => String.fromCharCode(+c)).replaceAll(CELL, ''))
     // (the cell separator never comes from the text itself)
     else if (!tag) put(all.replaceAll(CELL, ''))
     else if (tag === 'ul' || tag === 'ol') close ? (lists.pop(), put('\n')) : lists.push(tag === 'ol' ? +(start || 1) : 0)

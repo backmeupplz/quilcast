@@ -387,3 +387,23 @@ test('proxied sends only other sites\' pictures through /api/img', () => {
   for (const u of ['https://imagedelivery.net/a/b/w=144', 'https://quilcast.com/m/0123456789abcdef01234567.png', 'https://media.tenor.com/x/a.webp', 'https://media1.tenor.com/x/a.gif', '/api/img?u=x', '/i/a/b/w=600.webp', 'data:image/png;base64,AA', 'blob:https://quilcast.com/1', ''])
     assert.equal(proxied(u), u, u)
 })
+
+test('a sticker in the text sits in the line, reads as its alt text, and is no embed (#790)', async () => {
+  const { castEmbeds, unmarkdown, urlsOf } = await import('./shared.ts')
+  const st = 'https://quilcast.com/st/abcd1234/0123456789abcdef01234567.webp'
+  const text = `gm ![🌅](${st}) friends\nnext`
+  // inline, with the line breaks around it kept (a block picture eats them)
+  assert.equal(md(text), `gm <img class="md-sticker" src="${new URL(st).pathname}" alt="🌅" title="🌅" width="28" height="28" loading="lazy" decoding="async"> friends\nnext`)
+  assert.equal(md(`![:x<y:](${st})`), `<img class="md-sticker" src="${new URL(st).pathname}" alt=":x&#60;y:" title=":x&#60;y:" width="28" height="28" loading="lazy" decoding="async">`)
+  // only a sticker's own address: anything else at quilcast.com is a block picture
+  assert.match(md('![a](https://quilcast.com/st/abcd1234/0123456789abcdef01234567.png)'), /class="md-img"/)
+  assert.equal(unmarkdown(text), 'gm 🌅 friends\nnext')
+  assert.equal(unmarkdown(`**a ![:x<y & z:](${st})**`), 'a :x<y & z:')
+  assert.equal(styled(`**![b](${st})**`).marks[0], 1)
+  // an alt text can't make a table cell on a card
+  assert.equal(unmarkdown(`a ![x\x1fy](${st}) b`), 'a xy b')
+  // it loads from whichever server the app is on; a feed makes that absolute (server/feed.mjs)
+  assert.match(md(`![](${st})`), / src="\/st\/abcd1234\/0123456789abcdef01234567\.webp"/)
+  assert.deepEqual(castEmbeds(text, []), [])
+  assert.deepEqual(urlsOf({ text, embeds: [{ url: st }] }), [])
+})

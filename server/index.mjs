@@ -9,7 +9,7 @@ import { createServer } from 'node:http'
 import { extname, join, normalize, relative } from 'node:path'
 import { promisify } from 'node:util'
 import { brotliCompress, gzip } from 'node:zlib'
-import { castText, imagesIn, queue, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, urlsOf, X_LOGO } from '../src/shared.ts'
+import { castText, imagesIn, queue, safeUrl, styled, unmarkdown, cleanDesign, cleanTheme, DEFAULTS, FONTS as FONT_STACKS, isImg, isVid, LOGO, n, P, sized, stickerPack, urlsOf, X_LOGO } from '../src/shared.ts'
 import { PRESETS as EFFECTS } from '../src/fx.ts'
 import { classify, classifyPart, coverOf, fromV2, headOf, isArticle, maybeArticle, partNow, plainOpening } from '../src/article.ts'
 import { clientIp, fetchJson, gate, imageInfo, ipGroup, keep, lru, parseJson, proxiedPic, readJson, readText, safeGet, sendOn } from './net.mjs'
@@ -218,8 +218,10 @@ async function posterOf(u) {
 /** The picture for the card: an attached image, else a link's preview image or X photo, else a video frame. */
 async function visualOf(c) {
   const urls = urlsOf(c)
-  // a picture the text shows with Markdown counts too
-  const img = urls.find(isImg) || imagesIn(c.text || '')[0]
+  // a picture the text shows with Markdown counts too, but not an inline sticker: the card's text has it, as its alt
+  // (unless that's all the text, and it says nothing)
+  const pics = imagesIn(c.text || '')
+  const img = urls.find(isImg) || pics.find((u) => !stickerPack(u)) || (unmarkdown(c.text || '') ? undefined : pics[0])
   // a sticker (shared.ts stickerPack) is drawn whole and frameless, from its still: resvg draws no animated WebP
   const st = img?.match(/^https:\/\/quilcast\.com\/st\/([\w-]{8})\/([0-9a-f]{24})\.webp$/)
   if (st && isSticker(st[1], st[2])) return { src: img, sticker: st[2] }
@@ -1146,7 +1148,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 // static files under a path without their extension: About (plain HTML for crawlers), the legal pages the stores link to, and Apple's universal links file
 // the standalone pages in the app's other languages (public/<lang>/<page>.html), each at its own address
 const TRANSLATED = /^\/(?:ar|de|es|fr|hi|id|it|ja|ko|nl|pl|pt-br|pt-pt|ru|sv|th|tr|uk|vi|zh-hans|zh-hant)\/(?:about|privacy|terms|safety|delete)$/
-const PAGES = { '/about': 'about.html', '/developers/cast-actions': 'developers/cast-actions.html', '/developers/composer-actions': 'developers/composer-actions.html', '/developers/inline-embeds': 'developers/inline-embeds.html', '/developers/mini-apps': 'developers/mini-apps.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
+const PAGES = { '/about': 'about.html', '/developers/cast-actions': 'developers/cast-actions.html', '/developers/composer-actions': 'developers/composer-actions.html', '/developers/inline-embeds': 'developers/inline-embeds.html', '/developers/mini-apps': 'developers/mini-apps.html', '/developers/stickers': 'developers/stickers.html', '/terms': 'terms.html', '/privacy': 'privacy.html', '/delete': 'delete.html', '/safety': 'safety.html', '/.well-known/apple-app-site-association': '.well-known/apple-app-site-association.json' }
 
 // dist/ never changes while we run: its files are read once, and compressed once per encoding
 const files = new Map()

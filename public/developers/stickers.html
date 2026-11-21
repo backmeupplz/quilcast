@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inline stickers</title>
+    <meta name="description" content="A sticker can sit inside a cast's Markdown text, in the line like an emoji. The syntax is an ordinary Markdown picture of a Quilcast sticker, so clients that don't support it still show something that reads. How to render and send them in a Farcaster or Hypersnap client." />
+    <link rel="canonical" href="https://quilcast.com/developers/stickers" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Quilcast" />
+    <meta property="og:url" content="https://quilcast.com/developers/stickers" />
+    <meta property="og:title" content="Inline stickers" />
+    <meta property="og:description" content="A sticker inside a cast's Markdown text, in the line like an emoji: the syntax, and a short checklist for clients." />
+    <meta property="og:image" content="https://quilcast.com/og-stickers.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Inline stickers: a sticker in the line of a cast's text" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@quilcast" />
+    <meta name="twitter:title" content="Inline stickers" />
+    <meta name="twitter:description" content="A sticker inside a cast's Markdown text, in the line like an emoji: the syntax, and a short checklist for clients." />
+    <meta name="twitter:image" content="https://quilcast.com/og-stickers.png" />
+    <meta name="twitter:image:alt" content="Inline stickers: a sticker in the line of a cast's text" />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Inline stickers</h1>
+      <p class="muted">For developers. Quilcast, November 2026.</p>
+      <p>In <a href="/">Quilcast</a>, a sticker can be attached to a cast like a GIF, under its text, or it can sit inside the text, in the line, like a big emoji. This page describes the second way, so that any Farcaster or Hypersnap client that shows Markdown can show these stickers too.</p>
+      <p>There's no new syntax. An inline sticker is an ordinary Markdown picture whose address is a Quilcast sticker, so a client that doesn't know about inline stickers still shows a picture, and a client without Markdown shows the text as it was typed.</p>
+
+      <h2>The syntax</h2>
+<pre><code>gm ![🌅](https://quilcast.com/st/k3V9x_Qa/5f0c2e9a1b7d4c3e8a6f0b12.webp) friends</code></pre>
+      <ul>
+        <li>The address is exactly <code>https://quilcast.com/st/&lt;pack&gt;/&lt;sticker&gt;.webp</code>, where <code>&lt;pack&gt;</code> is 8 characters of <code>A-Z a-z 0-9 _ -</code> and <code>&lt;sticker&gt;</code> is 24 lowercase hex digits. As a regular expression, matched against the URL once it's parsed and written back out (so the host is lowercase and there's no <code>:443</code>): <code>^https://quilcast\.com/st/[\w-]{8}/[0-9a-f]{24}\.webp$</code>. Only that address makes a picture a sticker; any other picture, even one at quilcast.com, stays an ordinary picture.</li>
+        <li>The alt text, between the brackets, is what the sticker says when it can't be shown. Quilcast puts the sticker's emoji there, or <code>sticker</code> when it has none. Any short text works, such as <code>:wave:</code>. It can't hold <code>]</code> or a line break, and it's best kept free of Markdown's own characters (<code>* _ ~ ` |</code>).</li>
+        <li>Each sticker takes about 70 bytes of the cast's 1,024, so a cast can hold quite a few, but not dozens.</li>
+      </ul>
+
+      <h2 id="clients">For client developers</h2>
+      <ol>
+        <li><strong>Render it in the line.</strong> When your Markdown renderer meets a picture whose address matches the pattern above, draw it as an inline image instead of a block picture: about 1.75 times the text's height, with its aspect ratio kept (<code>object-fit: contain</code> in a square box), no frame, sitting on the line like an emoji. The text before and after it stays on the same line. Stickers are WebP, often animated, so let them play. Use the alt text as the image's <code>alt</code>, and as its tooltip if you like.</li>
+        <li><strong>Don't send it twice.</strong> When your composer puts a sticker in the text, don't also add its address as an embed: the cast shows it already, and the embed would take one of its four slots. When you read a cast, hide an embed whose address is also a picture in the text, as you would for any Markdown picture, since another client may still have sent it.</li>
+        <li><strong>Write it as its alt text where there are no pictures.</strong> In notifications, link previews, share cards and other plain-text places, replace the whole <code>![alt](…)</code> with its alt text, so <code>gm ![🌅](…) friends</code> reads as <em>gm 🌅 friends</em>. Don't use an inline sticker as the cast's preview picture, unless the cast has nothing else to show.</li>
+      </ol>
+      <p>In a client that shows Markdown but not inline stickers, the sticker shows up as an ordinary picture. In a client without Markdown, the reader sees <code>![🌅](https://quilcast.com/st/…)</code> as typed, with the emoji next to a link to the sticker. Either way, nothing is lost.</p>
+
+      <h2>In Quilcast</h2>
+      <p>Turn on Markdown in the composer with its Markdown button, put the caret where the sticker goes and pick one from the sticker button: it goes into the text at the caret. With Markdown off, a picked sticker is attached under the text as before. Packs are made and shared at <a href="/stickers">quilcast.com/stickers</a>, and a Telegram sticker pack can be imported there. Quilcast's code is <code>inline()</code> and <code>styled()</code> in <a href="https://git.borodutch.com/backmeupplz/quilcast/src/branch/main/src/shared.ts"><code>src/shared.ts</code></a>.</p>
+
+      <p class="muted"><a href="/about">About Quilcast</a> · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of use</a></p>
+    </main>
+  </body>
+</html>
