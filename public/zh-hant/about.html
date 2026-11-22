@@ -72,25 +72,16 @@
   <body>
     <main>
       <h1>關於 Quilcast</h1>
-      <p class="muted">為 Hypersnap 打造的 Farcaster 用戶端，由 Borodutch Labs 推出。</p>
-      <p><strong>簡而言之（2026年11月9日）：</strong>Quilcast 是一款開源的 Farcaster 用戶端，直接在瀏覽器中使用，網址是 <a href="/">quilcast.com</a>，不需要安裝任何東西，另外也有 Android App。它適合想直接透過 Hypersnap 網路在 Farcaster 上閱讀、發文、傳送私訊並使用小程式的人，金鑰只會留在自己的瀏覽器中。這是一個由單一團隊打造的小型新專案，而 Farcaster 的主要 App 規模大得多。</p>
-      <p>Quilcast 是一款小巧的開源 <a href="https://farcaster.xyz">Farcaster</a> 用戶端，在瀏覽器中執行，網址是 <a href="/">quilcast.com</a>，並直接連線 <a href="https://hypersnap.org">Hypersnap</a>，也就是由 Quilibrium 營運的 Farcaster 網路。讀取內容和發佈貼文時，你和網路之間沒有任何 Quilcast 伺服器：讀取內容會連到公開的 Hypersnap 節點，每一則貼文都是在你的瀏覽器中簽署的訊息，而你的金鑰則保存在瀏覽器自己的儲存空間裡。唯一的例外是從 X 同步發文，除非你開啟它，否則它是關閉的：它會用一把專用金鑰把你在 X 上的新貼文發成 cast，這把金鑰只能發 cast，並保存在我們的伺服器上。Quilcast 沒有自己的帳號系統，沒有廣告，沒有分析工具，也不做任何追蹤。</p>
+      <p class="muted">為 Hypersnap 打造的 Farcaster 用戶端，由 Borodutch Labs 製作。</p>
+      <p>Quilcast 是一款開源的 <a href="https://farcaster.xyz">Farcaster</a> 用戶端，你可以直接在瀏覽器中開啟 <a href="/">quilcast.com</a> 使用（或透過 Android 應用程式），直連 Quilibrium 的 Farcaster 網路 <a href="https://hypersnap.org">Hypersnap</a>。讀取內容直接連向公開的 Hypersnap 節點，每則貼文都在你的瀏覽器本機簽署，因此金鑰只會保存在瀏覽器儲存空間裡，中間不經過任何 Quilcast 伺服器。沒有 Quilcast 帳號、沒有廣告、沒有分析工具，也不做追蹤。唯一在伺服器端運作的部分是選用的 X 同步發文功能，除非你主動開啟，否則保持關閉，且僅使用一把獨立、只能發文的金鑰保存在我們的伺服器上。（查證於 2026 年 11 月 9 日。）</p>
 
       <h2>登入方式</h2>
-      <p>你可以用既有 Farcaster 帳號的復原詞組登入（運作方式和 Warpcast、Quorum 相同），也可以連接 MetaMask 或 Rabby 這類錢包，作為帳號的託管地址。你也可以直接在頁面上建立新的 Farcaster 帳號：Quilcast 會在你的瀏覽器中產生一組復原詞組，你只要在 Optimism 上轉約 $0.20 的 ETH 到這組詞組對應的地址，Quilcast 就會註冊帳號、新增簽署金鑰，並取得你的使用者名稱。</p>
+      <p>你可以用既有的 Farcaster 復原詞組登入（設定方式與 Warpcast 和 Quorum 相同），或連接 MetaMask、Rabby 這類託管錢包。如果你是從頭開始，Quilcast 會在你的瀏覽器中產生一組復原詞組；只要在 Optimism 上轉入大約 $0.20 的 ETH，它就會自動註冊帳號、新增簽署金鑰，並取得你的使用者名稱。</p>
 
       <h2>功能一覽</h2>
-      <ul>
-        <li>追蹤中和熱門動態、串文、個人檔案、通知與搜尋。</li>
-        <li>發文、回覆、引用、按讚、轉發、追蹤，以及頻道貼文，每則貼文最多可附四項相片、影片或 GIF（引用的貼文會占用其中一項）。</li>
-        <li>Farcaster 私訊，即時更新，支援群組聊天、請求和靜音。</li>
-        <li>語音空間，也就是 Farcaster 的即時語音房：可以收聽、舉手，也可以自己開一間。</li>
-        <li>支援 Base、Ethereum、Optimism、Arbitrum 和 Polygon 的錢包，可查看餘額、代幣、NFT，也能傳送資產。</li>
-        <li>Farcaster 和 Base 的小程式可以直接在 Quilcast 中開啟，並支援通知。</li>
-        <li>其他語言貼文的翻譯，以及會跟著你同步到每台裝置的私人靜音與封鎖。</li>
-        <li>垃圾訊息過濾器：我們自家的 Laya 模型若判斷貼文很可能是垃圾訊息，就會加上標示或隱藏，門檻由你自己設定。任何人都可以在 <a href="https://spam.quilcast.com">spam.quilcast.com</a> 免費查詢分數。</li>
-        <li>好玩的部分：MySpace 風格的個人檔案外觀、應用程式主題、能用經典面板播放 YouTube 播放清單的個人檔案 Winamp，以及讓 Quilcast 排版得像 Quilibrium 的 Quorum 應用程式的 Quorum 模式。</li>
-      </ul>
+      <p>你能使用追蹤中和熱門動態、串文、個人檔案、通知與搜尋，以及發文、回覆、引用、按讚、轉發、追蹤和頻道貼文。每則貼文最多可附加四項相片、影片或 GIF（引用的貼文會占用其中一項）。內建即時 Farcaster 私訊，支援群組聊天、訊息請求與靜音，你也可以在 Farcaster Spaces 語音空間中收聽、舉手或親自開房主持。</p>
+      <p>Quilcast 同時內建支援 Base、Ethereum、Optimism、Arbitrum 與 Polygon 的錢包，可查看餘額、代幣、NFT 並傳送資產，也內建支援通知的 Farcaster 與 Base 小程式。其他語言的貼文可以直接就地翻譯，私人靜音與封鎖名單會在你的各台裝置之間同步。我們自家的 Laya 垃圾訊息模型會為貼文評分，並讓你自訂標示或隱藏垃圾訊息的門檻；原始分數免費公開於 <a href="https://spam.quilcast.com">spam.quilcast.com</a>。</p>
+      <p>輕鬆有趣的一面也沒少：你可以用 MySpace 風格版面裝扮個人檔案、切換應用程式主題、在個人檔案放上經典面板的 Winamp 播放器來播放 YouTube 播放清單，或是開啟 Quorum 模式，換成與 Quilibrium 的 Quorum 相同的版面配置。</p>
 
       <h2>取得 Quilcast</h2>
       <ul>

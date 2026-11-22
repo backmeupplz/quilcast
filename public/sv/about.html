@@ -72,25 +72,16 @@
   <body>
     <main>
       <h1>Om Quilcast</h1>
-      <p class="muted">En Farcaster-klient för Hypersnap, från Borodutch Labs.</p>
-      <p><strong>Kort sagt (9 november 2026):</strong> Quilcast är en Farcaster-klient med öppen källkod som fungerar i webbläsaren på <a href="/">quilcast.com</a>, utan något att installera, och det finns också en Android-app. Den är till för dig som vill läsa, publicera, skicka direktmeddelanden och använda miniappar på Farcaster direkt från Hypersnap-nätverket, med nycklar som stannar i webbläsaren. Det är ett litet, ungt projekt från ett enda team, och den stora Farcaster-appen är betydligt större.</p>
-      <p>Quilcast är en liten <a href="https://farcaster.xyz">Farcaster</a>-klient med öppen källkod som körs i webbläsaren på <a href="/">quilcast.com</a> och pratar direkt med <a href="https://hypersnap.org">Hypersnap</a>, det Farcaster-nätverk som Quilibrium driver. Det finns ingen Quilcast-server mellan dig och nätverket när du läser och publicerar: läsningen går till en offentlig Hypersnap-nod, varje inlägg är ett meddelande som signeras i din webbläsare, och dina nycklar stannar i webbläsarens egen lagring. Det enda undantaget är korspostning från X, som är avstängd tills du slår på den: den castar dina nya X-inlägg med en egen nyckel som bara kan posta casts och sparas på vår server. Quilcast har inga egna konton, inga annonser, inga analysverktyg och ingen spårning.</p>
+      <p class="muted">En Farcaster-klient för Hypersnap, byggd av Borodutch Labs.</p>
+      <p>Quilcast är en <a href="https://farcaster.xyz">Farcaster</a>-klient med öppen källkod som du kör direkt i webbläsaren på <a href="/">quilcast.com</a> (eller via Android-appen) och som pratar direkt med <a href="https://hypersnap.org">Hypersnap</a>, Quilibriums Farcaster-nätverk. Läsningar går mot en offentlig Hypersnap-nod och varje cast signeras lokalt i din webbläsare, så dina nycklar stannar i webbläsarens lagring utan någon Quilcast-server emellan. Det finns inga Quilcast-konton, inga annonser, inga analysverktyg och ingen spårning. Den enda serverdelen är valfri korspostning från X, som är avstängd tills du slår på den och använder en separat nyckel på vår server som bara kan posta casts. (Kontrollerat 9 november 2026.)</p>
 
       <h2>Logga in</h2>
-      <p>Logga in med en befintlig återställningsfras för Farcaster (den fungerar på samma sätt som i Warpcast och Quorum), eller anslut en plånbok som MetaMask eller Rabby som kontots custody-adress. Du kan också skapa ett nytt Farcaster-konto direkt på sidan: Quilcast genererar en återställningsfras i din webbläsare, du skickar cirka $0.20 i ETH på Optimism till den, och Quilcast registrerar kontot, lägger till en signeringsnyckel och reserverar ditt användarnamn.</p>
+      <p>Logga in med din befintliga återställningsfras för Farcaster (samma upplägg som i Warpcast och Quorum) eller anslut en custody-plånbok som MetaMask eller Rabby. Om du börjar från grunden skapar Quilcast en återställningsfras i din webbläsare; skicka ungefär $0.20 i ETH på Optimism dit, så registrerar Quilcast kontot, lägger till en signeringsnyckel och reserverar ditt användarnamn.</p>
 
       <h2>Vad den kan göra</h2>
-      <ul>
-        <li>Flöden för det du följer och för det som trendar, trådar, profiler, notiser och sök.</li>
-        <li>Casts, svar, citat, gillamarkeringar, recasts, följningar och inlägg i kanaler, med upp till fyra foton, videor eller GIF:ar per cast (en citerad cast tar en av de fyra platserna).</li>
-        <li>Direktmeddelanden på Farcaster i realtid, med gruppchattar, förfrågningar och tystning.</li>
-        <li>Ljudrum, Farcasters ljudrum i realtid: lyssna, räck upp handen eller starta ett eget.</li>
-        <li>En plånbok för Base, Ethereum, Optimism, Arbitrum och Polygon, med saldon, tokens, NFT:er och överföringar.</li>
-        <li>Miniappar för Farcaster och Base som öppnas i Quilcast, med notiser.</li>
-        <li>Översättningar av casts på andra språk, samt privata tystningar och blockeringar som följer med dig till alla dina enheter.</li>
-        <li>Ett spamfilter som märker eller döljer casts som vår egen Laya-modell bedömer som troligen spam, med en tröskel som du väljer. Poängen är gratis för alla på <a href="https://spam.quilcast.com">spam.quilcast.com</a>.</li>
-        <li>För skojs skull: profilutseenden i MySpace-stil, teman för appen, en profil-Winamp som spelar YouTube-spellistor i klassiska skal, och ett Quorum-läge som lägger upp Quilcast som Quilibriums Quorum-app.</li>
-      </ul>
+      <p>Du får flöden för det du följer och för det som trendar, trådar, profiler, notiser och sökning, tillsammans med casts, svar, citat, gillamarkeringar, recasts, följningar och inlägg i kanaler. Du kan bifoga upp till fyra foton, videor eller GIF:ar per cast (en citerad cast tar en av de fyra platserna). Direktmeddelanden på Farcaster i realtid är inbyggda med gruppchattar, meddelandeförfrågningar och tystning, och du kan lyssna, räcka upp handen eller vara värd i Farcasters ljudrum.</p>
+      <p>Quilcast har också en inbyggd plånbok för Base, Ethereum, Optimism, Arbitrum och Polygon med saldon, tokens, NFT:er och överföringar, samt miniappar för Farcaster och Base direkt i appen med notiser. Casts på andra språk översätts direkt i flödet, och privata tystningar och blockeringar synkas mellan dina enheter. Vår egen spammodell Laya poängsätter inlägg och låter dig välja gränsen för att märka eller dölja spam; råpoängen är offentliga och gratis på <a href="https://spam.quilcast.com">spam.quilcast.com</a>.</p>
+      <p>På den mer lekfulla sidan kan du pynta profiler med layouter i MySpace-stil, byta appens teman, lägga till en Winamp-spelare med klassiska skal på din profil för att spela YouTube-spellistor, eller slå på Quorum-läge för att spegla layouten i Quilibriums Quorum.</p>
 
       <h2>Skaffa den</h2>
       <ul>

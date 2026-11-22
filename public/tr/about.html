@@ -72,25 +72,16 @@
   <body>
     <main>
       <h1>Quilcast Hakkında</h1>
-      <p class="muted">Borodutch Labs'ten Hypersnap için bir Farcaster istemcisi.</p>
-      <p><strong>Kısaca (9 Kasım 2026):</strong> Quilcast, tarayıcında <a href="/">quilcast.com</a> adresinde çalışan, kurulum gerektirmeyen açık kaynaklı bir Farcaster istemcisidir; bir de Android uygulaması var. Farcaster'da doğrudan Hypersnap ağından okumak, paylaşım yapmak, doğrudan mesaj göndermek ve mini uygulamaları kullanmak isteyenler için; anahtarlar tarayıcında kalır. Tek bir ekibin küçük, genç bir projesi; asıl Farcaster uygulaması çok daha büyük.</p>
-      <p>Quilcast, tarayıcında <a href="/">quilcast.com</a> adresinde çalışan ve Quilibrium'un işlettiği Farcaster ağı <a href="https://hypersnap.org">Hypersnap</a>'e doğrudan bağlanan, küçük ve açık kaynaklı bir <a href="https://farcaster.xyz">Farcaster</a> istemcisidir. Okuma ve paylaşım için seninle ağ arasında bir Quilcast sunucusu yoktur: okumalar herkese açık bir Hypersnap düğümüne gider, her gönderi tarayıcında imzalanan bir mesajdır ve anahtarların tarayıcının kendi depolama alanında kalır. Tek istisna, sen açmadıkça kapalı olan X'ten çapraz paylaşımdır: yeni X gönderilerini, yalnızca cast paylaşabilen ve sunucumuzda saklanan kendine ait bir anahtarla cast olarak paylaşır. Quilcast'in kendine ait hesapları, reklamları, analitiği ve takibi yoktur.</p>
+      <p class="muted">Borodutch Labs tarafından geliştirilen, Hypersnap için bir Farcaster istemcisi.</p>
+      <p>Quilcast, doğrudan tarayıcında <a href="/">quilcast.com</a> adresinde (ya da Android uygulamasıyla) çalıştırabileceğin ve Quilibrium'un Farcaster ağı <a href="https://hypersnap.org">Hypersnap</a> ile aracısız konuşan açık kaynaklı bir <a href="https://farcaster.xyz">Farcaster</a> istemcisidir. Okuma istekleri herkese açık bir Hypersnap düğümüne gider ve her cast tarayıcında yerel olarak imzalanır; böylece arada hiçbir Quilcast sunucusu olmadan anahtarların tarayıcı depolama alanında kalır. Quilcast hesabı, reklam, analitik ve takip yoktur. Sunucu tarafında çalışan tek parça, sen açmadıkça kapalı duran isteğe bağlı X'ten çapraz paylaşımdır; bu özellik, sunucumuzda saklanan ve yalnızca cast paylaşabilen ayrı bir anahtar kullanır. (9 Kasım 2026'da kontrol edildi.)</p>
 
       <h2>Giriş yapma</h2>
-      <p>Mevcut bir Farcaster kurtarma ifadesiyle giriş yapabilirsin (Warpcast ve Quorum'daki gibi çalışır) ya da MetaMask veya Rabby gibi bir cüzdanı hesabın custody adresi olarak bağlayabilirsin. Doğrudan bu sayfada yeni bir Farcaster hesabı da oluşturabilirsin: Quilcast tarayıcında bir kurtarma ifadesi üretir, sen ona Optimism'de yaklaşık $0.20 değerinde ETH gönderirsin, Quilcast da hesabı kaydeder, bir imzalama anahtarı ekler ve kullanıcı adını alır.</p>
+      <p>Mevcut Farcaster kurtarma ifadenle giriş yapabilir (Warpcast ve Quorum ile aynı kurulum) ya da MetaMask veya Rabby gibi bir custody cüzdanı bağlayabilirsin. Sıfırdan başlıyorsan Quilcast tarayıcında bir kurtarma ifadesi oluşturur; bu adrese Optimism ağı üzerinden yaklaşık $0.20 değerinde ETH gönderdiğinde hesabını kaydeder, bir imzalama anahtarı ekler ve kullanıcı adını alır.</p>
 
       <h2>Neler yapabilir</h2>
-      <ul>
-        <li>Takip edilenler ve gündem akışları, konuşma dizileri, profiller, bildirimler ve arama.</li>
-        <li>Cast'ler, yanıtlar, alıntılar, beğeniler, recast'ler, takipler ve kanal gönderileri; her cast'e en fazla dört fotoğraf, video veya GIF eklenebilir (alıntılanan bir cast bu dört yerden birini kaplar).</li>
-        <li>Farcaster direkt mesajları: canlı olarak, grup sohbetleri, istekler ve sessize alma desteğiyle.</li>
-        <li>Sohbet Odaları, Farcaster'ın canlı sesli odaları: dinleyebilir, söz isteyebilir ya da kendin bir oda açabilirsin.</li>
-        <li>Base, Ethereum, Optimism, Arbitrum ve Polygon için bakiye, token, NFT ve gönderim desteği sunan bir cüzdan.</li>
-        <li>Farcaster ve Base mini uygulamaları Quilcast'in içinde, bildirimleriyle birlikte açılır.</li>
-        <li>Başka dillerdeki cast'ler için çeviri; ayrıca tüm cihazlarında seninle birlikte gelen özel sessize almalar ve engellemeler.</li>
-        <li>Kendi Laya modelimizin spam olma ihtimalini yüksek bulduğu cast'leri etiketleyen veya gizleyen, eşiğini senin seçtiğin bir spam filtresi. Puanlar <a href="https://spam.quilcast.com">spam.quilcast.com</a> adresinde herkese ücretsizdir.</li>
-        <li>Eğlence için: MySpace tarzı profil görünümleri, uygulama temaları, YouTube çalma listelerini klasik skin'lerle çalan bir profil Winamp'ı ve Quilcast'i Quilibrium'un Quorum uygulaması gibi düzenleyen bir Quorum modu.</li>
-      </ul>
+      <p>Takip edilenler ve gündem akışları, konuşma dizileri, profiller, bildirimler ve aramanın yanı sıra cast'ler, yanıtlar, alıntılar, beğeniler, recast'ler, takipler ve kanal gönderileri elinin altındadır. Her cast'e en fazla dört fotoğraf, video veya GIF ekleyebilirsin (alıntılanan bir cast bu dört alandan birini kullanır). Grup sohbetleri, mesaj istekleri ve sessize alma desteğiyle canlı Farcaster direkt mesajları yerleşik olarak gelir; ayrıca Farcaster'ın sesli Sohbet Odalarını dinleyebilir, söz istemek için el kaldırabilir ya da kendi odanı açabilirsin.</p>
+      <p>Quilcast ayrıca Base, Ethereum, Optimism, Arbitrum ve Polygon için bakiye, token, NFT ve gönderim desteği sunan yerleşik bir cüzdanın yanı sıra bildirim destekli uygulama içi Farcaster ve Base mini uygulamalarıyla gelir. Başka dillerdeki cast'ler olduğu yerde çevrilir; özel sessize almalar ve engellemeler tüm cihazların arasında senkronize olur. Kendi Laya spam modelimiz gönderileri puanlar ve spam'i etiketlemek ya da gizlemek için eşiği kendin seçebilirsin; ham puanlar <a href="https://spam.quilcast.com">spam.quilcast.com</a> adresinde herkese açık ve ücretsizdir.</p>
+      <p>Eğlenceli tarafta ise profilini MySpace tarzı düzenlerle süsleyebilir, uygulama temalarını değiştirebilir, YouTube çalma listelerini çalmak için profiline klasik kaplamalı bir Winamp oynatıcısı yerleştirebilir ya da Quilibrium'un Quorum düzenini yansıtmak için Quorum modunu açabilirsin.</p>
 
       <h2>Nereden edinilir</h2>
       <ul>

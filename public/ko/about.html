@@ -73,24 +73,15 @@
     <main>
       <h1>Quilcast 소개</h1>
       <p class="muted">Borodutch Labs가 만든 Hypersnap용 Farcaster 클라이언트예요.</p>
-      <p><strong>간단히 말하면(2026년 11월 9일):</strong> Quilcast는 <a href="/">quilcast.com</a>에서 설치 없이 브라우저로 쓰는 오픈소스 Farcaster 클라이언트이고, Android 앱도 있어요. Hypersnap 네트워크에서 곧바로 Farcaster의 글을 읽고, 게시하고, 다이렉트 메시지를 보내고, 미니 앱을 쓰고 싶은 분들을 위한 것이며, 키는 브라우저에만 보관돼요. 한 팀이 만든 작고 젊은 프로젝트이고, 주력 Farcaster 앱은 훨씬 더 커요.</p>
-      <p>Quilcast는 <a href="/">quilcast.com</a>에서 브라우저로 실행되는 작은 오픈소스 <a href="https://farcaster.xyz">Farcaster</a> 클라이언트로, Quilibrium이 운영하는 Farcaster 네트워크인 <a href="https://hypersnap.org">Hypersnap</a>에 바로 연결돼요. 글을 읽고 올릴 때 여러분과 네트워크 사이에 Quilcast 서버는 없어요. 읽기 요청은 공개 Hypersnap 노드로 가고, 모든 게시물은 브라우저에서 서명한 메시지이며, 키는 브라우저 자체 저장소에만 남아요. 유일한 예외는 켜지 않는 한 꺼져 있는 X 크로스포스팅이에요. 새 X 게시물을 캐스트만 올릴 수 있는 별도의 키로 캐스트하며, 이 키는 저희 서버에 보관돼요. Quilcast에는 자체 계정도, 광고도, 분석도, 추적도 없어요.</p>
+      <p>Quilcast는 오픈소스 <a href="https://farcaster.xyz">Farcaster</a> 클라이언트로, <a href="/">quilcast.com</a>에서 브라우저로 바로 실행하거나 Android 앱으로 쓸 수 있으며 Quilibrium의 Farcaster 네트워크인 <a href="https://hypersnap.org">Hypersnap</a>과 직접 통신해요. 읽기 요청은 공개 Hypersnap 노드로 전달되고 모든 캐스트는 브라우저에서 로컬로 서명되므로, 중간에 Quilcast 서버가 끼어들지 않고 키도 브라우저 저장소에 그대로 남아요. Quilcast 계정도, 광고도, 분석도, 추적도 없어요. 서버가 관여하는 유일한 기능은 선택 사항인 X 크로스포스팅인데, 직접 켜기 전까지는 꺼져 있고 저희 서버에 보관된 캐스트 전용 별도 키를 사용해요. (2026년 11월 9일 확인)</p>
 
       <h2>로그인</h2>
-      <p>기존 Farcaster 복구 문구로 로그인할 수 있어요(Warpcast나 Quorum에서와 같은 방식이에요). MetaMask나 Rabby 같은 지갑을 계정의 커스터디 주소로 연결해도 돼요. 이 페이지에서 새 Farcaster 계정을 만들 수도 있어요. Quilcast가 브라우저에서 복구 문구를 생성하면, 그 주소로 Optimism의 ETH를 $0.20어치 정도 보내세요. 그러면 Quilcast가 계정을 등록하고, 서명 키를 추가하고, 사용자명을 확보해요.</p>
+      <p>기존 Farcaster 복구 문구로 로그인하거나(Warpcast, Quorum과 같은 방식이에요), MetaMask나 Rabby 같은 커스터디 지갑을 연결해 로그인할 수 있어요. 처음부터 시작한다면 Quilcast가 브라우저에서 복구 문구를 만들어 줘요. 거기로 Optimism의 ETH를 $0.20어치 정도 보내면 계정을 등록하고, 서명 키를 추가하고, 사용자명까지 확보해 줘요.</p>
 
       <h2>할 수 있는 일</h2>
-      <ul>
-        <li>팔로잉과 인기 피드, 스레드, 프로필, 알림, 검색.</li>
-        <li>캐스트, 답글, 인용, 좋아요, 리캐스트, 팔로우, 채널 게시물. 캐스트 하나에 사진, 동영상, GIF를 최대 네 개까지 넣을 수 있어요(인용한 캐스트는 그중 한 자리를 차지해요).</li>
-        <li>그룹 채팅, 요청, 뮤트를 지원하는 실시간 Farcaster 다이렉트 메시지.</li>
-        <li>Farcaster의 라이브 오디오 룸인 스페이스에서 듣거나, 손을 들거나, 직접 열 수 있어요.</li>
-        <li>Base, Ethereum, Optimism, Arbitrum, Polygon을 지원하는 지갑으로, 잔액, 토큰, NFT, 보내기를 제공해요.</li>
-        <li>Farcaster와 Base 미니 앱을 Quilcast 안에서 알림과 함께 열 수 있어요.</li>
-        <li>다른 언어로 쓴 캐스트의 번역, 그리고 모든 기기에서 이어지는 비공개 뮤트와 차단.</li>
-        <li>저희 Laya 모델이 스팸일 가능성이 높다고 평가한 캐스트에 표시를 달거나 숨기는 스팸 필터예요. 기준값은 직접 정할 수 있어요. 점수는 <a href="https://spam.quilcast.com">spam.quilcast.com</a>에서 누구나 무료로 확인할 수 있어요.</li>
-        <li>재미 요소로는 MySpace 스타일의 프로필 꾸미기, 앱 테마, YouTube 재생 목록을 클래식 스킨으로 재생하는 프로필 Winamp, Quilcast를 Quilibrium의 Quorum 앱처럼 배치하는 Quorum 모드가 있어요.</li>
-      </ul>
+      <p>팔로잉과 인기 피드, 스레드, 프로필, 알림, 검색은 물론 캐스트, 답글, 인용, 좋아요, 리캐스트, 팔로우, 채널 게시물까지 모두 쓸 수 있어요. 캐스트 하나에 사진, 동영상, GIF를 최대 네 개까지 첨부할 수 있어요(인용한 캐스트가 그중 한 자리를 차지해요). 그룹 채팅, 메시지 요청, 뮤트를 지원하는 실시간 Farcaster 다이렉트 메시지가 내장되어 있고, Farcaster 스페이스 오디오 룸에서 듣거나 손을 들거나 직접 호스트할 수도 있어요.</p>
+      <p>Quilcast에는 Base, Ethereum, Optimism, Arbitrum, Polygon을 지원하는 지갑도 내장되어 있어 잔액, 토큰, NFT 확인과 보내기가 가능하며, 알림을 지원하는 Farcaster와 Base 미니 앱도 앱 안에서 바로 쓸 수 있어요. 다른 언어로 된 캐스트는 그 자리에서 바로 번역되고, 비공개 뮤트와 차단은 모든 기기에 동기화돼요. 저희 자체 Laya 스팸 모델이 게시물에 점수를 매겨 스팸을 표시하거나 숨길 기준값을 직접 정할 수 있게 해 주며, 원본 점수는 <a href="https://spam.quilcast.com">spam.quilcast.com</a>에서 누구나 무료로 볼 수 있어요.</p>
+      <p>가볍게 즐길 요소도 많아요. MySpace 스타일 레이아웃으로 프로필을 꾸미거나 앱 테마를 바꿀 수 있고, 클래식 스킨의 Winamp 플레이어를 프로필에 올려 YouTube 재생 목록을 틀거나, Quorum 모드를 켜서 Quilibrium의 Quorum 레이아웃을 그대로 재현할 수도 있어요.</p>
 
       <h2>시작하기</h2>
       <ul>

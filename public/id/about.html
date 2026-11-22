@@ -72,25 +72,16 @@
   <body>
     <main>
       <h1>Tentang Quilcast</h1>
-      <p class="muted">Klien Farcaster untuk Hypersnap, dari Borodutch Labs.</p>
-      <p><strong>Singkatnya (9 November 2026):</strong> Quilcast adalah klien Farcaster open source yang berjalan di browsermu di <a href="/">quilcast.com</a>, tanpa perlu memasang apa pun, dan tersedia juga aplikasi Android. Quilcast dibuat untuk kamu yang ingin membaca, memposting, mengirim pesan langsung, dan memakai mini app di Farcaster langsung dari jaringan Hypersnap, dengan kunci yang tetap berada di browsermu. Ini proyek kecil dan masih muda dari satu tim, sedangkan aplikasi Farcaster utama jauh lebih besar.</p>
-      <p>Quilcast adalah klien <a href="https://farcaster.xyz">Farcaster</a> open source yang ringkas, berjalan di browsermu di <a href="/">quilcast.com</a> dan terhubung langsung ke <a href="https://hypersnap.org">Hypersnap</a>, jaringan Farcaster yang dijalankan Quilibrium. Untuk membaca dan memposting, tidak ada server Quilcast di antara kamu dan jaringan: bacaan diambil dari node Hypersnap publik, setiap postingan adalah pesan yang ditandatangani di browsermu, dan kuncimu tetap berada di penyimpanan browser itu sendiri. Satu-satunya pengecualian adalah crossposting dari X, yang mati kecuali kamu menyalakannya: fitur ini meng-cast postingan X barumu dengan kuncinya sendiri, yang hanya bisa memposting cast dan disimpan di server kami. Quilcast tidak punya akun sendiri, tidak ada iklan, tidak ada analitik, dan tidak ada pelacakan.</p>
+      <p class="muted">Klien Farcaster untuk Hypersnap, dibuat oleh Borodutch Labs.</p>
+      <p>Quilcast adalah klien <a href="https://farcaster.xyz">Farcaster</a> open source yang bisa kamu jalankan langsung di browser pada <a href="/">quilcast.com</a> (atau lewat aplikasi Android), dan terhubung langsung ke <a href="https://hypersnap.org">Hypersnap</a>, jaringan Farcaster milik Quilibrium. Pembacaan mengambil data dari node Hypersnap publik dan setiap cast ditandatangani secara lokal di browsermu, jadi kuncimu tetap berada di penyimpanan browser tanpa server Quilcast di tengah-tengah. Tidak ada akun Quilcast, tidak ada iklan, tidak ada analitik, dan tidak ada pelacakan. Satu-satunya bagian di sisi server adalah crossposting X yang bersifat opsional, tetap mati sampai kamu menyalakannya, dan memakai kunci terpisah khusus untuk cast yang disimpan di server kami. (Diperiksa 9 November 2026.)</p>
 
       <h2>Masuk</h2>
-      <p>Masuk dengan frasa pemulihan Farcaster yang sudah ada (cara kerjanya sama seperti di Warpcast dan Quorum), atau hubungkan dompet seperti MetaMask atau Rabby sebagai alamat kustodi akun. Kamu juga bisa membuat akun Farcaster baru langsung di halaman ini: Quilcast membuat frasa pemulihan di browsermu, kamu mengirim sekitar $0.20 ETH di Optimism ke alamat itu, lalu Quilcast mendaftarkan akun, menambahkan kunci penandatangan, dan mengklaim nama penggunamu.</p>
+      <p>Masuk dengan frasa pemulihan Farcaster-mu yang sudah ada (caranya sama seperti di Warpcast dan Quorum) atau hubungkan dompet kustodi seperti MetaMask atau Rabby. Jika kamu mulai dari nol, Quilcast membuatkan frasa pemulihan di browsermu; kirim sekitar $0.20 dalam bentuk ETH di Optimism ke sana, lalu Quilcast mendaftarkan akunnya, menambahkan kunci penandatangan, dan mengklaim nama penggunamu.</p>
 
       <h2>Fitur</h2>
-      <ul>
-        <li>Feed Mengikuti dan Trending, thread, profil, notifikasi, dan pencarian.</li>
-        <li>Cast, balasan, kutipan, suka, recast, ikuti, dan postingan di saluran, dengan hingga empat foto, video, atau GIF per cast (cast yang dikutip memakai salah satu dari empat tempat itu).</li>
-        <li>Pesan langsung Farcaster secara real-time, dengan obrolan grup, permintaan pesan, dan fitur membisukan.</li>
-        <li>Ruang Audio, ruang audio live dari Farcaster: dengarkan, angkat tangan, atau jadi host.</li>
-        <li>Dompet untuk Base, Ethereum, Optimism, Arbitrum, dan Polygon, lengkap dengan saldo, token, NFT, dan pengiriman.</li>
-        <li>Aplikasi mini Farcaster dan Base yang terbuka di dalam Quilcast, lengkap dengan notifikasi.</li>
-        <li>Terjemahan untuk cast dalam bahasa lain, serta fitur bisukan dan blokir pribadi yang ikut berpindah ke setiap perangkatmu.</li>
-        <li>Filter spam yang memberi label atau menyembunyikan cast yang dinilai model Laya kami kemungkinan besar spam, dengan ambang batas yang kamu tentukan sendiri. Skornya gratis untuk siapa saja di <a href="https://spam.quilcast.com">spam.quilcast.com</a>.</li>
-        <li>Untuk bersenang-senang: tampilan profil ala MySpace, tema aplikasi, Winamp di profil yang memutar daftar putar YouTube dengan skin klasik, dan mode Quorum yang menata Quilcast seperti aplikasi Quorum milik Quilibrium.</li>
-      </ul>
+      <p>Kamu mendapatkan feed Mengikuti dan Trending, utas, profil, notifikasi, dan pencarian, beserta cast, balasan, kutipan, suka, recast, follow, dan postingan di saluran. Kamu bisa melampirkan hingga empat foto, video, atau GIF per cast (cast yang dikutip mengambil satu dari empat slot itu). Pesan langsung Farcaster secara live sudah tersedia di dalam aplikasi, lengkap dengan obrolan grup, permintaan pesan, dan fitur bisukan; kamu juga bisa mendengarkan, mengangkat tangan, atau menjadi host di Ruang Audio Farcaster.</p>
+      <p>Quilcast juga dilengkapi dompet bawaan untuk Base, Ethereum, Optimism, Arbitrum, dan Polygon lengkap dengan saldo, token, NFT, dan pengiriman, ditambah aplikasi mini Farcaster dan Base di dalam aplikasi beserta notifikasinya. Cast dalam bahasa lain bisa diterjemahkan langsung di tempat, dan daftar bisukan serta blokir pribadimu tersinkron di semua perangkat. Model spam Laya buatan kami sendiri memberi skor pada postingan dan memungkinkanmu memilih ambang batas untuk melabeli atau menyembunyikan spam; skor mentahnya terbuka untuk umum dan gratis di <a href="https://spam.quilcast.com">spam.quilcast.com</a>.</p>
+      <p>Untuk sisi yang lebih santai, kamu bisa menghias profil dengan tata letak ala MySpace, berganti tema aplikasi, menaruh pemutar Winamp dengan skin klasik di profilmu untuk memutar daftar putar YouTube, atau menyalakan mode Quorum untuk meniru tampilan Quorum milik Quilibrium.</p>
 
       <h2>Dapatkan</h2>
       <ul>
