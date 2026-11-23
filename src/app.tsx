@@ -238,21 +238,24 @@ function AccountMenu({ me, quorum }: { me: User; quorum?: boolean }) {
 // --- paginated list of casts ---
 
 type Page = { casts: Cast[]; next?: { cursor?: string | null } }
-type Chunk<T> = { items: T[]; cursor: string | null }
 /** What a feed found above its list (#640): `items` go on top, or take the list's place with `cursor` after them when
  *  it's set; `news` are the ones the pill counts (not the viewer's own, nor the hidden ones). */
 type News<T> = { items: T[]; news: T[]; cursor?: string | null }
+// `above`: a first page read under a cached one (#857) found these on top of it, which wait behind the pill
+type Chunk<T> = { items: T[]; cursor: string | null; above?: News<T> }
 // how often a feed on screen looks for new posts, while the page is visible
 const EVERY = 60e3
-// at the top of the page, and not on its way back to a spot (scrollBack): new posts go straight on top there
+// at the top of the page, and not on its way back to a spot (scrollBack): new posts the pill doesn't count (the
+// viewer's own, hidden ones) go straight on top there
 const atTop = () => scrollY < 4 && !pending
 
 /** Cursor pagination with infinite scroll. `id` dedupes items across pages. `fresh`: loads again on Back too.
  *  `restored`: told of a list Back brought back for `k`, or one new posts went on top of (`added`: those), before its
  *  next page loads.
- *  `poll`: asked every minute what's new above the list (#640), which `pill` offers while the page is scrolled down
- *  and which goes straight on top at the top of the page. */
-function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pill }: { load: (cursor?: string) => Promise<Chunk<T>>; k: string; empty?: string; id: (t: T) => string; row: (items: T[]) => ComponentChildren; initial?: () => T[]; fresh?: boolean; restored?: (k: string, items: T[], added?: T[]) => void; poll?: (have: T[]) => Promise<News<T> | null>; pill?: (news: T[], show: () => void) => ComponentChildren }) {
+ *  `poll`: asked every minute what's new above the list (#640), which `pill` offers; a tap puts it on top. A list
+ *  opened on a cached first page (`initial`) hands that page to `load` too, which says what's new above it (#857).
+ *  A reload (`k` changing under the same list) still replaces the list. */
+function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pill }: { load: (cursor?: string, have?: T[]) => Promise<Chunk<T>>; k: string; empty?: string; id: (t: T) => string; row: (items: T[]) => ComponentChildren; initial?: () => T[]; fresh?: boolean; restored?: (k: string, items: T[], added?: T[]) => void; poll?: (have: T[]) => Promise<News<T> | null>; pill?: (news: T[], show: () => void) => ComponentChildren }) {
   // Back or Forward onto this page shows the pages loaded before, and goes on from there (restore.ts)
   const [kept] = useState(() => (fresh ? null : takeList<T>(k)))
   const [items, setItems] = useState<T[]>(() => kept?.items || initial?.() || [])
@@ -265,7 +268,7 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pil
   const state = useRef({ busy: false, run: {}, mounted: false })
   // the list loaded for `k` so far, which Back finds on this entry when it's left (restore.ts)
   const got = useRef<{ k: string; items: T[]; cursor: string | null } | null>(kept && { k, ...kept })
-  // new posts found above the list, held until they're shown: by a tap on the pill, or by the page being at the top
+  // new posts found above the list, held until a tap on the pill shows them (or, with none it counts, the top of the page)
   const held = useRef<(News<T> & { k: string }) | null>(null)
   const [, redraw] = useState(0)
   const asks = useRef(poll)
@@ -300,15 +303,16 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pil
     up.current = false
     scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
   }, [items])
-  const more = async (reset = false) => {
+  const more = async (reset = false, have?: T[]) => {
     if ((state.current.busy && !reset) || (!reset && cursor === null)) return
     const run = state.current.run
     state.current.busy = true
     setBusy(true)
     setErr('')
     try {
-      const r = await load(reset ? undefined : cursor || undefined)
+      const r = await load(reset ? undefined : cursor || undefined, have)
       if (state.current.run !== run) return
+      if (r.above) held.current = { k, ...r.above }
       setItems((prev) => {
         const seen = new Set(reset ? [] : prev.map(id))
         const next = [...(reset ? [] : prev), ...r.items.filter((t) => !seen.has(id(t)))]
@@ -329,7 +333,8 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pil
   useEffect(() => {
     state.current.run = {}
     // (the kept list is taken once, when this list first draws, or here when `k` changes under it)
-    const l = !state.current.mounted ? kept : fresh ? null : takeList<T>(k)
+    const opening = !state.current.mounted
+    const l = opening ? kept : fresh ? null : takeList<T>(k)
     state.current.mounted = true
     if (l) {
       got.current = { k, ...l }
@@ -341,10 +346,12 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pil
       setErr('')
       return
     }
-    // a cached first page shows instantly and is replaced when the fresh one arrives
-    setItems(initial?.() || [])
+    // a cached first page shows instantly and is replaced when the fresh one arrives; when the list first opens, what's
+    // new above it waits behind the pill instead of popping in (#857)
+    const first = initial?.() || []
+    setItems(first)
     setCursor(undefined)
-    more(true)
+    more(true, opening && poll && first.length ? first : undefined)
   }, [k])
   useEffect(() => {
     if (!asks.current) return
@@ -368,15 +375,15 @@ function Pager<T>({ load, k, empty, id, row, initial, fresh, restored, poll, pil
         const r = list && (await asks.current?.([...(h?.items || []), ...list]))
         if (on && r?.items.length && state.current.run === run && got.current?.k === k) {
           held.current = r.cursor !== undefined || !h ? { k, ...r } : { k, items: [...r.items, ...h.items], news: [...r.news, ...h.news], cursor: h.cursor }
-          atTop() ? show(false) : redraw((x) => x + 1)
+          !held.current.news.length && atTop() ? show(false) : redraw((x) => x + 1)
         }
       } catch {}
       asking = false
       if (on && !hidden()) wait(EVERY)
     }
     const seen = () => (hidden() ? clearTimeout(timer) : wait(Math.max(0, last + EVERY - Date.now())))
-    // scrolled up to the top on their own: what's held goes on top
-    const scrolled = () => held.current?.k === k && atTop() && show(false)
+    // scrolled up to the top on their own: what's held and not on the pill goes on top
+    const scrolled = () => held.current?.k === k && !held.current.news.length && atTop() && show(false)
     wait(EVERY)
     document.addEventListener('visibilitychange', seen)
     addEventListener('scroll', scrolled, { passive: true })
@@ -529,7 +536,7 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer, loc
     // posts put on top join the same set, which a page still loading adds its own to; and a feed that's not threaded
     // keeps its key too, which its poll checks
     restored={(k, cs, added) => void (added && shown.current.k === k ? hashes(added).forEach((x) => shown.current.set.add(x)) : (shown.current = { k, set: new Set(hashes(cs)) }))}
-    load={async (cursor) => {
+    load={async (cursor, have) => {
       // taken now, not after the request: one Feed is reused when `k` changes, and an older key's load can end later
       const seen = shownFor(shown.current, k, !cursor)
       let r = await load(cursor)
@@ -553,7 +560,15 @@ function Feed({ load, k, empty, keep, cacheKey, thread, owner, skip, viewer, loc
           save(`quilcast:feed:${cacheKey}`, (local ? stillFollowed(casts) : casts).slice(0, 20))
         } catch {}
       }
-      return { items: casts, cursor: r.casts.length && !nothing ? r.next?.cursor || null : null }
+      const next = r.casts.length && !nothing ? r.next?.cursor || null : null
+      // opened on a cached page (#857): what's new above it waits behind the pill, and the cached page stays put. With
+      // a gap the fresh page takes the cached one's place when the pill's tapped
+      if (have?.length) {
+        const top = newOnTop(have, casts, live === 'time')
+        const news = top.items.filter((c) => shows(c) && (c.recaster || c.author).fid !== account?.fid)
+        if (news.length) return top.gap ? { items: have, cursor: null, above: { items: casts, news, cursor: next } } : { items: casts.filter((c) => !top.items.includes(c)), cursor: next, above: { items: top.items, news } }
+      }
+      return { items: casts, cursor: next }
     }} />
 }
 

@@ -386,7 +386,7 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await close()
   })
 
-  test('a feed scrolled down offers its new posts in a pill that puts them on top; at the top they just come in (#640)', async () => {
+  test('a feed offers its new posts in a pill that puts them on top, scrolled down or at the top (#640, #857)', async () => {
     const { page, errors, ctx, close } = await open({ 'quilcast:settings': JSON.stringify(nodeAt) }, { path: '/channel/livefeed', clock: true })
     const first = () => page.evaluate(() => document.querySelector('#app article.cast')?.innerText || '')
     await page.locator('#app article.cast', { hasText: 'long feed cast 1' }).first().waitFor({ timeout: 30e3 })
@@ -415,15 +415,46 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await pill.click()
     await page.waitForFunction(() => scrollY === 0 && document.querySelector('#app article.cast')?.innerText.includes('brand new cast 2'), null, { timeout: 10e3 })
     assert.equal(await pill.count(), 0)
-    // at the top, a new one just comes in, without a pill
+    // at the top, a new one waits behind the pill too, and a nudge of the page doesn't let it in
     liveNews.livefeed = 3
-    await minutes(() => document.querySelector('#app article.cast')?.innerText.includes('brand new cast 3'))
+    await minutes(() => document.querySelector('#app .new-posts'))
+    assert.match(await pill.innerText(), /1 new post\s*$/)
+    await page.evaluate(() => (scrollTo(0, 1), scrollTo(0, 0)))
+    await page.waitForTimeout(300)
+    assert.match(await first(), /brand new cast 2\b/)
+    await pill.click()
+    await page.waitForFunction(() => document.querySelector('#app article.cast')?.innerText.includes('brand new cast 3'), null, { timeout: 10e3 })
     assert.equal(await pill.count(), 0)
     assert.equal(await page.evaluate(() => scrollY), 0)
     const shown = await page.$$eval('#app article.cast', (as) => as.map((a) => a.innerText.match(/(brand new|long feed) cast \d+/)?.[0]).filter(Boolean))
     assert.deepEqual(shown.slice(0, 4), ['brand new cast 3', 'brand new cast 2', 'brand new cast 1', 'long feed cast 1'])
     assert.equal(new Set(shown).size, shown.length, `repeated: ${shown}`)
     assert.deepEqual(errors, [])
+    await close()
+  })
+
+  test('Home opened on its cached page keeps it, and offers what\'s new above it in the pill; a reload just replaces it (#857)', async () => {
+    // the cache from the last visit starts at the page's third cast: the first two are new
+    const cached = JSON.parse(longFeed(new URLSearchParams(), 'following cast')).casts.slice(2, 22)
+    const storage = { 'quilcast:accounts': JSON.stringify([{ phrase: '', custody: '0x' + '0'.repeat(39) + '1', fid: 13, username: 'reader', done: true }]), 'quilcast:settings': JSON.stringify(nodeAt), 'quilcast:feed:13:following': JSON.stringify(cached) }
+    // (signed in, the stand-in node has no notifications or casts by fid for the nav's dots, so the page logs errors)
+    const { page, close } = await open(storage)
+    const pill = page.locator('#app .new-posts')
+    const first = () => page.evaluate(() => document.querySelector('#app article.cast')?.innerText.match(/following cast \d+/)?.[0])
+    await pill.waitFor({ timeout: 30e3 })
+    assert.match(await pill.innerText(), /2 new posts\s*$/)
+    assert.equal(await first(), 'following cast 3')
+    await pill.click()
+    await page.waitForFunction(() => document.querySelector('#app article.cast')?.innerText.includes('following cast 1'), null, { timeout: 10e3 })
+    assert.equal(await pill.count(), 0)
+    const shown = await page.$$eval('#app article.cast', (as) => as.map((a) => a.innerText.match(/following cast \d+/)?.[0]))
+    assert.deepEqual(shown.slice(0, 4), ['following cast 1', 'following cast 2', 'following cast 3', 'following cast 4'])
+    assert.equal(new Set(shown).size, shown.length, `repeated: ${shown}`)
+    // a reload (Home tapped again) reads the cache too, but replaces it with what's new, no pill
+    await page.evaluate((c) => (localStorage.setItem('quilcast:feed:13:following', c), dispatchEvent(new Event('refresh'))), JSON.stringify(cached))
+    await page.waitForTimeout(500)
+    await page.waitForFunction(() => document.querySelector('#app article.cast')?.innerText.includes('following cast 1'), null, { timeout: 10e3 })
+    assert.equal(await pill.count(), 0)
     await close()
   })
 
