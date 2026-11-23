@@ -12,6 +12,7 @@ import { spamAccountOf, spamOf } from './spam.ts'
 import { swoosh } from './swoosh.ts'
 import { choochoo, runTrain } from './choochoo.ts'
 import { trainOk, trainSheet, trainTold } from './trainask.ts'
+import { holdTip, setHoldTip, tipOk, tipSheet, tipTold } from './tipask.ts'
 import { pinKey, pinnedCast, setPinnedCast, usePinnedCast } from './castpin.ts'
 import { noTranslate, offersTranslation, translatableFrom } from './lang.ts'
 import { bound, FIT, TAP_ZOOM, zoomAt, type Zoom } from './zoom.ts'
@@ -1211,6 +1212,15 @@ export function LinkSheet() {
   )
 }
 
+/** An ask sheet's keys: Escape cancels; Tab goes round its buttons and never into the page under it. */
+const askKeys = (close: (ok: boolean) => void) => (e: KeyboardEvent) => {
+  if (e.key === 'Escape') return e.stopPropagation(), close(false)
+  if (e.key !== 'Tab') return
+  e.preventDefault()
+  const b = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]
+  b[(b.indexOf(document.activeElement as HTMLButtonElement) + (e.shiftKey ? b.length - 1 : 1)) % b.length]?.focus()
+}
+
 /** How trains work, the first time someone joins one or switches on the composer's train toggle (trainask.ts):
  *  Continue goes on, Cancel (or Escape, or a tap outside) posts nothing. */
 export function TrainSheet() {
@@ -1230,16 +1240,8 @@ export function TrainSheet() {
     d?.(ok)
   }
   const join = q.kind === 'join'
-  // Escape cancels; Tab goes round its two buttons and never into the composer under it
-  const keys = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') return e.stopPropagation(), close(false)
-    if (e.key !== 'Tab') return
-    e.preventDefault()
-    const b = [...(e.currentTarget as HTMLElement).querySelectorAll('button')]
-    b[(b.indexOf(document.activeElement as HTMLButtonElement) + (e.shiftKey ? b.length - 1 : 1)) % b.length]?.focus()
-  }
   return (
-    <div class="modal" onClick={(e) => e.target === e.currentTarget && close(false)} onKeyDown={keys}>
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && close(false)} onKeyDown={askKeys(close)}>
       <div class="sheet wallet-form link-sheet" role="alertdialog" aria-modal="true" aria-labelledby="train-sheet-h" tabIndex={-1}>
         <h2 id="train-sheet-h">{join ? t('Join the train?') : t('Start a train?')}</h2>
         <p>{join ? t('Joining posts a quote of this cast, with the same text, from your account right away.') : t('Your cast gets a train button. Anyone who taps it posts a quote of your cast, with the same text, from their own account right away.')}</p>
@@ -1248,6 +1250,42 @@ export function TrainSheet() {
         <div class="link-actions">
           <button class="btn ghost" onClick={() => close(false)}>{t('Cancel')}</button>
           <button class="btn" ref={button} onClick={() => close(true)}>{t('Continue')}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** What holding Like does, the first time someone holds it long enough (tipask.ts): Tip sends the $1, Cancel (or Escape,
+ *  or a tap outside) sends nothing. Its switch is Settings → Wallets' one, saved as it's flipped; off, Tip can't go. */
+export function TipSheet() {
+  const [q, setQ] = useState<{ from: string; to: string; el: Element | null } | null>(null)
+  const [on, setOn] = useState(true)
+  const done = useRef<((ok: boolean) => void) | undefined>(undefined)
+  // it's money, so the focus starts on Cancel and Enter alone never tips
+  const cancel = useRef<HTMLButtonElement>(null)
+  // it opens under a finger still on Like; a pointer's click on Tip counts only after a press that began inside it
+  const armed = useRef(false)
+  tipSheet.ask = (o) => new Promise((d) => (done.current?.(false), (done.current = d), (armed.current = false), setOn(holdTip()), setQ({ ...o, el: document.activeElement })))
+  useEffect(() => void (q && cancel.current?.focus()), [q])
+  if (!q) return null
+  const close = (ok: boolean) => {
+    const d = done.current
+    done.current = undefined
+    setQ(null)
+    ;(q.el as HTMLElement | null)?.focus?.()
+    d?.(ok)
+  }
+  return (
+    <div class="modal" onClick={(e) => e.target === e.currentTarget && close(false)} onKeyDown={askKeys(close)} onPointerDown={() => (armed.current = true)}>
+      <div class="sheet wallet-form link-sheet" role="alertdialog" aria-modal="true" aria-labelledby="tip-sheet-h" tabIndex={-1}>
+        <h2 id="tip-sheet-h">{t('Tip @{name} $1?', { name: q.to })}</h2>
+        <p>{t("Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.", { wallet: q.from })}</p>
+        <div class="setting"><b>{t('Hold Like to tip')}</b><Seg opts={[[true, t('On')], [false, t('Off')]]} on={on} set={(v) => (setHoldTip(v), setOn(v))} /></div>
+        <p class="muted">{t('A tap still just likes. You can change this any time in Settings → Wallets.')}</p>
+        <div class="link-actions">
+          <button class="btn ghost" ref={cancel} onClick={() => close(false)}>{t('Cancel')}</button>
+          <button class="btn" disabled={!on} onClick={(e) => (!e.detail || armed.current) && close(true)}>{t('Tip $1')}</button>
         </div>
       </div>
     </div>
@@ -1458,27 +1496,48 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
     redraw((x) => x + 1)
     w().then((m) => m.react(type, on, c)).catch((e) => (before ? taps.set(k, before) : taps.delete(k), redraw((x) => x + 1), toast(e.message)))
   }
-  // holding Like for HOLD ms tips the author $1 (walletmove.tsx tip) and likes the cast; `charge` draws it (style.css
-  // .act.lk.hold/.tip) as state, since Preact rewrites the button's class when `liked` flips
+  // holding Like for HOLD ms tips the author $1 (walletmove.tsx tip) and likes the cast, unless Settings turned that off
+  // (tipask.ts); the first time, TipSheet explains it and nothing goes out unless they tap Tip. `charge` draws it
+  // (style.css .act.lk.hold/.tip) as state, since Preact rewrites the button's class when `liked` flips
   const [charge, setCharge] = useState<'' | ' hold' | ' tip'>('')
-  const timer = useRef(0), fired = useRef(false), sound = useRef<ReturnType<typeof swoosh> | undefined>(undefined)
+  const timer = useRef(0), fired = useRef(false), down = useRef(false), sound = useRef<ReturnType<typeof swoosh> | undefined>(undefined)
   const press = (e: PointerEvent) => {
     fired.current = false
-    if (e.button || !account?.done || account.fid === c.author.fid) return
+    if (e.button || !account?.done || account.fid === c.author.fid || !holdTip()) return
     setCharge(' hold')
+    // whether the pointer is still down anywhere (the sheet may have opened over the button)
+    down.current = true
+    const up = () => ((down.current = false), removeEventListener('pointerup', up), removeEventListener('pointercancel', up))
+    addEventListener('pointerup', up)
+    addEventListener('pointercancel', up)
     timer.current = window.setTimeout(() => {
       sound.current = swoosh(HOLD - SOUND)
       timer.current = window.setTimeout(fire, HOLD - SOUND)
     }, SOUND)
     const fire = () => {
+      // the release after a hold is never a tap, whatever the sheet says
       fired.current = true
-      sound.current?.done()
+      const s = sound.current
       sound.current = undefined
-      setCharge(' tip')
-      navigator.vibrate?.(30)
-      if (!liked) toggle(1, true, c.reactions.likes_count)
       const name = c.author.username || String(c.author.fid)
-      wm().then((m) => m.tip(c.author)).then(() => shell.toast(t('Tipped @{name} $1', { name })), (e) => toast(e.message))
+      const send = () => {
+        setCharge(' tip')
+        navigator.vibrate?.(30)
+        if (!liked) toggle(1, true, c.reactions.likes_count)
+        wm().then((m) => m.tip(c.author)).then(() => shell.toast(t('Tipped @{name} $1', { name })), (e) => toast(e.message))
+      }
+      if (tipTold() && holdTip()) return s?.done(), send()
+      s?.stop()
+      setCharge('')
+      // asked only when a tip could go out (an address to tip, a wallet to pay from); else it likes, as a told hold would,
+      // and toasts what's missing. Once answered with the pointer up, the hold is over: Enter on the refocused button is a
+      // tap again; while it's still down, its release's click is the hold's and clears `fired` itself
+      const over = () => void (down.current || (fired.current = false))
+      wm().then((m) => tipOk({ from: m.tipFrom(c.author), to: name })).then((ok) => (over(), ok && send()), (e) => {
+        over()
+        if (!liked) toggle(1, true, c.reactions.likes_count)
+        toast(e.message)
+      })
     }
   }
   // let go (or scrolled away) early: just a tap
@@ -1528,7 +1587,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
   const sending = posting.get(c.hash) === c
   const ch = channelOf(c.parent_url)
   const parentUser = c.parent_author?.fid ? users.get(c.parent_author.fid) : undefined
-  const like = <button class={`act lk${liked ? ' on' : ''}${charge}`} aria-label={t('Like')} title={t('Like (hold to tip $1)')} onPointerDown={press} onPointerUp={release} onPointerLeave={release} onPointerCancel={release} onContextMenu={(e) => e.preventDefault()} onClick={() => (fired.current ? (fired.current = false) : toggle(1, !liked, c.reactions.likes_count))}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
+  const like = <button class={`act lk${liked ? ' on' : ''}${charge}`} aria-label={t('Like')} title={account?.done && account.fid !== c.author.fid && holdTip() ? t('Like (hold to tip $1)') : t('Like')} onPointerDown={press} onPointerUp={release} onPointerLeave={release} onPointerCancel={release} onContextMenu={(e) => e.preventDefault()} onClick={() => (fired.current ? (fired.current = false) : toggle(1, !liked, c.reactions.likes_count))}><Icon d={P.like} fill={liked} /><span>{likes ? n(likes) : ''}</span></button>
   const actions = (
     <footer onClick={stop}>
       {/* Quorum mode's order is Like, Reply, Recast */}

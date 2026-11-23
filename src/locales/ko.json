@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "토큰 컨트랙트 주소를 붙여 넣으세요.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast는 Base, Ethereum, Optimism, Arbitrum, Polygon의 토큰만 표시합니다.",
   "That contract isn't an ERC-20 token.": "이 컨트랙트는 ERC-20 토큰이 아닙니다.",
-  "Token contract address": "토큰 컨트랙트 주소"
+  "Token contract address": "토큰 컨트랙트 주소",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "탭은 여전히 좋아요만 해요. 설정 → 지갑에서 언제든 바꿀 수 있어요.",
+  "Hold Like to tip": "좋아요 길게 눌러 팁 보내기",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "다른 사람의 캐스트에서 좋아요를 2초 동안 길게 누르면 내 지갑에서 Base의 USDC로 작성자에게 $1 팁을 보내요. 끄면 길게 눌러도 탭과 같아요.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "다른 사람의 캐스트에서 좋아요를 길게 누르면 작성자에게 $1 팁을 보내요. {wallet}에서 Base의 1 USDC가 상대 지갑으로 바로 가요. Sendclap 수수료는 1%이고, 가스비로 Base의 ETH가 조금 들어요.",
+  "Tip $1": "$1 팁 보내기",
+  "Tip @{name} $1?": "@{name}님에게 $1 팁을 보낼까요?"
 }

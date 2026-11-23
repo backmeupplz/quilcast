@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Вставте адресу контракту токена.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast показує токени лише в Base, Ethereum, Optimism, Arbitrum і Polygon.",
   "That contract isn't an ERC-20 token.": "Цей контракт не є токеном ERC-20.",
-  "Token contract address": "Адреса контракту токена"
+  "Token contract address": "Адреса контракту токена",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Звичайне натискання й далі просто ставить вподобання. Це можна змінити будь-коли в Налаштуваннях → Гаманці.",
+  "Hold Like to tip": "Чайові утриманням вподобання",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Якщо утримувати вподобання на чужому касті дві секунди, автор отримає $1 чайових у USDC у мережі Base з вашого гаманця. Якщо вимкнено, утримання працює як звичайне натискання.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Якщо утримувати вподобання на чужому касті, автор отримає $1 чайових: 1 USDC у мережі Base з {wallet}, прямо на свій гаманець. Sendclap бере 1%, а газ коштує трохи ETH у мережі Base.",
+  "Tip $1": "Дати $1 чайових",
+  "Tip @{name} $1?": "$1 чайових @{name}?"
 }

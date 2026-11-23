@@ -101,9 +101,15 @@ function track(d: Done & { from: string; label: string }): Pending {
   return p
 }
 
+/** The name of the wallet a tip to `u` would pay from (payer), for TipSheet; throws what tip would when it can't go. */
+export function tipFrom(u: User) {
+  if (!tipAddress(u)) throw new Error(t('@{name} has no address to tip.', { name: u.username || u.fid }))
+  return paying().name
+}
+
 /** A long-pressed like (ui.tsx CastCard): a $1 tip through Sendclap (see support). */
 export async function tip(u: User) {
-  if (!tipAddress(u)) throw new Error(t('@{name} has no address to tip.', { name: u.username || u.fid }))
+  tipFrom(u)
   return support(u, { type: 'tip', amount: 1 }, t('Tip @{name} $1', { name: u.username || u.fid }))
 }
 
@@ -111,13 +117,17 @@ const SENDCLAP_ABI = parseAbi(['function pay(address creator, uint256 amount, by
 
 /** Base transactions from the active Quilcast wallet, or else from the wallet the account signed in with (MetaMask,
  *  Rabby, WalletConnect…), which asks to confirm each. */
-async function payer() {
+const paying = () => {
   const w = activeWallet(), from = (w?.address || account?.wallet) as `0x${string}` | undefined
   if (!from) throw new Error(t('Add a wallet in Settings → Wallets to tip.'))
+  return { w, from, name: w?.name || short(from) }
+}
+async function payer() {
+  const { w, from, name } = paying()
   // the import on its own line: a failed send inside import(…).then() would count as a chunk that didn't load (ui.tsx wm)
   const connected = w ? undefined : await import('./wallet.ts')
   const go = async (to: string, data: string) => (connected ? connected.sendTx(from, to, data, 0n, 8453, () => askUser.pair(from)) : send(w!, 8453, { to, data })) as Promise<`0x${string}`>
-  return { from, name: w?.name || short(from), go }
+  return { from, name, go }
 }
 
 /** Tips or joins `u` through Sendclap: its contract moves USDC on Base straight to their wallet (1% to Sendclap) and

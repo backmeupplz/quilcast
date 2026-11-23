@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Dán địa chỉ hợp đồng của token.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast chỉ hiển thị token trên Base, Ethereum, Optimism, Arbitrum và Polygon.",
   "That contract isn't an ERC-20 token.": "Hợp đồng đó không phải là token ERC-20.",
-  "Token contract address": "Địa chỉ hợp đồng token"
+  "Token contract address": "Địa chỉ hợp đồng token",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Chạm vẫn chỉ là thích. Bạn có thể đổi điều này bất cứ lúc nào trong Cài đặt → Ví.",
+  "Hold Like to tip": "Giữ Thích để tip",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Giữ Thích hai giây trên cast của người khác sẽ tip cho tác giả $1 bằng USDC trên Base từ ví của bạn. Khi tắt, giữ Thích giống như chạm.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Giữ Thích trên cast của người khác sẽ tip cho tác giả $1: 1 USDC trên Base từ {wallet}, thẳng vào ví của họ. Sendclap giữ lại 1%, và phí gas là một chút ETH trên Base.",
+  "Tip $1": "Tip $1",
+  "Tip @{name} $1?": "Tip $1 cho @{name}?"
 }

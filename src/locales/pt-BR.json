@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Cole o endereço do contrato do token.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "O Quilcast mostra tokens apenas em Base, Ethereum, Optimism, Arbitrum e Polygon.",
   "That contract isn't an ERC-20 token.": "Esse contrato não é um token ERC-20.",
-  "Token contract address": "Endereço do contrato do token"
+  "Token contract address": "Endereço do contrato do token",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Um toque continua sendo só uma curtida. Você pode mudar isso quando quiser em Configurações → Carteiras.",
+  "Hold Like to tip": "Segurar Curtir para dar gorjeta",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Segurar Curtir por dois segundos no cast de outra pessoa dá ao autor uma gorjeta de US$ 1 em USDC na Base, saindo da sua carteira. Desativado, segurar funciona como um toque.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Segurar Curtir no cast de outra pessoa dá ao autor uma gorjeta de US$ 1: 1 USDC na Base saindo de {wallet}, direto para a carteira dele. A Sendclap fica com 1%, e o gás custa um pouco de ETH na Base.",
+  "Tip $1": "Dar US$ 1",
+  "Tip @{name} $1?": "Gorjeta de US$ 1 para @{name}?"
 }

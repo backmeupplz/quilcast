@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Pega la dirección del contrato del token.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast solo muestra tokens en Base, Ethereum, Optimism, Arbitrum y Polygon.",
   "That contract isn't an ERC-20 token.": "Ese contrato no es un token ERC-20.",
-  "Token contract address": "Dirección del contrato del token"
+  "Token contract address": "Dirección del contrato del token",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Un toque sigue siendo solo un me gusta. Puedes cambiarlo cuando quieras en Ajustes → Billeteras.",
+  "Hold Like to tip": "Mantener Me gusta para dar propina",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Mantener pulsado Me gusta durante dos segundos en el cast de otra persona le da a su autor $1 de propina en USDC en Base desde tu billetera. Desactivado, mantener pulsado funciona como un toque.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Mantener pulsado Me gusta en el cast de otra persona le da a su autor $1 de propina: 1 USDC en Base desde {wallet}, directo a su billetera. Sendclap se queda con el 1 % y el gas cuesta un poco de ETH en Base.",
+  "Tip $1": "Dar $1 de propina",
+  "Tip @{name} $1?": "¿Propina de $1 a @{name}?"
 }

@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Wklej adres kontraktu tokena.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast pokazuje tylko tokeny w sieciach Base, Ethereum, Optimism, Arbitrum i Polygon.",
   "That contract isn't an ERC-20 token.": "Ten kontrakt nie jest tokenem ERC-20.",
-  "Token contract address": "Adres kontraktu tokena"
+  "Token contract address": "Adres kontraktu tokena",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Dotknięcie nadal tylko polubia. Możesz to zmienić w każdej chwili w Ustawieniach → Portfele.",
+  "Hold Like to tip": "Przytrzymaj Polub, by dać napiwek",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Przytrzymanie Polub przez dwie sekundy pod czyimś castem daje jego autorowi 1 $ napiwku w USDC w sieci Base z twojego portfela. Gdy to wyłączone, przytrzymanie działa jak dotknięcie.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Przytrzymanie Polub pod czyimś castem daje jego autorowi 1 $ napiwku: 1 USDC w sieci Base z {wallet}, prosto do jego portfela. Sendclap zatrzymuje 1%, a gas kosztuje trochę ETH w sieci Base.",
+  "Tip $1": "Daj 1 $ napiwku",
+  "Tip @{name} $1?": "Napiwek 1 $ dla @{name}?"
 }

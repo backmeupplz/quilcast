@@ -7,7 +7,7 @@ import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
 import { castText, imagesIn, n, newOnTop, unmarkdown, peekOf, quotedOf, quotesOf as quotedHashes, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
-import { ago, AppIcon, Avatar, dropAppAction, syncAppActions, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn, Seg, useOn, useRerenderOn } from './ui.tsx'
+import { ago, AppIcon, Avatar, dropAppAction, syncAppActions, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TipSheet, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn, Seg, useOn, useRerenderOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
 import { lang, LANGS, loadLang, t, tn } from './i18n.ts'
@@ -27,6 +27,7 @@ import { asOf, browsePath, recentsOf, remember, repliesFit } from './browse.ts'
 import { useHost } from './host.ts'
 import { SupportTab } from './support.tsx'
 import { allSpots, entry, holding, keepSpot, keepState, navigated, placeKept, showing, spotOf, start, stateOf, takeList } from './restore.ts'
+import { holdTip, setHoldTip } from './tipask.ts'
 
 // views most visits never open load when first needed
 const lazy = <P extends object>(load: () => Promise<(p: P) => any>) => (p: P) => {
@@ -2319,6 +2320,8 @@ function Settings() {
           <section id="wallets">
             <h2>{t('Wallets')}</h2>
             <WalletSettings />
+            <div class="setting"><h2>{t('Hold Like to tip')}</h2><Seg opts={onOff} on={holdTip()} set={(v) => (setHoldTip(v), force((x) => x + 1))} /></div>
+            <p class="hint">{t("Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.")}</p>
           </section>
         )}
         {account?.done && (
@@ -2806,6 +2809,7 @@ function App() {
       <ReportSheet />
       <LinkSheet />
       <TrainSheet />
+      <TipSheet />
       <Toast />
     </div>
     </>

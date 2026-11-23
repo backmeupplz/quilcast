@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Cole o endereço do contrato do token.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "O Quilcast só mostra tokens em Base, Ethereum, Optimism, Arbitrum e Polygon.",
   "That contract isn't an ERC-20 token.": "Esse contrato não é um token ERC-20.",
-  "Token contract address": "Endereço do contrato do token"
+  "Token contract address": "Endereço do contrato do token",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Um toque continua a ser só um gosto. Pode alterar isto quando quiser em Definições → Carteiras.",
+  "Hold Like to tip": "Manter Gosto premido para dar gorjeta",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Manter Gosto premido durante dois segundos no cast de outra pessoa dá ao autor uma gorjeta de 1 US$ em USDC na Base, a partir da sua carteira. Desativado, manter premido funciona como um toque.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Manter Gosto premido no cast de outra pessoa dá ao autor uma gorjeta de 1 US$: 1 USDC na Base a partir de {wallet}, diretamente para a carteira dele. A Sendclap fica com 1%, e o gás custa um pouco de ETH na Base.",
+  "Tip $1": "Dar 1 US$",
+  "Tip @{name} $1?": "Gorjeta de 1 US$ para @{name}?"
 }

@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "粘贴代币合约地址。",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast 仅显示 Base、Ethereum、Optimism、Arbitrum 和 Polygon 上的代币。",
   "That contract isn't an ERC-20 token.": "该合约不是 ERC-20 代币。",
-  "Token contract address": "代币合约地址"
+  "Token contract address": "代币合约地址",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "轻点仍然只是点赞。你可以随时在设置 → 钱包中更改。",
+  "Hold Like to tip": "长按点赞打赏",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "在别人的 cast 上长按点赞两秒，会从你的钱包用 Base 上的 USDC 打赏作者 $1。关闭后，长按和轻点一样。",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "在别人的 cast 上长按点赞会打赏作者 $1：从 {wallet} 发出 Base 上的 1 USDC，直接进入对方钱包。Sendclap 收取 1%，gas 费为少量 Base 上的 ETH。",
+  "Tip $1": "打赏 $1",
+  "Tip @{name} $1?": "打赏 @{name} $1？"
 }

@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Token sözleşme adresini yapıştır.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast yalnızca Base, Ethereum, Optimism, Arbitrum ve Polygon üzerindeki tokenları gösterir.",
   "That contract isn't an ERC-20 token.": "Bu sözleşme bir ERC-20 token değil.",
-  "Token contract address": "Token sözleşme adresi"
+  "Token contract address": "Token sözleşme adresi",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Dokunmak yine sadece beğenir. Bunu istediğin zaman Ayarlar → Cüzdanlar'dan değiştirebilirsin.",
+  "Hold Like to tip": "Bahşiş için Beğen'i basılı tut",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Başkasının cast'inde Beğen'i iki saniye basılı tutmak, yazarına cüzdanından Base üzerinde USDC ile 1 $ bahşiş gönderir. Kapalıyken basılı tutmak dokunmakla aynıdır.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Başkasının cast'inde Beğen'i basılı tutmak, yazarına 1 $ bahşiş gönderir: {wallet} cüzdanından Base üzerinde 1 USDC, doğrudan onun cüzdanına. Sendclap %1 alır, gas ise Base üzerinde biraz ETH tutar.",
+  "Tip $1": "1 $ bahşiş ver",
+  "Tip @{name} $1?": "@{name} için 1 $ bahşiş?"
 }

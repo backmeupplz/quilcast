@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Tempel alamat kontrak token.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast hanya menampilkan token di Base, Ethereum, Optimism, Arbitrum, dan Polygon.",
   "That contract isn't an ERC-20 token.": "Kontrak itu bukan token ERC-20.",
-  "Token contract address": "Alamat kontrak token"
+  "Token contract address": "Alamat kontrak token",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Ketukan tetap hanya menyukai. Anda bisa mengubahnya kapan saja di Pengaturan → Dompet.",
+  "Hold Like to tip": "Tahan Suka untuk memberi tip",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Menahan Suka selama dua detik pada cast orang lain memberi penulisnya tip $1 dalam USDC di Base dari dompet Anda. Jika nonaktif, menahan Suka sama seperti mengetuk.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Menahan Suka pada cast orang lain memberi penulisnya tip $1: 1 USDC di Base dari {wallet}, langsung ke dompet mereka. Sendclap mengambil 1%, dan biaya gas berupa sedikit ETH di Base.",
+  "Tip $1": "Beri tip $1",
+  "Tip @{name} $1?": "Tip $1 ke @{name}?"
 }

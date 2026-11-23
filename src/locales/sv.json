@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Klistra in tokenens kontraktsadress.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast visar bara tokens på Base, Ethereum, Optimism, Arbitrum och Polygon.",
   "That contract isn't an ERC-20 token.": "Det kontraktet är ingen ERC-20-token.",
-  "Token contract address": "Tokenens kontraktsadress"
+  "Token contract address": "Tokenens kontraktsadress",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Ett tryck gillar fortfarande bara. Du kan ändra det när som helst under Inställningar → Plånböcker.",
+  "Hold Like to tip": "Håll in Gilla för att ge dricks",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Håller du in Gilla i två sekunder på någon annans cast får skaparen 1 $ i dricks i USDC på Base från din plånbok. Avstängt fungerar ett långt tryck som ett vanligt tryck.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Håller du in Gilla på någon annans cast får skaparen 1 $ i dricks: 1 USDC på Base från {wallet}, direkt till deras plånbok. Sendclap behåller 1 %, och gas kostar lite ETH på Base.",
+  "Tip $1": "Ge 1 $ i dricks",
+  "Tip @{name} $1?": "1 $ i dricks till @{name}?"
 }

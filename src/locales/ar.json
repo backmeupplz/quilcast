@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "الصق عنوان عقد الرمز المميز.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "يعرض Quilcast الرموز المميزة على Base وEthereum وOptimism وArbitrum وPolygon فقط.",
   "That contract isn't an ERC-20 token.": "هذا العقد ليس رمزًا مميزًا من نوع ERC-20.",
-  "Token contract address": "عنوان عقد الرمز المميز"
+  "Token contract address": "عنوان عقد الرمز المميز",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "النقرة لا تزال إعجابًا فقط. يمكنك تغيير هذا في أي وقت من الإعدادات ← المحافظ.",
+  "Hold Like to tip": "اضغط مطولًا على الإعجاب لإرسال إكرامية",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "الضغط مطولًا على الإعجاب في منشور شخص آخر لثانيتين يرسل إلى كاتبه إكرامية 1$ بعملة USDC على Base من محفظتك. عند الإيقاف، يعمل الضغط المطول مثل النقرة.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "الضغط مطولًا على الإعجاب في منشور شخص آخر يرسل إلى كاتبه إكرامية 1$: ‏1 USDC على Base من {wallet}، مباشرة إلى محفظته. تحتفظ Sendclap بنسبة 1%، ورسوم الغاز قليل من ETH على Base.",
+  "Tip $1": "إرسال إكرامية 1$",
+  "Tip @{name} $1?": "إكرامية 1$ إلى @{name}؟"
 }

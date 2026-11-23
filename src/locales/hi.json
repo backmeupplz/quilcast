@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "टोकन का कॉन्ट्रैक्ट पता पेस्ट करें।",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast सिर्फ़ Base, Ethereum, Optimism, Arbitrum और Polygon पर टोकन दिखाता है।",
   "That contract isn't an ERC-20 token.": "यह कॉन्ट्रैक्ट ERC-20 टोकन नहीं है।",
-  "Token contract address": "टोकन कॉन्ट्रैक्ट पता"
+  "Token contract address": "टोकन कॉन्ट्रैक्ट पता",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "एक टैप अब भी बस लाइक करता है। आप इसे कभी भी सेटिंग्स → वॉलेट में बदल सकते हैं।",
+  "Hold Like to tip": "टिप के लिए लाइक दबाकर रखें",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "किसी और के कास्ट पर लाइक को दो सेकंड दबाकर रखने से उसके लेखक को आपके वॉलेट से Base पर USDC में $1 टिप जाती है। बंद होने पर, दबाकर रखना एक टैप की तरह काम करता है।",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "किसी और के कास्ट पर लाइक दबाकर रखने से उसके लेखक को $1 टिप जाती है: {wallet} से Base पर 1 USDC, सीधे उनके वॉलेट में। Sendclap 1% रखता है, और गैस में Base पर थोड़ा ETH लगता है।",
+  "Tip $1": "$1 टिप दें",
+  "Tip @{name} $1?": "@{name} को $1 टिप दें?"
 }

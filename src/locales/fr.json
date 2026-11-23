@@ -1438,5 +1438,11 @@
   "Paste a token contract address.": "Collez l’adresse du contrat du jeton.",
   "Quilcast lists tokens on Base, Ethereum, Optimism, Arbitrum and Polygon only.": "Quilcast n’affiche que les jetons sur Base, Ethereum, Optimism, Arbitrum et Polygon.",
   "That contract isn't an ERC-20 token.": "Ce contrat n’est pas un jeton ERC-20.",
-  "Token contract address": "Adresse du contrat du jeton"
+  "Token contract address": "Adresse du contrat du jeton",
+  "A tap still just likes. You can change this any time in Settings → Wallets.": "Un simple appui reste un J’aime. Vous pouvez changer cela à tout moment dans Paramètres → Portefeuilles.",
+  "Hold Like to tip": "Maintenir J’aime pour un pourboire",
+  "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Maintenir J’aime deux secondes sur le cast de quelqu’un d’autre donne à son auteur un pourboire de 1 $ en USDC sur Base depuis votre portefeuille. Désactivé, maintenir J’aime revient à un simple appui.",
+  "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Maintenir J’aime sur le cast de quelqu’un d’autre donne à son auteur un pourboire de 1 $ : 1 USDC sur Base depuis {wallet}, directement dans son portefeuille. Sendclap garde 1 %, et le gas coûte un peu d’ETH sur Base.",
+  "Tip $1": "Donner 1 $",
+  "Tip @{name} $1?": "Pourboire de 1 $ à @{name} ?"
 }
