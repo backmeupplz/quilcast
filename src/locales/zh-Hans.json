@@ -835,7 +835,7 @@
   "That's not this account's recovery phrase.": "这不是这个账号的助记词。",
   "This needs the account's recovery phrase.": "这需要账号的助记词。",
   "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "你的助记词没有保存在此浏览器中。当账号本身需要签名时（比如为此浏览器添加密钥或登录小程序），Quilcast 会向你索要它。",
-  "A word, $ticker or #tag": "词语、$代币或 #标签",
+  "A word, $ticker, #tag or site.com": "词语、$代币、#标签或 site.com",
   "Block @{name}": "屏蔽 @{name}",
   "Block @{name} for…": "屏蔽 @{name} 多久…",
   "Blocked": "已屏蔽",

@@ -280,6 +280,17 @@ pub fn shown_text(c: &Cast) -> String {
     text::cast_text(&c.text, &names)
 }
 
+/// What muted words look at in a cast (src/shared.ts mutedText): its text, the sites its link embeds point at (not a
+/// picture's or video's, whose address is a CDN's), and the same of the quoted casts given.
+pub fn muted_text(c: &Cast, quoted: &[&Cast]) -> String {
+    let mut out = Vec::new();
+    for x in std::iter::once(c).chain(quoted.iter().copied()) {
+        out.push(shown_text(x));
+        out.extend(x.embeds.iter().filter_map(|e| e.url.as_deref()).filter(|u| !text::is_img(u) && !text::is_vid(u)).map(text::host));
+    }
+    out.join("\n")
+}
+
 fn cast_card(app: &App, c: &Cast, big: bool) -> El {
     let hash = c.bare_hash();
     let now = host::ms();
@@ -1046,7 +1057,7 @@ fn words_pane(app: &App) -> V {
         a.mute_word(&w, true, span);
         a.word_text.clear();
     })
-    .kid(el("input").attr("type", "search").attr("aria-label", "A word to mute").attr("placeholder", "A word or phrase").attr("maxlength", "60").attr("value", app.word_text.clone()).on(Ev::Input, |a, v| a.word_text = v.to_string()))
+    .kid(el("input").attr("type", "search").attr("aria-label", "A word to mute").attr("placeholder", "A word, phrase or site.com").attr("maxlength", "60").attr("value", app.word_text.clone()).on(Ev::Input, |a, v| a.word_text = v.to_string()))
     .kid(el("button").attr("type", "submit").class("btn").txt("Mute"));
     let mut p = el("div").class("pane").kid(el("h2").txt("Muted words")).kid(el("p").class("muted small").txt("Casts with these words in them are hidden, whole words only and in any case.")).kid(form).kid(span);
     let mut list = el("div").class("chips");

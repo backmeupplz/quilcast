@@ -10,6 +10,8 @@ import { loadMutes } from './mutes.mjs'
 
 // a fake node (its notifications for each fid, and usernames) and spam service
 let notes = {}
+// casts the node has, by bare hash (quoted casts)
+const casts = {}
 const spam = { casts: {}, users: {} }
 const asked = []
 let gate = null
@@ -21,6 +23,7 @@ const srv = createServer(async (q, r) => {
     if (gate) await gate
     return r.end(JSON.stringify({ notifications: notes[u.searchParams.get('fid')] || [] }))
   }
+  if (u.pathname === '/v2/farcaster/casts') return r.end(JSON.stringify({ casts: u.searchParams.get('casts').split(',').flatMap((h) => casts[h] || []) }))
   if (u.pathname === '/v2/farcaster/user/bulk') return r.end(JSON.stringify({ users: [{ fid: Number(u.searchParams.get('fids')), username: `name${u.searchParams.get('fids')}` }] }))
   if (u.pathname.startsWith('/spam/') && spamDown) return (r.statusCode = 503), r.end('{}')
   if (u.pathname === '/spam/scores') return asked.push('casts'), r.end(JSON.stringify(spam.casts))
@@ -98,6 +101,29 @@ test('mutes, blocks, muted words, the account itself and old news stay out', asy
   assert.deepEqual(Object.keys(_db().fids[7].seen).map((id) => id.split(':').at(-1)).sort(), ['24', '25'])
   // and what stayed out still stays out the next time
   assert.deepEqual(await run(7), [])
+  await writeFile(join(dir, 'mutes', '7.json'), '{}')
+})
+
+test("muted words hide a cast that links a muted site or quotes a cast with one, but not one quoting the account's own", async () => {
+  _db({ fids: { 7: fresh([sub('https://push.example/a')], 0) } })
+  await writeFile(join(dir, 'mutes', '7.json'), JSON.stringify({ words: [{ v: 'spam.site' }, { v: 'bees' }] }))
+  const q = (fid, hash, embeds, type = 'reply') => ({ type, cast: { hash, text: 'look', embeds, author: { fid } }, user: user(fid), timestamp: at(1) })
+  casts['d1'.repeat(20)] = { hash: '0x' + 'd1'.repeat(20), text: 'all about bees', author: { fid: 60 } }
+  // the node has the account's own cast about bees too: its quote is news all the same
+  casts[mine.hash] = { ...mine, hash: '0x' + mine.hash }
+  casts['d2'.repeat(20)] = { hash: '0x' + 'd2'.repeat(20), text: 'fine', embeds: [{ url: 'https://www.spam.site/x' }], author: { fid: 61 } }
+  notes[7] = [
+    q(50, 'e1'.repeat(20), [{ url: 'https://spam.site/win?ref=1' }]),
+    q(51, 'e2'.repeat(20), [{ cast_id: { fid: 60, hash: '0x' + 'd1'.repeat(20) } }]),
+    q(52, 'e3'.repeat(20), [{ cast_id: { fid: 61, hash: 'd2'.repeat(20) } }]),
+    // the account's own cast about bees, quoted: still news
+    q(53, 'e4'.repeat(20), [{ cast_id: { fid: 7, hash: mine.hash } }], 'quote'),
+    // a native FID comes as a string
+    q(55, 'e6'.repeat(20), [{ cast_id: { fid: '7', hash: mine.hash } }], 'quote'),
+    // a picture's address isn't a site the cast links; nor is a quote the node can't find
+    q(54, 'e5'.repeat(20), [{ url: 'https://spam.site/pic.png' }, { cast_id: { fid: 62, hash: 'd3'.repeat(20) } }]),
+  ]
+  assert.deepEqual(titles(await run(7)), ['User 53 quoted your cast', 'User 55 quoted your cast', 'User 54 replied'])
   await writeFile(join(dir, 'mutes', '7.json'), '{}')
 })
 

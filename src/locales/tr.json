@@ -8,7 +8,7 @@
   "A picture is too big for Quorum.": "Resimlerden biri Quorum için çok büyük.",
   "A small, open Farcaster client that reads from and posts to Quilibrium's Hypersnap network, with your keys kept in your browser.": "Quilibrium'un Hypersnap ağından okuyan ve oraya gönderi paylaşan, anahtarlarını tarayıcında tutan küçük ve açık bir Farcaster istemcisi.",
   "A theme changes the whole app for you: colors, a background, corners, fonts, effects and stickers. Quorum themes import here, and \"Copy for Quorum\" makes one Quorum can import.": "Tema, uygulamanın tamamını senin için değiştirir: renkler, arka plan, köşeler, yazı tipleri, efektler ve çıkartmalar. Quorum temaları buraya aktarılabilir; \"Quorum için kopyala\" da Quorum'un içe aktarabileceği bir tema oluşturur.",
-  "A word, $ticker or #tag": "Bir kelime, $ticker veya #etiket",
+  "A word, $ticker, #tag or site.com": "Bir kelime, $ticker, #etiket veya site.com",
   "About Quilcast": "Quilcast hakkında",
   "About me": "Hakkımda",
   "About this skin": "Bu kaplama hakkında",

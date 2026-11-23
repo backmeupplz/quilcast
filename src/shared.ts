@@ -127,6 +127,23 @@ export function castText(c: Mentioned, ended = false) {
   return out
 }
 
+const hostOf = (u: string) => {
+  try {
+    return new URL(u).hostname
+  } catch {
+    return ''
+  }
+}
+
+type Embedded = Mentioned & { embeds?: { url?: string; cast_id?: { fid?: number; hash?: string } }[] }
+/** The casts `c` quotes that someone other than `me` wrote (a quote of your own cast never hides it), bare and lowercase.
+ *  A native FID can come as a string (the server reads the node's JSON as is). */
+export const quotesOf = (c: Embedded, me?: number) =>
+  (c.embeds || []).flatMap((e) => (/^(0x)?[0-9a-f]{40}$/i.test(e?.cast_id?.hash || '') && Number(e.cast_id!.fid) !== me ? [e.cast_id!.hash!.replace(/^0x/i, '').toLowerCase()] : []))
+/** What muted words look at in a cast (#832): its text, the sites its link embeds point at (not a picture's or video's,
+ *  whose address is a CDN's), and the same of the casts it quotes that are given. */
+export const mutedText = (c: Embedded, quoted: Embedded[] = []) =>
+  [c, ...quoted].flatMap((x) => [castText(x), ...(x.embeds || []).flatMap((e) => (e?.url && !isImg(e.url) && !isVid(e.url) ? [hostOf(e.url)] : []))]).join('\n')
 /** The `shown` set (oncePerFeed) a feed's load for key `k` uses, taken when the load starts. A first page starts a
  *  new one for `k`; a later page keeps it, or gets a throwaway one when the feed has moved to another key since, so
  *  a slow load for the key before never resets or fills the current key's set. */

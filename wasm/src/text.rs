@@ -65,6 +65,12 @@ pub fn is_vid(u: &str) -> bool {
     [".m3u8", ".mp4", ".webm", ".mov"].iter().any(|e| path.ends_with(e))
 }
 
+/// A link's site: "https://me@www.spam.site:8080/x" is "www.spam.site" (muted words look at it, view::muted_text).
+pub fn host(u: &str) -> String {
+    let auth = u.split_once("://").map_or("", |(_, r)| r).split(['/', '?', '#']).next().unwrap_or("");
+    auth.rsplit_once('@').map_or(auth, |(_, h)| h).split(':').next().unwrap_or("").to_ascii_lowercase()
+}
+
 /// Farcaster's image CDN resizes on request, so nothing needs the full original.
 pub fn sized(u: &str, variant: &str) -> String {
     if u.starts_with("https://imagedelivery.net/") && u.ends_with("/original") && u.matches('/').count() == 5 {

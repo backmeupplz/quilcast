@@ -8,7 +8,7 @@
   "A picture is too big for Quorum.": "إحدى الصور كبيرة جدًا على Quorum.",
   "A small, open Farcaster client that reads from and posts to Quilibrium's Hypersnap network, with your keys kept in your browser.": "عميل Farcaster صغير ومفتوح يقرأ من شبكة Hypersnap التابعة لـ Quilibrium وينشر عليها، ومفاتيحك محفوظة في متصفحك.",
   "A theme changes the whole app for you: colors, a background, corners, fonts, effects and stickers. Quorum themes import here, and \"Copy for Quorum\" makes one Quorum can import.": "السمة تغيّر التطبيق كله لك: الألوان والخلفية والزوايا والخطوط والتأثيرات والملصقات. يمكن استيراد سمات Quorum هنا، و«نسخ لـ Quorum» ينشئ سمة يستطيع Quorum استيرادها.",
-  "A word, $ticker or #tag": "كلمة أو $ticker أو #وسم",
+  "A word, $ticker, #tag or site.com": "كلمة أو $ticker أو #وسم أو site.com",
   "About Quilcast": "حول Quilcast",
   "About me": "نبذة عني",
   "About this skin": "حول هذه الواجهة",

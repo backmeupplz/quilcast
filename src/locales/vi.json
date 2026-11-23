@@ -8,7 +8,7 @@
   "A picture is too big for Quorum.": "Có ảnh quá lớn với Quorum.",
   "A small, open Farcaster client that reads from and posts to Quilibrium's Hypersnap network, with your keys kept in your browser.": "Một ứng dụng Farcaster nhỏ gọn, mã nguồn mở, đọc và đăng lên mạng Hypersnap của Quilibrium, với khóa của bạn được giữ trong trình duyệt.",
   "A theme changes the whole app for you: colors, a background, corners, fonts, effects and stickers. Quorum themes import here, and \"Copy for Quorum\" makes one Quorum can import.": "Chủ đề thay đổi toàn bộ ứng dụng cho riêng bạn: màu sắc, hình nền, góc bo, phông chữ, hiệu ứng và nhãn dán. Có thể nhập chủ đề Quorum tại đây, còn \"Sao chép cho Quorum\" tạo một chủ đề mà Quorum nhập được.",
-  "A word, $ticker or #tag": "Từ khóa, $ticker hoặc #tag",
+  "A word, $ticker, #tag or site.com": "Từ khóa, $ticker, #tag hoặc site.com",
   "About Quilcast": "Giới thiệu Quilcast",
   "About me": "Về tôi",
   "About this skin": "Về skin này",

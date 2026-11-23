@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
-import { account, ALERTS, articleNow, articleOf, back, follow, get, getJson, go, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
+import { account, ALERTS, articleNow, articleOf, back, follow, get, getJson, go, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, got, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
 import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, isTrain, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
@@ -758,9 +758,7 @@ export const unfurl = (u: string) => {
   return p
 }
 
-// What arrived already (link previews `u:`, casts `c:`) and image sizes the server read: a card drawn after warm()
-// starts from them, at its final size
-const got = new Map<string, unknown>()
+// image sizes the server read: a card drawn after warm() starts from them (and from `got`), at its final size
 const shapes = new Map<string, [number, number] | null>()
 // the home page's first picture comes through quilcast.com (server/home.mjs `lead`); the app asks for it the same way,
 // so it's the picture already there rather than another download
@@ -1113,7 +1111,8 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
   // like LinkCard, read by hash on every render so a reused card never keeps the cast it showed before
   const c = given ?? (hash ? (got.get(`c:${hash.replace(/^0x/, '').toLowerCase()}`) as Cast | null | undefined) : undefined)
   const [, loaded] = useState(0)
-  useEffect(() => void (hash && c === undefined && fetchCast(hash).then(() => loaded((x) => x + 1))), [hash])
+  // a quote that arrives with a muted word hides the cast quoting it too (hides): 'mutes' redraws the app, so it goes now
+  useEffect(() => void (hash && c === undefined && fetchCast(hash).then((q) => (loaded((x) => x + 1), q && hides(q) && dispatchEvent(new Event('mutes'))))), [hash])
   if (c === null) return <div class="quote muted">{t('This cast is unavailable.')}</div>
   if (!c) return <div class="quote skeleton" />
   if (hides(c)) return <div class="quote muted">{t('Hidden by your mutes.')}</div>

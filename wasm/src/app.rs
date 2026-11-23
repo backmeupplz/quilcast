@@ -550,7 +550,8 @@ impl App {
     }
 
     /// Whether a cast stays out of sight (src/mutes.ts hides): taken down for everyone, written by someone muted or
-    /// blocked, or saying a muted word. The account's own casts never do, and on `owner`'s profile their casts show
+    /// blocked, or with a muted word in it, a site it links or a loaded cast it quotes that someone else wrote
+    /// (view::muted_text). The account's own casts never do, and on `owner`'s profile their casts show
     /// even when muted (not when blocked).
     pub fn hidden(&self, c: &Cast, owner: Option<u64>) -> bool {
         let fid = c.author.fid;
@@ -567,7 +568,25 @@ impl App {
         if Some(fid) == owner {
             return false;
         }
-        self.mutes.muted(fid, now) || self.mutes.word_in(&crate::view::shown_text(c), now).is_some() || self.hides_spam(c)
+        let quoted: Vec<&Cast> = c
+            .embeds
+            .iter()
+            .filter_map(|e| e.cast_id.as_ref())
+            .filter(|q| Some(q.fid) != self.me())
+            .filter_map(|q| {
+                let h = q.hash.trim_start_matches("0x").to_lowercase();
+                match self.quotes.get(&h) {
+                    Some(Load::Ready(x)) => Some(x),
+                    // every quote, not only the first one the card draws, once there are words to look for
+                    None if !self.mutes.words.is_empty() && crate::fc::is_hash(&h) => {
+                        self.wants.borrow_mut().push(Want::Quote(h));
+                        None
+                    }
+                    _ => None,
+                }
+            })
+            .collect();
+        self.mutes.muted(fid, now) || self.mutes.word_in(&crate::view::muted_text(c, &quoted), now).is_some() || self.hides_spam(c)
     }
 
     // --- drawing ---
@@ -2496,6 +2515,23 @@ mod tests {
         assert!(app.hidden(&c(7, "a RUG pull"), None));
         assert!(!app.hidden(&c(9, "my rug"), None), "your own casts always show");
         assert!(!app.hidden(&c(7, "rugged"), None));
+        // #832: a site its link embeds point at, or a quoted cast someone else wrote, once it has loaded
+        app.mutes.set_word("spam.site", true, None);
+        let with = |fid: u64, embeds: Vec<EmbedJ>| Cast { embeds, ..c(fid, "look") };
+        let url = |u: &str| EmbedJ { url: Some(u.into()), cast_id: None };
+        let quote = |fid: u64, h: &str| EmbedJ { url: None, cast_id: Some(CastIdJ { fid, hash: format!("0x{h}") }) };
+        assert!(app.hidden(&with(7, vec![url("https://www.Spam.site/win?ref=1")]), None));
+        assert!(!app.hidden(&with(7, vec![url("https://spam.site/pic.png"), url("https://example.com/spam.site")]), None), "a picture's address, or a path");
+        let (h1, h2, h3) = ("d1".repeat(20), "d2".repeat(20), "d4".repeat(20));
+        assert!(!app.hidden(&with(7, vec![url("https://example.com"), quote(62, &"d3".repeat(20)), quote(60, &h1)]), None), "not loaded yet");
+        let asked: Vec<String> = app.wants.borrow_mut().drain(..).filter_map(|w| if let Want::Quote(h) = w { Some(h) } else { None }).collect();
+        assert_eq!(asked, vec!["d3".repeat(20), h1.clone()], "every quote is asked for, not only the first");
+        app.quotes.insert(h1.clone(), Load::Ready(c(60, "rug pull ahead")));
+        app.quotes.insert(h2.clone(), Load::Ready(with(61, vec![url("https://spam.site")])));
+        app.quotes.insert(h3.clone(), Load::Ready(c(9, "my rug")));
+        assert!(app.hidden(&with(7, vec![quote(60, &h1)]), None));
+        assert!(app.hidden(&with(7, vec![quote(61, &h2)]), None));
+        assert!(!app.hidden(&with(7, vec![quote(9, &h3)]), None), "a quote of your own cast still shows");
     }
 
     #[test]

@@ -835,7 +835,7 @@
   "That's not this account's recovery phrase.": "Esa no es la frase de recuperación de esta cuenta.",
   "This needs the account's recovery phrase.": "Para esto hace falta la frase de recuperación de la cuenta.",
   "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "Tu frase de recuperación no se guarda en este navegador. Quilcast te la pide cuando la propia cuenta tiene que firmar, como al añadir una clave para este navegador o al iniciar sesión en una mini app.",
-  "A word, $ticker or #tag": "Una palabra, $ticker o #tag",
+  "A word, $ticker, #tag or site.com": "Una palabra, $ticker, #tag o site.com",
   "Block @{name}": "Bloquear a @{name}",
   "Block @{name} for…": "Bloquear a @{name} durante…",
   "Blocked": "Bloqueado",

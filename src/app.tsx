@@ -6,7 +6,7 @@ import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follo
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, imagesIn, n, newOnTop, unmarkdown, peekOf, quotedOf, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
+import { castText, imagesIn, n, newOnTop, unmarkdown, peekOf, quotedOf, quotesOf as quotedHashes, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, dropAppAction, syncAppActions, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn, Seg, useOn, useRerenderOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
@@ -879,6 +879,8 @@ function Notifications() {
           const shown = items.flatMap((n) => (n.cast && !ACT(n.type) ? [n.cast] : []))
           await Promise.all([
             hydrateParents(items.flatMap((n) => (n.cast ? [n.cast] : []))),
+            // the casts they quote, which muted words look at too (hides); fetchCast never rejects
+            ...(mutes.words.length ? shown.flatMap((c) => quotedHashes(c, account!.fid)).map(fetchCast) : []),
             shown.length &&
               get('/v2/farcaster/casts', { casts: shown.map((c) => c.hash).join(',') }).then((r) => {
                 const fresh = new Map((r.casts as Cast[]).map((c) => [c.hash, c]))
@@ -1753,7 +1755,7 @@ function MuteSettings() {
     <>
       <p class="hint">{account?.done ? t('Casts with these words, or from these people, stay out of your feeds, threads and notifications. The list is kept with your account, so your other devices hide them too.') : t('Casts with these words, or from these people, stay out of your feeds and threads. Without an account, the list is kept on this device only.')}</p>
       <form class="mute-add" onSubmit={add}>
-        <input value={word} onInput={(e) => setWord(e.currentTarget.value)} placeholder={t('A word, $ticker or #tag')} maxLength={60} aria-label={t('Word to mute')} />
+        <input value={word} onInput={(e) => setWord(e.currentTarget.value)} placeholder={t('A word, $ticker, #tag or site.com')} maxLength={60} aria-label={t('Word to mute')} />
         <select class="pick" value={span} onChange={(e) => setSpan(e.currentTarget.value)} aria-label={t('How long')}>
           {spans().map(([label, ms]) => <option value={ms ? String(ms) : ''}>{label}</option>)}
         </select>

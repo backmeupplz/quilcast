@@ -8,7 +8,7 @@
   "A picture is too big for Quorum.": "Quorum에 넣기에는 너무 큰 이미지가 있어요.",
   "A small, open Farcaster client that reads from and posts to Quilibrium's Hypersnap network, with your keys kept in your browser.": "Quilibrium의 Hypersnap 네트워크에서 읽고 게시하는 작고 개방된 Farcaster 클라이언트예요. 키는 브라우저에 보관돼요.",
   "A theme changes the whole app for you: colors, a background, corners, fonts, effects and stickers. Quorum themes import here, and \"Copy for Quorum\" makes one Quorum can import.": "테마는 앱 전체를 바꿔요. 색상, 배경, 모서리, 글꼴, 효과, 스티커까지요. Quorum 테마를 여기로 가져올 수 있고, \"Quorum용으로 복사\"하면 Quorum에서 가져올 수 있는 테마가 만들어져요.",
-  "A word, $ticker or #tag": "단어, $티커 또는 #태그",
+  "A word, $ticker, #tag or site.com": "단어, $티커, #태그 또는 site.com",
   "About Quilcast": "Quilcast 정보",
   "About me": "내 소개",
   "About this skin": "이 스킨 정보",

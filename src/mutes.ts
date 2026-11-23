@@ -2,8 +2,8 @@
 // the account on our server (server/mutes.mjs, signed with its key, so other devices get them) and in localStorage
 // for the first paint. Without a finished account (anonymous mode, #491) they're kept in this browser only. A change
 // fires 'mutes', which re-renders the app.
-import { account, read, save, settings, type Cast } from './api.ts'
-import { castText, cleanMutes, isTrain, wordsRe, type Mutes, type Timed } from './shared.ts'
+import { account, got, read, save, settings, type Cast } from './api.ts'
+import { cleanMutes, isTrain, mutedText, quotesOf, wordsRe, type Mutes, type Timed } from './shared.ts'
 import removedList from './removed.json' with { type: 'json' }
 import { hidesSpam } from './spam.ts'
 
@@ -62,7 +62,11 @@ const removed: { fids: number[]; casts: string[] } = removedList
 /** Whether Settings → Train casts hides this cast: a train (#698) or one of its cars, which are trains too. */
 export const hidesTrain = (c: Cast) => settings.trains === 'hide' && isTrain(c)
 
-/** Whether a cast stays out of sight: taken down for everyone (removed.json), someone muted or blocked wrote it, it has a muted word, or it's spam or a
+// the casts `c` quotes that have loaded (warm() loads a feed's before it shows)
+const quoted = (c: Cast) => quotesOf(c, account?.fid).flatMap((h) => (got.get(`c:${h}`) as Cast | null | undefined) || [])
+
+/** Whether a cast stays out of sight: taken down for everyone (removed.json), someone muted or blocked wrote it, a muted
+ *  word is in it, a site it links or a cast it quotes (mutedText), or it's spam or a
  *  train this browser hides. The account's own casts never do. `owner` is the profile being looked at, where a muted person's casts (and their spam and
  *  trains) still show. */
 export function hides(c: Cast, owner?: number) {
@@ -71,7 +75,7 @@ export function hides(c: Cast, owner?: number) {
   if (fid === account?.fid) return false
   if (blockOf(fid)) return true
   if (fid === owner) return false
-  return !!muteOf(fid) || !!words()?.test(castText(c)) || hidesSpam(c) || hidesTrain(c)
+  return !!muteOf(fid) || !!words()?.test(mutedText(c, quoted(c))) || hidesSpam(c) || hidesTrain(c)
 }
 /** Whether a person's notifications and casts are muted or blocked. */
 export const silenced = (fid?: number) => !!(muteOf(fid) || blockOf(fid))

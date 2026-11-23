@@ -40,3 +40,27 @@ test('Settings → Train casts → Hide takes other people\'s trains and their c
   api.settings.trains = 'show'
   assert.equal(hides(car), false)
 })
+
+test("muted words hide a cast that links a muted site or quotes a cast with one, not one quoting the account's own (#832)", async () => {
+  Object.assign(globalThis, { addEventListener: () => {}, dispatchEvent: () => true })
+  ;(globalThis as any).localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} }
+  const api = await import('./api.ts')
+  const { hides, setMute } = await import('./mutes.ts')
+  // signed in (fid 5) without a finished account, so the mute stays on this device
+  await Promise.resolve(api.setAccount({ wallet: '0xabc', fid: 5 } as any)).catch(() => {})
+  await setMute('words', 'spam.site')
+  await setMute('words', 'bees')
+  const h = (x: string) => x.repeat(20)
+  const cast = (fid: number, hash: string, embeds: any[] = [], text = 'look') => ({ hash: `0x${hash}`, text, embeds, author: { fid } }) as any
+  api.got.set(`c:${h('d1')}`, cast(60, h('d1'), [], 'all about bees'))
+  api.got.set(`c:${h('d2')}`, cast(61, h('d2'), [{ url: 'https://www.spam.site/x' }]))
+  api.got.set(`c:${h('d4')}`, cast(5, h('d4'), [], 'my bees'))
+  assert.equal(hides(cast(50, h('e1'), [{ url: 'https://spam.site/win?ref=1' }])), true, "a link embed's site")
+  assert.equal(hides(cast(51, h('e2'), [{ cast_id: { fid: 60, hash: `0x${h('D1')}` } }])), true, "a quoted cast's text")
+  assert.equal(hides(cast(52, h('e3'), [{ cast_id: { fid: 61, hash: h('d2') } }])), true, "a quoted cast's link")
+  assert.equal(hides(cast(53, h('e4'), [{ cast_id: { fid: 5, hash: h('d4') } }])), false, "the account's own cast, quoted")
+  assert.equal(hides(cast(54, h('e5'), [{ url: 'https://spam.site/pic.png' }, { cast_id: { fid: 62, hash: h('d3') } }])), false, "a picture's address, a quote not loaded")
+  assert.equal(hides(cast(55, h('e6'), [{ url: 'https://example.com/spam.site' }])), false, "only the site, not the rest of the address")
+  await setMute('words', 'spam.site', false)
+  await setMute('words', 'bees', false)
+})

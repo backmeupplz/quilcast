@@ -362,6 +362,10 @@ export type Cast = {
   article?: Part | null
 }
 
+/** What arrived already: link previews (`u:` and the link) and casts (`c:` and the bare hash, null when the node has
+ *  none). A card drawn after warm() starts from them, and muted words look at the quoted casts in it. */
+export const got = new Map<string, unknown>()
+
 // authors we've seen, so replies can say who they reply to
 export const users = new Map<number, User>()
 /** Look up the users we haven't seen yet. */

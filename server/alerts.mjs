@@ -16,7 +16,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { castText, isTrain, PLURALS, proxied, wordsRe } from '../src/shared.ts'
+import { castText, isTrain, mutedText, PLURALS, proxied, quotesOf, wordsRe } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { keySigned } from './looks.mjs'
 import { readMutes } from './mutes.mjs'
@@ -267,12 +267,25 @@ const idOf = (n) => `${n.type}:${n.cast?.hash || ''}:${n.user.fid}`
 const ofCast = (n) => n.type === 'reply' || n.type === 'mention' || n.type === 'quote'
 const timeOf = (n) => Date.parse(n.timestamp) || 0
 
-/** Whether a notification stays out: taken down for everyone, from someone muted or blocked, or a cast with a muted word. */
-export function hidden(n, mutes, words = wordsRe(mutes.words.map((w) => w.v))) {
+/** Whether a notification stays out: taken down for everyone, from someone muted or blocked, or a cast with a muted
+ *  word in it, a site it links or a cast it quotes (mutedText; `quotes` has those by bare hash). */
+export function hidden(n, mutes, words = wordsRe(mutes.words.map((w) => w.v)), quotes = new Map()) {
   const fid = n.user.fid
   if (removed.fids.includes(fid) || (n.cast && removed.casts.includes(n.cast.hash))) return true
   if (mutes.users.some((m) => m.v === fid) || mutes.blocks.some((m) => m.v === fid)) return true
-  return ofCast(n) && !!n.cast && !!words?.test(castText(n.cast))
+  return ofCast(n) && !!n.cast && !!words?.test(mutedText(n.cast, quotesOf(n.cast).flatMap((h) => quotes.get(h) || [])))
+}
+
+/** The casts with these bare hashes, by hash; those the node doesn't answer for in time are left out (and don't hide). */
+async function castsOf(node, hashes) {
+  const out = new Map()
+  const want = [...new Set(hashes)].slice(0, 50)
+  if (!want.length) return out
+  try {
+    const r = await fetch(`${node}/v2/farcaster/casts?casts=${want.join(',')}`, { signal: AbortSignal.timeout(3000) })
+    for (const c of (r.ok && (await r.json())?.casts) || []) if (typeof c?.hash === 'string') out.set(c.hash.replace(/^0x/i, '').toLowerCase(), c)
+  } catch {}
+  return out
 }
 
 /** Scores (0-1) from the spam service for these cast hashes and FIDs; what it can't answer in time stays unknown. */
@@ -420,7 +433,9 @@ export async function check(fid, { node, spamUrl, send = (sub, data) => push(dir
   a.checked = Math.min(now, ...held.map((n) => timeOf(n) - 1))
   const mutes = news.length ? await readMutes(fid) : null
   const words = mutes && wordsRe(mutes.words.map((w) => w.v))
-  const kept = mutes ? news.filter((n) => !hidden(n, mutes, words)) : []
+  // the casts they quote, for muted words: not the account's own (a quote of your cast is news, whatever it says)
+  const quotes = words ? await castsOf(node, news.filter((n) => ofCast(n) && n.cast).flatMap((n) => quotesOf(n.cast, fid))) : new Map()
+  const kept = mutes ? news.filter((n) => !hidden(n, mutes, words, quotes)) : []
   const sent = kept.filter((n) => a.subs.some((s) => gets(s, n, scores)))
   const before = Object.keys(a.seen).length
   a.since = Math.max(a.since || 0, now - WINDOW)

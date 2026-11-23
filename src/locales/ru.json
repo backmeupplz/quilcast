@@ -835,7 +835,7 @@
   "That's not this account's recovery phrase.": "Это не фраза восстановления этого аккаунта.",
   "This needs the account's recovery phrase.": "Для этого нужна фраза восстановления аккаунта.",
   "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "Ваша фраза восстановления не хранится в этом браузере. Quilcast спрашивает её, когда подписывать нужно самому аккаунту, например чтобы добавить ключ для этого браузера или войти в мини-приложение.",
-  "A word, $ticker or #tag": "Слово, $тикер или #тег",
+  "A word, $ticker, #tag or site.com": "Слово, $тикер, #тег или site.com",
   "Block @{name}": "Заблокировать @{name}",
   "Block @{name} for…": "Заблокировать @{name} на…",
   "Blocked": "Заблокирован",

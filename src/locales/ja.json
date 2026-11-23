@@ -835,7 +835,7 @@
   "That's not this account's recovery phrase.": "これはこのアカウントのリカバリーフレーズではありません。",
   "This needs the account's recovery phrase.": "これにはアカウントのリカバリーフレーズが必要です。",
   "Your recovery phrase isn't kept in this browser. Quilcast asks for it when the account itself has to sign, like adding a key for this browser or signing in to a mini app.": "リカバリーフレーズはこのブラウザに保存されていません。このブラウザ用のキーの追加やミニアプリへのサインインなど、アカウント自体が署名する必要があるときに Quilcast が入力を求めます。",
-  "A word, $ticker or #tag": "単語、$ティッカー、#タグ",
+  "A word, $ticker, #tag or site.com": "単語、$ティッカー、#タグ、site.com",
   "Block @{name}": "@{name}をブロック",
   "Block @{name} for…": "@{name}をブロックする期間…",
   "Blocked": "ブロック中",
