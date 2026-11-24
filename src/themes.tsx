@@ -51,6 +51,16 @@ export const BUILT_IN: Theme[] = [
     name: 'Utopia', base: 'light', bg: '#eaf6fb', card: '#f7fcff', soft: '#ddf0f7', line: '#b9dcea', ink: '#0c2a3d', muted: '#3f6074', accent: '#0b647d', like: '#e0457b', recast: '#05875f', warn: '#c2410c',
     bgImg: tenor('0I05Y5gWP7U', 'world-if-world-without'), bgMode: 'cover', scrim: 20, sheer: 80, round: 1.6, glow: true, fx: 'bokeh',
   },
+  {
+    // the GTA VI logo's pink-to-orange on plum
+    name: 'GTA VI', base: 'dark', bg: '#170b1f', card: '#21102c', soft: '#2b1638', line: '#4a2560', ink: '#fff1f6', muted: '#d7a6c8', accent: '#ff4fa3', onAccent: '#1b0c24', like: '#ff3b6b', recast: '#2ee6c5', warn: '#ffb347',
+    bgImg: tenor('4bPTY8hgbB0', 'gta-6-grand-theft-auto-6'), bgMode: 'cover', scrim: 40, sheer: 84, round: 1.2, glow: true, nameFx: 'glow', nameColor: '#ffb347', fx: 'money',
+  },
+  {
+    // gmfarcaster.com's purples
+    name: 'GM Farcaster', base: 'dark', bg: '#0d0814', card: '#1a1226', soft: '#221833', line: '#33264a', ink: '#f3e8ff', muted: '#c9b8ec', accent: '#a855f7', like: '#e114e5', recast: '#9ee6a0', warn: '#ffd12f',
+    round: 2, glow: true, nameFx: 'glow', nameColor: '#e114e5',
+  },
   ...HOLIDAYS.map((h) => h.theme),
 ]
 
