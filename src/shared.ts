@@ -5,6 +5,56 @@ export const isImg = (u: string) => /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u)
  *  quilcast.com, as other Farcaster clients show it from there. */
 export const stickerPack = (u: string) => u.match(/^https:\/\/quilcast\.com\/st\/([\w-]{8})\/[0-9a-f]{24}\.webp$/)?.[1] || null
 export const stickerUrl = (pack: string, h: string) => `https://quilcast.com/st/${pack}/${h}.webp`
+/** Inline custom emojis, per the FIP draft "Inline Custom Emoji" (farcasterorg/protocol discussion #28, as edited
+ *  2026-11-23; the field as farcasterorg/hypersnap#101 serves it): a url embed carrying `emoji_label` is drawn in the
+ *  line wherever the text says :label:. Its label, as the FIP allows it. */
+export const EMOJI_LABEL = /^[a-z0-9_][a-z0-9_-]{0,31}$/
+/** Whether a labelled embed could be an emoji's picture: not a video, a site's front page, an .html/.php page or a
+ *  Farcaster or Quilcast page (mini apps, casts, spaces), which keep their card; a picture host without an extension
+ *  counts. */
+export const emojiPic = (u: string) =>
+  isImg(u) || (!isVid(u) && !/^https?:\/\/[^/?#]+\/?(?:[?#]|$)|^[^?#]*\.(?:html?|php)(?:[?#]|$)|^https?:\/\/(?:[^/?#]*\.)?(?:farcaster\.xyz|warpcast\.com|quilcast\.com)(?:[/?#:]|$)/i.test(u))
+/** A cast's inline custom emojis, label → picture: each url embed with a valid label whose :label: its text has, the
+ *  first embed with a label winning. These are drawn in the text (markdown's `emojis`) and not again under it (urlsOf);
+ *  any other labelled embed is an ordinary picture, and a :label: no embed has stays text, as the FIP says. Places
+ *  without pictures (notifications, cards, meta tags) keep the :label: text, which is the FIP's fallback. */
+export function emojisOf(c: { text?: string; embeds?: { url?: string; emoji_label?: string }[] }) {
+  const out = new Map<string, string>()
+  for (const e of c.embeds || []) {
+    const label = e?.emoji_label, u = safeUrl(e?.url)
+    if (u && emojiPic(u) && typeof label === 'string' && EMOJI_LABEL.test(label) && !out.has(label) && (c.text || '').includes(`:${label}:`)) out.set(label, u)
+  }
+  // only the ones it really draws: a :label: in code or inside a link stays text, and its picture shows under the text
+  if (!out.size) return out
+  const drawn = new Set([...markdown(c.text || '', undefined, out).matchAll(/<img class="md-emoji" [^>]*?alt=":([\w-]+):"/g)].map((m) => m[1]))
+  return new Map([...out].filter(([label]) => drawn.has(label)))
+}
+/** Whether the composer sends a sticker it puts in the text as an inline custom emoji (castBody, asEmojis). Off while
+ *  the node Quilcast reads (haatz) leaves `emoji_label` out of its casts: Quilcast itself would then show the sticker
+ *  as :label: text and a picture under it. */
+// ponytail: a constant, flipped once the node serves emoji_label (farcasterorg/hypersnap#101 deployed there)
+export const SEND_EMOJIS = false
+/** A new cast's Markdown stickers whose alt text is a :label: (the composer's, with SEND_EMOJIS) as inline custom
+ *  emojis, in the `room` embed slots it has left: the first sticker for each label, while there's room, becomes :label:
+ *  in the text and an embed carrying that label; the rest stay Markdown stickers, which take no slot and which Quilcast
+ *  draws in the line just the same, and any the cast embeds already (`embedded`), which readers would hide with the
+ *  emoji. Mentions' byte `positions` move with the text. */
+export function asEmojis(text: string, positions: number[], room: number, embedded: string[] = []) {
+  const bytes = (s: string) => new TextEncoder().encode(s).length
+  const emojis = new Map<string, string>()
+  const cuts: [number, number][] = [] // where each replaced sticker started in `text`, in bytes, and the bytes it lost
+  let out = '', last = 0
+  for (const m of text.matchAll(/!\[:([a-z0-9_][a-z0-9_-]{0,31}):\]\(([^\s()]+)\)/g)) {
+    const [all, label, url] = m
+    if (!stickerPack(url) || embedded.includes(url) || (emojis.has(label) ? emojis.get(label) !== url : emojis.size >= room)) continue
+    emojis.set(label, url)
+    cuts.push([bytes(text.slice(0, m.index)), bytes(all) - bytes(`:${label}:`)])
+    out += text.slice(last, m.index) + `:${label}:`
+    last = m.index + all.length
+  }
+  out += text.slice(last)
+  return { text: out, positions: positions.map((p) => p - cuts.reduce((a, [at, cut]) => a + (at < p ? cut : 0), 0)), emojis: [...emojis].map(([label, url]) => ({ url, label })) }
+}
 /** The pack a sticker pack's link opens (stickers.quilcast.com/<id> or quilcast.com/stickers/<id>), or null. */
 export const packLink = (u: string) => u.match(/^https:\/\/(?:stickers\.quilcast\.com\/|(?:www\.)?quilcast\.com\/stickers\/)([\w-]{8})\/?$/)?.[1] || null
 // Hypersnap V20 (Aug 2026) raised the cap from 2 to 4 for every fid
@@ -34,7 +84,7 @@ export const postMedia = (fixed: string[], files: { url?: string }[], text = '')
  *  the ones postMedia sends. Uploads are named by their content, so one the text also shows as a picture has the
  *  picture's URL and isn't sent. The room for attachments still counts them all (compose.tsx `room`). */
 export const sentFiles = (files: { url?: string }[], text = '') => postMedia([], files, text).length
-export const isVid = (u: string) => /\.(m3u8|mp4|webm|mov)(\?|$)/i.test(u)
+export const isVid = (u: string) => /\.(m3u8|mp4|webm|mov)([?#]|$)/i.test(u)
 
 /** How a cast's embeds sit (ui.tsx Embeds, server/home.mjs): its pictures (one tile, however many) and videos side by
  *  side in a scrolling strip when there are several; its `cards` (links, tweets, Spaces) full width, one under another,
@@ -631,9 +681,10 @@ export const LINK_RE = new RegExp(`${anyCase('http')}[sS]?:\\/\\/[^\\s<>"]+[^\\s
 export const toUrl = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}`)
 /** A cast's links, shown as its pictures and cards. Some clients leave a link in the text without embedding it, so a
  *  cast with no embeds at all gets its first typed http(s) link instead. */
-export const urlsOf = (c: { text?: string; embeds?: { url?: string }[] }) => {
+export const urlsOf = (c: { text?: string; embeds?: { url?: string; emoji_label?: string }[] }) => {
   // less the pictures and [label](url) links the text already shows with Markdown (other clients still get them as embeds)
-  const shown = new Set([...imagesIn(c.text || ''), ...linksIn(c.text || '')])
+  // and the inline custom emojis it draws
+  const shown = new Set([...imagesIn(c.text || ''), ...linksIn(c.text || ''), ...emojisOf(c).values()])
   const urls = c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : typed(c.text || '').filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
   return urls.filter((u) => !shown.has(u) && u !== TRAIN)
 }
@@ -646,10 +697,10 @@ export const isTrain = (c: { embeds?: { url?: string }[] }) => !!c.embeds?.some(
 /** A train car's media embeds (write.ts trainCar), so the car looks like the cast it joins: that cast's URL embeds
  *  (uploads, links, mini apps), pictures and videos first, then TRAIN. Not its quoted cast (the car quotes the cast
  *  itself), not TRAIN twice, not links its text has (castEmbeds adds those after the quote, as for any post) and not the
- *  pictures and links its text shows with Markdown (readers' Quilcast hides those, urlsOf). Each goes out as the cast had
- *  it, not as safeUrl rewrites it: percent-encoding can take a URL the hub took past its EMBED_BYTES. Only as many as
+ *  pictures and links its text shows with Markdown (readers' Quilcast hides those, urlsOf). An inline custom emoji keeps
+ *  its label, so the car draws it in its text too. Each goes out as the cast had it, not as safeUrl rewrites it: percent-encoding can take a URL the hub took past its EMBED_BYTES. Only as many as
  *  leave room for TRAIN and the quote, so the cast stays within MAX_EMBEDS. */
-export const carMedia = (c: { text?: string; embeds?: { url?: string }[] }) => {
+export const carMedia = (c: { text?: string; embeds?: { url?: string; emoji_label?: string }[] }): (string | { url: string; label: string })[] => {
   const text = c.text || ''
   const inText = new Set([...textLinks(text).map((u) => safeUrl(u) ?? u), ...imagesIn(text), ...linksIn(text)])
   const seen = new Set<string>()
@@ -657,17 +708,17 @@ export const carMedia = (c: { text?: string; embeds?: { url?: string }[] }) => {
     const u = e?.url, safe = safeUrl(u)
     if (!u || !safe || u === TRAIN || inText.has(safe) || seen.has(safe) || new TextEncoder().encode(u).length > EMBED_BYTES) return []
     seen.add(safe)
-    return [u]
+    return [e.emoji_label && EMOJI_LABEL.test(e.emoji_label) ? { url: u, label: e.emoji_label } : u]
   })
-  const media = (u: string) => isImg(u) || isVid(u)
+  const media = (e: string | { url: string }) => typeof e !== 'string' || isImg(e) || isVid(e)
   return [...urls.filter(media), ...urls.filter((u) => !media(u))].slice(0, MAX_EMBEDS - 2).concat(TRAIN)
 }
 /** A new cast's embeds (write.ts post), at most MAX_EMBEDS: its media and a quoted cast first, then links from its text,
  *  less the pictures the text shows with Markdown. Readers' Quilcast hides those (urlsOf), so they'd only take a slot. */
-export const castEmbeds = <Q>(text: string, media: string[], quote?: Q) => {
-  const out: (string | Q)[] = [...media, ...(quote ? [quote] : [])]
+export const castEmbeds = <Q, M extends string | { url: string } = string>(text: string, media: M[], quote?: Q) => {
+  const out: (M | string | Q)[] = [...media, ...(quote ? [quote] : [])]
   // a link the text has and an attachment (a composer action's) already is goes out once
-  const sent = new Set(media.map((u) => safeUrl(u) ?? u))
+  const sent = new Set(media.map((m) => (typeof m === 'string' ? m : m.url)).map((u) => safeUrl(u) ?? u))
   for (const u of textLinks(text)) if (out.length < MAX_EMBEDS && !sent.has(safeUrl(u) ?? u)) out.push(u)
   return out.slice(0, MAX_EMBEDS)
 }
@@ -913,7 +964,7 @@ export const linkify = (text: string, tags = taggable(text)) =>
 
 // the leftmost of these wins; at one spot, the earlier one. Links and mentions come before emphasis so an
 // underscore in a URL stays in it, and _ never emphasizes inside a word (snake_case, @some_x_handle).
-const INLINE = new RegExp([
+const INLINE_PARTS = [
   /(?<tick>`+)(?<code>[^`]|[^`][\s\S]*?[^`])\k<tick>(?!`)/.source,
   /!\[(?<alt>[^\]\n]*)\]\((?<src>[^\s()]+)\)/.source,
   /\[(?<label>[^\]\n]+)\]\((?<href>[^\s()]+)\)/.source,
@@ -923,7 +974,11 @@ const INLINE = new RegExp([
   /~~(?=\S)(?<strike>[\s\S]*?\S)~~/.source,
   /\*(?=[^\s*])(?<em>[\s\S]*?[^\s*])\*/.source,
   /(?<!\w)_(?=[^\s_])(?<em2>[\s\S]*?[^\s_])_(?!\w)/.source,
-].join('|'), 'gu')
+]
+const INLINE = new RegExp(INLINE_PARTS.join('|'), 'gu')
+/** INLINE that also finds a cast's inline custom emojis (emojisOf), each :label: of them, after code, pictures, links
+ *  and tokens (which keep theirs as text) and before emphasis (so :_x_: is an emoji, not :<em>x</em>:). */
+const emojiInline = (labels: string[]) => new RegExp([...INLINE_PARTS.slice(0, 4), `:(?<emoji>${labels.join('|')}):`, ...INLINE_PARTS.slice(4)].join('|'), 'gu')
 
 
 // a "#" right after one of these is no hashtag to Hypersnap (HASHTAG's lookbehind), also across emphasis: "_#gm_" isn't one
@@ -934,7 +989,7 @@ const TAG_GOES_ON = /^[\p{Alphabetic}\p{N}_]/u
 /** Inline Markdown as HTML. `tags` are the cast's tags that may be linked (taggable), or null to keep mentions, channels,
  *  tags and bare links as text, inside a [label](url) that is a link already. `before` and `after` are the source characters
  *  just before and after `s` (the delimiters of the emphasis around it). */
-function inline(s: string, tags: Set<string> | null, before = '', after = '', re = INLINE): string {
+function inline(s: string, tags: Set<string> | null, before = '', after = '', re = emojiNow?.re ?? INLINE): string {
   let out = ''
   let at = 0
   // matchAll works on a copy of INLINE, so the calls inside don't move this one along
@@ -960,6 +1015,11 @@ function inline(s: string, tags: Set<string> | null, before = '', after = '', re
       // an escape in a link is the character itself (its address mustn't carry the stand-in)
       const token = unescaped(g.token, re)
       out += tags && !notTag ? linkify(token, tags) : html(token)
+    } else if (g.emoji !== undefined) {
+      // in the line at the text's height (style.css .md-emoji), its label as alt text, loaded as an inline sticker or
+      // another site's picture is; `height` sizes it where there's no stylesheet (a feed reader)
+      const u = emojiNow!.map.get(g.emoji)!
+      out += `<img class="md-emoji" src="${html(stickerPack(u) ? new URL(u).pathname : proxied(u))}" alt=":${g.emoji}:" title=":${g.emoji}:" height="20" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
     } else if (g.bold !== undefined) out += `<strong>${inline(g.bold, tags, '*', '*', re)}</strong>`
     else if (g.bold2 !== undefined) out += `<strong>${inline(g.bold2, tags, '_', '_', re)}</strong>`
     else if (g.strike !== undefined) out += `<s>${inline(g.strike, tags, '~', '~', re)}</s>`
@@ -970,6 +1030,8 @@ function inline(s: string, tags: Set<string> | null, before = '', after = '', re
   }
   return out + html(s.slice(at))
 }
+// the cast being drawn's inline custom emojis (emojisOf), while markdown() draws it, and INLINE finding them
+let emojiNow: { map: Map<string, string>; re: RegExp } | null = null
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/
 const HEADING = /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/
@@ -1150,7 +1212,17 @@ export const unmarkdown = (text: string) => styled(text).text.replaceAll(CELL, '
 /** Cast text as HTML, with Markdown: headings, **bold**, *italic*, ~~strike~~, `code` and fenced blocks, [links](…), ![pictures](…),
  *  lists, > quotes, rules and tables. Text between those keeps its line breaks as typed (.text is pre-wrap), so a cast
  *  without Markdown looks exactly as before. People's own HTML is shown as text, and links go through safeUrl. */
-export function markdown(text: string, tags = taggable(text)): string {
+export function markdown(text: string, tags = taggable(text), emojis?: Map<string, string>): string {
+  // only the labels this cast's embeds have: text without emojis comes out exactly as before
+  if (emojis?.size) {
+    const was = emojiNow
+    emojiNow = { map: emojis, re: emojiInline([...emojis.keys()]) }
+    try {
+      return markdown(text, tags)
+    } finally {
+      emojiNow = was
+    }
+  }
   const lines = text.split('\n')
   let out = ''
   let para: string[] = []

@@ -3,7 +3,7 @@
 // search engines read it. The app starts from the same casts and link previews (the JSON next to it, ui.tsx seed),
 // clears #app and draws the same page in the same frame. Keep this in step with those components.
 import { cardOpening, coverOf, headOf, isArticle } from '../src/article.ts'
-import { articleHtml, boxOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, peekOf, poster, quotedOf, proxied, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
+import { articleHtml, boxOf, emojisOf, castOf, pathOf, castText, taggable, designId, embedLayout, isImg, isVid, linkify, LOGO, markdown, n, P, peekOf, poster, quotedOf, proxied, safeUrl, sized, IMG_SIZES, spaceOf, srcsetOf, themeId, urlsOf, viaUs, vidBoxOf, X_LOGO } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { channelOf } from './channels.mjs'
 
@@ -89,7 +89,7 @@ export function body(d, version, now = Date.now()) {
       `${set ? ` ${at}srcset="${esc(set)}" sizes="${IMG_SIZES}"` : ''}>`
   }
   // a cast's text passes the tags Hypersnap indexed from it (ui.tsx RichText)
-  const rich = (text, k = 'text', plain, tags) => `<div class="${k}" dir="auto">${plain ? linkify(text, tags) : markdown(text, tags)}</div>`
+  const rich = (text, k = 'text', plain, tags, emojis) => `<div class="${k}" dir="auto">${plain ? linkify(text, tags) : markdown(text, tags, emojis)}</div>`
   const avatar = (u, size = 40, link = true) => {
     const pfp = safeUrl(u.pfp_url)
     // `low`: after the casts' pictures (avatars come from the CDN's own connection, and are the smallest thing here)
@@ -118,7 +118,7 @@ export function body(d, version, now = Date.now()) {
     const by = by0 && !gone({ hash: quote.hash, author: by0 }) && by0
     const text = castText(c, true).trim()
     return `<a class="quote" href="/c/${esc(c.hash)}"><div class="meta">${avatar(c.author, 18, false)}<b>${esc(nameOf(c.author))}</b><span>@${esc(handle(c.author))} · ${ago(c.timestamp)}</span></div>` +
-      `<div class="qbody${text ? '' : ' bare'}">${text ? rich(text, 'text clamp', false, taggable(c.text || '')) : ''}${thumb ? img(sized(thumb, 'w=1200'), 'qimg') : ''}` +
+      `<div class="qbody${text ? '' : ' bare'}">${text ? rich(text, 'text clamp', false, taggable(c.text || ''), emojisOf(c)) : ''}${thumb ? img(sized(thumb, 'w=1200'), 'qimg') : ''}` +
       `${video ? `<span class="qvid" role="img" aria-label="Play video">${icon(P.play, 28, true)}</span>` : ''}` +
       `${!text && link ? `<span class="qlink">${icon(P.link, 14)}<span>${esc(link)}</span></span>` : ''}` +
       `${!text && quote ? `<span class="qlink">${icon(P.quote, 14)}<span>${by ? `Quoted a cast by @${esc(handle(by))}` : 'Quoted a cast'}</span></span>` : ''}</div></a>`
@@ -172,7 +172,7 @@ export function body(d, version, now = Date.now()) {
     return `<article class="cast" data-href="/c/${esc(c.hash)}"><div class="rail">${avatar(c.author)}</div><div class="body"><header>` +
       `<a class="name" href="${esc(userPath(c.author))}">${esc(nameOf(c.author))}</a><span class="handle">@${esc(handle(c.author))}</span><span class="dot">·</span>` +
       `<time datetime="${esc(c.timestamp)}">${ago(c.timestamp)}</time>${ch ? `<span class="chan">/${esc(ch)}</span>` : ''}</header>` +
-      (isArticle(c.article) ? article(c) : `<div>${rich(castText(c, true), 'text fold', false, taggable(c.text || ''))}<script>${FOLD}</script></div>${embeds(c)}`) +
+      (isArticle(c.article) ? article(c) : `<div>${rich(castText(c, true), 'text fold', false, taggable(c.text || ''), emojisOf(c))}<script>${FOLD}</script></div>${embeds(c)}`) +
       `<footer><button class="act" aria-label="Reply">${icon(P.reply)}${count(c.replies?.count)}</button>` +
       `<span class="wrap-menu"><button class="act rc" aria-label="Recast or quote" aria-haspopup="menu">${icon(P.recast)}${count(c.reactions?.recasts_count)}</button></span>` +
       `<button class="act lk" aria-label="Like">${icon(P.like)}${count(c.reactions?.likes_count)}</button><button class="act" aria-label="Share">${icon(P.share)}</button>` +

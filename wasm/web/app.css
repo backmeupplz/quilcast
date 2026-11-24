@@ -336,3 +336,5 @@ input[type=text] { width: 100%; padding: 10px 14px; border: 1px solid var(--line
 .alert-kinds { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0 0 8px; }
 .check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .check:has(input:disabled) { cursor: default; opacity: 0.7; }
+/* an inline custom emoji (src/shared.ts emojisOf): the line's height, as wide as its shape up to 4em, on the baseline */
+.text .md-emoji { display: inline-block; height: 1.2em; width: auto; max-width: 4em; vertical-align: -0.25em; object-fit: contain; }

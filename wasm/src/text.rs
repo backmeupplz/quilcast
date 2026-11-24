@@ -203,6 +203,57 @@ pub fn tokens(s: &str) -> Vec<Tok> {
     out
 }
 
+/// An inline custom emoji's label (src/shared.ts EMOJI_LABEL): [a-z0-9_][a-z0-9_-]{0,31}.
+pub fn is_emoji_label(l: &str) -> bool {
+    let b = l.as_bytes();
+    !b.is_empty() && b.len() <= 32 && b[0] != b'-' && b.iter().all(|&c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_' || c == b'-')
+}
+
+/// Whether a labelled embed could be an emoji's picture (src/shared.ts emojiPic): not a video, a site's front page, an
+/// .html/.php page or a Farcaster or Quilcast page, which keep their card; a picture host without an extension counts.
+pub fn emoji_pic(u: &str) -> bool {
+    if is_img(u) {
+        return true;
+    }
+    let rest = u.split_once("://").map_or(u, |(_, r)| r);
+    let path = rest.split(['?', '#']).next().unwrap_or("").to_ascii_lowercase();
+    let path = path.find('/').map_or("", |i| &path[i..]);
+    let h = host(u);
+    let fc = ["farcaster.xyz", "warpcast.com", "quilcast.com"].iter().any(|d| h == *d || h.ends_with(&format!(".{d}")));
+    !is_vid(u) && path.len() > 1 && !path.ends_with(".html") && !path.ends_with(".htm") && !path.ends_with(".php") && !fc
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Piece<'a> {
+    Text(&'a str),
+    /// label and picture
+    Emoji(&'a str, &'a str),
+}
+/// Text with each :label: of `emojis` (Cast::emojis) picked out, leftmost first (src/shared.ts words).
+pub fn emoji_pieces<'a>(s: &'a str, emojis: &'a [(String, String)]) -> Vec<Piece<'a>> {
+    let mut out = Vec::new();
+    let (mut last, mut i) = (0, 0);
+    while let Some(off) = s[i..].find(':') {
+        let at = i + off;
+        let rest = &s[at + 1..];
+        match emojis.iter().find(|(l, _)| rest.starts_with(l.as_str()) && rest[l.len()..].starts_with(':')) {
+            Some((l, u)) => {
+                if at > last {
+                    out.push(Piece::Text(&s[last..at]));
+                }
+                out.push(Piece::Emoji(l, u));
+                i = at + l.len() + 2;
+                last = i;
+            }
+            None => i = at + 1,
+        }
+    }
+    if last < s.len() {
+        out.push(Piece::Text(&s[last..]));
+    }
+    out
+}
+
 /// A link as shown: without the scheme, "www." and a lone trailing "/", and shortened past 40 characters.
 pub fn shown_url(u: &str) -> String {
     let s = u.split_once("://").map_or(u, |(_, r)| r);
@@ -292,6 +343,17 @@ mod tests {
         assert_eq!(cast_text("gm  and", &[(3, Some("dwr".into()))]), "gm @dwr and");
         assert_eq!(cast_text("hi -x", &[(3, Some("adam".into()))]), "hi @adam\u{2060}-x");
         assert_eq!(cast_text("hé", &[(2, Some("a".into()))]), "hé", "not on a character boundary");
+    }
+
+    #[test]
+    fn emoji_labels_are_picked_out_of_text() {
+        assert!(is_emoji_label("_") && is_emoji_label("a-b_9") && is_emoji_label(&"x".repeat(32)));
+        assert!(!is_emoji_label("") && !is_emoji_label("-a") && !is_emoji_label("A") && !is_emoji_label(&"x".repeat(33)) && !is_emoji_label("a:b"));
+        let e = vec![("a".to_string(), "https://x.y/a.gif".to_string()), ("ab".to_string(), "https://x.y/b.gif".to_string())];
+        use Piece::*;
+        assert_eq!(emoji_pieces("hi :a::ab: x:y:ab:é", &e), vec![Text("hi "), Emoji("a", "https://x.y/a.gif"), Emoji("ab", "https://x.y/b.gif"), Text(" x:y"), Emoji("ab", "https://x.y/b.gif"), Text("é")]);
+        assert_eq!(emoji_pieces(":b: :a", &e), vec![Text(":b: :a")]);
+        assert_eq!(emoji_pieces("日本:a:語", &e), vec![Text("日本"), Emoji("a", "https://x.y/a.gif"), Text("語")]);
     }
 
     #[test]

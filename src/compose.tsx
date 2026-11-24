@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { account, accounts, findUsers, go, idOf, loadUsers, myUser, posting, users, type Account, type Cast, type User } from './api.ts'
 import { lang, t } from './i18n.ts'
 import { GifPicker } from './gifs.tsx'
-import { castText, embedRoom, unmarkdown, fillPost, safeUrl, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, unholdPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
+import { castText, embedRoom, SEND_EMOJIS, unmarkdown, fillPost, safeUrl, TRAIN, format, n, isImg, isVid, linkify, markdown, holdsPicture, unholdPicture, pictureSpot, pictureToken, postMedia, remap, sentFiles, settlePicture, textLinks, TYPING_MENTION, withGif, type Format } from './shared.ts'
 import { ago, AppIcon, Avatar, composerActions, fetchCast, handle, Icon, launchApp, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w, type CastAction, type Drafting } from './ui.tsx'
 import type { Draft, Scheduled, ThreadStart } from './write.ts'
 import { trainOk } from './trainask.ts'
@@ -541,7 +541,12 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   }
   // in Markdown mode a sticker goes into the text at the caret instead, as ![emoji](url) (public/developers/stickers.html),
   // which takes no embed slot (castEmbeds). Its alt text is the sticker's own emoji, less anything Markdown would read.
-  const sticker = (url: string, e: string) => (md ? (setGifs(false), insert(`![${e.replace(/[[\]\n`*_~|\\]/g, '').trim() || 'sticker'}](${url})`)) : gif(url))
+  // With SEND_EMOJIS, the alt text is a :label: named after that emoji instead, and the cast sends the sticker as an
+  // inline custom emoji while it has a free embed slot (fc.ts castBody).
+  const sticker = (url: string, e: string) =>
+    !md ? gif(url)
+    : SEND_EMOJIS ? (setGifs(false), import('./emoji.tsx').then((m) => insert(`![:${m.shortcode(e)}:](${url})`), () => toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.')))
+    : (setGifs(false), insert(`![${e.replace(/[[\]\n`*_~|\\]/g, '').trim() || 'sticker'}](${url})`))
   // every attachment counts here, even one the text shows inline (not sent, see slots): the author may take that picture
   // out of the text again, and then all of them go out, never more than MAX_EMBEDS
   const room = busy ? 0 : embedRoom(cur.files.length, fixed(at))

@@ -1852,7 +1852,7 @@ impl App {
             parent_hash: parent.as_ref().map(|p| p.bare_hash()),
             parent_author: ParentAuthor { fid: parent.as_ref().map(|p| p.author.fid) },
             parent_url: channel.clone(),
-            embeds: media.into_iter().map(|u| EmbedJ { url: Some(u), cast_id: None }).chain(quote.map(|q| EmbedJ { url: None, cast_id: Some(CastIdJ { fid: q.fid, hash: q.hash }) })).collect(),
+            embeds: media.into_iter().map(|u| EmbedJ { url: Some(u), cast_id: None, emoji_label: None }).chain(quote.map(|q| EmbedJ { url: None, cast_id: Some(CastIdJ { fid: q.fid, hash: q.hash }), emoji_label: None })).collect(),
             ..Default::default()
         };
         match &parent {
@@ -2518,8 +2518,8 @@ mod tests {
         // #832: a site its link embeds point at, or a quoted cast someone else wrote, once it has loaded
         app.mutes.set_word("spam.site", true, None);
         let with = |fid: u64, embeds: Vec<EmbedJ>| Cast { embeds, ..c(fid, "look") };
-        let url = |u: &str| EmbedJ { url: Some(u.into()), cast_id: None };
-        let quote = |fid: u64, h: &str| EmbedJ { url: None, cast_id: Some(CastIdJ { fid, hash: format!("0x{h}") }) };
+        let url = |u: &str| EmbedJ { url: Some(u.into()), cast_id: None, emoji_label: None };
+        let quote = |fid: u64, h: &str| EmbedJ { url: None, cast_id: Some(CastIdJ { fid, hash: format!("0x{h}") }), emoji_label: None };
         assert!(app.hidden(&with(7, vec![url("https://www.Spam.site/win?ref=1")]), None));
         assert!(!app.hidden(&with(7, vec![url("https://spam.site/pic.png"), url("https://example.com/spam.site")]), None), "a picture's address, or a path");
         let (h1, h2, h3) = ("d1".repeat(20), "d2".repeat(20), "d4".repeat(20));

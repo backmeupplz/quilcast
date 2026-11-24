@@ -1,7 +1,7 @@
 // RSS 2.0 feeds of an account's casts (/u/<name>/rss) and a channel's (/channel/<id>/rss), for feed readers. Each item
 // is a cast: its link and guid are its page here, its title a short cut of its text, its description the text as the
 // app shows it (shared.ts markdown, links absolute) with its pictures and links below.
-import { castText, isImg, markdown, proxied, taggable, unmarkdown, urlsOf } from '../src/shared.ts'
+import { castText, emojisOf, isImg, markdown, proxied, taggable, unmarkdown, urlsOf } from '../src/shared.ts'
 import removed from '../src/removed.json' with { type: 'json' }
 import { clip, esc as html, fname, nameOf } from './profile.mjs'
 
@@ -19,7 +19,7 @@ const pic = (u, site) => (proxied(u).startsWith('/') ? site : '') + proxied(u)
  *  quoted casts. Links the app keeps relative (/u/…, /channel/…, /api/img?…) point at `site`. */
 export function castHtml(c, site) {
   // tags as Hypersnap indexed them, from the text without its mentions put back in (ui.tsx RichText)
-  const text = markdown(castText(c, true), taggable(c.text || '')).split(/(<pre[\s\S]*?<\/pre>)/).map((p, i) => (i % 2 ? p : p.replace(/\n/g, '<br>'))).join('')
+  const text = markdown(castText(c, true), taggable(c.text || ''), emojisOf(c)).split(/(<pre[\s\S]*?<\/pre>)/).map((p, i) => (i % 2 ? p : p.replace(/\n/g, '<br>'))).join('')
   const media = urlsOf(c).map((u) => (isImg(u) ? `<p><img src="${html(pic(u, site))}" alt="" referrerpolicy="no-referrer"></p>` : `<p><a href="${html(u)}">${html(u)}</a></p>`))
   const quotes = (c.embeds || []).flatMap((e) => (HASH.test(e?.cast_id?.hash) ? [`<p><a href="${site}/c/${e.cast_id.hash}">Quoted cast</a></p>`] : []))
   return (text ? `<div>${text}</div>` : '').replace(/ (href|src)="\//g, (_, a) => ` ${a}="${site}/`) + media.join('') + quotes.join('')

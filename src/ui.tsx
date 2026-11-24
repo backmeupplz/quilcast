@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, ALERTS, articleNow, articleOf, back, follow, get, getJson, go, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, got, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
-import { articleHtml, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, isTrain, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { articleHtml, emojisOf, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, isTrain, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -273,7 +273,7 @@ export const Avatar = ({ u, size = 40, link = true, onClick }: { u: User; size?:
 /** Text with Markdown (shared.ts markdown), or `plain`: only its links, mentions and channels made live. A cast's text
  *  passes `tags`, the tags Hypersnap indexed from its own text (taggable(c.text)): the text shown has its mentions put
  *  back in, or is a translation, and a tag that reads differently there would find nothing. */
-export function RichText({ text, class: cls = 'text', plain, tags, article }: { text: string; class?: string; plain?: boolean; tags?: Set<string>; article?: boolean | 'preview' }) {
+export function RichText({ text, class: cls = 'text', plain, tags, article, emojis }: { text: string; class?: string; plain?: boolean; tags?: Set<string>; article?: boolean | 'preview'; emojis?: Map<string, string> }) {
   // dir=auto: an English cast reads left to right in the Arabic UI too, and the other way round. A link's click is
   // the link's, not the card's around it.
   // a Markdown picture opens in the image viewer, with the text's other pictures a swipe away, like a cast's embeds
@@ -294,11 +294,11 @@ export function RichText({ text, class: cls = 'text', plain, tags, article }: { 
     const label = a.classList.contains('md-link')
     if ((label || lookalike(a.href)) && a.host !== location.host && shell.link(a.href, { label })) e.preventDefault()
   }
-  return <div class={cls} dir="auto" onClick={click} onClickCapture={ask} onAuxClickCapture={ask} dangerouslySetInnerHTML={{ __html: plain ? linkify(text, tags) : article ? articleHtml(text, tags, article === 'preview') : markdown(text, tags) }} />
+  return <div class={cls} dir="auto" onClick={click} onClickCapture={ask} onAuxClickCapture={ask} dangerouslySetInnerHTML={{ __html: plain ? linkify(text, tags) : article ? articleHtml(text, tags, article === 'preview') : markdown(text, tags, emojis) }} />
 }
 
 // long text in feeds folds at 10 lines; the button shows only when something is cut
-function Folded({ text, tags }: { text: string; tags?: Set<string> }) {
+function Folded({ text, tags, emojis }: { text: string; tags?: Set<string>; emojis?: Map<string, string> }) {
   const ref = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [over, setOver] = useState(false)
@@ -310,7 +310,7 @@ function Folded({ text, tags }: { text: string; tags?: Set<string> }) {
   return (
     // and again as each Markdown picture arrives and takes its height
     <div ref={ref} onLoadCapture={measure}>
-      <RichText text={text} class={open ? 'text' : 'text fold'} tags={tags} />
+      <RichText text={text} class={open ? 'text' : 'text fold'} tags={tags} emojis={emojis} />
       {over && !open && <button class="show-more" onClick={(e) => (stop(e), setOpen(true))}>{t('Show more')}</button>}
     </div>
   )
@@ -388,10 +388,11 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
   const shown = offersTranslation(from, tr?.from, reads)
   const words = tr && shown && !orig ? tr.text : castText(c, true)
   const tags = taggable(c.text || '')
+  const emojis = emojisOf(c)
   const fromName = langName(tr && tr.from !== 'und' ? tr.from : from || 'und')
   return (
     <>
-      {full ? <RichText text={words} tags={tags} /> : <Folded text={words} tags={tags} />}
+      {full ? <RichText text={words} tags={tags} emojis={emojis} /> : <Folded text={words} tags={tags} emojis={emojis} />}
       {shown && (tr || on) && (
         <div class="tr-note" onClick={stop}>
           {tr && !orig ? <>{t('Auto-translated from {language}', { language: fromName })} · <button class="link-btn" onClick={() => setOrig(true)}>{t('View original')}</button></>
@@ -1124,7 +1125,7 @@ export function QuoteCard({ hash, c: given }: { hash?: string; c?: Cast }) {
       <div class="meta"><Avatar u={c.author} size={18} link={false} /><b>{nameOf(c.author)}</b><span>@{handle(c.author)} · {ago(c.timestamp)}</span></div>
       {/* text gets a thumbnail beside it; a cast that is only media shows it at size, one that is only a link its address */}
       <div class={`qbody${text ? '' : ' bare'}`}>
-        {text && <RichText text={text} class="text clamp" tags={taggable(c.text || '')} />}
+        {text && <RichText text={text} class="text clamp" tags={taggable(c.text || '')} emojis={emojisOf(c)} />}
         {img && <Img class="qimg" src={sized(img, 'w=1200')} />}
         {video && <VidPeek />}
         {!text && link && <span class="qlink"><Icon d={P.link} size={14} /><span>{link}</span></span>}

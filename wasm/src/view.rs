@@ -262,10 +262,24 @@ fn feed_skip(app: &App, key: &str, empty: &str, owner: Option<u64>, skip: Option
 
 // --- casts ---
 
-fn rich(s: &str) -> V {
+/// Text with its links, mentions and channels live, and a cast's inline custom emojis (Cast::emojis) in the line.
+fn rich(s: &str, emojis: &[(String, String)]) -> V {
     let mut p = el("div").class("text");
     for t in text::tokens(s) {
         p = p.kid(match t {
+            text::Tok::Text(s) if !emojis.is_empty() => {
+                let mut span = el("span");
+                for x in text::emoji_pieces(&s, emojis) {
+                    span = span.kid(match x {
+                        text::Piece::Text(s) => text(s),
+                        // as src/shared.ts draws it: a sticker from quilcast.com, any other picture through our proxy
+                        text::Piece::Emoji(l, u) => el("img").class("md-emoji")
+                            .attr("src", if crate::compose::sticker_pack(u).is_some() { u.to_string() } else { text::proxied(u) })
+                            .attr("alt", format!(":{l}:")).attr("title", format!(":{l}:")).attr("loading", "lazy").attr("referrerpolicy", "no-referrer").into(),
+                    });
+                }
+                span.into()
+            }
             text::Tok::Text(s) => text(s),
             text::Tok::Link(href, shown) => external(href).txt(shown).into(),
             text::Tok::Mention(n) => link(format!("/u/{}", n.to_lowercase())).class("mention").txt(format!("@{n}")).into(),
@@ -321,7 +335,7 @@ fn cast_card(app: &App, c: &Cast, big: bool) -> El {
     }
     let t = shown_text(c);
     if !t.trim().is_empty() {
-        body = body.kid(rich(&t));
+        body = body.kid(rich(&t, &c.emojis()));
     }
     body = body.maybe(embeds(app, c));
     if big {
@@ -497,7 +511,7 @@ fn profile(app: &App, id: &str, replies: bool) -> V {
             let base = u.path();
             let mut top = el("div").class("profile").kid(avatar(u, "lg")).kid(el("h2").kid(el("bdi").txt(u.name()))).kid(el("div").class("handle").txt(format!("@{}", u.handle())));
             if let Some(b) = u.profile.bio.text.as_deref().filter(|b| !b.trim().is_empty()) {
-                top = top.kid(rich(b));
+                top = top.kid(rich(b, &[]));
             }
             top = top.kid(el("div").class("counts")
                 .kid(link(format!("{base}/following")).kid(el("strong").txt(text::count(u.following_count))).txt(" following"))
@@ -671,7 +685,7 @@ fn channel(app: &App, id: &str) -> V {
     }
     top = top.kid(handle);
     if let Some(d) = c.desc.as_deref().filter(|d| !d.trim().is_empty()) {
-        top = top.kid(rich(d));
+        top = top.kid(rich(d, &[]));
     }
     if c.followers > 0 {
         top = top.kid(el("div").class("counts").kid(el("span").kid(el("strong").txt(text::count(c.followers))).txt(" followers")).kid(el("span").kid(el("strong").txt(text::count(c.members))).txt(" members")));

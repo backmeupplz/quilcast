@@ -643,6 +643,8 @@ small.warn { color: var(--warn); }
 .text .md-img { display: block; max-width: 100%; max-height: 360px; min-width: 120px; min-height: 60px; object-fit: contain; margin: 6px 0; border: var(--bw, 1px) var(--bs, solid) var(--line); border-radius: calc(12px * var(--rs, 1)); background: var(--soft); cursor: zoom-in; }
 /* an inline sticker (shared.ts inline): in the line like an emoji, a bit taller than the text, playing */
 .text .md-sticker { display: inline-block; width: 1.75em; height: 1.75em; vertical-align: -0.5em; object-fit: contain; }
+/* an inline custom emoji (shared.ts emojisOf): the line's height, as wide as its shape up to 4em, on the baseline */
+.text .md-emoji { display: inline-block; height: 1.2em; width: auto; max-width: 4em; vertical-align: -0.25em; object-fit: contain; }
 .md-label { display: block; font-size: 12px; color: var(--muted); }
 .embed-preview .linkcard, .embed-preview .tweet, .embed-preview .quote { margin-top: 8px; }
 .embed-preview .lc-img, .embed-preview .imgs img, .embed-preview .tw-video img { max-height: 180px; }

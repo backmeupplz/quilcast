@@ -8,7 +8,7 @@ import { sha256 } from '@noble/hashes/sha2.js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { HDKey } from '@scure/bip32'
 import { hex, type Ed } from './keys.ts'
-import { MENTION_NAME, mentionTries } from './shared.ts'
+import { asEmojis, MAX_EMBEDS, MENTION_NAME, mentionTries, SEND_EMOJIS } from './shared.ts'
 
 export { hex }
 export const unhex = (s: string) => {
@@ -60,20 +60,28 @@ export type CastRef = { fid: number; hash: string }
 // parent is a cast (reply) or a channel URL; embeds are URLs or a quoted cast. `format` and `chain` are an article's
 // (article.ts): format_version (field 9) and ChainCast (field 10; root absent at index 0). Nodes before the ChainedCasts
 // feature take them as unknown fields of data_bytes, which envelope() always sends.
-export const castBody = (c: { text: string; mentions?: number[]; positions?: number[]; embeds?: (string | CastRef)[]; parent?: CastRef | string; format?: number; chain?: { root?: CastRef; index: number; count: number } }) =>
-  pb(
+// An embed can be an inline custom emoji, a picture with its label (Embed.emoji_label, field 3: shared.ts emojisOf).
+export type Emoji = { url: string; label: string }
+export const castBody = (c: { text: string; mentions?: number[]; positions?: number[]; embeds?: (string | Emoji | CastRef)[]; parent?: CastRef | string; format?: number; chain?: { root?: CastRef; index: number; count: number } }) => {
+  // the composer's stickers in the text go out as inline custom emojis, in the slots left (not in an article)
+  if (SEND_EMOJIS && !c.format) {
+    const e = asEmojis(c.text, c.positions || [], MAX_EMBEDS - (c.embeds?.length || 0), (c.embeds || []).flatMap((x) => (typeof x === 'string' ? [x] : 'url' in x ? [x.url] : [])))
+    c = { ...c, text: e.text, positions: c.positions && e.positions, embeds: [...(c.embeds || []), ...e.emojis] }
+  }
+  return pb(
     [2, c.mentions],
     [3, typeof c.parent === 'object' ? castId(c.parent.fid, c.parent.hash) : undefined],
     [7, typeof c.parent === 'string' ? c.parent : undefined], // same position as @farcaster/core's oneof
     [4, c.text],
     [5, c.positions],
-    ...(c.embeds || []).map((e): Field => [6, typeof e === 'string' ? pb([1, e]) : pb([2, castId(e.fid, e.hash)])]),
+    ...(c.embeds || []).map((e): Field => [6, typeof e === 'string' ? pb([1, e]) : 'url' in e ? pb([1, e.url], [3, e.label]) : pb([2, castId(e.fid, e.hash)])]),
     // over 320 bytes must be marked LONG_CAST (allowed up to 1024)
     [8, new TextEncoder().encode(c.text).length > 320 ? 1 : undefined],
     // zeros left out, as protobuf writes them
     [9, c.format || undefined],
     [10, c.chain && pb([1, c.chain.root && castId(c.chain.root.fid, c.chain.root.hash)], [2, c.chain.index || undefined], [3, c.chain.count || undefined])],
   )
+}
 export const reactionBody = (type: 1 | 2, fid: number, hash: string) => pb([1, type], [2, castId(fid, hash)])
 /** A reaction to a URL (a channel or a page) rather than a cast. */
 export const reactionUrlBody = (type: 1 | 2, url: string) => pb([1, type], [3, url])

@@ -3,11 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks'
 import byGroup from 'unicode-emoji-json/data-by-group.json'
 import { t } from './i18n.ts'
+import { EMOJI_LABEL } from './shared.ts'
 
 type Entry = { emoji: string; name: string; slug: string }
 type Group = { name: string; slug: string; emojis: Entry[] }
 const GROUPS = byGroup as unknown as Group[]
 const ALL = GROUPS.flatMap((g) => g.emojis)
+/** A sticker's label as an inline custom emoji (shared.ts EMOJI_LABEL), from its emoji's name: 🌅 is :sunrise:. */
+export function shortcode(emoji: string) {
+  const bare = (s: string) => s.replace(/\ufe0f/g, '')
+  const slug = ALL.find((x) => bare(x.emoji) === bare(emoji))?.slug.slice(0, 32).replace(/[-_]+$/, '')
+  return slug && EMOJI_LABEL.test(slug) ? slug : 'sticker'
+}
 
 export function EmojiPicker({ pick, close }: { pick: (emoji: string) => void; close: () => void }) {
   const [q, setQ] = useState('')

@@ -4,7 +4,7 @@ import { account, accounts, askUser, byName, forget, get, idOf, myUser, posting,
 import { dm } from './dms.ts'
 import { t } from './i18n.ts'
 import { balance, keyState, reverted, sendTx } from './eth.ts'
-import { castAt, castBody, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyAddAuth, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
+import { castAt, castBody, type Emoji, castRemoveBody, custodyKey, envelope, followBody, hex, KEY_GATEWAY, KEY_REGISTRY, keyAdd, keyAddAuth, keyCustody, keyGatewayAdd, keyRegistryRemove, keyRemoveSelf, mentions, MT, nativeOnboard, powPrefix, rawEd, reactionBody, reactionUrlBody, SCOPES_VERSION, unhex, userDataBody, type CastRef, type Custody } from './fc.ts'
 import { dropEd, edKey, kv, newEd, type Ed } from './keys.ts'
 import { search } from './pow.worker.ts'
 import { ARTICLE, type Outgoing, type Part } from './article.ts'
@@ -302,7 +302,7 @@ const fidByName = (name: string) =>
   )
 
 /** A cast can carry MAX_EMBEDS embeds: uploads and a quoted cast first, then links from the text (castEmbeds). */
-export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: string[]; as?: Account; said?: Awaited<ReturnType<typeof mentions>> } = {}) {
+export async function post(text: string, o: { parent?: CastRef; channel?: string; quote?: CastRef; media?: (string | Emoji)[]; as?: Account; said?: Awaited<ReturnType<typeof mentions>> } = {}) {
   const m = o.said || await mentions(text, fidByName)
   const embeds = castEmbeds(m.text, o.media || [], o.quote)
   const as = o.as || account!
@@ -313,7 +313,7 @@ export async function post(text: string, o: { parent?: CastRef; channel?: string
     hash, text: m.text, mentioned_profiles: m.mentions.map((fid, i) => users.get(fid) || { fid, username: m.names[i] }),
     mentioned_profiles_ranges: m.positions.map((at) => ({ start: at, end: at })), timestamp: new Date().toISOString(), author: idOf(as) === idOf(account!) ? myUser()! : users.get(as.fid!) || { fid: as.fid!, username: as.username },
     parent_hash: o.parent?.hash ?? null, parent_url: o.channel ?? null, parent_author: { fid: o.parent?.fid ?? null },
-    embeds: embeds.map((e) => (typeof e === 'string' ? { url: e } : { cast_id: e })),
+    embeds: embeds.map((e) => (typeof e === 'string' ? { url: e } : 'url' in e ? { url: e.url, emoji_label: e.label } : { cast_id: e })),
     reactions: { likes_count: 0, recasts_count: 0 }, replies: { count: 0 },
   }
   posting.set(hash, c)

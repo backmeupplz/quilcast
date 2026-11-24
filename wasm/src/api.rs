@@ -105,6 +105,8 @@ pub struct ParentAuthor {
 pub struct EmbedJ {
     pub url: Option<String>,
     pub cast_id: Option<CastIdJ>,
+    /// a picture's label when it's an inline custom emoji (src/shared.ts emojisOf)
+    pub emoji_label: Option<String>,
 }
 #[derive(Deserialize, Clone, Default, Debug)]
 #[serde(default)]
@@ -150,9 +152,27 @@ impl Cast {
     pub fn quoted(&self) -> Option<(u64, String)> {
         self.embeds.iter().find_map(|e| e.cast_id.as_ref()).filter(|c| crate::fc::is_hash(&c.hash)).map(|c| (c.fid, c.hash.trim_start_matches("0x").to_lowercase()))
     }
-    /// Its links (pictures, videos and pages), only public http(s) ones.
+    /// Its links (pictures, videos and pages), only public http(s) ones, less the inline custom emojis its text draws.
     pub fn urls(&self) -> Vec<String> {
-        self.embeds.iter().filter_map(|e| e.url.as_deref()).filter_map(crate::text::safe_url).collect()
+        let emojis = self.emojis();
+        self.embeds.iter().filter_map(|e| e.url.as_deref()).filter_map(crate::text::safe_url).filter(|u| !emojis.iter().any(|(_, e)| e == u)).collect()
+    }
+    /// Its inline custom emojis, label and picture (src/shared.ts emojisOf): each url embed with a valid label whose
+    /// :label: the text's words have (not inside a link, which keeps it as text), the first embed with a label winning.
+    pub fn emojis(&self) -> Vec<(String, String)> {
+        let mut out: Vec<(String, String)> = Vec::new();
+        for e in &self.embeds {
+            if let (Some(l), Some(u)) = (e.emoji_label.as_deref(), e.url.as_deref().and_then(crate::text::safe_url)) {
+                if crate::text::is_emoji_label(l) && crate::text::emoji_pic(&u) && !out.iter().any(|(x, _)| x == l) {
+                    out.push((l.to_string(), u));
+                }
+            }
+        }
+        let words: Vec<String> = crate::text::tokens(&self.text).into_iter().filter_map(|t| if let crate::text::Tok::Text(s) = t { Some(s) } else { None }).collect();
+        // the ones rich() really draws, all labels at once as it reads them
+        let drawn: Vec<String> = words.iter().flat_map(|w| crate::text::emoji_pieces(w, &out).into_iter().filter_map(|p| if let crate::text::Piece::Emoji(l, _) = p { Some(l.to_string()) } else { None })).collect();
+        out.retain(|(l, _)| drawn.contains(l));
+        out
     }
 }
 
@@ -305,6 +325,23 @@ mod tests {
         assert_eq!(c.quoted(), Some((3, "6ba6089bb1d3304b82fa17dbb34aa7c691713b0f".into())));
         assert_eq!(c.urls(), vec!["https://a.b/c.png"]);
         assert_eq!(p.next.cursor.as_deref(), Some("2"));
+    }
+
+    #[test]
+    fn inline_custom_emojis_are_drawn_in_the_text_not_under_it() {
+        let j = br#"{"text":"lfg :check: and :nope: :dup: https://x.y/:inlink:","embeds":[{"url":"https://a.b/c.webp","emoji_label":"check"},{"url":"https://a.b/x.png","emoji_label":"absent"},{"url":"https://a.b/bad.png","emoji_label":"Bad"},{"url":"https://a.b/d1.gif","emoji_label":"dup"},{"url":"https://a.b/d2.gif","emoji_label":"dup"},{"url":"https://a.b/p.jpg"},{"url":"https://a.b/l.gif","emoji_label":"inlink"}]}"#;
+        let c: Cast = serde_json::from_slice(j).unwrap();
+        assert_eq!(c.emojis(), vec![("check".into(), "https://a.b/c.webp".into()), ("dup".into(), "https://a.b/d1.gif".into())]);
+        // a label the text doesn't say (or only inside a link), one the FIP doesn't allow and a second embed with a
+        // taken label are pictures
+        assert_eq!(c.urls(), vec!["https://a.b/x.png", "https://a.b/bad.png", "https://a.b/d2.gif", "https://a.b/p.jpg", "https://a.b/l.gif"]);
+        // ":b:" takes the colon ":c:" would need, so c isn't drawn and its picture stays under the text (as in TS)
+        let c: Cast = serde_json::from_slice(br#"{"text":"a:b:c:","embeds":[{"url":"https://a.b/b.gif","emoji_label":"b"},{"url":"https://a.b/c.gif","emoji_label":"c"}]}"#).unwrap();
+        assert_eq!((c.emojis().len(), c.urls()), (1, vec!["https://a.b/c.gif".to_string()]));
+        // a labelled video, front page, .html page or mini app keeps its card; a picture host without an extension counts
+        let c: Cast = serde_json::from_slice(br#"{"text":":v: :s: :h: :m: :p: :q:","embeds":[{"url":"https://a.b/v.mp4#t=1","emoji_label":"v"},{"url":"https://a.b/?x","emoji_label":"s"},{"url":"https://a.b/x.html","emoji_label":"h"},{"url":"https://farcaster.xyz/miniapps/x/y","emoji_label":"m"},{"url":"https://pics.b/abc123","emoji_label":"p"},{"url":"https://a.b/i?src=a.html","emoji_label":"q"}]}"#).unwrap();
+        assert_eq!(c.emojis(), vec![("p".into(), "https://pics.b/abc123".into()), ("q".into(), "https://a.b/i?src=a.html".into())]);
+        assert_eq!(c.urls(), vec!["https://a.b/v.mp4#t=1", "https://a.b/?x", "https://a.b/x.html", "https://farcaster.xyz/miniapps/x/y"]);
     }
 
     #[test]

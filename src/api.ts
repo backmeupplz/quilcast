@@ -349,7 +349,7 @@ export async function findUsers(q: string) {
 export type User = { fid: number; viewer_context?: { following?: boolean; followed_by?: boolean }; username?: string; display_name?: string; pfp_url?: string; profile?: { bio?: { text?: string } }; follower_count?: number; following_count?: number; custody_address?: string; verified_addresses?: { primary?: { eth_address?: string }; eth_addresses?: string[] } }
 export type Cast = {
   hash: string; text: string; timestamp: string; author: User; parent_hash?: string | null; parent_url?: string | null; parent_author?: { fid: number | null }
-  embeds: { url?: string; cast_id?: { fid: number; hash: string } }[]
+  embeds: { url?: string; emoji_label?: string; cast_id?: { fid: number; hash: string } }[]
   reactions: { likes_count: number; recasts_count: number }; replies: { count: number }; direct_replies?: Cast[]
   mentioned_profiles?: User[]; mentioned_profiles_ranges?: { start: number; end: number }[]
   // a reply in Home carries the casts shown above it (root first), and `gap` when some were skipped
