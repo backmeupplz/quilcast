@@ -1361,11 +1361,16 @@ test('standalone pages inline their stylesheet, allowed by its hash, and ask Clo
 })
 
 test('the standalone pages are served in the other languages at their own addresses, with the stylesheet inlined', async () => {
-  const r = await fetch(base + '/de/privacy')
+  const r = await fetch(base + '/de/about')
   const html = await r.text()
   assert.equal(r.status, 200)
   assert.match(html, /<html lang="de">/)
-  assert.ok(html.includes('<link rel="canonical" href="https://quilcast.com/de/privacy" />') && !html.includes('href="/legal.css"'))
+  assert.ok(html.includes('<link rel="canonical" href="https://quilcast.com/de/about" />') && !html.includes('href="/legal.css"'))
+  for (const [oldPath, target] of [['/de/privacy', 'https://quilcast.test/privacy'], ['/ja/terms', 'https://quilcast.test/terms']]) {
+    const redir = await fetch(base + oldPath, { redirect: 'manual' })
+    assert.equal(redir.status, 301)
+    assert.equal(redir.headers.get('location'), target)
+  }
 })
 
 test("an article's page shares its title, opening and cover, and says it's an Article", async () => {
