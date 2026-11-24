@@ -17,16 +17,17 @@ export const emojiPic = (u: string) =>
 /** A cast's inline custom emojis, label → picture: each url embed with a valid label whose :label: its text has, the
  *  first embed with a label winning. These are drawn in the text (markdown's `emojis`) and not again under it (urlsOf);
  *  any other labelled embed is an ordinary picture, and a :label: no embed has stays text, as the FIP says. Places
- *  without pictures (notifications, cards, meta tags) keep the :label: text, which is the FIP's fallback. */
-export function emojisOf(c: { text?: string; embeds?: { url?: string; emoji_label?: string }[] }) {
+ *  without pictures (notifications, cards, meta tags) keep the :label: text, which is the FIP's fallback. `text` is the
+ *  text shown instead of the cast's own, its translation (ui.tsx Said), which may have lost or changed a :label:. */
+export function emojisOf(c: { text?: string; embeds?: { url?: string; emoji_label?: string }[] }, text = c.text || '') {
   const out = new Map<string, string>()
   for (const e of c.embeds || []) {
     const label = e?.emoji_label, u = safeUrl(e?.url)
-    if (u && emojiPic(u) && typeof label === 'string' && EMOJI_LABEL.test(label) && !out.has(label) && (c.text || '').includes(`:${label}:`)) out.set(label, u)
+    if (u && emojiPic(u) && typeof label === 'string' && EMOJI_LABEL.test(label) && !out.has(label) && text.includes(`:${label}:`)) out.set(label, u)
   }
   // only the ones it really draws: a :label: in code or inside a link stays text, and its picture shows under the text
   if (!out.size) return out
-  const drawn = new Set([...markdown(c.text || '', undefined, out).matchAll(/<img class="md-emoji" [^>]*?alt=":([\w-]+):"/g)].map((m) => m[1]))
+  const drawn = new Set([...markdown(text, undefined, out).matchAll(/<img class="md-emoji" [^>]*?alt=":([\w-]+):"/g)].map((m) => m[1]))
   return new Map([...out].filter(([label]) => drawn.has(label)))
 }
 /** Whether the composer sends a sticker it puts in the text as an inline custom emoji (castBody, asEmojis). Off while
@@ -681,10 +682,10 @@ export const LINK_RE = new RegExp(`${anyCase('http')}[sS]?:\\/\\/[^\\s<>"]+[^\\s
 export const toUrl = (s: string) => (/^https?:\/\//i.test(s) ? s : `https://${s}`)
 /** A cast's links, shown as its pictures and cards. Some clients leave a link in the text without embedding it, so a
  *  cast with no embeds at all gets its first typed http(s) link instead. */
-export const urlsOf = (c: { text?: string; embeds?: { url?: string; emoji_label?: string }[] }) => {
+export const urlsOf = (c: { text?: string; embeds?: { url?: string; emoji_label?: string }[] }, text?: string) => {
   // less the pictures and [label](url) links the text already shows with Markdown (other clients still get them as embeds)
-  // and the inline custom emojis it draws
-  const shown = new Set([...imagesIn(c.text || ''), ...linksIn(c.text || ''), ...emojisOf(c).values()])
+  // and the inline custom emojis it draws, in `text` when that's shown instead (emojisOf)
+  const shown = new Set([...imagesIn(c.text || ''), ...linksIn(c.text || ''), ...emojisOf(c, text).values()])
   const urls = c.embeds?.length ? c.embeds.flatMap((e) => safeUrl(e?.url) ?? []) : typed(c.text || '').filter((u) => /^https?:\/\//i.test(u)).slice(0, 1).flatMap((u) => safeUrl(u) ?? [])
   return urls.filter((u) => !shown.has(u) && u !== TRAIN)
 }

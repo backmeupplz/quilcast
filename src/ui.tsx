@@ -353,7 +353,8 @@ export const langName = (code: string) => {
   }
 }
 
-/** A cast's words, translated when it's in another language and the reader asked (or someone did before). */
+/** A cast's words, translated when it's in another language and the reader asked (or someone did before), and its
+ *  embeds under them, less the inline custom emojis the words shown draw. */
 function Said({ c, full }: { c: Cast; full?: boolean }) {
   const text = castText(c)
   // the languages the reader reads (Settings → Don't translate from, and the app's own) get no translation at all
@@ -386,9 +387,11 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
   }
   // (the model can find it's in a language the reader reads after all)
   const shown = offersTranslation(from, tr?.from, reads)
-  const words = tr && shown && !orig ? tr.text : castText(c, true)
+  const showsTr = !!tr && shown && !orig
+  const words = showsTr ? tr.text : castText(c, true)
   const tags = taggable(c.text || '')
-  const emojis = emojisOf(c)
+  // a translation can lose or change a :label: (or come from before the prompt kept them): its picture then shows under
+  const emojis = emojisOf(c, showsTr ? words : undefined)
   const fromName = langName(tr && tr.from !== 'und' ? tr.from : from || 'und')
   return (
     <>
@@ -400,6 +403,7 @@ function Said({ c, full }: { c: Cast; full?: boolean }) {
               : <button class="link-btn" disabled={busy} onClick={ask}>{busy ? t('Translating…') : t('Translate from {language}', { language: fromName })}</button>}
         </div>
       )}
+      <Embeds c={c} text={showsTr ? words : undefined} />
     </>
   )
 }
@@ -1150,8 +1154,8 @@ function SpaceEmbed({ id }: { id: string }) {
   )
 }
 
-function Embeds({ c }: { c: Cast }) {
-  const urls = urlsOf(c)
+function Embeds({ c, text }: { c: Cast; text?: string }) {
+  const urls = urlsOf(c, text)
   // a link to a cast on Quilcast is shown as a quote, like a quoted cast
   const linked = (u: string) => castOf(ownPath(safeUrl(u)))
   const spaces = [...new Set(urls.flatMap((u) => spaceOf(u) || []))]
@@ -1640,7 +1644,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
     return (
       <article class="cast focus">
         <header><Avatar u={c.author} size={44} /><div class="who">{name}</div>{ch && <a class="chan" href={`/channel/${ch}`} onClick={stop}>/{ch}</a>}</header>
-        {isArticle(art) ? <ArticleView c={c} root={art} onParts={onArticle} /> : art ? <ArticlePart c={c} part={art} full /> : <><Said c={c} full /><Embeds c={c} /></>}
+        {isArticle(art) ? <ArticleView c={c} root={art} onParts={onArticle} /> : art ? <ArticlePart c={c} part={art} full /> : <Said c={c} full />}
         <div class="when">{sending ? <span class="posting"><span class="pulse" /> {t('Posting…')}</span> : new Date(c.timestamp).toLocaleString(lang, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' })}</div>
         {stats.length > 0 && <div class="stats">{stats.map(([k, x, word]) => <a href={`/c/${c.hash}/${k}`}><b>{n(x)}</b> {word}</a>)}</div>}
         {actions}
@@ -1660,7 +1664,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
           {ch && <a class="chan" href={`/channel/${ch}`} onClick={stop}>/{ch}</a>}
         </header>
         {c.parent_hash && !inThread && <div class="replying">{parentUser ? <>{t('Replying to')} <a href={userPath(parentUser)} onClick={stop}>@{handle(parentUser)}</a></> : t('Replying to a cast')}</div>}
-        {isArticle(art) ? <ArticleCard c={c} /> : art ? <ArticlePart c={c} part={art} /> : <><Said c={c} /><Embeds c={c} /></>}
+        {isArticle(art) ? <ArticleCard c={c} /> : art ? <ArticlePart c={c} part={art} /> : <Said c={c} />}
         {actions}
       </div>
     </article>

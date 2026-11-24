@@ -51,6 +51,20 @@ test('an emoji sits in the line, from our server or through the picture proxy, a
   assert.equal(unmarkdown(castText(c)), "lfg :check: and :check: :other: @dwr")
 })
 
+test("a translation's emojis are the ones it draws, and the rest show under the cast as pictures", () => {
+  const c = { text: 'lfg :check: :eyes:', embeds: [{ url: other, emoji_label: 'check' }, { url: st, emoji_label: 'eyes' }] }
+  assert.deepEqual(urlsOf(c), [])
+  // kept, translated, dropped or put in code: only a :label: the translation draws hides its picture
+  const shown: [string, string[], string[]][] = [['погнали :check: :eyes:', ['check', 'eyes'], []], ['погнали :галочка: :eyes:', ['eyes'], [other]], ['погнали', [], [other, st]], ['погнали `:check:` :eyes:', ['eyes'], [other]]]
+  for (const [text, drawn, under] of shown) {
+    assert.deepEqual([...emojisOf(c, text).keys()], drawn, text)
+    assert.deepEqual(urlsOf(c, text), under, text)
+  }
+  // a label the original doesn't use still counts once the shown text draws it, and no shown text is the cast's own
+  assert.deepEqual([...emojisOf({ ...c, text: 'lfg' }, ':check:').keys()], ['check'])
+  assert.deepEqual(urlsOf(c, undefined), urlsOf(c))
+})
+
 test("the composer's shortcode stickers go out as emojis in the slots left, and its mentions move with the text", () => {
   const text = `gm ![:sunrise:](${st}) é ![:sunrise:](${st}) ![:sunrise:](${st2}) ![:wave:](${st2}) ![🌅](${st}) ![:x:](${other}) ![:y:](${st2})`
   // "@a" was before the first sticker, "@b" (at its byte) after the second, as mentions() leaves them
