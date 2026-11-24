@@ -297,6 +297,16 @@ export const MARQUEE_SPEEDS = ['slow', 'normal', 'fast'] as const
 export const MARQUEE_DIRS = ['left', 'right'] as const
 export type Marquee = { text: string; speed?: (typeof MARQUEE_SPEEDS)[number]; dir?: (typeof MARQUEE_DIRS)[number]; color?: string; bg?: string }
 
+// a YouTube link (watch, youtu.be, shorts, live, embed) and its start time (t=95, t=1m35s)
+export const ytId = (s: string) => (s.match(/(?:youtu\.be\/|[?&]v=|\/(?:embed|shorts|live)\/)([\w-]{11})/) || s.trim().match(/^([\w-]{11})$/))?.[1]
+export const ytStart = (s: string) => {
+  const m = s.match(/[?&](?:t|start)=(?:(\d+)m)?(\d+)s?\b/)
+  return m ? Number(m[1] || 0) * 60 + Number(m[2]) : undefined
+}
+/** A cast's link to a YouTube video or live stream, as its id: it plays in YouTube's player (ui.tsx YouTube). A
+ *  channel's /live link has no video id, and YouTube's embed by channel no longer plays, so it stays a card. */
+export const ytVideo = (u: string) => (/^https:\/\/((www|m)\.)?youtube\.com\/|^https:\/\/youtu\.be\//.test(u) ? ytId(u) : undefined)
+
 // Winamp on the profile (src/amp.tsx): YouTube videos and playlists played as audio in a skin from the Winamp Skin
 // Museum (skins.webamp.org, by the skin file's md5). `on` shows it; the list stays while it's off.
 export type AmpItem = { id: string; pl?: 1; title?: string }

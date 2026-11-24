@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { embedLayout, peekOf, playedOf, quotedOf, vidBoxOf, vidShape } from './shared.ts'
+import { embedLayout, peekOf, playedOf, quotedOf, vidBoxOf, vidShape, ytStart, ytVideo } from './shared.ts'
 
 const img = (i: number) => `https://imagedelivery.net/a/b${i}/original`
 const vid = (i: number) => `https://stream.farcaster.xyz/v${i}/manifest.m3u8`
@@ -126,4 +126,12 @@ test('a quote of a quote has something to show: the cast it quotes', () => {
   assert.deepEqual(peekOf(['https://example.com/post'], quotedOf(c)), { link: 'example.com/post' })
   assert.deepEqual(peekOf([img(1)], quotedOf(c)), { img: img(1) })
   assert.deepEqual(peekOf([], undefined), {})
+})
+
+test("YouTube videos and live streams play in a cast, other sites' look-alike links don't", () => {
+  for (const u of ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://youtu.be/dQw4w9WgXcQ?t=42', 'https://www.youtube.com/live/dQw4w9WgXcQ?si=x',
+    'https://m.youtube.com/shorts/dQw4w9WgXcQ', 'https://youtube.com/embed/dQw4w9WgXcQ']) assert.equal(ytVideo(u), 'dQw4w9WgXcQ', u)
+  for (const u of ['https://example.com/watch?v=dQw4w9WgXcQ', 'https://youtube.com.evil.io/live/dQw4w9WgXcQ', 'https://www.youtube.com/@someone/live', 'https://www.youtube.com/channel/UCSJ4gkVC6NrvII8umztf0Ow/live', 'https://www.youtube.com/playlist?list=PL0123456789ab'])
+    assert.equal(ytVideo(u), undefined, u)
+  assert.equal(ytStart('https://youtu.be/dQw4w9WgXcQ?t=1m35s'), 95)
 })

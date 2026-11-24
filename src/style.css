@@ -664,6 +664,7 @@ small.warn { color: var(--warn); }
 .lc-frame { position: relative; }
 .lc-frame:has(.lc-img) { background: var(--soft); }
 .lc-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.lc-yt { aspect-ratio: 16 / 9; background: var(--soft); }
 .lc-frame .lc-img { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; object-fit: contain; border: 0; }
 .lc-run { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: calc(100% - 24px); }
 .lc-say { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 10px 14px; overflow: auto; font-size: 14px; background: color-mix(in srgb, var(--card, var(--bg)) 96%, transparent); }

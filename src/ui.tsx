@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks'
 import { account, ALERTS, articleNow, articleOf, back, follow, get, getJson, go, read, readArticle, save, mine, mineVersion, taps, tapped, myUser, got, posting, safeUrl, settings, users, type ArticleRead, type Cast, type User } from './api.ts'
 import { ARTICLE, cardOpening, coverOf, headOf, isArticle, segments, type Embed, type Part } from './article.ts'
-import { articleHtml, emojisOf, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, isTrain, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, type Look, type Saved, type Theme } from './shared.ts'
+import { articleHtml, emojisOf, boxOf, castOf, pathOf, linkify, lookalike, markdown, castText, taggable, cleanDesign, cleanLibrary, cleanTheme, DEFAULTS, designId, embedLayout, FONTS, holidayOn, isImg, isVid, LOGO, lookPage, lookVars, n, ownMedia, P, peekOf, poster, quotedOf, type CastRef, proxied, sized, IMG_SIZES, spaceOf, srcsetOf, stickerPack, packLink, isTrain, themeId, themeVars, urlsOf, viaUs, vidBoxOf, playedOf, vidShape, X_LOGO, ytStart, ytVideo, type Look, type Saved, type Theme } from './shared.ts'
 export { spaceOf }
 import type { AppMeta } from './miniapp.tsx'
 import { legacy } from './channels.ts'
@@ -1003,10 +1003,13 @@ function PageCard({ u: given, c }: { u: string; c?: Cast }) {
   // a mini app's inline view (inline.ts) takes the picture's place, with the rest of the card under it
   // never one on this app's own origin: Quilcast itself in the card, signed in, is a page to trick a tap out of
   const inline = d?.app && d.inline && [safeUrl(d.inline.url)].find((x) => x && new URL(x).origin !== location.origin)
+  // a YouTube video or live stream plays in YouTube's player in the picture's place
+  const video = !inline && ytVideo(u)
+  const framed = inline || video
   const card = (
     // a mini app's or frame's embed image (the one with a button) is 3:2, so its card is too
-    <a class={`linkcard${image && !inline ? ' big' : ''}${image && d?.button && !inline ? ' lc-app' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click} onAuxClick={aux}>
-      {image && !inline && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(d?.image)} />}
+    <a class={`linkcard${image && !framed ? ' big' : ''}${image && d?.button && !framed ? ' lc-app' : ''}`} href={u} target="_blank" rel="noopener noreferrer nofollow" onClick={click} onAuxClick={aux}>
+      {image && !framed && <Img class="lc-img" src={sized(image, 'w=1200')} low onError={() => setBad(d?.image)} />}
       <span class="lc-text">
         <span class="lc-site">{icon && <Img src={icon} low />}{new URL(u).hostname.replace(/^www\./, '')}</span>
         {d?.title ? <b class="lc-title">{d.title}</b> : !d?.description && pathOf(u) && <span class="lc-desc">{pathOf(u)}</span>}
@@ -1015,7 +1018,23 @@ function PageCard({ u: given, c }: { u: string; c?: Cast }) {
       {d?.button && <span class="lc-btn">{inline ? t('Open') : d.button}</span>}
     </a>
   )
+  if (video) return <div class="lc-inline"><YouTube key={video} id={video} start={ytStart(u)} image={image} />{card}</div>
   return inline ? <div class="lc-inline"><InlineApp u={u} src={inline} height={d!.inline!.height} app={{ ...d!.app!, icon: icon || d!.app!.icon }} c={c} image={image} />{card}</div> : card
+}
+
+/** A YouTube video or live stream, in YouTube's own player once tapped (as the profile song is). */
+function YouTube({ id, start, image }: { id: string; start?: number; image?: string }) {
+  const [on, setOn] = useState(false)
+  return (
+    <div class="lc-frame lc-yt" onClick={stop}>
+      {on ? <iframe src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1${start ? `&start=${start}` : ''}`} title="YouTube"
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowFullScreen />
+        : <>
+          {image && <Img class="lc-img" src={sized(image, 'w=1200')} low />}
+          <button class="btn small lc-run" onClick={() => setOn(true)}>▶︎ {t('Play video')}</button>
+        </>}
+    </div>
+  )
 }
 
 // our own hosts' inline views load as they scroll in, like quilcast.com's own pictures; another host's only once

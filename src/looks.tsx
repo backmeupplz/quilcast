@@ -8,7 +8,7 @@ import { t } from './i18n.ts'
 import { PRESETS as EFFECTS, start } from './fx.ts'
 import { ProfileAmp } from './amp.tsx'
 import { BASE, museum, skinShot, type MuseumSkin } from './skin.ts'
-import { ampItem, cleanDesign, cleanLook, cleanMarquee, DESIGN_KEYS, lookPage, marqueeStyle, type Marquee as MarqueeT, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, proxied, sized, type Look, type Sticker } from './shared.ts'
+import { ampItem, ytId, ytStart, cleanDesign, cleanLook, cleanMarquee, DESIGN_KEYS, lookPage, marqueeStyle, type Marquee as MarqueeT, lookVars, designId, FONTS, FX, INTERESTS, isLookImg, LIMITS, NAME_FX, BORDERS, BG_MODES, SIZES, proxied, sized, type Look, type Sticker } from './shared.ts'
 import { Avatar, copyText, designOf, Icon, Img, nameOf, RichText, shell, toast, userPath, w } from './ui.tsx'
 import { GifPicker } from './gifs.tsx'
 
@@ -287,12 +287,6 @@ export function useEditorKit<D extends { stickers?: { src: string }[] }>(d: D, s
   return { min, setMin, gif, setGif, up, upload, clear, select, image, head, stickers }
 }
 
-// a YouTube link (watch, youtu.be, shorts, embed) and its start time (t=95, t=1m35s)
-const ytId = (s: string) => (s.match(/(?:youtu\.be\/|[?&]v=|\/(?:embed|shorts|live)\/)([\w-]{11})/) || s.trim().match(/^([\w-]{11})$/))?.[1]
-const ytStart = (s: string) => {
-  const m = s.match(/[?&](?:t|start)=(?:(\d+)m)?(\d+)s?\b/)
-  return m ? Number(m[1] || 0) * 60 + Number(m[2]) : undefined
-}
 
 type Set = (f: (d: Look) => Look) => void
 type Pick = { pick: (url: string) => void }
