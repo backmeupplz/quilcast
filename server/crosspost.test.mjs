@@ -142,6 +142,29 @@ test('a cast signed before a restart goes again as the same bytes, not as a seco
   assert.equal((await read(7)).since, s.id)
 })
 
+test("media that can't be uploaded just now holds its post for the next round, for about an hour", async () => {
+  const photo = { media: { all: [{ type: 'photo', url: 'https://pbs.twimg.com/media/B.jpg?name=orig' }] } }
+  const down = async () => { throw Object.assign(new Error("Couldn't reach the Farcaster node. Try again."), { retry: true }) }
+  const s = post(80, photo)
+  const since = idAt(T0 + 70e3)
+  const { sent, submit, upload } = fake()
+  await step(await stored({ fid: 9, since }), { posts: async () => [s], upload: down, submit, now: T0 })
+  assert.equal(sent.length, 0)
+  assert.equal((await read(9)).since, since)
+  // the next round it's up: the photo is in the cast, no link to the post
+  await step(await read(9), { posts: async () => [s], upload, submit, now: T0 })
+  assert.deepEqual(sent.map(textOf), ['post 80'])
+  assert.equal((await read(9)).since, s.id)
+  // one that stays down: after an hour of rounds the post goes over with a link to it after all
+  const t = post(90, photo)
+  const late = fake()
+  await stored({ fid: 10, since })
+  let rounds = 0
+  while (!late.sent.length && rounds < 20) rounds++, await step(await read(10), { posts: async () => [t], upload: down, submit: late.submit, now: T0 })
+  assert.equal(rounds, 13)
+  assert.deepEqual(late.sent.map(textOf), [`post 90\n\n${t.url}`])
+})
+
 test('a removed key stops it; a post the node refuses is skipped; a daily cap', async () => {
   const { upload } = fake()
   const gone = await stored({ since: idAt(T0) })

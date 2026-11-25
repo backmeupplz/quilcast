@@ -16,7 +16,8 @@
 // What goes over, as in Nikita's own crossposter: the account's own posts that start a conversation, quotes too (the
 // quoted post's link goes in the text, which Quilcast shows as a card), and the rest of a thread it started under the
 // cast of the post before. Replies to others and reposts stay on X. Photos and videos are put on Quilcast's server
-// (/api/upload, signed with the same key) and embedded; one that can't be is replaced by a link to the post. Text past
+// (/api/upload, signed with the same key) and embedded; one that can't be is replaced by a link to the post (one that
+// can't be just now, as when the node or the upload is down, holds its post for the next round, for about an hour). Text past
 // 1024 bytes is cut with a link to the post. Only posts after it's turned on go over, never older ones.
 // Each cast is signed with its post's own time, and kept before it's sent, so a restart sends the same message again
 // and the node keeps one.
@@ -37,7 +38,8 @@ const HANDLE = /^[A-Za-z0-9_]{1,15}$/
 // ponytail: a flat cap, and an operator deny-list (CROSSPOST_DENY) for an account mirrored without its owner's say
 export const PER_DAY = 50
 export const MAX_ACCOUNTS = Number(process.env.CROSSPOST_MAX || 2000)
-// a node that's down is tried again each round, for about an hour, before that post is skipped
+// a node that's down is tried again each round, for about an hour, before that post is skipped (or, for its media, cast
+// with a link to it instead)
 const TRIES = 12
 const TWITTER_EPOCH = 1288834974657n
 const MEDIA_MAX = { photo: 10e6, video: 100e6 }
@@ -108,13 +110,20 @@ export function mediaUrl(m) {
   return url ? { url, max: MEDIA_MAX.video } : null
 }
 
-/** The signed cast(s) for post `s`: its media uploaded through `upload(url, max)` (a url, or null when it can't be). */
-export async function toCast(s, c, parent, upload) {
+/** The signed cast(s) for post `s`: its media uploaded through `upload(url, max)` (a url, or null when it can't be).
+ *  With `patient`, an upload that failed for now (`retry`) throws, so the post can wait for it, rather than lose it. */
+export async function toCast(s, c, parent, upload, patient = false) {
   const embeds = []
   let lost = false
   for (const m of (s.media?.all || []).slice(0, 4)) {
     const src = mediaUrl(m)
-    const url = src && (await upload(src.url, src.max).catch((e) => (console.error('crosspost', c.fid, 'media', e.message), null)))
+    const url =
+      src &&
+      (await upload(src.url, src.max).catch((e) => {
+        if (patient && e.retry) throw e
+        console.error('crosspost', c.fid, 'media', e.message)
+        return null
+      }))
     if (url) embeds.push(url)
     else lost = true
   }
@@ -221,10 +230,13 @@ export async function turnOff(req, fid, node, { submit = (b) => submitTo(node, b
 // --- X ---
 
 const FX = process.env.FXTWITTER_URL || 'https://api.fxtwitter.com'
-const fx = async (path) => {
+// fxtwitter sometimes answers 404 for an account that's there (from Hetzner on 2026-11-25, about half the time, for
+// hours), so a 404 is asked again before it counts
+const fx = async (path, tries = 3) => {
   const r = await fetch(`${FX}${path}`, { headers: { 'user-agent': 'QuilcastCrosspost/1.0 (+https://quilcast.com)' }, signal: AbortSignal.timeout(20e3) })
   if (r.status === 429) throw Object.assign(new Error('fxtwitter rate limit'), { busy: true })
   const j = await r.json().catch(() => null)
+  if ((r.status === 404 || j?.code === 404) && tries > 1) return fx(path, tries - 1)
   return { status: r.status, j }
 }
 /** The X account, or null when there's none (or it's protected). */
@@ -249,24 +261,27 @@ const SITE = process.env.QUILCAST_URL || 'http://quilcast:3000'
 /** Puts the file at `url` on Quilcast's server and gives its address there. */
 // ponytail: every account's uploads come from this one address, which /api/upload allows 30 starts per 10 minutes;
 // past that a post's media becomes a link to the post. Exempt the service there if many accounts post media.
+// An error that may pass (X, Quilcast or the node down, busy or slow) has `retry`, so its post waits (toCast).
+const later = (e) => Object.assign(e, { retry: true })
+const passing = (status) => status === 429 || status >= 500
 export async function uploadAs(c, url, max, site = SITE) {
-  const r = await safeGet(url, { max: max + 1, timeout: 120e3 })
-  if (r.status !== 200 || r.truncated) throw new Error(`media ${r.status}${r.truncated ? ' too big' : ''}`)
+  const r = await safeGet(url, { max: max + 1, timeout: 120e3 }).catch((e) => Promise.reject(later(e)))
+  if (r.status !== 200 || r.truncated) throw Object.assign(new Error(`media ${r.status}${r.truncated ? ' too big' : ''}`), { retry: !r.truncated && passing(r.status) })
   const type = r.type.split(';')[0].trim()
   const key = rawEd(unhex(c.priv))
   const ts = Date.now()
   const sig = hex(await key.sign(Buffer.from(`quilcast-upload:${c.fid}:${ts}:`)))
   const call = async (path, init) => {
-    const res = await fetch(`${site}${path}`, { ...init, signal: AbortSignal.timeout(60e3) })
+    const res = await fetch(`${site}${path}`, { ...init, signal: AbortSignal.timeout(60e3) }).catch((e) => Promise.reject(later(e)))
     const j = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(j.error || `upload ${res.status}`)
+    if (!res.ok) throw Object.assign(new Error(j.error || `upload ${res.status}`), { retry: passing(res.status) })
     return j
   }
   const { id, chunk } = await call('/api/upload', { method: 'POST', headers: { 'content-type': type, 'x-size': String(r.body.length), 'x-fid': String(c.fid), 'x-key': '0x' + hex(key.pub), 'x-ts': String(ts), 'x-sig': sig } })
   for (let at = 0; at < r.body.length; at += chunk) await call(`/api/upload/${id}?offset=${at}`, { method: 'PUT', body: r.body.subarray(at, at + chunk) })
   let s = await call(`/api/upload/${id}/done`, { method: 'POST' })
   for (let i = 0; s.state === 'sending' || s.state === 'processing'; i++) {
-    if (i > 120) throw new Error('upload took too long')
+    if (i > 120) throw later(new Error('upload took too long'))
     await new Promise((ok) => setTimeout(ok, 1000))
     s = await call(`/api/upload/${id}`, { method: 'GET' })
   }
@@ -325,7 +340,21 @@ export async function step(c, { posts, upload, submit, now = Date.now() }) {
       c.since = s.id
       continue
     }
-    const m = await toCast(s, c, parent, (url, max) => upload(c, url, max))
+    // media that can't be put on Quilcast's server just now holds the post (and the ones after it) for the next round,
+    // TRIES rounds at most; after that it goes over with a link to it
+    // ponytail: a post's media that did upload is uploaded again on the next try; keep the urls if that adds up
+    const held = c.held?.id === s.id ? c.held.n : 0
+    let m
+    try {
+      m = await toCast(s, c, parent, (url, max) => upload(c, url, max), held < TRIES)
+    } catch (e) {
+      if (!e.retry) throw e
+      console.error('crosspost', c.fid, 'media', s.id, e.message)
+      c.held = { id: s.id, n: held + 1 }
+      await keep(c)
+      return
+    }
+    c.held = undefined
     // kept before it's sent, so a restart now sends these bytes rather than signing another
     c.pending = { id: s.id, hash: m.hash, msg: Buffer.from(m.msg).toString('base64'), tries: 0 }
     await keep(c)
