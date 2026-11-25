@@ -137,6 +137,47 @@ final class FoldTests: XCTestCase {
         try await js("document.documentElement.dir = ''")
     }
 
+    func testAnIPadWindowOfAnySizeGetsAPageThatWide() async throws {
+        // An iPad window in Split View, Slide Over or Stage Manager can be any of these: the page is as wide as the window,
+        // at 1:1, and lays itself out by that width (style.css).
+        let styles = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../src/style.css")
+        guard let css = try? String(contentsOf: styles, encoding: .utf8) else { throw XCTSkip("Needs the repository's src/style.css") }
+        try await load("<style>\(css)</style><div class='app'><nav class='side'></nav><main class='col'></main><nav class='tabbar'><a>1</a></nav></div>")
+        let sizes: [(CGSize, UIUserInterfaceSizeClass, Bool)] = [
+            (CGSize(width: 320, height: 1032), .compact, false), (CGSize(width: 375, height: 1366), .compact, false),
+            (CGSize(width: 507, height: 1032), .compact, false), (CGSize(width: 678, height: 1032), .regular, true),
+            (CGSize(width: 1032, height: 1376), .regular, true), (CGSize(width: 1376, height: 1032), .regular, true),
+        ]
+        for (frame, size, sidebar) in sizes {
+            try await resize(to: frame, size)
+            let scale = try await js("return visualViewport.scale"), width = try await js("return innerWidth")
+            XCTAssertEqual(width, String(Int(page.web.bounds.width)), "\(frame): the page is the window's width")
+            XCTAssertEqual(scale, "1", "\(frame): the page isn't shrunk to fit")
+            let side = try await js("return String(getComputedStyle(document.querySelector('.side')).display !== 'none' && getComputedStyle(document.querySelector('.tabbar')).display === 'none')")
+            XCTAssertEqual(side, String(sidebar), "\(frame): \(sidebar ? "the sidebar" : "the tab bar")")
+            snapshot("ipad-\(Int(frame.width))x\(Int(frame.height))")
+        }
+        // the same user agent at every size (WebKit would otherwise pick a Mac's for a wide window): an iPad's, with the app's name
+        let agent = try await js("return navigator.userAgent")
+        XCTAssert(agent.contains("QuilcastApp/"), "the page knows it's in the app")
+        if UIDevice.current.userInterfaceIdiom == .pad { XCTAssert(agent.contains("iPad"), agent) }
+    }
+
+    func testTheMenuBarsCommandsReachThePage() async throws {
+        try await load("<script>window.quilcastCommand = (to) => { window.got = to }</script>")
+        // from whatever has the focus, as the menu bar sends them: the page's controller, before anything in the page has it
+        for to in ["compose", "search", "profile"] {
+            let command = UIKeyCommand(title: to, action: #selector(Web.command(_:)), input: "n", modifierFlags: .command, propertyList: to)
+            XCTAssert(UIApplication.shared.sendAction(command.action!, to: nil, from: command, for: nil), "nothing took \(to)")
+            try await until("the page was asked for \(to)") { (try? await self.js("return window.got")) == to }
+        }
+        XCTAssert(page.canPerformAction(#selector(Web.command(_:)), withSender: nil))
+        XCTAssertFalse(page.canPerformAction(#selector(Web.back(_:)), withSender: nil), "nothing to go back to")
+        present(rules())
+        XCTAssertFalse(page.canPerformAction(#selector(Web.command(_:)), withSender: nil), "not while the community rules are up")
+        page.dismiss(animated: false)
+    }
+
     func testComingBackLeavesThePageWhereItWasWithItsBarsAtTheBottom() async throws {
         // the app's bars that stay put on the screen, with this checkout's styles (as above), over a long feed
         let styles = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../src/style.css")
@@ -246,6 +287,28 @@ final class FoldTests: XCTestCase {
         }
     }
 
+    // (last of all: the system lays the windows out again as one opens and closes, under the other tests' own sizes)
+    func testWindowsOpenOnTheirPageAndComeBackToIt() async throws {
+        guard UIApplication.shared.supportsMultipleScenes else { throw XCTSkip("An iPhone has one window") }
+        let url = URL(string: "https://quilcast.com/settings")!
+        page.openWindow(url)
+        func other() -> UIWindowScene? {
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0 !== self.window.windowScene }
+        }
+        try await until("a second window opened") { other() != nil }
+        let scene = try XCTUnwrap(other()), web = try XCTUnwrap(scene.windows.first?.rootViewController as? Web)
+        XCTAssert(web !== page, "a page of its own")
+        try await until("it shows the page") { web.web.url?.path == url.path }
+        let delegate = try XCTUnwrap(scene.delegate as? SceneDelegate)
+        let saved = try XCTUnwrap(delegate.stateRestorationActivity(for: scene))
+        XCTAssertEqual(Quilcast.url(saved)?.path, url.path, "it comes back on that page")
+        XCTAssertEqual(saved.userInfo?["url"] as? String, url.absoluteString, "after a relaunch too, which drops webpageURL")
+        UIApplication.shared.requestSceneSessionDestruction(scene.session, options: nil)
+        try await until("the window closed") { other() == nil }
+        let size = "\(Int(page.web.bounds.width))x\(Int(page.web.bounds.height))"
+        try await until("the first window's page fills it again") { (try? await self.js("return innerWidth + 'x' + innerHeight")) == size }
+    }
+
     /** Snapshots of the site itself, folded and unfolded, when asked for (see the top). */
     func testScreenshotsOfTheSite() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -271,8 +334,13 @@ final class FoldTests: XCTestCase {
 
     /** Resizes the window to a phone's, or an unfolded Duo's, with that size class; and waits until the page has the new width. */
     func fold(_ size: UIUserInterfaceSizeClass) async throws {
+        try await resize(to: size == .regular ? Self.unfolded : Self.phone, size)
+    }
+
+    /** Resizes the window to `frame` with that size class, and waits until the page has the new width. */
+    func resize(to frame: CGSize, _ size: UIUserInterfaceSizeClass) async throws {
         window.traitOverrides.horizontalSizeClass = size
-        window.frame = CGRect(origin: .zero, size: size == .regular ? Self.unfolded : Self.phone)
+        window.frame = CGRect(origin: .zero, size: frame)
         window.layoutIfNeeded()
         XCTAssertEqual(page.traitCollection.horizontalSizeClass, size)
         // the system can move the safe area (an iPhone Duo's strip) a moment after the window changes, so the web view's

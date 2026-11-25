@@ -2726,6 +2726,14 @@ function App() {
   }, [account?.fid])
   const me = account?.done ? myUser() : null
   shell.me = () => me && <HeaderMe me={me} />
+  // the iOS app's menu bar and keyboard shortcuts (⌘N, ⌘F, ⌘1…, ios/Quilcast/App.swift) land here
+  ;(window as { quilcastCommand?: (k: string) => void }).quilcastCommand = (k) => {
+    // a cast being written keeps the page under it, and the keys
+    if (composing.current) return
+    if (k === 'compose') return void (requireAccount() && setCompose({}))
+    go(k === 'profile' ? (me ? userPath(me) : '/join') : k === 'home' ? '/' : `/${k}`)
+    if (k === 'search') requestAnimationFrame(() => document.querySelector<HTMLInputElement>('input[type="search"]')?.focus())
+  }
   const view =
     r0 === 'c' ? (Object.hasOwn(WHO, r2) ? <Who hash={r1} kind={r2 as keyof typeof WHO} /> : <Thread hash={r1} />)
       : r0 === 'u' ? (Object.hasOwn(FOLLOWS, r2) ? <Follows id={decode(r1)} kind={r2 as keyof typeof FOLLOWS} /> : <Profile id={decode(r1)} />)

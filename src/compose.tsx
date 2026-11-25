@@ -122,6 +122,8 @@ const sent = () => {
 const PIC = 100
 const used = (p: { text: string; pics: unknown[] }) => bytes(p.text) + p.pics.length * PIC
 // how the keyboard shortcuts read on this device
+// what the attach button's picker offers (`accept` below), for dropped files
+const MEDIA = /^(image\/|video\/(mp4|webm|quicktime)$)/
 const MOD = /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 const fmtLeft = (s?: number) => (s === undefined || !isFinite(s) ? '' : ' · ' + (s < 60 ? t('{n}s left', { n: Math.max(1, Math.round(s)) }) : t('{n} min left', { n: Math.round(s / 60) })))
 const Busy = ({ f }: { f: Attachment }) => (
@@ -429,7 +431,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   const filled = (p: Part, i: number) => p.text.trim() || p.files.length || fixed(i)
   const ready = parts.every((p, i) => (filled(p, i) || (i > 0 && !p.text && !p.files.length)) && bytes(p.text) <= LIMIT && p.files.every((f) => f.url) && !p.pics.length && !holdsPicture(p.text)) && filled(parts[0], 0)
 
-  const attach = (list: FileList | null) => {
+  const attach = (list: Iterable<File> | null) => {
     const part = cur
     const room = embedRoom(part.files.length, fixed(at))
     for (const file of [...(list || [])].slice(0, room)) {
@@ -663,7 +665,12 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
     }
   }
   return (
-    <div class="modal" onClick={acting ? undefined : leave}>
+    // pictures and videos dragged in (from Photos or Files beside it on an iPad, or from the desktop) go on the post
+    // being written, like pasted ones (not while a mini app works on it); a file dropped anywhere over the composer
+    // never opens in the page's place
+    <div class="modal" onClick={acting ? undefined : leave}
+      onDragOver={(e) => e.dataTransfer?.types.includes('Files') && e.preventDefault()}
+      onDrop={(e) => e.dataTransfer?.files.length && (e.preventDefault(), !acting && attach([...e.dataTransfer.files].filter((f) => MEDIA.test(f.type))))}>
       <div class="sheet" inert={acting > 0} tabIndex={-1} role="dialog" aria-label={parent || lost ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : scheduledOpen ? setScheduledOpen(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send(), shortcut(e))}>
         <div class="sheet-top">

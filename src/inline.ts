@@ -11,8 +11,8 @@ import { channelOf, handle, requireAccount, toast } from './ui.tsx'
 import { t } from './i18n.ts'
 
 export const QUILCAST_FID = 3356316
-// a phone, upright or on its side (layout.test.ts); the Quilcast apps are phones however wide they are (an unfolded
-// iPhone Duo has the sidebar)
+// a phone, upright or on its side (layout.test.ts); the Quilcast apps count as mobile however wide they are (an
+// unfolded iPhone Duo or an iPad has the sidebar)
 export const narrow = () => matchMedia('(max-width: 559px), (max-width: 699px) and (max-height: 599px)').matches
 export const inApp = navigator.userAgent.includes('QuilcastApp/')
 export const userCtx = (u: User) => ({ fid: u.fid, username: u.username?.startsWith('fid:') ? undefined : u.username, displayName: u.display_name, pfpUrl: u.pfp_url })

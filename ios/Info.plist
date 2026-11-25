@@ -5,7 +5,7 @@
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
-		<false/>
+		<true/>
 		<key>UISceneConfigurations</key>
 		<dict>
 			<key>UIWindowSceneSessionRoleApplication</key>
@@ -19,6 +19,10 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>NSUserActivityTypeBrowsingWeb</string>
+	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Quilcast uses the microphone when you speak in a Space, or when a mini app you allowed asks for it.</string>
 	<key>NSCameraUsageDescription</key>

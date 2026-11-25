@@ -4,6 +4,7 @@ TARGETS = {
     'ios': (1320, 2868, 440),  # iPhone 6.9"
     'duo-outer': (1398, 2034, 466),  # iPhone Duo cover display
     'duo-inner': (2007, 2853, 669),  # iPhone Duo inner display
+    'ipad-13': (2064, 2752, 1032),  # 13" iPad
     'phone': (1080, 2160, 360),  # Play phone
     'tab7': (1200, 1920, 600),  # Play 7" tablet
     'tab10': (1600, 2560, 800),  # Play 10" tablet

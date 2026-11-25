@@ -40,7 +40,8 @@ test("the strip's tile styles reach only its own tiles", () => {
   const rules = selectors.filter((s) => s.includes('.strip'))
   assert.ok(rules.includes('.strip > .imgs > .img > img'), 'the tile rules are there')
   // a descendant selector would also catch the media inside a card in the strip (a tweet's photo)
-  for (const s of rules) assert.match(s, /^\.strip(:hover)?( > [^ ]+)*$/, s)
+  // (hover effects follow a mouse: style.css :root[data-mouse])
+  for (const s of rules) assert.match(s, /^(:where\(:root\[data-mouse\]\) )?\.strip(:hover)?( > [^ ]+)*$/, s)
 })
 
 test("a compact link card's picture is a thumbnail that can't stretch the card or squeeze its text", () => {

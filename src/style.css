@@ -387,7 +387,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 /* a cast's pictures (one tile) and videos, when it has several, sit side by side and scroll (shared.ts embedLayout); the
    scrollbar keeps its room but shows only while the pointer is over the strip */
 .strip { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: transparent transparent; }
-@media (hover: hover) { .strip:hover { scrollbar-color: var(--line) transparent; } }
+@media (any-hover: hover) { :where(:root[data-mouse]) .strip:hover { scrollbar-color: var(--line) transparent; } }
 .strip > * { flex: none; width: 260px; max-width: 80%; margin-top: 0; scroll-snap-align: start; }
 /* tiles share the tallest one's height: images and videos fill theirs without setting it (a video letterboxes only
    while it plays). Only the strip's own tiles: a tweet's photo elsewhere keeps its usual shape */
@@ -861,37 +861,41 @@ small.warn { color: var(--warn); }
 
 /* hover effects only where something can hover: a tap on a touch screen would leave them stuck on
    (tap a like, and the whole cast stays highlighted) */
-@media (hover: hover) {
-  a:hover { text-decoration: underline; }
-  .brand:hover { text-decoration: none; }
-  .navlink:hover { background: var(--soft); text-decoration: none; }
-  .me:hover { background: var(--soft); text-decoration: none; }
-  .icon-btn:hover:not(:disabled) { background: var(--soft); }
-  .tabs button:hover { background: var(--hover); }
-  .btn:hover:not(:disabled) { text-decoration: none; filter: brightness(1.07); }
-  .btn.ghost:hover:not(:disabled) { background: var(--soft); filter: none; }
-  .cast:not(.focus):hover { background: var(--hover); }
-  .name:hover { text-decoration: underline; }
-  .act:hover { color: var(--accent); }
-  .act:hover svg { filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 30%, transparent)); }
-  .act.lk:hover { color: var(--like); }
-  .act.rc:hover { color: var(--recast); }
-  .stats a:hover { text-decoration: underline; }
-  .reply-prompt:hover { background: var(--hover); }
-  .img:hover img { filter: brightness(0.92); }
-  .lb-btn:hover { background: rgb(255 255 255 / 0.22); }
-  .play:hover { background: var(--accent); }
-  .linkcard:hover { background: var(--hover); text-decoration: none; }
-  .tweet:hover { background: var(--hover); }
-  .quote:hover { background: var(--hover); text-decoration: none; }
-  .menu button:hover, .menu a:hover { background: var(--soft); }
-  .acct:hover { background: var(--soft); }
-  .note-row:hover { background: var(--hover); text-decoration: none; }
-  .row:hover { background: var(--hover); text-decoration: none; }
-  a.searchbox:hover { text-decoration: none; border-color: var(--line); }
-  .choice:hover { border-color: var(--accent); }
-  .part-x:hover { color: var(--ink); }
-  .mentions button:hover { background: var(--soft); }
+/* hover effects follow a mouse or a trackpad (data-mouse, ui.tsx), also on an iPad, where the touch screen stays the
+   primary pointer, and not a finger tap on a screen that has one too */
+@media (any-hover: hover) {
+  :where(:root[data-mouse]) {
+    & a:hover { text-decoration: underline; }
+    & .brand:hover { text-decoration: none; }
+    & .navlink:hover { background: var(--soft); text-decoration: none; }
+    & .me:hover { background: var(--soft); text-decoration: none; }
+    & .icon-btn:hover:not(:disabled) { background: var(--soft); }
+    & .tabs button:hover { background: var(--hover); }
+    & .btn:hover:not(:disabled) { text-decoration: none; filter: brightness(1.07); }
+    & .btn.ghost:hover:not(:disabled) { background: var(--soft); filter: none; }
+    & .cast:not(.focus):hover { background: var(--hover); }
+    & .name:hover { text-decoration: underline; }
+    & .act:hover { color: var(--accent); }
+    & .act:hover svg { filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 30%, transparent)); }
+    & .act.lk:hover { color: var(--like); }
+    & .act.rc:hover { color: var(--recast); }
+    & .stats a:hover { text-decoration: underline; }
+    & .reply-prompt:hover { background: var(--hover); }
+    & .img:hover img { filter: brightness(0.92); }
+    & .lb-btn:hover { background: rgb(255 255 255 / 0.22); }
+    & .play:hover { background: var(--accent); }
+    & .linkcard:hover { background: var(--hover); text-decoration: none; }
+    & .tweet:hover { background: var(--hover); }
+    & .quote:hover { background: var(--hover); text-decoration: none; }
+    & .menu button:hover, & .menu a:hover { background: var(--soft); }
+    & .acct:hover { background: var(--soft); }
+    & .note-row:hover { background: var(--hover); text-decoration: none; }
+    & .row:hover { background: var(--hover); text-decoration: none; }
+    & a.searchbox:hover { text-decoration: none; border-color: var(--line); }
+    & .choice:hover { border-color: var(--accent); }
+    & .part-x:hover { color: var(--ink); }
+    & .mentions button:hover { background: var(--soft); }
+  }
 }
 
 /* ---------- ogre mode (src/ogre.ts) ---------- */
@@ -1010,7 +1014,7 @@ small.warn { color: var(--warn); }
 .lk-mq-run { display: inline-block; direction: ltr; padding-left: 100%; animation: lk-mq var(--mq-dur, 12s) linear infinite; will-change: transform; }
 .lk-mq.right .lk-mq-run { animation-direction: reverse; }
 /* (only under a real pointer: a tap on a phone would leave it hovered, and stopped) */
-@media (hover: hover) { .lk-mq:hover .lk-mq-run { animation-play-state: paused; } }
+@media (any-hover: hover) { :where(:root[data-mouse]) .lk-mq:hover .lk-mq-run { animation-play-state: paused; } }
 @keyframes lk-mq { to { transform: translateX(-100%); } }
 @media (prefers-reduced-motion: reduce) {
   .lk-mq { padding: 6px 12px; white-space: normal; overflow-wrap: anywhere; text-align: center; }
@@ -2137,8 +2141,8 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   & .wallet-total { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
 }
 @keyframes q-open { from { opacity: 0; transform: scale(0.95); } }
-@media (hover: hover) {
-  :where(:root[data-quorum]) {
+@media (any-hover: hover) {
+  :where(:root[data-quorum][data-mouse]) {
     & .icon-btn:hover:not(:disabled) { background: var(--q-s2); color: var(--ink); }
     & .btn:hover:not(:disabled) { background: var(--q-accent-hi); border-color: var(--q-accent-hi); filter: none; }
     & .btn.ghost:hover:not(:disabled) { background: var(--q-border); border-color: var(--q-strong); color: var(--ink); }
@@ -2206,10 +2210,10 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
   :root[data-th-zoom] .q-dm-main .dm { min-height: calc(100vh / var(--zoom) - 57px); }
 }
 .q-day::before, .q-day::after { content: ''; flex: 1; height: 1px; background: var(--q-border); }
-@media (hover: hover) {
-  .q-msg:hover { background: var(--q-s2); }
-  .q-msg:hover .q-msg-side { visibility: visible; }
-  .q-msg-name:hover { text-decoration: underline; }
+@media (any-hover: hover) {
+  :where(:root[data-mouse]) .q-msg:hover { background: var(--q-s2); }
+  :where(:root[data-mouse]) .q-msg:hover .q-msg-side { visibility: visible; }
+  :where(:root[data-mouse]) .q-msg-name:hover { text-decoration: underline; }
 }
 /* MessageComposer: one pill on the page's darkest surface, the send arrow in a circle at its end */
 .dm-compose.q-compose-box { padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--soft); border-top: 0; }
@@ -2219,7 +2223,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 .q-composer:focus-within { border-color: var(--accent); }
 .q-send { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0 0 0 2px; border: 0; border-radius: 99px; background: var(--accent); color: var(--on-accent); transition: background-color 0.15s, opacity 0.15s; }
 .q-send:disabled { background: var(--q-strong); opacity: 0.6; }
-@media (hover: hover) { .q-send:hover:not(:disabled) { background: var(--q-accent-hi); } }
+@media (any-hover: hover) { :where(:root[data-mouse]) .q-send:hover:not(:disabled) { background: var(--q-accent-hi); } }
 @media (max-width: 559px), (max-width: 699px) and (max-height: 599px) {
   /* one pane at a time, like quorum-mobile: the list, or the open conversation */
   .q-dms { display: block; min-height: 0; }

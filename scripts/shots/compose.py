@@ -5,6 +5,7 @@
 # 24 px or more from the edges and from the next box. Arabic is laid out right to left. Writes JPEGs to
 #   appstore/screenshots/<locale>/<n>.jpg                     iPhone 6.9" (1320x2868)
 #   appstore/screenshots/<locale>/duo-outer|duo-inner/<n>.jpg  iPhone Duo (1398x2034 and 2007x2853)
+#   appstore/screenshots/<locale>/ipad-13/<n>.jpg              13" iPad (2064x2752)
 #   fastlane/metadata/android/<Play code>/images/{phone,sevenInch,tenInch}Screenshots/<n>.jpg and featureGraphic.jpg
 # and prints a JSON report; exits 1 if any check fails.
 # SHOTS_TARGETS='ios phone tab7 tab10' limits it to those sizes (layout.py), e.g. while one has no raw shots yet.
@@ -137,7 +138,7 @@ def jobs():
                 img = os.path.join(raw, ui, f"{f['css']}x{f['css_h']}", f'{n}.png')
                 if target == 'ios':
                     out = os.path.join(repo, 'appstore/screenshots', loc, f'{n}.jpg')
-                elif target.startswith('duo'):
+                elif target.startswith(('duo', 'ipad')):
                     out = os.path.join(repo, 'appstore/screenshots', loc, target, f'{n}.jpg')
                 else:
                     sub = {'phone': 'phoneScreenshots', 'tab7': 'sevenInchScreenshots', 'tab10': 'tenInchScreenshots'}[target]

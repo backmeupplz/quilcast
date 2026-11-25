@@ -10,6 +10,20 @@ func ours(_ url: URL) -> Bool {
     url.scheme == "https" && (url.host == "quilcast.com" || url.host == "www.quilcast.com")
 }
 
+/** One of our pages, as what a new window opens on or a window comes back to. */
+func page(_ url: URL?) -> NSUserActivity? {
+    guard let url, ours(url) else { return nil }
+    let activity = NSUserActivity(activityType: NSUserActivityTypeBrowsingWeb)
+    activity.webpageURL = url
+    // a window's saved activity comes back after a relaunch without its webpageURL
+    activity.userInfo = ["url": url.absoluteString]
+    return activity
+}
+
+func url(_ activity: NSUserActivity) -> URL? {
+    activity.webpageURL ?? (activity.userInfo?["url"] as? String).flatMap(URL.init(string:))
+}
+
 // Reports the colors of the page's header and of its background whenever they may have changed, so the status bar's
 // text stays readable on dark themes and profile looks and the strips beside the page match it. Android's
 // MainActivity.java has an older copy that reports the header's color alone.
@@ -26,7 +40,41 @@ let bar = """
 """
 
 @main
-class AppDelegate: UIResponder, UIApplicationDelegate {}
+class AppDelegate: UIResponder, UIApplicationDelegate {
+    // The menu bar, and the shortcuts a held ⌘ lists, with a keyboard on an iPad (or an iPhone). They act on the window
+    // in front (Web.command, then the page's own app.tsx quilcastCommand).
+    override func buildMenu(with builder: UIMenuBuilder) {
+        super.buildMenu(with: builder)
+        guard builder.system == .main else { return }
+        let page = { (title: String, input: String, to: String) in
+            UIKeyCommand(title: title, action: #selector(Web.command(_:)), input: input, modifierFlags: .command, propertyList: to)
+        }
+        var new = [page(String(localized: "New Cast"), "n", "compose")]
+        if UIApplication.shared.supportsMultipleScenes {
+            new.append(UIKeyCommand(title: String(localized: "New Window"), action: #selector(Web.newWindow(_:)), input: "n", modifierFlags: [.command, .alternate]))
+        }
+        builder.insertChild(UIMenu(options: .displayInline, children: new), atStartOfMenu: .file)
+        // Quilcast's own settings, rather than its page in the Settings app
+        builder.replaceChildren(ofMenu: .preferences) { _ in [page(String(localized: "Settings…"), ",", "settings")] }
+        // ⌘F searches Farcaster, not the page (a menu with a shortcut another one has isn't added at all)
+        builder.remove(menu: .find)
+        builder.insertSibling(UIMenu(title: String(localized: "Go"), identifier: UIMenu.Identifier("com.borodutch.quilcast.go"), children: [
+            UIMenu(options: .displayInline, children: [
+                UIKeyCommand(title: String(localized: "Back"), action: #selector(Web.back(_:)), input: "[", modifierFlags: .command),
+                UIKeyCommand(title: String(localized: "Forward"), action: #selector(Web.forward(_:)), input: "]", modifierFlags: .command),
+            ]),
+            UIMenu(options: .displayInline, children: [
+                page(String(localized: "Home"), "1", "home"), page(String(localized: "Notifications"), "2", "notifications"),
+                page(String(localized: "Messages"), "3", "messages"), page(String(localized: "Profile"), "4", "profile"),
+                page(String(localized: "Search"), "f", "search"),
+            ]),
+        ]), afterMenu: .view)
+        // the page has no toolbar to customize or sidebar to hide
+        builder.remove(menu: .toolbar)
+        builder.remove(menu: .sidebar)
+
+    }
+}
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
@@ -37,13 +85,24 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(windowScene: scene)
         window?.rootViewController = web
         window?.makeKeyAndVisible()
-        let link = options.userActivities.first?.webpageURL ?? options.urlContexts.first?.url
+        // a link, a window opened on a page (Open in New Window), or a window coming back with the page it last showed
+        let link = options.userActivities.first.flatMap(url) ?? options.urlContexts.first?.url ?? session.stateRestorationActivity.flatMap(url)
         web.open(link.flatMap { ours($0) ? $0 : nil } ?? home)
+    }
+
+    // each window (an iPad can have several) reopens on its own page
+    func stateRestorationActivity(for scene: UIScene) -> NSUserActivity? {
+        page(web.web?.url)
     }
 
     // quilcast.com links (universal links)
     func scene(_ scene: UIScene, continue activity: NSUserActivity) {
         if let url = activity.webpageURL, ours(url) { web.open(url) }
+    }
+
+    // a closed window's page stops: the script handlers hold the page's controller, which holds the web view
+    func sceneDidDisconnect(_ scene: UIScene) {
+        web.web?.configuration.userContentController.removeAllScriptMessageHandlers()
     }
 
     // back from the background (a link opened in Safari), not from Control Center or a system alert over the app
@@ -78,6 +137,9 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
         config.allowsInlineMediaPlayback = true
         // Spaces and the profile song start from a tap the page already saw
         config.mediaTypesRequiringUserActionForPlayback = []
+        // An iPad's web view would pick a Mac's user agent and desktop pages for a wide window and an iPad's for a narrow
+        // one, changing as the window is resized; the page lays itself out by its width anyway (style.css)
+        config.defaultWebpagePreferences.preferredContentMode = .mobile
         config.applicationNameForUserAgent = "Mobile/15E148 QuilcastApp/\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "") (iOS)"
         config.userContentController.addUserScript(WKUserScript(source: bar, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         config.userContentController.add(self, name: "bar")
@@ -117,13 +179,20 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
         view = root
     }
 
+    // the menu bar's commands look for a responder from the one that has the focus up; before anything in the page
+    // has it (a fresh window, or once the community rules close), that's this one. Only then: coming back from the
+    // camera or a file picker, the page keeps the focus it had
+    override var canBecomeFirstResponder: Bool { true }
+    var appeared = false
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        if !appeared { appeared = true; becomeFirstResponder() }
         // App Review 1.2: people agree to the community rules before they see anything others posted
         guard !UserDefaults.standard.bool(forKey: "agreed"), presentedViewController == nil else { return }
         let agree = { [weak self] in
             UserDefaults.standard.set(true, forKey: "agreed")
-            self?.dismiss(animated: true)
+            self?.dismiss(animated: true) { self?.becomeFirstResponder() }
             #if DEBUG
             self?.web.evaluateJavaScript("window.__qcAgreed = true")
             #endif
@@ -153,6 +222,41 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
         let frame = web.frame
         web.frame = CGRect(origin: frame.origin, size: CGSize(width: frame.width, height: frame.height - 1))
         web.frame = frame
+    }
+
+    // the menu bar's commands (AppDelegate.buildMenu), while nothing is over the page
+    @objc func command(_ sender: UICommand) {
+        guard let to = sender.propertyList as? String else { return }
+        web.evaluateJavaScript("window.quilcastCommand?.('\(to)')")
+    }
+
+    @objc func back(_ sender: Any?) { web.goBack() }
+
+    @objc func forward(_ sender: Any?) { web.goForward() }
+
+    @objc func newWindow(_ sender: Any?) { openWindow(nil) }
+
+    func openWindow(_ url: URL?) {
+        let request = UISceneSessionActivationRequest(role: .windowApplication, userActivity: page(url))
+        UIApplication.shared.activateSceneSession(for: request)
+    }
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        switch action {
+        case #selector(command(_:)), #selector(newWindow(_:)): presentedViewController == nil
+        case #selector(back(_:)): presentedViewController == nil && web.canGoBack
+        case #selector(forward(_:)): presentedViewController == nil && web.canGoForward
+        default: super.canPerformAction(action, withSender: sender)
+        }
+    }
+
+    // On an iPad, our links' menus (a long press, or a right click) open them in a window of their own too; anything
+    // else gets the web view's own menu
+    func webView(_ web: WKWebView, contextMenuConfigurationFor element: WKContextMenuElementInfo) async -> UIContextMenuConfiguration? {
+        guard UIApplication.shared.supportsMultipleScenes, let url = element.linkURL, ours(url) else { return nil }
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] suggested in
+            UIMenu(children: [UIAction(title: String(localized: "Open in New Window"), image: UIImage(systemName: "macwindow.badge.plus")) { _ in self?.openWindow(url) }] + suggested)
+        }
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle { dark ? .lightContent : .darkContent }

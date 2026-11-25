@@ -257,8 +257,10 @@ export function Menu({ close, class: cls, style, children }: { close: () => void
   useEffect(() => {
     // capturing, so clicks that other handlers stop still count
     const f = (e: Event) => !ref.current?.parentElement?.contains(e.target as Node) && close()
+    // a right click opens another card's menu
     addEventListener('click', f, true)
-    return () => removeEventListener('click', f, true)
+    addEventListener('contextmenu', f, true)
+    return () => (removeEventListener('click', f, true), removeEventListener('contextmenu', f, true))
   }, [])
   return <div ref={ref} class={`menu ${cls || ''}`} style={style} role="menu" onKeyDown={(e) => e.key === 'Escape' && (e.stopPropagation(), close())}>{children}</div>
 }
@@ -1501,6 +1503,18 @@ function ArticlePart({ c, part, full }: { c: Cast; part: Part; full?: boolean })
   ) : <div class="fc-article part">{link}</div>
 }
 
+// What the pointer is: a mouse or a trackpad, or a finger or a pen. Hover effects (style.css, :root[data-mouse]) only
+// follow a mouse, so a tap on a touch screen that also has a trackpad (an iPad) or a hovering pen leaves none behind;
+// and in the apps a right click opens a card's ⋯ menu, a long press (which Android reports as a contextmenu) doesn't.
+let mouse = false
+const inApp = navigator.userAgent.includes('QuilcastApp/') // as inline.ts, which loads later
+for (const type of ['pointerover', 'pointerdown']) {
+  addEventListener(type, (e) => {
+    const now = (e as PointerEvent).pointerType === 'mouse'
+    if (now !== mouse) document.documentElement.toggleAttribute('data-mouse', (mouse = now))
+  }, true)
+}
+
 export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, onArticle }: { c: Cast; focus?: boolean; line?: boolean; inThread?: boolean; quotes?: number; owner?: number; onTop?: boolean; onArticle?: (hashes: string[]) => void }) {
   const art = useArticle(c)
   // `mine` is what the node said at sign-in, and its counts include those; taps since then adjust from there
@@ -1513,6 +1527,12 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
   const [asking, setAsking] = useState<CastAction | null>(null)
   const [sure, setSure] = useState(false)
   const [gone, setGone] = useState(false)
+  // a link, a picture, a video or selected text keeps the browser's own menu
+  const right = (e: MouseEvent) => {
+    if (!inApp || !mouse || (e.target as Element).closest('a, img, video, textarea, input, .menu') || getSelection()?.toString()) return
+    e.preventDefault()
+    setMore(true), setSure(false), setAsking(null)
+  }
   const toggle = (type: 1 | 2, on: boolean, count: number) => {
     if (!requireAccount()) return
     const k = type + c.hash, before = taps.get(k)
@@ -1661,7 +1681,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
   if (focus) {
     const stats = ([['recasts', recasts, tn(recasts, 'recast', 'recasts')], ['quotes', quotes, tn(quotes, 'quote', 'quotes')], ['likes', likes, tn(likes, 'like', 'likes')]] as const).filter(([, x]) => x > 0)
     return (
-      <article class="cast focus">
+      <article class="cast focus" onContextMenu={right}>
         <header><Avatar u={c.author} size={44} /><div class="who">{name}</div>{ch && <a class="chan" href={`/channel/${ch}`} onClick={stop}>/{ch}</a>}</header>
         {isArticle(art) ? <ArticleView c={c} root={art} onParts={onArticle} /> : art ? <ArticlePart c={c} part={art} full /> : <Said c={c} full />}
         <div class="when">{sending ? <span class="posting"><span class="pulse" /> {t('Posting…')}</span> : new Date(c.timestamp).toLocaleString(lang, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric', year: 'numeric' })}</div>
@@ -1671,7 +1691,7 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
     )
   }
   return (
-    <article class={`cast${line ? ' line' : ''}`} data-href={`/c/${c.hash}`} onPointerDown={() => cards.set(c.hash, c)} onClick={() => go(`/c/${c.hash}`)}>
+    <article class={`cast${line ? ' line' : ''}`} data-href={`/c/${c.hash}`} onPointerDown={() => cards.set(c.hash, c)} onClick={() => go(`/c/${c.hash}`)} onContextMenu={right}>
       <div class="rail"><Avatar u={c.author} /></div>
       <div class="body">
         {onTop && <div class="replying"><Icon d={P.pin} size={14} /> {t('Pinned')}</div>}
