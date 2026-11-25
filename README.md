@@ -4,7 +4,7 @@ Quilcast is an open-source Farcaster client that runs in the browser, with apps 
 
 Reads hit the public node's HTTP API, writes are protobuf messages signed in the browser and posted to `/v1/submitMessage`, and keys live in the browser's IndexedDB, never in `localStorage`. The only server is a tiny static host that also gives shared links proper previews and fetches other sites' pictures (avatars, link previews, embeds and mini app icons) for you, so those sites never see your IP address; only our own files, Farcaster's image CDN and Tenor's GIFs load directly, along with Winamp skins from the Winamp Skin Museum when a profile uses one, and YouTube's player (youtube-nocookie.com) once you press play on a video.
 
-Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone (App Store) and Android (Google Play, or the APK from the [latest release](https://github.com/backmeupplz/quilcast/releases/latest/download/quilcast.apk)).
+Live at **[quilcast.com](https://quilcast.com)**, and as an app for iPhone ([App Store](https://apps.apple.com/app/id6827321089)) and Android ([Google Play](https://play.google.com/store/apps/details?id=com.borodutch.quilcast), or the APK from the [latest release](https://github.com/backmeupplz/quilcast/releases/latest/download/quilcast.apk)).
 
 ## What it does
 

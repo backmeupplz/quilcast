@@ -153,6 +153,7 @@ function PairAsk() {
 // the iOS and Android apps put their own version in the user agent
 const app = navigator.userAgent.match(/QuilcastApp\/(\S+) \((\w+)\)/)
 const PLAY = 'https://play.google.com/store/apps/details?id=com.borodutch.quilcast'
+const APPSTORE = 'https://apps.apple.com/app/id6827321089'
 // Google's own badge (public/google-play.png); not shown inside our apps
 const android = !app && /Android/.test(navigator.userAgent)
 const PlayBadge = () => <a class="play-badge" href={PLAY} target="_blank" rel="noopener"><img src="/google-play.png" alt="Get it on Google Play" width={646} height={250} /></a>
@@ -169,7 +170,7 @@ function PlayBanner() {
     </div>
   )
 }
-const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a>{!app && <> · <a href={PLAY} target="_blank" rel="noopener">{t('Android app')}</a></>}</>
+const Version = () => <>v{__VERSION__} · <a href="https://github.com/backmeupplz/quilcast" target="_blank" rel="noopener">{t('Source')}</a>{!app && <> · <a href={APPSTORE} target="_blank" rel="noopener">{t('iPhone app')}</a> · <a href={PLAY} target="_blank" rel="noopener">{t('Android app')}</a></>}</>
 const feedback = `mailto:support@borodutch.com?subject=${encodeURIComponent('Quilcast feedback')}&body=${encodeURIComponent(`\n\nQuilcast v${__VERSION__}${app ? `, ${app[2]} app ${app[1]}` : ''}`)}`
 
 /** A translated sentence with one {key} placeholder filled by an element, so translators can move it. */
