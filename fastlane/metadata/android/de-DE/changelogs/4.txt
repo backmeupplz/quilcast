@@ -1,0 +1,1 @@
+Quilcast fühlt sich jetzt auf dem iPad zu Hause: Die App füllt den Bildschirm in jeder Ausrichtung, läuft neben anderen Apps und lässt sich in mehreren Fenstern öffnen. Mit einer Tastatur zeigt dir langes Drücken von ⌘ die Tastaturkurzbefehle. Mit einem Trackpad gibt es Hover-Effekte und Rechtsklick-Menüs, und Fotos kannst du direkt in einen Cast ziehen.

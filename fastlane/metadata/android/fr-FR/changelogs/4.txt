@@ -1,0 +1,1 @@
+Quilcast est désormais chez lui sur iPad : l'app occupe tout l'écran dans n'importe quelle orientation, fonctionne à côté d'autres apps et peut s'ouvrir dans plusieurs fenêtres. Avec un clavier, maintenez ⌘ pour voir les raccourcis. Avec un trackpad, vous profitez des effets au survol et des menus du clic droit, et vous pouvez glisser des photos directement dans un cast.

@@ -1,0 +1,1 @@
+Quilcast now feels at home on iPad. It fills the screen in any orientation, runs side by side with other apps, and can open in several windows. With a keyboard, hold ⌘ to see the shortcuts. A trackpad brings hover and right-click menus, and you can drag photos straight into a cast.

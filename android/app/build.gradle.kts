@@ -12,8 +12,8 @@ android {
         applicationId = "com.borodutch.quilcast"
         minSdk = 30
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
     }
     // Without the key (e.g. on F-Droid's build server) release builds come out unsigned.
     signingConfigs {

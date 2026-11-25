@@ -1,0 +1,1 @@
+Quilcast czuje się teraz na iPadzie jak u siebie: wypełnia ekran w każdej orientacji, działa obok innych aplikacji i może być otwarty w kilku oknach. Z klawiaturą przytrzymaj ⌘, żeby zobaczyć skróty. Gładzik daje efekty najechania i menu prawego przycisku, a zdjęcia możesz przeciągnąć prosto do castu.
