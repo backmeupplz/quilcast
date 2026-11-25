@@ -53,7 +53,9 @@ COPY --from=build /out ./
 COPY --from=wasm /w/wasm/dist wasm/dist
 ENV PORT=3000
 EXPOSE 3000
-# the media volume (/data) is owned by uid 1000; a new empty volume (quilcast.crosspost's) takes this owner from the image
-RUN mkdir -p /data && chown node:node /data
+# the media volume (/data) is owned by uid 1000; a new empty volume (quilcast.crosspost's) takes this owner from the image.
+# Both services only run node, so the npm bundled with the base image goes (its brace-expansion and undici get CVEs
+# that no Node release has fixed yet)
+RUN mkdir -p /data && chown node:node /data && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 USER node
 CMD ["node", "server/index.mjs"]
