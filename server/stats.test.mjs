@@ -2,13 +2,15 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { test } from 'node:test'
+import { beforeEach, test } from 'node:test'
 
 // the module's clock, moved on by the tests
 let now = Date.parse('2026-11-06T12:00:00Z')
 Date.now = () => now
 const DAY = 864e5
-const dir = await mkdtemp(join(tmpdir(), 'quilcast-stats-'))
+// each test its own dir: an earlier test's copy of the module may still have a write pending (#923)
+let dir
+beforeEach(async () => (dir = await mkdtemp(join(tmpdir(), 'quilcast-stats-'))))
 // a fresh copy of the module, as after a restart
 let n = 0
 const fresh = async () => {
