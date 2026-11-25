@@ -230,9 +230,10 @@ class Web: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessage
         web.evaluateJavaScript("window.quilcastCommand?.('\(to)')")
     }
 
-    @objc func back(_ sender: Any?) { web.goBack() }
+    // ⌘[ and ⌘]: through the page too, which keeps a cast being written where it is
+    @objc func back(_ sender: Any?) { web.evaluateJavaScript("window.quilcastCommand ? quilcastCommand('back') : history.back()") }
 
-    @objc func forward(_ sender: Any?) { web.goForward() }
+    @objc func forward(_ sender: Any?) { web.evaluateJavaScript("window.quilcastCommand ? quilcastCommand('forward') : history.forward()") }
 
     @objc func newWindow(_ sender: Any?) { openWindow(nil) }
 

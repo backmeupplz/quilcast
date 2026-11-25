@@ -1527,9 +1527,10 @@ export function CastCard({ c, focus, line, inThread, quotes = 0, owner, onTop, o
   const [asking, setAsking] = useState<CastAction | null>(null)
   const [sure, setSure] = useState(false)
   const [gone, setGone] = useState(false)
-  // a link, a picture, a video or selected text keeps the browser's own menu
+  // a link, a picture, a video or text selected in this card keeps the browser's own menu
   const right = (e: MouseEvent) => {
-    if (!inApp || !mouse || (e.target as Element).closest('a, img, video, textarea, input, .menu') || getSelection()?.toString()) return
+    const sel = getSelection()
+    if (!inApp || !mouse || (e.target as Element).closest('a, img, video, textarea, input, .menu') || (sel?.toString() && sel.containsNode(e.currentTarget as Node, true))) return
     e.preventDefault()
     setMore(true), setSure(false), setAsking(null)
   }

@@ -502,6 +502,9 @@ async function sendFile(file: Blob, id: string, max: number, cdn: boolean, progr
 /** Photos are re-encoded (≤2048px, JPEG or PNG when transparent) so EXIF/GPS is dropped; MP4/MOV lose their metadata boxes; GIFs and WebM go as-is. */
 async function scrub(file: Blob): Promise<Blob> {
   if (/^image\/(jpeg|png|webp)$/.test(file.type)) return shrink(file)
+  // any other picture the browser can read (a HEIC from Files on an iPhone or iPad, AVIF, BMP) becomes a JPEG or PNG
+  // too; one it can't goes as it is, and the server says which kinds it takes
+  if (file.type.startsWith('image/') && file.type !== 'image/gif') return shrink(file).catch(() => file)
   if (/^video\/(mp4|quicktime)$/.test(file.type)) return stripVideoMeta(file)
   return file
 }

@@ -2730,6 +2730,7 @@ function App() {
   ;(window as { quilcastCommand?: (k: string) => void }).quilcastCommand = (k) => {
     // a cast being written keeps the page under it, and the keys
     if (composing.current) return
+    if (k === 'back' || k === 'forward') return void history[k]()
     if (k === 'compose') return void (requireAccount() && setCompose({}))
     go(k === 'profile' ? (me ? userPath(me) : '/join') : k === 'home' ? '/' : `/${k}`)
     if (k === 'search') requestAnimationFrame(() => document.querySelector<HTMLInputElement>('input[type="search"]')?.focus())

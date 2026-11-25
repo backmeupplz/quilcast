@@ -121,9 +121,9 @@ const sent = () => {
 // a picture still uploading will take this many bytes of the post once its URL is in (an imagedelivery.net one is ~95)
 const PIC = 100
 const used = (p: { text: string; pics: unknown[] }) => bytes(p.text) + p.pics.length * PIC
-// how the keyboard shortcuts read on this device
 // what the attach button's picker offers (`accept` below), for dropped files
 const MEDIA = /^(image\/|video\/(mp4|webm|quicktime)$)/
+// how the keyboard shortcuts read on this device
 const MOD = /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘' : 'Ctrl+'
 const fmtLeft = (s?: number) => (s === undefined || !isFinite(s) ? '' : ' · ' + (s < 60 ? t('{n}s left', { n: Math.max(1, Math.round(s)) }) : t('{n} min left', { n: Math.round(s / 60) })))
 const Busy = ({ f }: { f: Attachment }) => (
