@@ -18,7 +18,7 @@ import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { address, ecSign, rawEd } from '../src/fc.ts'
 import { verify } from '../scripts/verify.mjs'
-import { embedOf, hostGet, pngStub, signed, sizeOf, thread, uploaded } from './testkit.mjs'
+import { embedOf, hostGet, pngStub, signed, sizeOf, thread, until, uploaded } from './testkit.mjs'
 
 const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(srv.address().port)))
 let internalHits = 0
@@ -738,13 +738,13 @@ test('reports: kept and sent to the webhook, anonymous or signed by the reporter
   const by = (key, what = 'quilcast-report') => ({ 'x-fid': '7', ...signed(key, what, 7, body, ts) })
   assert.equal((await send(body, by(signer, 'quilcast-look'))).status, 401)
   assert.equal((await send(body, by(signer))).status, 200)
-  for (let i = 0; i < 50 && hookHits.length < 2; i++) await new Promise((r) => setTimeout(r, 50))
+  await until(() => hookHits.length >= 2)
   assert.deepEqual(hookHits.map((h) => h.path), ['/report-hook?to=mods', '/report-hook?to=mods'])
   assert.match(hookHits[0].body.text, /Harassment or hate[\s\S]*\/c\/0xabab[\s\S]*From: signed out[\s\S]*mean/)
   assert.match(hookHits[1].body.text, /Spam[\s\S]*Account: https:\/\/quilcast\.test\/u\/9[\s\S]*From: https:\/\/quilcast\.test\/u\/7/)
   // Not spam goes to Telegram (@frdy_bot), not the webhook, with the cast's and the account's scores
   assert.equal((await send({ fid: 9, hash, reason: 'not_spam' })).status, 200)
-  for (let i = 0; i < 50 && hookHits.length < 3; i++) await new Promise((r) => setTimeout(r, 50))
+  await until(() => hookHits.length >= 3)
   assert.equal(hookHits[2].path, '/tg/bottg-token/sendMessage')
   assert.equal(hookHits[2].body.chat_id, '76')
   assert.match(hookHits[2].body.text, /isn't spam[\s\S]*\/c\/0xabab\S* \(spam 97%\)[\s\S]*\/u\/9 \(spam account not scored yet\)[\s\S]*spam\/\?c=0xabab/)
@@ -884,7 +884,7 @@ test('sticker packs: made, filled from a picture and from Telegram, shared, adde
   assert.equal((await call(7, { op: 'import', url: 't.me/addstickers/nope' })).status, 404)
   const { job } = await (await call(7, { op: 'import', pack: pack.id, url: 'https://t.me/addstickers/demo' })).json()
   let j = job
-  for (let i = 0; i < 100 && !j.finished; i++) await new Promise((ok) => setTimeout(ok, 100)), (j = await (await fetch(`${base}/api/stickers/job/${job.id}`)).json())
+  await until(async () => j.finished || (j = await (await fetch(`${base}/api/stickers/job/${job.id}`)).json()).finished)
   assert.deepEqual([j.done, j.failed], [2, 0])
   const full = await (await fetch(`${base}/api/stickers/pack/${pack.id}`)).json()
   assert.deepEqual(full.stickers.map((s) => s.e), ['🟣', '🙂', '🔥'])
@@ -907,7 +907,7 @@ test('sticker packs: made, filled from a picture and from Telegram, shared, adde
   // or into a new pack named after Telegram's
   const { pack: fresh, job: job2 } = await (await call(7, { op: 'import', url: 'tg://addstickers?set=demo' })).json()
   assert.equal(fresh.title, 'Demo pack')
-  for (let i = 0; i < 100 && !(await (await fetch(`${base}/api/stickers/job/${job2.id}`)).json()).finished; i++) await new Promise((ok) => setTimeout(ok, 100))
+  await until(async () => (await (await fetch(`${base}/api/stickers/job/${job2.id}`)).json()).finished)
   // the link and its card; the short host sends it to the app
   assert.match(await (await fetch(`${base}/stickers/${pack.id}`)).text(), /My pack: a sticker pack on Quilcast/)
   assert.equal((await fetch(`${base}/og/stickers/${pack.id}.png`)).headers.get('content-type'), 'image/png')
@@ -1434,12 +1434,14 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
   assert.equal(submitted.length, 0)
   // its time comes: the very bytes the browser signed, the thread in order
   ahead = await later(95e3)
-  for (let i = 0; i < 50 && submitted.length < 2; i++) await new Promise((ok) => setTimeout(ok, 100))
+  await until(() => submitted.length >= 2)
   assert.deepEqual(submitted.map((b) => b.toString('hex')), ms.map((m) => Buffer.from(m.msg).toString('hex')))
   // once all of it went out it's off the list (only what's waiting, being sent or failed shows), and an Edit of it is refused
-  let shown = [id]
-  for (let i = 0; i < 50 && shown.includes(id); i++) shown = (await (await call('GET', 7)).json()).map((s) => s.id)
-  assert.deepEqual(shown, [])
+  await until(async () => {
+    const l = await (await call('GET', 7)).json()
+    assert.ok(Array.isArray(l))
+    return !l.length
+  })
   const edit = await cast(['edited after it went out'], Math.ceil((now() + 90e3) / 1000) * 1000)
   assert.equal((await call('PUT', 7, JSON.stringify({ id, msgs: edit.map(b64) }))).status, 409)
   // a signer revoked before its time: the node refuses, and the list says why
@@ -1448,10 +1450,7 @@ test('scheduled casts: signed in the browser for later, held as they are, sent a
   assert.equal((await call('PUT', 7, JSON.stringify({ id: doomed, msgs: (await cast(['doomed'], Math.ceil((now() + 61e3) / 1000) * 1000)).map(b64) }))).status, 200)
   ahead = await later(65e3)
   let failed
-  for (let i = 0; i < 50 && failed?.status !== 'failed'; i++) {
-    await new Promise((ok) => setTimeout(ok, 100))
-    failed = (await (await call('GET', 7)).json()).find((s) => s.id === doomed)
-  }
+  await until(async () => (failed = (await (await call('GET', 7)).json()).find((s) => s.id === doomed))?.status === 'failed')
   refuse = ''
   assert.deepEqual([failed.status, failed.error], ['failed', 'invalid signer'])
   assert.equal(submitted.length, 2)
@@ -1499,10 +1498,6 @@ test('Remind me: a reminder is kept with its notification token and sent to the 
   assert.deepEqual(await items(), [])
   assert.equal((await files()).length, 2)
   await later(121e3)
-  const until = async (f) => {
-    for (let i = 0; i < 100 && !(await f()); i++) await new Promise((r) => setTimeout(r, 50))
-    assert.ok(await f())
-  }
   await until(async () => (await items()).length === 1 && (await files()).length === 1)
   const [got] = await items()
   assert.deepEqual([got.app, got.name, got.notificationId, got.title, got.body, got.targetUrl], ['https://remind.quilcast.com', 'Remind me', `remind-${one.body.id}`, 'Reminder', '@alice: see you later', `https://remind.quilcast.com/?castHash=${hash}&castFid=3&reminder=1`])

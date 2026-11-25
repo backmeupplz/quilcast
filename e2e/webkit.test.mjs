@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, describe, test } from 'node:test'
 import { webkit } from 'playwright'
+import { until } from '../server/testkit.mjs'
 
 const listen = (srv) => new Promise((r) => srv.listen(0, '127.0.0.1', () => r(srv.address().port)))
 const cast = (n, extra = {}) => ({ hash: '0x' + String(n).repeat(40), text: `cast number ${n}`, timestamp: '2026-01-02T00:00:00Z', embeds: [], author: { fid: n, username: `user${n}` }, reactions: { likes_count: 5, recasts_count: 0 }, replies: { count: 0 }, ...extra })
@@ -138,12 +139,7 @@ let srv, browser
 before(async () => {
   srv = spawn(process.execPath, [new URL('../server/index.mjs', import.meta.url).pathname], { env: { ...process.env, PORT: String(port), NODE_URL: `http://127.0.0.1:${nodePort}`, FC_URL: `http://127.0.0.1:${nodePort}`, MEDIA_DIR: await mkdtemp(join(tmpdir(), 'qc-')), SITE_URL: 'https://quilcast.test', QUORUM_URL: `http://127.0.0.1:${nodePort}` }, stdio: 'ignore' })
   // the server draws the home page in the background: wait until it serves it
-  for (let i = 0; ; i++) {
-    const page = await fetch(`http://127.0.0.1:${port}/`).then((r) => r.text(), () => '')
-    if (page.includes('id="app-js"')) break
-    assert.ok(i < 100, 'the server never drew the home page')
-    await new Promise((ok) => setTimeout(ok, 100))
-  }
+  await until(async () => (await fetch(`http://127.0.0.1:${port}/`).then((r) => r.text(), () => '')).includes('id="app-js"'))
   browser = await webkit.launch()
 })
 after(async () => (await browser?.close(), proxy.closeAllConnections(), proxy.close(), srv.kill(), node.close()))
@@ -188,6 +184,15 @@ const drawn = (page) => page.waitForFunction(() => document.querySelector('#app 
 // #502: scrolled down past the first page of a feed; a link, as the app follows one (go() in api.ts); Back's spot
 const deep = (page) => page.waitForFunction(() => (scrollTo(0, document.documentElement.scrollHeight), document.querySelectorAll('#app article.cast').length > 25), null, { polling: 100, timeout: 30e3 })
 const link = (page, path) => page.evaluate((p) => (history.pushState(null, '', p), dispatchEvent(new PopStateEvent('popstate'))), path)
+// the page's clock goes on a minute at a time until `until` holds (a look still on its way when the clock jumps waits for
+// the next minute), for up to a minute of real time rather than a count of jumps, which a loaded runner's slow looks run out of
+const minutesUntil = async (page, ctx, until) => {
+  for (const end = Date.now() + 60e3; Date.now() < end; ) {
+    await ctx.clock.fastForward(61e3)
+    if (await page.waitForFunction(until, null, { timeout: 3000 }).then(() => true, () => false)) return
+  }
+  assert.fail(`never: ${until}`)
+}
 const spot = (page, at, y) => page.waitForFunction(([at, y]) => location.pathname + location.search === at && Math.abs(scrollY - y) < 2, [at, y], { timeout: 10e3 })
 
 // each test has a page of its own, so they all run at once
@@ -392,21 +397,12 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await page.locator('#app article.cast', { hasText: 'long feed cast 1' }).first().waitFor({ timeout: 30e3 })
     await page.evaluate(() => scrollTo(0, 1500))
     const pill = page.locator('#app .new-posts')
-    // the page's clock goes on a minute at a time until `until` holds (a look still on its way when the clock jumps
-    // waits for the next minute)
-    const minutes = async (until) => {
-      for (let i = 0; i < 8; i++) {
-        await ctx.clock.fastForward(61e3)
-        if (await page.waitForFunction(until, null, { timeout: 2000 }).then(() => true, () => false)) return
-      }
-      assert.fail(`never: ${until}`)
-    }
     // a few minutes go by with nothing new: no pill
     for (let i = 0; i < 2; i++) await ctx.clock.fastForward(61e3), await page.waitForTimeout(1000)
     assert.equal(await pill.count(), 0)
     // two new casts by two people: the pill says so with both faces, and the list stays where it was
     liveNews.livefeed = 2
-    await minutes(() => document.querySelector('#app .new-posts'))
+    await minutesUntil(page, ctx, () => document.querySelector('#app .new-posts'))
     assert.match(await pill.innerText(), /2 new posts\s*$/)
     assert.equal(await pill.locator('.avatar').count(), 2)
     assert.ok(Math.abs(await page.evaluate(() => scrollY) - 1500) < 2)
@@ -417,7 +413,7 @@ describe('the app in WebKit', { concurrency: true }, () => {
     assert.equal(await pill.count(), 0)
     // at the top, a new one waits behind the pill too, and a nudge of the page doesn't let it in
     liveNews.livefeed = 3
-    await minutes(() => document.querySelector('#app .new-posts'))
+    await minutesUntil(page, ctx, () => document.querySelector('#app .new-posts'))
     assert.match(await pill.innerText(), /1 new post\s*$/)
     await page.evaluate(() => (scrollTo(0, 1), scrollTo(0, 0)))
     await page.waitForTimeout(300)
@@ -471,7 +467,7 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await card('long feed cast 1')
     await page.evaluate(() => scrollTo(0, 1500))
     liveNews.liveback = 1
-    for (let i = 0; i < 8 && !(await page.locator('#app .new-posts').count()); i++) await ctx.clock.fastForward(61e3), await page.waitForTimeout(1000)
+    await minutesUntil(page, ctx, () => document.querySelector('#app .new-posts'))
     assert.match(await page.locator('#app .new-posts').innerText(), /1 new post\s*$/)
     assert.deepEqual(errors, [])
     await close()
@@ -895,7 +891,7 @@ describe('the app in WebKit', { concurrency: true }, () => {
       assert.match(await castOf(page, n).innerText(), new RegExp(SPANISH[n].text.slice(0, 20)), 'the original words')
     }
     // (the lookups go out together, a moment after the casts draw)
-    for (let i = 0; !asked.length && i < 50; i++) await new Promise((ok) => setTimeout(ok, 100))
+    await until(() => asked.length)
     assert.deepEqual(asked, [SPANISH[2].hash], 'only the French cast is looked up')
     assert.deepEqual(errors, [])
     await close()

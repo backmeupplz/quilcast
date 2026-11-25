@@ -11,6 +11,12 @@ export const signed = (key, what, fid, body = '', ts = Date.now()) => ({
   'x-sig': Buffer.from(ed25519.sign(Buffer.from(`${what}:${fid}:${ts}:${body}`), key)).toString('hex'),
 })
 
+/** Waits until `f()` holds, looking every 50 ms for up to `ms`: timed by the clock, not by a count of looks, so a loaded
+ *  runner, where each look takes longer, waits as long as an idle one. */
+export async function until(f, ms = 30e3) {
+  for (const end = Date.now() + ms; !(await f()); await new Promise((ok) => setTimeout(ok, 50))) if (Date.now() > end) assert.fail(`never: ${f}`)
+}
+
 /** A request to the server on `port` as if for `host` (fetch can't send another Host): { status, headers, body } with the
  *  body as text. */
 export const hostGet = (port, host, path, { method = 'GET', headers = {}, body } = {}) => new Promise((ok, no) => request({ host: '127.0.0.1', port, path, method, headers: { host, ...headers } }, (r) => {

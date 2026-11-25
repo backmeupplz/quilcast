@@ -279,6 +279,7 @@ async function send(fid, id, submit, notify, clock) {
   // claimed before anything is awaited, so a cancel or an edit arriving now is refused rather than lost
   if (sending.has(key)) return
   sending.add(key)
+  let failed
   try {
     // read again: it may have been cancelled or edited since the round read it
     const item = await readOne(fid, id)
@@ -296,10 +297,12 @@ async function send(fid, id, submit, notify, clock) {
     if (!(await readOne(fid, id))) return
     // a posted one is off the list: it keeps only what an Edit or a cancel racing it needs, not its bytes or draft
     await write(item.status === 'posted' ? { id, fid, at: item.at, hashes: item.hashes, status: 'posted', posted: item.posted, created: item.created, done: item.done } : item)
-    if (item.status === 'failed') await notify(item).catch((e) => console.error('scheduled', fid, 'notify', e.message))
+    if (item.status === 'failed') failed = item
   } finally {
     sending.delete(key)
   }
+  // told once the claim is let go: a failed one shows as failed, and can be taken off the list, while the push goes out
+  if (failed) await notify(failed).catch((e) => console.error('scheduled', fid, 'notify', e.message))
 }
 
 /** A push to the account's browsers that signed up for notifications (server/alerts.mjs), in each one's language. */

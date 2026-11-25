@@ -194,10 +194,12 @@ test('an item being sent is neither cancelled nor replaced; one removed while it
   try {
     const it = await item(uuid(7), NOW - 1000, ['busy'], 12)
     await put(it)
-    let release
+    // held at the node: it's marked posting before its first message is handed over
+    let release, handed
     const gate = new Promise((ok) => (release = ok))
-    const round = tick({ now: NOW, submit: () => gate.then(() => 'ok'), notify: () => {} })
-    await new Promise((ok) => setTimeout(ok, 50))
+    const atNode = new Promise((ok) => (handed = ok))
+    const round = tick({ now: NOW, submit: () => (handed(), gate.then(() => 'ok')), notify: () => {} })
+    await atNode
     assert.equal((await get(12, uuid(7))).status, 'posting')
     const cancel = JSON.stringify({ id: uuid(7) })
     await assert.rejects(cancelScheduled(req('quilcast-scheduled-cancel', cancel), 12, node), (e) => e.status === 409)
@@ -225,6 +227,12 @@ test('an item being sent is neither cancelled nor replaced; one removed while it
     await assert.rejects(putScheduled(req('quilcast-scheduled', redo), 12, node), (e) => e.status === 409)
     assert.deepEqual(await cancelScheduled(req('quilcast-scheduled-cancel', JSON.stringify({ id: uuid(10) })), 12, node), { id: uuid(10), was: 'posted' })
     assert.equal(await get(12, uuid(10)), null)
+    // a refused one: by the time the account is told, it can already be taken off the list
+    await put(await item(uuid(14), NOW - 1000, ['refused'], 12))
+    let removed
+    const refuse = async () => { throw new Error('invalid signer') }
+    await tick({ now: NOW, submit: refuse, notify: async () => (removed = await cancelScheduled(req('quilcast-scheduled-cancel', JSON.stringify({ id: uuid(14) })), 12, node)) })
+    assert.deepEqual(removed, { id: uuid(14), was: 'failed' })
     // a failed one stays listed; posted ones neither show nor count toward the list's 50
     await put({ ...(await item(uuid(11), NOW - 1000, ['nope'], 12)), status: 'failed', done: NOW, error: 'invalid signer' })
     for (let n = 100; n < 150; n++) await put({ id: uuid(n), fid: 12, at: NOW - 3600e3, msgs: [], hashes: ['00'], text: '', status: 'posted', posted: 1, created: NOW, done: NOW })
