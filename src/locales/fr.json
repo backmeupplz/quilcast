@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Maintenir J’aime deux secondes sur le cast de quelqu’un d’autre donne à son auteur un pourboire de 1 $ en USDC sur Base depuis votre portefeuille. Désactivé, maintenir J’aime revient à un simple appui.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Maintenir J’aime sur le cast de quelqu’un d’autre donne à son auteur un pourboire de 1 $ : 1 USDC sur Base depuis {wallet}, directement dans son portefeuille. Sendclap garde 1 %, et le gas coûte un peu d’ETH sur Base.",
   "Tip $1": "Donner 1 $",
-  "Tip @{name} $1?": "Pourboire de 1 $ à @{name} ?"
+  "Tip @{name} $1?": "Pourboire de 1 $ à @{name} ?",
+  "Hypersnap status": "État de Hypersnap",
+  "The Hypersnap network is having trouble": "Le réseau Hypersnap rencontre des problèmes",
+  "{host} isn't responding": "{host} ne répond pas",
+  "Posts may not load or send until it's back. Tap to see the network status.": "Les publications risquent de ne pas se charger ni s'envoyer jusqu'à son retour. Touchez pour voir l'état du réseau."
 }

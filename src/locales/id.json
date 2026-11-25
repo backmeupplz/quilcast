@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Menahan Suka selama dua detik pada cast orang lain memberi penulisnya tip $1 dalam USDC di Base dari dompet Anda. Jika nonaktif, menahan Suka sama seperti mengetuk.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Menahan Suka pada cast orang lain memberi penulisnya tip $1: 1 USDC di Base dari {wallet}, langsung ke dompet mereka. Sendclap mengambil 1%, dan biaya gas berupa sedikit ETH di Base.",
   "Tip $1": "Beri tip $1",
-  "Tip @{name} $1?": "Tip $1 ke @{name}?"
+  "Tip @{name} $1?": "Tip $1 ke @{name}?",
+  "Hypersnap status": "Status Hypersnap",
+  "The Hypersnap network is having trouble": "Jaringan Hypersnap sedang bermasalah",
+  "{host} isn't responding": "{host} tidak merespons",
+  "Posts may not load or send until it's back. Tap to see the network status.": "Postingan mungkin tidak dimuat atau terkirim sampai pulih. Ketuk untuk melihat status jaringan."
 }

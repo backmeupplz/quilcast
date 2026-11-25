@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "다른 사람의 캐스트에서 좋아요를 2초 동안 길게 누르면 내 지갑에서 Base의 USDC로 작성자에게 $1 팁을 보내요. 끄면 길게 눌러도 탭과 같아요.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "다른 사람의 캐스트에서 좋아요를 길게 누르면 작성자에게 $1 팁을 보내요. {wallet}에서 Base의 1 USDC가 상대 지갑으로 바로 가요. Sendclap 수수료는 1%이고, 가스비로 Base의 ETH가 조금 들어요.",
   "Tip $1": "$1 팁 보내기",
-  "Tip @{name} $1?": "@{name}님에게 $1 팁을 보낼까요?"
+  "Tip @{name} $1?": "@{name}님에게 $1 팁을 보낼까요?",
+  "Hypersnap status": "Hypersnap 상태",
+  "The Hypersnap network is having trouble": "Hypersnap 네트워크에 문제가 있어요",
+  "{host} isn't responding": "{host}이(가) 응답하지 않아요",
+  "Posts may not load or send until it's back. Tap to see the network status.": "복구될 때까지 게시물을 불러오거나 보내지 못할 수 있어요. 탭해서 네트워크 상태를 확인하세요."
 }

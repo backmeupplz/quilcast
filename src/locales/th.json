@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "การกดถูกใจค้างไว้สองวินาทีบนแคสต์ของคนอื่นจะให้ทิป $1 เป็น USDC บน Base จากกระเป๋าเงินของคุณแก่ผู้เขียน เมื่อปิดไว้ การกดค้างจะทำงานเหมือนการแตะ",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "การกดถูกใจค้างไว้บนแคสต์ของคนอื่นจะให้ทิป $1 แก่ผู้เขียน: 1 USDC บน Base จาก {wallet} เข้ากระเป๋าของเขาโดยตรง Sendclap หัก 1% และค่าแก๊สคือ ETH บน Base เล็กน้อย",
   "Tip $1": "ให้ทิป $1",
-  "Tip @{name} $1?": "ทิป $1 ให้ @{name} ไหม?"
+  "Tip @{name} $1?": "ทิป $1 ให้ @{name} ไหม?",
+  "Hypersnap status": "สถานะ Hypersnap",
+  "The Hypersnap network is having trouble": "เครือข่าย Hypersnap มีปัญหา",
+  "{host} isn't responding": "{host} ไม่ตอบสนอง",
+  "Posts may not load or send until it's back. Tap to see the network status.": "โพสต์อาจโหลดหรือส่งไม่ได้จนกว่าจะกลับมาใช้งานได้ แตะเพื่อดูสถานะเครือข่าย"
 }

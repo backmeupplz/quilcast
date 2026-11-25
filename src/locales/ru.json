@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Если удерживать лайк на чужом касте две секунды, автор получит $1 чаевых в USDC в сети Base с вашего кошелька. Если выключено, удержание работает как обычное нажатие.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Если удерживать лайк на чужом касте, автор получит $1 чаевых: 1 USDC в сети Base с {wallet}, прямо на свой кошелёк. Sendclap берёт 1%, а газ стоит немного ETH в сети Base.",
   "Tip $1": "Дать $1 чаевых",
-  "Tip @{name} $1?": "$1 чаевых @{name}?"
+  "Tip @{name} $1?": "$1 чаевых @{name}?",
+  "Hypersnap status": "Статус Hypersnap",
+  "The Hypersnap network is having trouble": "В сети Hypersnap неполадки",
+  "{host} isn't responding": "{host} не отвечает",
+  "Posts may not load or send until it's back. Tap to see the network status.": "Пока он не заработает, посты могут не загружаться и не отправляться. Нажмите, чтобы посмотреть статус сети."
 }

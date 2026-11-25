@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Håller du in Gilla i två sekunder på någon annans cast får skaparen 1 $ i dricks i USDC på Base från din plånbok. Avstängt fungerar ett långt tryck som ett vanligt tryck.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Håller du in Gilla på någon annans cast får skaparen 1 $ i dricks: 1 USDC på Base från {wallet}, direkt till deras plånbok. Sendclap behåller 1 %, och gas kostar lite ETH på Base.",
   "Tip $1": "Ge 1 $ i dricks",
-  "Tip @{name} $1?": "1 $ i dricks till @{name}?"
+  "Tip @{name} $1?": "1 $ i dricks till @{name}?",
+  "Hypersnap status": "Hypersnap-status",
+  "The Hypersnap network is having trouble": "Hypersnap-nätverket har problem",
+  "{host} isn't responding": "{host} svarar inte",
+  "Posts may not load or send until it's back. Tap to see the network status.": "Inlägg kanske inte laddas eller skickas förrän det är tillbaka. Tryck för att se nätverkets status."
 }

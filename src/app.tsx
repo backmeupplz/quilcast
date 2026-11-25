@@ -28,6 +28,7 @@ import { useHost } from './host.ts'
 import { SupportTab } from './support.tsx'
 import { allSpots, entry, holding, keepSpot, keepState, navigated, placeKept, showing, spotOf, start, stateOf, takeList } from './restore.ts'
 import { holdTip, setHoldTip } from './tipask.ts'
+import { outage, STATUS } from './outage.ts'
 
 // views most visits never open load when first needed
 const lazy = <P extends object>(load: () => Promise<(p: P) => any>) => (p: P) => {
@@ -2632,6 +2633,27 @@ function Dock() {
 // the phone tab bar's own tabs when signed in (the rest go under ⋮)
 const MAIN_TABS = ['', 'search', 'notifications', 'messages', 'u']
 
+/** On top of every page while the node Quilcast reads from, or the Hypersnap network, is down (outage.ts). Tapping it
+ *  opens status.quilcast.com as a mini app, or in a new tab without an account (mini apps need one). */
+function Outage() {
+  const [down, setDown] = useState<'node' | 'network' | null>(null)
+  useEffect(() => {
+    // ponytail: polls a ~60 KB (~8 KB brotli) snapshot every 2 min while the tab shows; a tiny /api/summary if that grows
+    const check = () => !document.hidden && fetch(`${STATUS}/api/status`).then((r) => r.json()).then((s) => setDown(outage(s, settings.node)), () => {})
+    check()
+    const i = setInterval(check, 120_000)
+    addEventListener('visibilitychange', check)
+    return () => (clearInterval(i), removeEventListener('visibilitychange', check))
+  }, [])
+  if (!down) return null
+  const open = (e: MouseEvent) => account?.done && (e.preventDefault(), launchApp({ url: STATUS, name: t('Hypersnap status'), icon: `${STATUS}/favicon.svg` }))
+  return (
+    <a class="banner outage" href={STATUS} target="_blank" rel="noopener" onClick={open}>
+      <div><b>{down === 'node' ? t("{host} isn't responding", { host: new URL(settings.node).host }) : t('The Hypersnap network is having trouble')}</b><p>{t("Posts may not load or send until it's back. Tap to see the network status.")}</p></div>
+    </a>
+  )
+}
+
 function App() {
   const [, force] = useState(0)
   const [compose, setCompose] = useState<Parameters<typeof shell.compose>[0] | null>(null)
@@ -2769,7 +2791,7 @@ function App() {
           {me && <AccountMenu me={me} />}
         </nav>
       )}
-      <main class="col">{view}</main>
+      <main class="col"><Outage />{view}</main>
       {/* Quorum's messages have no right column: the conversations and the open one take the room */}
       {quorum ? (wallet ? <WalletPanel close={() => setWalletOpen(false)} /> : r0 !== 'messages' && <QuorumAside search={r0 !== 'search'} />) : <aside class="extra">
         {r0 !== 'search' && <a class="searchbox" href="/search"><Icon d={P.search} size={16} /><span>{t('Search people and casts')}</span></a>}

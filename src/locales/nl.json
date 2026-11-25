@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Als je Vind ik leuk twee seconden vasthoudt op een cast van iemand anders, krijgt de maker $ 1 fooi in USDC op Base uit je wallet. Staat dit uit, dan werkt vasthouden als een tik.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Als je Vind ik leuk vasthoudt op een cast van iemand anders, krijgt de maker $ 1 fooi: 1 USDC op Base uit {wallet}, rechtstreeks naar hun wallet. Sendclap houdt 1% in, en gas kost een beetje ETH op Base.",
   "Tip $1": "$ 1 fooi geven",
-  "Tip @{name} $1?": "$ 1 fooi aan @{name}?"
+  "Tip @{name} $1?": "$ 1 fooi aan @{name}?",
+  "Hypersnap status": "Hypersnap-status",
+  "The Hypersnap network is having trouble": "Het Hypersnap-netwerk heeft problemen",
+  "{host} isn't responding": "{host} reageert niet",
+  "Posts may not load or send until it's back. Tap to see the network status.": "Berichten laden of versturen misschien niet tot het terug is. Tik om de netwerkstatus te zien."
 }

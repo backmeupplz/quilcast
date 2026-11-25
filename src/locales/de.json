@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Hältst du Gefällt mir bei einem fremden Cast zwei Sekunden lang, bekommt die Person 1 $ Trinkgeld in USDC auf Base aus deiner Wallet. Ist das aus, wirkt Halten wie ein Tippen.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Hältst du Gefällt mir bei einem fremden Cast, bekommt die Person 1 $ Trinkgeld: 1 USDC auf Base aus {wallet}, direkt in ihre Wallet. Sendclap behält 1 %, und das Gas kostet ein wenig ETH auf Base.",
   "Tip $1": "1 $ Trinkgeld geben",
-  "Tip @{name} $1?": "1 $ Trinkgeld an @{name}?"
+  "Tip @{name} $1?": "1 $ Trinkgeld an @{name}?",
+  "Hypersnap status": "Hypersnap-Status",
+  "The Hypersnap network is having trouble": "Das Hypersnap-Netzwerk hat Probleme",
+  "{host} isn't responding": "{host} antwortet nicht",
+  "Posts may not load or send until it's back. Tap to see the network status.": "Beiträge laden oder senden vielleicht nicht, bis es wieder da ist. Tippe, um den Netzwerkstatus zu sehen."
 }

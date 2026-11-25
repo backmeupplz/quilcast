@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Başkasının cast'inde Beğen'i iki saniye basılı tutmak, yazarına cüzdanından Base üzerinde USDC ile 1 $ bahşiş gönderir. Kapalıyken basılı tutmak dokunmakla aynıdır.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Başkasının cast'inde Beğen'i basılı tutmak, yazarına 1 $ bahşiş gönderir: {wallet} cüzdanından Base üzerinde 1 USDC, doğrudan onun cüzdanına. Sendclap %1 alır, gas ise Base üzerinde biraz ETH tutar.",
   "Tip $1": "1 $ bahşiş ver",
-  "Tip @{name} $1?": "@{name} için 1 $ bahşiş?"
+  "Tip @{name} $1?": "@{name} için 1 $ bahşiş?",
+  "Hypersnap status": "Hypersnap durumu",
+  "The Hypersnap network is having trouble": "Hypersnap ağında sorun var",
+  "{host} isn't responding": "{host} yanıt vermiyor",
+  "Posts may not load or send until it's back. Tap to see the network status.": "Geri gelene kadar gönderiler yüklenmeyebilir veya gönderilemeyebilir. Ağ durumunu görmek için dokun."
 }

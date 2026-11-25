@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Przytrzymanie Polub przez dwie sekundy pod czyimś castem daje jego autorowi 1 $ napiwku w USDC w sieci Base z twojego portfela. Gdy to wyłączone, przytrzymanie działa jak dotknięcie.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Przytrzymanie Polub pod czyimś castem daje jego autorowi 1 $ napiwku: 1 USDC w sieci Base z {wallet}, prosto do jego portfela. Sendclap zatrzymuje 1%, a gas kosztuje trochę ETH w sieci Base.",
   "Tip $1": "Daj 1 $ napiwku",
-  "Tip @{name} $1?": "Napiwek 1 $ dla @{name}?"
+  "Tip @{name} $1?": "Napiwek 1 $ dla @{name}?",
+  "Hypersnap status": "Status Hypersnap",
+  "The Hypersnap network is having trouble": "Sieć Hypersnap ma problemy",
+  "{host} isn't responding": "{host} nie odpowiada",
+  "Posts may not load or send until it's back. Tap to see the network status.": "Posty mogą się nie wczytywać ani nie wysyłać, dopóki nie wróci. Stuknij, aby zobaczyć stan sieci."
 }

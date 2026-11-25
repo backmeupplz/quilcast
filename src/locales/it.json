@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "Tenere premuto Mi piace per due secondi sul cast di qualcun altro dà al suo autore una mancia di 1 $ in USDC su Base dal tuo wallet. Se disattivato, tenere premuto funziona come un tocco.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "Tenere premuto Mi piace sul cast di qualcun altro dà al suo autore una mancia di 1 $: 1 USDC su Base da {wallet}, direttamente nel suo wallet. Sendclap trattiene l'1% e il gas costa un po' di ETH su Base.",
   "Tip $1": "Dai 1 $",
-  "Tip @{name} $1?": "Mancia di 1 $ a @{name}?"
+  "Tip @{name} $1?": "Mancia di 1 $ a @{name}?",
+  "Hypersnap status": "Stato di Hypersnap",
+  "The Hypersnap network is having trouble": "La rete Hypersnap ha dei problemi",
+  "{host} isn't responding": "{host} non risponde",
+  "Posts may not load or send until it's back. Tap to see the network status.": "I post potrebbero non caricarsi o non partire finché non torna. Tocca per vedere lo stato della rete."
 }

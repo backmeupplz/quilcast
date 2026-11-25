@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "他の人のキャストで「いいね」を 2 秒長押しすると、あなたのウォレットから Base 上の USDC で $1 のチップが投稿者に送られます。オフにすると、長押しはタップと同じになります。",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "他の人のキャストで「いいね」を長押しすると、投稿者に $1 のチップが送られます。{wallet} から Base 上の 1 USDC が相手のウォレットに直接届きます。Sendclap の手数料は 1% で、ガス代として Base 上の ETH が少しかかります。",
   "Tip $1": "$1 のチップを送る",
-  "Tip @{name} $1?": "@{name} に $1 のチップを送りますか？"
+  "Tip @{name} $1?": "@{name} に $1 のチップを送りますか？",
+  "Hypersnap status": "Hypersnap のステータス",
+  "The Hypersnap network is having trouble": "Hypersnap ネットワークに問題が発生しています",
+  "{host} isn't responding": "{host} が応答していません",
+  "Posts may not load or send until it's back. Tap to see the network status.": "復旧するまで投稿の読み込みや送信ができないことがあります。タップしてネットワークの状況を確認できます。"
 }

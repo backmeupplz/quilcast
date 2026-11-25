@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "الضغط مطولًا على الإعجاب في منشور شخص آخر لثانيتين يرسل إلى كاتبه إكرامية 1$ بعملة USDC على Base من محفظتك. عند الإيقاف، يعمل الضغط المطول مثل النقرة.",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "الضغط مطولًا على الإعجاب في منشور شخص آخر يرسل إلى كاتبه إكرامية 1$: ‏1 USDC على Base من {wallet}، مباشرة إلى محفظته. تحتفظ Sendclap بنسبة 1%، ورسوم الغاز قليل من ETH على Base.",
   "Tip $1": "إرسال إكرامية 1$",
-  "Tip @{name} $1?": "إكرامية 1$ إلى @{name}؟"
+  "Tip @{name} $1?": "إكرامية 1$ إلى @{name}؟",
+  "Hypersnap status": "حالة Hypersnap",
+  "The Hypersnap network is having trouble": "تواجه شبكة Hypersnap مشكلة",
+  "{host} isn't responding": "{host} لا يستجيب",
+  "Posts may not load or send until it's back. Tap to see the network status.": "قد لا تُحمَّل المنشورات أو تُرسَل حتى يعود. انقر لرؤية حالة الشبكة."
 }

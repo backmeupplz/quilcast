@@ -1445,5 +1445,9 @@
   "Holding Like on someone's cast for two seconds tips its author $1 in USDC on Base from your wallet. Off, holding Like works like a tap.": "在别人的 cast 上长按点赞两秒，会从你的钱包用 Base 上的 USDC 打赏作者 $1。关闭后，长按和轻点一样。",
   "Holding Like on someone's cast tips its author $1: 1 USDC on Base from {wallet}, straight to their wallet. Sendclap keeps 1%, and gas costs a little ETH on Base.": "在别人的 cast 上长按点赞会打赏作者 $1：从 {wallet} 发出 Base 上的 1 USDC，直接进入对方钱包。Sendclap 收取 1%，gas 费为少量 Base 上的 ETH。",
   "Tip $1": "打赏 $1",
-  "Tip @{name} $1?": "打赏 @{name} $1？"
+  "Tip @{name} $1?": "打赏 @{name} $1？",
+  "Hypersnap status": "Hypersnap 状态",
+  "The Hypersnap network is having trouble": "Hypersnap 网络出现问题",
+  "{host} isn't responding": "{host} 没有响应",
+  "Posts may not load or send until it's back. Tap to see the network status.": "恢复之前，帖子可能无法加载或发送。点按查看网络状态。"
 }
