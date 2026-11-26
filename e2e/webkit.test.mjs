@@ -966,6 +966,10 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await page.locator('#app article.cast footer').first().waitFor({ timeout: 30e3 })
     await page.locator('.fab').click()
     const cast = await toolbarFits(page, 'a new cast')
+    // the sheet keeps clear of the status bar and the home indicator with borders as wide as the safe area (#945);
+    // they're 0 px here, so this checks no sheet's own style takes them away
+    const edges = await page.locator('.modal > .sheet').evaluate((e) => [getComputedStyle(e).borderTopStyle, getComputedStyle(e).borderBottomStyle])
+    assert.deepEqual(edges, ['solid', 'solid'])
     const labels = cast.map((b) => b.label)
     for (const l of ['Schedule', 'Train']) assert.ok(labels.includes(l), `${l} is in ${labels}`)
     const chip = page.locator('.modal .toolbar .chip')

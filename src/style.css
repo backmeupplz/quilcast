@@ -721,6 +721,10 @@ small.warn { color: var(--warn); }
 @media (max-width: 600px) {
   .modal { padding: 0; align-items: stretch; }
   .sheet { border-radius: 0; max-width: none; display: flex; flex-direction: column; }
+  /* full screen, a sheet's top row stays clear of the status bar and its toolbar of the home indicator (the iOS app draws
+     under them, viewport-fit=cover; #945). Borders rather than padding: each kind of sheet keeps its own padding, and
+     its background shows through them. */
+  .modal > .sheet { border-block: solid transparent; border-block-width: env(safe-area-inset-top) env(safe-area-inset-bottom); }
   /* the Channel picker opens from the toolbar's start, not the chip's: a chip far along a phone's row would put it past the screen's edge (#721) */
   .toolbar { margin-top: auto; position: relative; }
   .toolbar .wrap-menu { position: static; }
