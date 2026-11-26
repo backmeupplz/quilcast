@@ -1,0 +1,1 @@
+Trên iPad, nhấn ⌘[ hoặc ⌘] khi đang viết cast sẽ không còn đổi trang phía sau nữa.

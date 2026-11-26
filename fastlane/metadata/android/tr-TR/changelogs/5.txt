@@ -1,0 +1,1 @@
+iPad'de bir cast yazarken ⌘[ veya ⌘] tuşuna basmak artık arkadaki sayfayı değiştirmiyor.
