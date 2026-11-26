@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Estado do Hypersnap",
   "The Hypersnap network is having trouble": "A rede Hypersnap está com problemas",
   "{host} isn't responding": "{host} não está a responder",
-  "Posts may not load or send until it's back. Tap to see the network status.": "As publicações podem não carregar nem ser enviadas até voltar. Toque para ver o estado da rede."
+  "Posts may not load or send until it's back. Tap to see the network status.": "As publicações podem não carregar nem ser enviadas até voltar. Toque para ver o estado da rede.",
+  "This is too long for one cast.": "Isto é demasiado longo para um cast.",
+  "Make it an article": "Transformar em artigo",
+  "Replace your unfinished article with this post?": "Substituir o teu artigo por acabar por esta publicação?",
+  "Your article was partly published. Publish the rest or discard it first.": "O teu artigo foi publicado só em parte. Publica o resto ou descarta-o primeiro.",
+  "Articles aren’t posted in channels.": "Os artigos não são publicados em canais.",
+  "Your article is still uploading or publishing. Try again in a moment.": "O teu artigo ainda está a ser enviado ou publicado. Tenta de novo daqui a pouco.",
+  "Replace": "Substituir",
+  "Wait for the upload to finish.": "Espera que o envio termine."
 }

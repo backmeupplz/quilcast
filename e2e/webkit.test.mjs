@@ -1051,4 +1051,57 @@ describe('the app in WebKit', { concurrency: true }, () => {
     await menu.waitFor({ state: 'detached', timeout: 3e3 })
     await close()
   })
+
+  // #930: a cast past 1024 bytes offers to become an article, which replaces the article draft only when that's agreed to,
+  // also with the article editor under the composer
+  test('a cast too long to send becomes an article, asked first over an unfinished one (#930)', async () => {
+    const { page, close } = await open({ 'quilcast:accounts': me, 'quilcast:settings': JSON.stringify(nodeAt), 'quilcast:article:9': JSON.stringify({ title: 'Old', body: 'old body' }) })
+    await drawn(page)
+    const offer = page.locator('.modal .draft-ask', { hasText: 'too long for one cast' })
+    const write = async (text) => {
+      await page.locator('#app .cast-btn').click()
+      await page.locator('.modal textarea').fill(text)
+      await offer.waitFor({ timeout: 3e3 })
+    }
+    // the replace question is asked in the composer itself (confirm() shows nothing in the iOS app), never as a dialog
+    const dialogs = []
+    page.on('dialog', (d) => (dialogs.push(d.message()), d.dismiss()))
+    const ask = page.locator('.modal .draft-ask', { hasText: 'Replace your unfinished article' })
+    const body = page.locator('#app .ae-body')
+    // back under the limit, there's nothing to offer
+    await write('z'.repeat(1100))
+    await page.locator('.modal textarea').fill('short')
+    await offer.waitFor({ state: 'detached', timeout: 3e3 })
+    await page.locator('.modal .sheet-top').getByRole('button', { name: 'Cancel' }).click()
+    await page.getByRole('button', { name: 'Discard' }).click()
+    await page.locator('.modal').waitFor({ state: 'detached' })
+    const first = 'Line one\nline two ' + 'x'.repeat(1100)
+    await write(first)
+    // no: the composer stays, and so does the article draft
+    await offer.getByRole('button', { name: 'Make it an article' }).click()
+    await ask.getByRole('button', { name: 'Cancel' }).click()
+    await offer.waitFor({ timeout: 3e3 })
+    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('quilcast:article:9'))).title, 'Old')
+    // a double click on the offer opens the question and doesn't answer it (Replace is where the offer's button was)
+    await offer.getByRole('button', { name: 'Make it an article' }).dblclick()
+    await ask.waitFor({ timeout: 3e3 })
+    await page.waitForTimeout(700)
+    assert.equal(JSON.parse(await page.evaluate(() => localStorage.getItem('quilcast:article:9'))).title, 'Old')
+    assert.equal(new URL(page.url()).pathname, '/')
+    await ask.getByRole('button', { name: 'Replace' }).click()
+    await page.waitForURL('**/write')
+    await page.locator('.modal').waitFor({ state: 'detached' })
+    assert.equal(await body.inputValue(), first)
+    assert.equal(await page.locator('#app .ae-title').inputValue(), '')
+    await page.waitForFunction(() => document.activeElement?.classList.contains('ae-title'), null, { timeout: 3e3 })
+    // again, from over the article editor: it shows the new one at once
+    await write('second ' + 'y'.repeat(1100))
+    await offer.getByRole('button', { name: 'Make it an article' }).click()
+    await ask.getByRole('button', { name: 'Replace' }).click()
+    await page.locator('.modal').waitFor({ state: 'detached' })
+    assert.equal(await body.inputValue(), 'second ' + 'y'.repeat(1100))
+    assert.deepEqual(dialogs, [])
+    assert.equal(new URL(page.url()).pathname, '/write')
+    await close()
+  })
 })

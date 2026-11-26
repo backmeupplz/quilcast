@@ -1449,5 +1449,13 @@
   "Hypersnap status": "حالة Hypersnap",
   "The Hypersnap network is having trouble": "تواجه شبكة Hypersnap مشكلة",
   "{host} isn't responding": "{host} لا يستجيب",
-  "Posts may not load or send until it's back. Tap to see the network status.": "قد لا تُحمَّل المنشورات أو تُرسَل حتى يعود. انقر لرؤية حالة الشبكة."
+  "Posts may not load or send until it's back. Tap to see the network status.": "قد لا تُحمَّل المنشورات أو تُرسَل حتى يعود. انقر لرؤية حالة الشبكة.",
+  "This is too long for one cast.": "هذا أطول من أن يكون كاستًا واحدًا.",
+  "Make it an article": "حوّله إلى مقال",
+  "Replace your unfinished article with this post?": "هل تريد استبدال مقالك غير المكتمل بهذا المنشور؟",
+  "Your article was partly published. Publish the rest or discard it first.": "نُشر جزء من مقالك. انشر الباقي أو تجاهله أولًا.",
+  "Articles aren’t posted in channels.": "لا تُنشر المقالات في القنوات.",
+  "Your article is still uploading or publishing. Try again in a moment.": "مقالك لا يزال قيد الرفع أو النشر. حاول مرة أخرى بعد لحظة.",
+  "Replace": "استبدال",
+  "Wait for the upload to finish.": "انتظر حتى ينتهي الرفع."
 }

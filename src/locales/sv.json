@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Hypersnap-status",
   "The Hypersnap network is having trouble": "Hypersnap-nätverket har problem",
   "{host} isn't responding": "{host} svarar inte",
-  "Posts may not load or send until it's back. Tap to see the network status.": "Inlägg kanske inte laddas eller skickas förrän det är tillbaka. Tryck för att se nätverkets status."
+  "Posts may not load or send until it's back. Tap to see the network status.": "Inlägg kanske inte laddas eller skickas förrän det är tillbaka. Tryck för att se nätverkets status.",
+  "This is too long for one cast.": "Det här är för långt för en cast.",
+  "Make it an article": "Gör det till en artikel",
+  "Replace your unfinished article with this post?": "Ersätta din ofärdiga artikel med det här inlägget?",
+  "Your article was partly published. Publish the rest or discard it first.": "Din artikel publicerades bara delvis. Publicera resten eller släng den först.",
+  "Articles aren’t posted in channels.": "Artiklar publiceras inte i kanaler.",
+  "Your article is still uploading or publishing. Try again in a moment.": "Din artikel laddas fortfarande upp eller publiceras. Försök igen om en stund.",
+  "Replace": "Ersätt",
+  "Wait for the upload to finish.": "Vänta tills uppladdningen är klar."
 }

@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Hypersnap durumu",
   "The Hypersnap network is having trouble": "Hypersnap ağında sorun var",
   "{host} isn't responding": "{host} yanıt vermiyor",
-  "Posts may not load or send until it's back. Tap to see the network status.": "Geri gelene kadar gönderiler yüklenmeyebilir veya gönderilemeyebilir. Ağ durumunu görmek için dokun."
+  "Posts may not load or send until it's back. Tap to see the network status.": "Geri gelene kadar gönderiler yüklenmeyebilir veya gönderilemeyebilir. Ağ durumunu görmek için dokun.",
+  "This is too long for one cast.": "Bu, tek bir cast için fazla uzun.",
+  "Make it an article": "Makaleye dönüştür",
+  "Replace your unfinished article with this post?": "Bitmemiş makalen bu gönderiyle değiştirilsin mi?",
+  "Your article was partly published. Publish the rest or discard it first.": "Makalen kısmen yayımlandı. Önce kalanını yayımla ya da ondan vazgeç.",
+  "Articles aren’t posted in channels.": "Makaleler kanallarda paylaşılmaz.",
+  "Your article is still uploading or publishing. Try again in a moment.": "Makalen hâlâ yükleniyor ya da yayımlanıyor. Birazdan tekrar dene.",
+  "Replace": "Değiştir",
+  "Wait for the upload to finish.": "Yüklemenin bitmesini bekle."
 }

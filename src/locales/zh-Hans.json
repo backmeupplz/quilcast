@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Hypersnap 状态",
   "The Hypersnap network is having trouble": "Hypersnap 网络出现问题",
   "{host} isn't responding": "{host} 没有响应",
-  "Posts may not load or send until it's back. Tap to see the network status.": "恢复之前，帖子可能无法加载或发送。点按查看网络状态。"
+  "Posts may not load or send until it's back. Tap to see the network status.": "恢复之前，帖子可能无法加载或发送。点按查看网络状态。",
+  "This is too long for one cast.": "这对一条 cast 来说太长了。",
+  "Make it an article": "改成文章",
+  "Replace your unfinished article with this post?": "用这条帖子替换你未完成的文章？",
+  "Your article was partly published. Publish the rest or discard it first.": "你的文章只发布了一部分。请先发布剩下的部分或放弃它。",
+  "Articles aren’t posted in channels.": "文章不会发布到频道。",
+  "Your article is still uploading or publishing. Try again in a moment.": "你的文章仍在上传或发布中。请稍后再试。",
+  "Replace": "替换",
+  "Wait for the upload to finish.": "请等待上传完成。"
 }

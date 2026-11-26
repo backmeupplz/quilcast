@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Hypersnap स्थिति",
   "The Hypersnap network is having trouble": "Hypersnap नेटवर्क में समस्या है",
   "{host} isn't responding": "{host} जवाब नहीं दे रहा",
-  "Posts may not load or send until it's back. Tap to see the network status.": "इसके वापस आने तक पोस्ट शायद लोड या भेजी न जा सकें। नेटवर्क की स्थिति देखने के लिए टैप करें।"
+  "Posts may not load or send until it's back. Tap to see the network status.": "इसके वापस आने तक पोस्ट शायद लोड या भेजी न जा सकें। नेटवर्क की स्थिति देखने के लिए टैप करें।",
+  "This is too long for one cast.": "यह एक कास्ट के लिए बहुत लंबा है।",
+  "Make it an article": "इसे लेख बनाएँ",
+  "Replace your unfinished article with this post?": "अपने अधूरे लेख को इस पोस्ट से बदलें?",
+  "Your article was partly published. Publish the rest or discard it first.": "आपका लेख आंशिक रूप से प्रकाशित हुआ है। पहले बाकी प्रकाशित करें या उसे छोड़ें।",
+  "Articles aren’t posted in channels.": "लेख चैनलों में पोस्ट नहीं होते।",
+  "Your article is still uploading or publishing. Try again in a moment.": "आपका लेख अभी अपलोड या प्रकाशित हो रहा है। थोड़ी देर में फिर कोशिश करें।",
+  "Replace": "बदलें",
+  "Wait for the upload to finish.": "अपलोड पूरा होने तक रुकें।"
 }

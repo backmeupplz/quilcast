@@ -6,6 +6,7 @@ import { castText, embedRoom, SEND_EMOJIS, unmarkdown, fillPost, safeUrl, TRAIN,
 import { ago, AppIcon, Avatar, composerActions, fetchCast, handle, Icon, launchApp, LinkCard, Media, Menu, nameOf, P, QuoteCard, RichText, toast, w, type CastAction, type Drafting } from './ui.tsx'
 import type { Draft, Scheduled, ThreadStart } from './write.ts'
 import { trainOk } from './trainask.ts'
+import { articleBody } from './article.ts'
 import { findChannels, getChannel, isMember, urlOf, type Channel } from './channels.ts'
 
 type Attachment = { id: number; preview: string; video: boolean; url?: string; err?: string; stage?: 'uploading' | 'processing'; pct?: number; left?: number }
@@ -364,8 +365,10 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   base.current ??= snap(parts, channel)
   const empty = parts.every((p) => !p.text.trim() && !p.files.length)
   const uploading = parts.some((p) => p.pics.length || holdsPicture(p.text) || p.files.some((f) => !f.url && !f.err))
-  // closing with something new in it asks first; asked twice, it goes back to editing
-  const leave = () => (asking ? (setAsking(false), (then.current = '')) : canDraft && !busy && !empty && snap(parts, channel) !== base.current ? setAsking(true) : onClose())
+  const lostFile = parts.some((p) => p.files.some((f) => f.err))
+  // closing with something new in it asks first; asked twice, it goes back to editing. Closing also calls off a handoff
+  // to the article editor that's still loading (see `article`), so the post stays here to be kept or discarded
+  const leave = () => (handoff.current++, setHanding(false), asking ? (setAsking(false), (then.current = '')) : canDraft && !busy && !empty && snap(parts, channel) !== base.current ? setAsking(true) : onClose())
   const keep = async () => {
     setBusy(true)
     try {
@@ -429,6 +432,44 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   const cur = parts[at]
   const left = LIMIT - used(cur)
   const filled = (p: Part, i: number) => p.text.trim() || p.files.length || fixed(i)
+  // a top-level cast too long to send can go out as an article instead: not a reply or quote, a train, one picked to go
+  // out later or one being edited from the scheduled list, all of which an article can't be, and only as the account
+  // the article editor publishes as (a channel it can't have either, so the offer says it's left out)
+  const toArticle = canDraft && parts.some((p) => bytes(p.text) > LIMIT) && !parent && !lost && !quote && !train && !when && !editing && !cont && as.fid === account?.fid
+  // asked in the row itself whether it replaces an unfinished article (confirm() shows nothing in the iOS app)
+  const [replacing, setReplacing] = useState(false)
+  useEffect(() => void (toArticle || setReplacing(false)), [toArticle])
+  // Replace sits where the offer's button was, so it waits a moment: the click that opened the question (a double click,
+  // a quick second tap) mustn't answer it
+  const [fresh, setFresh] = useState(false)
+  // the editor's code loads before the post is read, so nothing typed meanwhile is left behind; a second click does
+  // nothing meanwhile, and closing calls it off (`handoff` moves on). An attachment the text already shows as a picture
+  // (the same upload) goes in once, as a cast would send it (postMedia)
+  const [handing, setHanding] = useState(false)
+  const handoff = useRef(0)
+  const article = (replace = false) => {
+    const n = ++handoff.current
+    setHanding(true)
+    import('./articles.tsx').then((m) => {
+      if (n !== handoff.current) return
+      setHanding(false)
+      const { parts: ps, toArticle: still, busy: sending } = now.current
+      // changed while it loaded: it went out as a cast (or is going), or no longer is one an article can take (shorter,
+      // a train, scheduled), or a file that failed (shown on it) or a file or picture not uploaded yet was added
+      if (!still || sending || ps.some((p) => p.files.some((f) => f.err))) return
+      if (ps.some((p) => p.pics.length || holdsPicture(p.text) || p.files.some((f) => !f.url))) return toast('Wait for the upload to finish.')
+      const media = (p: Part) => p.files.filter((f) => f.url && postMedia([], [f], p.text).length).map((f) => ({ url: f.url!, link: linkAtt(f) }))
+      const done = m.fromCast(articleBody(ps.map((p) => ({ text: p.text, media: media(p) }))), replace)
+      setReplacing(done === 'ask')
+      if (done === 'ask') setFresh(true), setTimeout(() => setFresh(false), 500)
+      if (done !== true) return
+      // the post is the article's now, not a draft's as well
+      if (draft) w().then((x) => x.dropDraft(draft)).catch(() => {})
+      then.current = location.pathname === '/write' ? '' : '/write'
+      onClose()
+    }, () => (setHanding(false), toast('Something went wrong and Quilcast stopped. Reloading the page usually fixes it.')))
+      .catch((e) => (setHanding(false), toast(e.message)))
+  }
   const ready = parts.every((p, i) => (filled(p, i) || (i > 0 && !p.text && !p.files.length)) && bytes(p.text) <= LIMIT && p.files.every((f) => f.url) && !p.pics.length && !holdsPicture(p.text)) && filled(parts[0], 0)
 
   const attach = (list: Iterable<File> | null) => {
@@ -560,8 +601,8 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
   // while one is open the sheet can't be edited, so nothing typed meanwhile is lost to its fill, and the backdrop stays
   // (an inert one lets clicks through to the page) but doesn't close the composer
   const [acting, setActing] = useState(0)
-  const now = useRef({ parts, active: at, parent, quote, channel, fixed, embeds })
-  now.current = { parts, active: at, parent, quote, channel, fixed, embeds }
+  const now = useRef({ parts, active: at, parent, quote, channel, fixed, embeds, toArticle, busy })
+  now.current = { parts, active: at, parent, quote, channel, fixed, embeds, toArticle, busy }
   const opened = useRef<Drafting[]>([])
   useEffect(() => () => void (opened.current.length && import('./miniapp.tsx').then((m) => opened.current.forEach(m.dropDraft))), [])
   const runAction = (a: CastAction) => {
@@ -672,7 +713,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
       onDragOver={(e) => e.dataTransfer?.types.includes('Files') && e.preventDefault()}
       onDrop={(e) => e.dataTransfer?.files.length && (e.preventDefault(), !acting && attach([...e.dataTransfer.files].filter((f) => MEDIA.test(f.type))))}>
       <div class="sheet" inert={acting > 0} tabIndex={-1} role="dialog" aria-label={parent || lost ? t('Reply') : quote ? t('Quote cast') : t('New cast')} onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : scheduledOpen ? setScheduledOpen(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && send(), shortcut(e))}>
+        onKeyDown={(e) => (e.key === 'Escape' && (emoji ? setEmoji(null) : gifs ? setGifs(false) : drafts ? setDrafts(false) : scheduledOpen ? setScheduledOpen(false) : leave()), (e.metaKey || e.ctrlKey) && e.key === 'Enter' && ready && !busy && !handing && send(), shortcut(e))}>
         <div class="sheet-top">
           <span class="sheet-left">
             <button class="link-btn" onClick={leave}>{t('Cancel')}</button>
@@ -681,7 +722,7 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
           </span>
           {/* a failed thread going on from its last post stays with the account that posted it */}
           {!(gone && !gone.again) && <AsPicker value={as} set={setAs} />}
-          <button class="btn" disabled={busy || !ready || !!lost} onClick={send}>{busy ? t('Sending…') : when ? t('Schedule') : parts.length > 1 ? t('Post all') : parent || lost ? t('Reply') : t('Cast')}</button>
+          <button class="btn" disabled={busy || handing || !ready || !!lost} onClick={send}>{busy ? t('Sending…') : when ? t('Schedule') : parts.length > 1 ? t('Post all') : parent || lost ? t('Reply') : t('Cast')}</button>
         </div>
         {asking && (
           <div class="draft-ask" role="alertdialog" aria-label={t('Save this as a draft?')}>
@@ -725,6 +766,22 @@ export function Composer({ channel: initial, text = '', embeds: given = [], onDo
               placeholder={i > 0 ? t('Add another post') : parent ? t('Reply to {name}', { name: `@${handle(parent.author)}` }) : lost ? t('Reply') : quote ? t('Add a comment') : t("What's happening?")} />
           ))}
         </div>
+        {toArticle && (
+          <div class="draft-ask" hidden={!!gifs || drafts || scheduledOpen || !!emoji}>
+            {replacing ? (
+              <>
+                <span>{t('Replace your unfinished article with this post?')}</span>
+                <button class="link-btn" onClick={() => setReplacing(false)}>{t('Cancel')}</button>
+                <button class="btn" disabled={busy || handing || fresh || uploading || lostFile} onClick={() => article(true)}>{t('Replace')}</button>
+              </>
+            ) : (
+              <>
+                <span>{t('This is too long for one cast.')}{channel && ` ${t('Articles aren’t posted in channels.')}`}</span>
+                <button class="btn" disabled={busy || handing || uploading || lostFile} onClick={() => article()}>{t('Make it an article')}</button>
+              </>
+            )}
+          </div>
+        )}
         {md && (
           <div class="md-tools" hidden={!!gifs || drafts || scheduledOpen || !!emoji} onMouseDown={(e) => e.preventDefault()}>
             {([

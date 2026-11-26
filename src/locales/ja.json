@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Hypersnap のステータス",
   "The Hypersnap network is having trouble": "Hypersnap ネットワークに問題が発生しています",
   "{host} isn't responding": "{host} が応答していません",
-  "Posts may not load or send until it's back. Tap to see the network status.": "復旧するまで投稿の読み込みや送信ができないことがあります。タップしてネットワークの状況を確認できます。"
+  "Posts may not load or send until it's back. Tap to see the network status.": "復旧するまで投稿の読み込みや送信ができないことがあります。タップしてネットワークの状況を確認できます。",
+  "This is too long for one cast.": "1つのキャストには長すぎます。",
+  "Make it an article": "記事にする",
+  "Replace your unfinished article with this post?": "書きかけの記事をこの投稿で置き換えますか？",
+  "Your article was partly published. Publish the rest or discard it first.": "記事は一部だけ公開されています。先に残りを公開するか、破棄してください。",
+  "Articles aren’t posted in channels.": "記事はチャンネルには投稿されません。",
+  "Your article is still uploading or publishing. Try again in a moment.": "記事はまだアップロード中か公開中です。少し待ってからもう一度お試しください。",
+  "Replace": "置き換える",
+  "Wait for the upload to finish.": "アップロードが終わるまでお待ちください。"
 }

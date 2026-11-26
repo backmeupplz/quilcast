@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Trạng thái Hypersnap",
   "The Hypersnap network is having trouble": "Mạng Hypersnap đang gặp sự cố",
   "{host} isn't responding": "{host} không phản hồi",
-  "Posts may not load or send until it's back. Tap to see the network status.": "Bài đăng có thể không tải hoặc gửi được cho đến khi nó hoạt động lại. Nhấn để xem trạng thái mạng."
+  "Posts may not load or send until it's back. Tap to see the network status.": "Bài đăng có thể không tải hoặc gửi được cho đến khi nó hoạt động lại. Nhấn để xem trạng thái mạng.",
+  "This is too long for one cast.": "Nội dung này quá dài cho một cast.",
+  "Make it an article": "Chuyển thành bài viết",
+  "Replace your unfinished article with this post?": "Thay bài viết chưa xong của bạn bằng bài đăng này?",
+  "Your article was partly published. Publish the rest or discard it first.": "Bài viết của bạn mới đăng được một phần. Hãy đăng phần còn lại hoặc bỏ nó trước.",
+  "Articles aren’t posted in channels.": "Bài viết không được đăng vào kênh.",
+  "Your article is still uploading or publishing. Try again in a moment.": "Bài viết của bạn vẫn đang tải lên hoặc đang đăng. Hãy thử lại sau giây lát.",
+  "Replace": "Thay thế",
+  "Wait for the upload to finish.": "Hãy đợi tải lên xong."
 }

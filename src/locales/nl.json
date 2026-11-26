@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Hypersnap-status",
   "The Hypersnap network is having trouble": "Het Hypersnap-netwerk heeft problemen",
   "{host} isn't responding": "{host} reageert niet",
-  "Posts may not load or send until it's back. Tap to see the network status.": "Berichten laden of versturen misschien niet tot het terug is. Tik om de netwerkstatus te zien."
+  "Posts may not load or send until it's back. Tap to see the network status.": "Berichten laden of versturen misschien niet tot het terug is. Tik om de netwerkstatus te zien.",
+  "This is too long for one cast.": "Dit is te lang voor één cast.",
+  "Make it an article": "Maak er een artikel van",
+  "Replace your unfinished article with this post?": "Je onafgemaakte artikel vervangen door dit bericht?",
+  "Your article was partly published. Publish the rest or discard it first.": "Je artikel is maar deels gepubliceerd. Publiceer eerst de rest of gooi het weg.",
+  "Articles aren’t posted in channels.": "Artikelen worden niet in kanalen geplaatst.",
+  "Your article is still uploading or publishing. Try again in a moment.": "Je artikel wordt nog geüpload of gepubliceerd. Probeer het zo opnieuw.",
+  "Replace": "Vervangen",
+  "Wait for the upload to finish.": "Wacht tot de upload klaar is."
 }

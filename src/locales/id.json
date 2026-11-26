@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Status Hypersnap",
   "The Hypersnap network is having trouble": "Jaringan Hypersnap sedang bermasalah",
   "{host} isn't responding": "{host} tidak merespons",
-  "Posts may not load or send until it's back. Tap to see the network status.": "Postingan mungkin tidak dimuat atau terkirim sampai pulih. Ketuk untuk melihat status jaringan."
+  "Posts may not load or send until it's back. Tap to see the network status.": "Postingan mungkin tidak dimuat atau terkirim sampai pulih. Ketuk untuk melihat status jaringan.",
+  "This is too long for one cast.": "Ini terlalu panjang untuk satu cast.",
+  "Make it an article": "Jadikan artikel",
+  "Replace your unfinished article with this post?": "Ganti artikelmu yang belum selesai dengan postingan ini?",
+  "Your article was partly published. Publish the rest or discard it first.": "Artikelmu baru terbit sebagian. Terbitkan sisanya atau buang dulu.",
+  "Articles aren’t posted in channels.": "Artikel tidak diposting di saluran.",
+  "Your article is still uploading or publishing. Try again in a moment.": "Artikelmu masih diunggah atau diterbitkan. Coba lagi sebentar lagi.",
+  "Replace": "Ganti",
+  "Wait for the upload to finish.": "Tunggu sampai unggahan selesai."
 }

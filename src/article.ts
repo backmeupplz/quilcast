@@ -405,3 +405,8 @@ export function splitArticle(a: { title: string; cover?: string; body: string },
   if (out.some((p) => bytes(p.text) > room)) throw new Error('A table in this article is too wide to publish.')
   return out
 }
+
+/** A cast too long to send (its posts' text and attachments, `link` for a link card) as an article body: each post a
+ *  block of its own, and each attachment on a line of its own after its post's text, so it goes out as an embed. */
+export const articleBody = (posts: { text: string; media: { url: string; link?: boolean }[] }[]) =>
+  posts.flatMap((p) => [p.text.trim(), ...p.media.map((m) => (m.link ? m.url : `![](${m.url})`))]).filter(Boolean).join('\n\n')

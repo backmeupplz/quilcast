@@ -19,6 +19,27 @@ function plan(k: Kept): { parts: Outgoing[]; err?: undefined } | { parts?: undef
   }
 }
 
+// the editor on screen, to show an article handed over from the composer (which may sit over it); and whether a publish
+// or an upload is still going, which would land on (or, once published, clear) an article put in its place
+let onScreen: ((k: Kept) => void) | undefined
+let working = 0
+// an article just handed over with the editor not on screen: its title takes the cursor once the editor opens
+let handed = false
+/** Starts an article with `body`, from a cast too long to send, in place of the article draft (refused when it was
+ *  partly published). True when it was; 'ask' when there's a draft that only goes once `replace` is agreed to, which
+ *  the composer asks itself (confirm() shows nothing in the iOS app). */
+export function fromCast(body: string, replace = false): boolean | 'ask' {
+  const kept = read<Kept>(keyOf(), { title: '', body: '' })
+  if (working) return toast('Your article is still uploading or publishing. Try again in a moment.'), false
+  if (kept.sent?.length) return toast('Your article was partly published. Publish the rest or discard it first.'), false
+  if ((kept.title.trim() || kept.body.trim() || kept.cover) && !replace) return 'ask'
+  const k = { title: '', body }
+  save(keyOf(), k)
+  if (onScreen) onScreen(k)
+  else handed = true
+  return true
+}
+
 export function ArticleEditor() {
   const [k, setK] = useState<Kept>(() => {
     const kept = read<Kept>(keyOf(), { title: '', body: '' })
@@ -28,6 +49,14 @@ export function ArticleEditor() {
   const [preview, setPreview] = useState(false)
   const [busy, setBusy] = useState<'' | 'cover' | 'picture' | 'publish'>('')
   const box = useRef<HTMLTextAreaElement>(null)
+  // an article started from a cast has no title yet: that's where the cursor goes
+  const title = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (handed) title.current?.focus()
+    handed = false
+    onScreen = (x) => (setK(x), setPreview(false), title.current?.focus())
+    return () => void (onScreen = undefined)
+  }, [])
   const coverPick = useRef<HTMLInputElement>(null)
   const picturePick = useRef<HTMLInputElement>(null)
   // a publish that stopped partway keeps the casts it planned, so the rest go out as planned
@@ -40,6 +69,7 @@ export function ArticleEditor() {
   const upload = async (file: File | undefined, what: 'cover' | 'picture') => {
     if (!file) return
     setBusy(what)
+    working++
     try {
       const url = await (await w()).upload(file)
       if (what === 'cover') set({ cover: url })
@@ -56,12 +86,14 @@ export function ArticleEditor() {
     } catch (e: any) {
       toast(e.message)
     }
+    working--
     setBusy('')
   }
   const publish = async () => {
     if (!out.parts || busy) return
     const parts = out.parts
     setBusy('publish')
+    working++
     try {
       const hashes = await (await w()).postArticle(parts, k.sent, (sent) => set({ parts, sent, fid: account?.fid }))
       finished.current = true
@@ -70,6 +102,8 @@ export function ArticleEditor() {
     } catch (e: any) {
       toast(e.message)
       setBusy('')
+    } finally {
+      working--
     }
   }
   // the preview is the article page itself, from the casts as they'd go out
@@ -84,7 +118,7 @@ export function ArticleEditor() {
     <>
       <Header title={t('New article')} />
       <div class="article-editor">
-        <input class="ae-title" dir="auto" placeholder={t('Title')} aria-label={t('Title')} value={k.title} disabled={locked} onInput={(e) => set({ title: e.currentTarget.value })} />
+        <input ref={title} class="ae-title" dir="auto" placeholder={t('Title')} aria-label={t('Title')} value={k.title} disabled={locked} onInput={(e) => set({ title: e.currentTarget.value })} />
         {k.cover ? (
           <div class="ae-cover">
             <Img src={k.cover} />

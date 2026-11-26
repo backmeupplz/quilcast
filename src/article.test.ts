@@ -3,7 +3,7 @@ import { test } from 'node:test'
 
 // fc.ts expects a browser here and there; this is just enough of one
 ;(globalThis as any).addEventListener = () => {}
-import { assemble, cardOpening, classify, classifyPart, plainOpening, coverOf, fromNode, fromV2, headOf, isArticle, isArticlePart, loadArticle, maybeArticle, partNow, partText, segments, splitArticle, type Part } from './article.ts'
+import { articleBody, assemble, cardOpening, classify, classifyPart, plainOpening, coverOf, fromNode, fromV2, headOf, isArticle, isArticlePart, loadArticle, maybeArticle, partNow, partText, segments, splitArticle, type Part } from './article.ts'
 import { castBody, hex, mentions } from './fc.ts'
 import { articleHtml } from './shared.ts'
 
@@ -305,4 +305,18 @@ test('an article cast carries format_version 1 and its place in the chain (field
   assert.equal(hex(castBody({ text: 'T', parent: root, format: 1, chain: { root, index: 1, count: 2 } })), '1a18' + id + '220154' + '4801' + '521e' + '0a18' + id + '1001' + '1802')
   // a plain cast is as before
   assert.equal(hex(castBody({ text: 'T' })), '220154')
+})
+
+test('a cast too long to send becomes an article body whose attachments go out as embeds', () => {
+  const long = 'word '.repeat(300).trim()
+  const body = articleBody([
+    { text: `  ${long}\nsecond line  `, media: [{ url: 'https://imagedelivery.net/a/b/original' }, { url: 'https://example.com/page', link: true }] },
+    { text: '', media: [] },
+    { text: 'the end', media: [] },
+  ])
+  assert.equal(body, `${long}\nsecond line\n\n![](https://imagedelivery.net/a/b/original)\n\nhttps://example.com/page\n\nthe end`)
+  const parts = splitArticle({ title: 'Title', body })
+  assert.ok(parts.every((p) => new TextEncoder().encode(p.text).length <= 1024))
+  assert.deepEqual(parts.flatMap((p) => p.embeds), ['https://imagedelivery.net/a/b/original', 'https://example.com/page'])
+  assert.ok(parts.at(-1)!.text.includes('the end'))
 })

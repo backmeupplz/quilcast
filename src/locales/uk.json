@@ -1449,5 +1449,13 @@
   "Hypersnap status": "Статус Hypersnap",
   "The Hypersnap network is having trouble": "У мережі Hypersnap негаразди",
   "{host} isn't responding": "{host} не відповідає",
-  "Posts may not load or send until it's back. Tap to see the network status.": "Поки він не запрацює, дописи можуть не завантажуватися й не надсилатися. Натисніть, щоб побачити статус мережі."
+  "Posts may not load or send until it's back. Tap to see the network status.": "Поки він не запрацює, дописи можуть не завантажуватися й не надсилатися. Натисніть, щоб побачити статус мережі.",
+  "This is too long for one cast.": "Це задовго для одного касту.",
+  "Make it an article": "Зробити статтею",
+  "Replace your unfinished article with this post?": "Замінити незавершену статтю цим дописом?",
+  "Your article was partly published. Publish the rest or discard it first.": "Статтю опубліковано лише частково. Спершу опублікуйте решту або відмовтеся від неї.",
+  "Articles aren’t posted in channels.": "Статті не публікуються в каналах.",
+  "Your article is still uploading or publishing. Try again in a moment.": "Стаття ще завантажується або публікується. Спробуйте трохи згодом.",
+  "Replace": "Замінити",
+  "Wait for the upload to finish.": "Зачекайте, доки завершиться завантаження."
 }
