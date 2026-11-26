@@ -282,15 +282,16 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .imgs.n1 img { width: auto; max-width: 100%; height: auto; max-height: 510px; min-height: 120px; min-width: 120px; }
 .more-imgs { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(0 0 0 / 0.5); color: #fff; font-size: 26px; font-weight: 700; }
 .lightbox { position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 0.95); display: grid; place-items: center; animation: fade 0.15s; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; }
-/* zoomed by Lightbox's gestures, which have the fingers to themselves (touch-action): eased, except under a finger */
-.lightbox > img { max-width: calc(100vw - 32px); max-height: calc(100vh - 96px); object-fit: contain; border-radius: calc(6px * var(--rs, 1)); transition: transform 0.2s; }
+/* centred (Lightbox's zoom assumes it), so it keeps the bigger safe-area inset's room on both sides (#946);
+   zoomed by Lightbox's gestures, which have the fingers to themselves (touch-action): eased, except under a finger */
+.lightbox > img { max-width: calc(100vw - 32px); max-height: calc(100vh - 96px - 2 * max(env(safe-area-inset-top), env(safe-area-inset-bottom))); object-fit: contain; border-radius: calc(6px * var(--rs, 1)); transition: transform 0.2s; }
 .lightbox.held > img { transition: none; }
 .lb-btn { position: absolute; width: 44px; height: 44px; border-radius: calc(99px * var(--rs, 1)); border: 0; display: grid; place-items: center; background: rgb(255 255 255 / 0.12); color: #fff; }
-.lb-close { top: 14px; inset-inline-start: 14px; }
+.lb-close { top: calc(14px + env(safe-area-inset-top)); inset-inline-start: 14px; }
 .lb-prev { inset-inline-start: 14px; top: 50%; translate: 0 -50%; }
 .lb-next { inset-inline-end: 14px; top: 50%; translate: 0 -50%; rotate: 180deg; }
-.lb-count { position: absolute; top: 24px; left: 50%; translate: -50% 0; color: #fff; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.lb-open { position: absolute; bottom: 18px; left: 50%; translate: -50% 0; color: rgb(255 255 255 / 0.75); font-size: 13px; }
+.lb-count { position: absolute; top: calc(24px + env(safe-area-inset-top)); left: 50%; translate: -50% 0; color: #fff; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lb-open { position: absolute; bottom: calc(18px + env(safe-area-inset-bottom)); left: 50%; translate: -50% 0; color: rgb(255 255 255 / 0.75); font-size: 13px; }
 .vid { position: relative; margin-top: 10px; border-radius: calc(14px * var(--rs, 1)); overflow: hidden; background: #000; border: var(--bw, 1px) var(--bs, solid) var(--line); }
 .vid video { display: block; width: 100%; max-height: 520px; aspect-ratio: 16 / 9; background: #000; }
 /* a video whose shape is known (shared.ts vidBoxOf) gets a box in that shape, at most 510px tall, before anything loads */

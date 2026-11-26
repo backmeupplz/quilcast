@@ -54,7 +54,13 @@ function ChannelPicker({ value, set, fid }: { value?: string; set: (v?: string) 
     const r = (chip.current!.offsetParent || chip.current!).getBoundingClientRect()
     // the visual viewport: the part a phone's keyboard leaves. On iOS (and in phone browsers) the keyboard covers the
     // page rather than shrinking it, so the chip can be under it: then the picker is lifted to sit just above it.
-    const v = visualViewport, top = v ? v.offsetTop : 0, bottom = v ? v.offsetTop + v.height : innerHeight
+    // The iOS app draws under the status bar (viewport-fit=cover), which is always at the visual viewport's top: the
+    // room above stops at its inset (#946)
+    const d = document.body.appendChild(document.createElement('div'))
+    d.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)'
+    const safe = parseFloat(getComputedStyle(d).paddingTop) || 0
+    d.remove()
+    const v = visualViewport, top = (v ? v.offsetTop : 0) + safe, bottom = v ? v.offsetTop + v.height : innerHeight
     const above = Math.min(r.top, bottom) - top, below = bottom - r.bottom
     setAt({ up: above >= below, max: Math.max(above, below) - 14, lift: Math.max(0, r.top - bottom) })
   }
