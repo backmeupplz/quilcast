@@ -720,16 +720,19 @@ small.warn { color: var(--warn); }
 .sheet .lk-gifs { max-height: 65vh; padding: 8px 0 4px; }
 .sheet .lk-emoji { max-height: 65vh; padding: 8px 0 4px; }
 @media (max-width: 600px) {
-  .modal { padding: 0; align-items: stretch; }
+  /* in the part of the screen the keyboard leaves (src/viewport.ts, #944), which the sheet fills */
+  .modal { padding: 0; align-items: stretch; inset: var(--vv-top, 0px) 0 auto; height: var(--vv-height, 100%); }
   .sheet { border-radius: 0; max-width: none; display: flex; flex-direction: column; }
   /* full screen, a sheet's top row stays clear of the status bar and its toolbar of the home indicator (the iOS app draws
      under them, viewport-fit=cover; #945). Borders rather than padding: each kind of sheet keeps its own padding, and
-     its background shows through them. */
-  .modal > .sheet { border-block: solid transparent; border-block-width: env(safe-area-inset-top) env(safe-area-inset-bottom); }
+     its background shows through them. With the keyboard up, the toolbar sits on it instead (src/viewport.ts, #944). */
+  .modal > .sheet { border-block: solid transparent; border-block-width: env(safe-area-inset-top) var(--vv-inset-bottom, env(safe-area-inset-bottom)); }
   /* the Channel picker opens from the toolbar's start, not the chip's: a chip far along a phone's row would put it past the screen's edge (#721) */
   .toolbar { margin-top: auto; position: relative; }
   .toolbar .wrap-menu { position: static; }
   .sheet .lk-gifs { max-height: none; min-height: 0; }
+  /* a dialog in a column (or Quorum mode's wallet) a theme's size zooms keeps to the visible part in the screen's pixels, as the composer does */
+  :root[data-th-zoom] :is(.side, .col, .extra, .q-wallet) .modal { zoom: calc(1 / var(--zoom)); }
 }
 @keyframes fade { from { opacity: 0; } }
 
@@ -1813,6 +1816,17 @@ body:has(.wa-bar) .space-bar { bottom: calc(64px + env(safe-area-inset-bottom));
 .tr-note .link-btn { font-size: 13px; }
 .tr-note .link-btn:disabled { color: var(--muted); }
 
+/* iOS zooms in on a field under 16px as it takes the focus (search, the Channel picker's), and doesn't zoom back out
+   after: the keyboard fit for phone dialogs stays off while zoomed (src/viewport.ts, #944). After the rules
+   it outranks (each smaller field's own size), before Quorum mode's (16px); fields sized larger keep theirs. In a
+   column a smaller theme zooms out, 16px on the screen; dialogs there undo the zoom (above). */
+@media (max-width: 600px) {
+  :root[data-th-zoom] :is(.side, .col, .extra, .q-wallet) { --field: calc(16px / var(--zoom)); }
+  :root[data-th-zoom] :is(.side, .col, .extra, .q-wallet) .modal { --field: 16px; }
+  input:not([type='checkbox'], [type='radio'], .ae-title), textarea, select, .join input:not([type='checkbox']),
+  .sp :is(.sp-claim-row, .sp-custom) input, :is(.space-form, .wallet-form) textarea, .ae-body, .local-export, select.pick { font-size: max(16px, var(--field, 16px)); }
+}
+
 /* ---------- Quorum mode (Settings): Quilibrium's Quorum app's layout (quorum-desktop's shell and its upcoming feed),
    under :root[data-quorum]. A narrow sidebar with tinted pills, the feed centered, search and apps on the right, and
    the wallet docked on the right edge, with an open mini app beside it rather than under it when there's room. With
@@ -2018,8 +2032,8 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 
   /* fields: Input.scss .quorum-input, filled, with an accent border and ring on focus */
   /* (at the specificity of Quilcast's own field rule: the extra exclusions sit in :where()) */
-  & input:not([type='checkbox']):not([type='search']):where(:not([type='range'], [type='color'], .mv-amt)) { padding: 9px 16px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); font-size: 16px; font-weight: 400; line-height: 22px; transition: border-color 0.15s, box-shadow 0.15s; }
-  & textarea { padding: 9px 16px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); font-size: 16px; font-weight: 400; line-height: 22px; }
+  & input:not([type='checkbox']):not([type='search']):where(:not([type='range'], [type='color'], .mv-amt)) { padding: 9px 16px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); font-size: max(16px, var(--field, 16px)); font-weight: 400; line-height: 22px; transition: border-color 0.15s, box-shadow 0.15s; }
+  & textarea { padding: 9px 16px; border: var(--bw, 1px) var(--bs, solid) transparent; border-radius: var(--q-r); background: var(--q-field); font-size: max(16px, var(--field, 16px)); font-weight: 400; line-height: 22px; }
   & label { font-size: 14px; font-weight: 500; }
   & .prefix span { inset-inline-start: 16px; font-size: 16px; line-height: 22px; }
   & .prefix input { padding-inline-start: 34px !important; }
@@ -2223,7 +2237,7 @@ body:has(.lk-edit) .q-wallet { z-index: 29; }
 /* MessageComposer: one pill on the page's darkest surface, the send arrow in a circle at its end */
 .dm-compose.q-compose-box { padding: 8px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--soft); border-top: 0; }
 .q-composer { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px 6px 14px; border-radius: calc(22px * var(--rs, 1)); background: var(--bg); border: var(--bw, 1px) var(--bs, solid) light-dark(var(--q-s4), transparent); }
-.q-composer textarea { flex: 1; min-width: 0; min-height: 0; max-height: 240px; padding: 4px; border: 0; border-radius: 0; background: none; box-shadow: none; resize: none; field-sizing: content; font-size: 16px; line-height: 24px; overflow-wrap: anywhere; }
+.q-composer textarea { flex: 1; min-width: 0; min-height: 0; max-height: 240px; padding: 4px; border: 0; border-radius: 0; background: none; box-shadow: none; resize: none; field-sizing: content; font-size: max(16px, var(--field, 16px)); line-height: 24px; overflow-wrap: anywhere; }
 .q-composer textarea:focus, .q-composer textarea:hover { border: 0; background: none; box-shadow: none; }
 .q-composer:focus-within { border-color: var(--accent); }
 .q-send { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0 0 0 2px; border: 0; border-radius: 99px; background: var(--accent); color: var(--on-accent); transition: background-color 0.15s, opacity 0.15s; }

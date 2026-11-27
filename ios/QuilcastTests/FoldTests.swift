@@ -236,6 +236,137 @@ final class FoldTests: XCTestCase {
         }
     }
 
+    func testTheComposersTopRowStaysOnScreenWithTheKeyboardUp() async throws {
+        // the phone composer (compose.tsx) over a feed, with this checkout's styles and its src/viewport.ts (plain JS)
+        guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("A phone's full-screen composer") }
+        let src = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../src")
+        guard let css = try? String(contentsOf: src.appendingPathComponent("style.css"), encoding: .utf8),
+              let fit = try? String(contentsOf: src.appendingPathComponent("viewport.ts"), encoding: .utf8) else { throw XCTSkip("Needs the repository's src/") }
+        try await load("""
+            <style>\(css)</style>
+            <main><div class="searchbox"><input class="search"></div>\(String(repeating: "<div style='height: 400px; border-bottom: 1px solid'></div>", count: 6))</main>
+            <div class="modal"><div class="sheet">
+              <div class="sheet-top"><button class="link-btn">Cancel</button><button class="btn">Cast</button></div>
+              <div class="parts"><div class="part"><textarea id="draft"></textarea></div></div>
+              <div class="toolbar"><button class="icon-btn">+</button><input class="channel-search" placeholder="Search channels"></div>
+            </div></div>
+            <script>\(fit)</script>
+            """)
+        let safe = Double(page.web.safeAreaInsets.top)
+        XCTAssertGreaterThan(safe, 0, "an iPhone with a status bar over the page")
+        // Cast's top and the toolbar's bottom on the screen (WebKit's client coordinates start at the screen's top while
+        // the keyboard is up), whether Cast is what a tap on it reaches, and where the keyboard starts
+        struct Seen: Decodable { let cast: Double, tappable: Bool, toolbar: Double, keyboard: Double, under: Double }
+        func seen() async throws -> Seen {
+            let json = try await js("""
+                const cast = document.querySelector('.sheet-top .btn'), r = cast.getBoundingClientRect()
+                return JSON.stringify({ cast: r.top, tappable: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === cast,
+                  toolbar: document.querySelector('.toolbar').getBoundingClientRect().bottom, keyboard: visualViewport.height,
+                  under: parseFloat(getComputedStyle(document.querySelector('.sheet')).borderBottomWidth) })
+                """)
+            return try JSONDecoder().decode(Seen.self, from: Data(json.utf8))
+        }
+        let open = try await seen(), screen = Double(page.web.bounds.height)
+        XCTAssertGreaterThanOrEqual(open.cast, safe, "without the keyboard, Cast is below the status bar: \(open)")
+        XCTAssertLessThanOrEqual(open.toolbar, screen - Double(page.web.safeAreaInsets.bottom), "and the toolbar above the home indicator: \(open)")
+        // the keyboard comes up for a focus() once the web view has the focus and nothing is over it (the community
+        // rules, on a first launch)
+        if page.presentedViewController != nil {
+            page.dismiss(animated: false)
+            try await until("the rules closed") { self.page.presentedViewController == nil }
+        }
+        page.web.becomeFirstResponder()
+        // a long cast, the cursor at its end: as the composer's text grows to its tallest (50vh), WebKit scrolls the
+        // part the keyboard leaves down to the cursor
+        try await js("""
+            const d = document.getElementById('draft')
+            d.value = Array.from({ length: 40 }, (_, i) => 'line ' + i).join('\\n'); d.style.height = '50vh'
+            d.focus(); d.setSelectionRange(d.value.length, d.value.length)
+            """)
+        guard try await wait(seconds: 5, { ((try? await seen())?.keyboard ?? .infinity) < screen - 100 }) else {
+            throw XCTSkip("No software keyboard came up (a hardware keyboard is connected)")
+        }
+        try await Task.sleep(for: .seconds(1))
+        let typing = try await seen()
+        print("composer with the keyboard up: \(typing)")
+        snapshot("composer-keyboard")
+        XCTAssertGreaterThanOrEqual(typing.cast, safe, "with the keyboard up, Cast is on the screen, below the status bar: \(typing)")
+        XCTAssert(typing.tappable, "and a tap on it reaches it: \(typing)")
+        XCTAssertLessThanOrEqual(typing.toolbar, typing.keyboard + 1, "the toolbar is above the keyboard: \(typing)")
+        XCTAssertEqual(typing.under, 0, "with no room left for the home indicator under it: \(typing)")
+        // the page under it dragged to its end, the visible part panned to the bottom of the layout's
+        try await js("scrollTo(0, document.body.scrollHeight)")
+        try await Task.sleep(for: .seconds(1))
+        let panned = try await seen()
+        print("panned to the bottom: \(panned)")
+        XCTAssertGreaterThanOrEqual(panned.cast, safe, "panned to the bottom, Cast stays on the screen: \(panned)")
+        XCTAssert(panned.tappable, "and a tap on it reaches it: \(panned)")
+        XCTAssertLessThanOrEqual(panned.toolbar, panned.keyboard + 1, "and the toolbar above the keyboard: \(panned)")
+        // no field (the Channel picker's search, the page's search; 15px on a wider screen) zooms the page in as it takes
+        // the focus: the fit stays off while zoomed
+        for field in [".channel-search", ".search"] {
+            try await js("document.querySelector('\(field)').focus()")
+            try await Task.sleep(for: .seconds(1))
+            let scale = try await js("return String(visualViewport.scale)")
+            XCTAssertEqual(scale, "1", "\(field) doesn't zoom the page")
+        }
+        // a dialog in a column a theme's size zooms (Spaces') fits the same
+        try await js("""
+            document.documentElement.dataset.thZoom = ''; document.documentElement.style.setProperty('--zoom', '1.2')
+            const col = document.createElement('div'); col.className = 'col'; document.body.append(col); col.append(document.querySelector('.modal'))
+            const d = document.getElementById('draft'); d.focus(); d.setSelectionRange(d.value.length, d.value.length)
+            """)
+        try await Task.sleep(for: .seconds(1))
+        let zoomed = try await seen()
+        print("in a zoomed column: \(zoomed)")
+        XCTAssertGreaterThanOrEqual(zoomed.cast, safe, "in a zoomed column, Cast is on the screen: \(zoomed)")
+        XCTAssert(zoomed.tappable, "and a tap on it reaches it: \(zoomed)")
+        XCTAssertLessThanOrEqual(zoomed.toolbar, zoomed.keyboard + 1, "the toolbar is above the keyboard: \(zoomed)")
+        // nor does the page's search in a column a smaller theme zooms out
+        try await js("""
+            document.documentElement.style.setProperty('--zoom', '0.8'); const col = document.querySelector('.col')
+            col.prepend(document.querySelector('.searchbox')); col.querySelector('.search').focus()
+            """)
+        try await Task.sleep(for: .seconds(1))
+        let small = try await js("return String(visualViewport.scale)")
+        XCTAssertEqual(small, "1", "the search in a column zoomed 0.8x doesn't zoom the page")
+        // Quorum mode's wallet (a full-screen layer a theme's size zooms too) and its dialogs (Send, Add wallet) fit the
+        // same, in a theme zoomed both ways
+        try await js("""
+            const w = document.createElement('div'); w.className = 'q-wallet'; document.body.append(w); w.append(document.querySelector('.modal'))
+            """)
+        for zoom in ["1.4", "0.8"] {
+            try await js("""
+                document.documentElement.style.setProperty('--zoom', '\(zoom)')
+                const d = document.getElementById('draft'); d.focus(); d.setSelectionRange(d.value.length, d.value.length)
+                """)
+            try await Task.sleep(for: .seconds(1))
+            let wallet = try await seen()
+            print("in Quorum's wallet zoomed \(zoom)x: \(wallet)")
+            XCTAssertGreaterThanOrEqual(wallet.cast, safe, "in Quorum's wallet zoomed \(zoom)x, Cast is on the screen: \(wallet)")
+            XCTAssert(wallet.tappable, "and a tap on it reaches it: \(wallet)")
+            XCTAssertLessThanOrEqual(wallet.toolbar, wallet.keyboard + 1, "the toolbar is above the keyboard: \(wallet)")
+            try await js("document.querySelector('.channel-search').focus()")
+            try await Task.sleep(for: .seconds(1))
+            let scale = try await js("return String(visualViewport.scale)")
+            XCTAssertEqual(scale, "1", "a field in Quorum's wallet zoomed \(zoom)x doesn't zoom the page")
+        }
+        // nor do the wallet's own fields (Activity's search) in Quorum mode, whose field rules set their own size
+        try await js("document.documentElement.dataset.quorum = ''")
+        for field in ["input", "textarea"] {
+            try await js("""
+                const f = document.createElement('\(field)'); document.querySelector('.q-wallet').prepend(f); f.focus()
+                """)
+            try await Task.sleep(for: .seconds(1))
+            let scale = try await js("return String(visualViewport.scale)")
+            XCTAssertEqual(scale, "1", "a Quorum mode \(field) in the wallet zoomed 0.8x doesn't zoom the page")
+        }
+        page.web.endEditing(true)
+        try await until("the composer fills the screen again once the keyboard is down") {
+            (try? await self.js("return getComputedStyle(document.documentElement).getPropertyValue('--vv-height')")) == ""
+        }
+    }
+
     func testWhatCoversTheScreenLeavesThePageAlone() async throws {
         // on a simulator whose screen something covers (an iPhone Duo's cover display, from iOS 27.1), as the app runs
         guard #available(iOS 27.1, *) else { throw XCTSkip("Reserved regions are iOS 27.1's") }
