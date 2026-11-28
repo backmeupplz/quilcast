@@ -525,6 +525,8 @@
   "apple banana cherry …": "apple banana cherry …",
   "chillin": "de relax",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz no abrió tus mensajes.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "Los mensajes son los direct casts de farcaster.xyz, que no están en la red de Farcaster como tal. farcaster.xyz no conoce las cuentas nuevas de Hypersnap como esta, así que los mensajes no están disponibles para ella.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz no pudo abrir los mensajes de esta cuenta. Puede que no la conozca o que esté teniendo problemas ahora mismo.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz solo se comunica con su propio sitio, así que los mensajes pasan por el servidor de Quilcast en el camino; no los guarda. Igual que en farcaster.xyz, no están cifrados de extremo a extremo.",
   "farcaster.xyz said {status}": "farcaster.xyz respondió {status}",
   "follower|followers": "seguidor|seguidores",

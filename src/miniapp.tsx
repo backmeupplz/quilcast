@@ -13,7 +13,7 @@ import { account, accounts as signedIn, alertsKept, getUser, go, myUser, read, s
 import { base58, hex } from './fc.ts'
 import { choices, pair, qr, WC, wcChoice, wcLive } from './wallet.ts'
 import { checkWallet, READS, rpcError, SIGNS, signInCheck, siwf, tokenCall, typedRisk, UNLIMITED, WALLET_READS } from './guard.ts'
-import { LOGO, proxied, queue, rpc } from './shared.ts'
+import { LOGO, nativeFid, proxied, queue, rpc } from './shared.ts'
 import { allowance, approveTx, parseToken, quote, tokenInfo, transferTx, USDC, type Token, type TokenId } from './tokens.ts'
 import { addAppAction, APP_PUSH, askPush, castActions, Choose, pushSubscription, fetchCast, handle, Icon, Img, isPinned, Menu, P, saveActions, shell, shortAddr as short, toast, togglePin, unfurl, useOn, WalletIcon, type CastAction, type Drafting } from './ui.tsx'
 import { b64, custodyOf, signEvent } from './write.ts'
@@ -745,7 +745,7 @@ export async function disablePush() {
 // what a webhook answers when it doesn't accept the key an event was signed with
 const refused = (status: number) => status === 400 || status === 401 || status === 403
 // native Hypersnap FIDs (2^32 and up) were never registered on Optimism, so they can't have an on-chain app key
-const onOptimism = (fid?: number) => !!fid && fid < 2 ** 32
+const onOptimism = (fid?: number) => !!fid && !nativeFid(fid)
 export async function setNotify(m: AppMeta, on: boolean, event?: 'miniapp_added' | 'miniapp_removed', wait?: (s: string) => void) {
   const origin = new URL(m.url).origin
   const d = on ? await details(m) : undefined

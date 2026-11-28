@@ -936,6 +936,8 @@
   "chillin": "tranquille",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz n’a pas autorisé ce compte à accéder aux Spaces.",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz n’a pas ouvert vos messages.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "Les messages sont les direct casts de farcaster.xyz, qui ne se trouvent pas sur le réseau Farcaster lui-même. farcaster.xyz ne connaît pas les nouveaux comptes Hypersnap comme celui-ci, donc les messages ne sont pas disponibles pour lui.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz n’a pas pu ouvrir les messages de ce compte. Il ne le connaît peut-être pas, ou il rencontre un problème en ce moment.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz ne communique qu’avec son propre site : les messages transitent donc par le serveur de Quilcast, qui ne les conserve pas. Comme sur farcaster.xyz, ils ne sont pas chiffrés de bout en bout.",
   "farcaster.xyz said no ({status}).": "farcaster.xyz a refusé ({status}).",
   "farcaster.xyz said {status}": "farcaster.xyz a répondu {status}",

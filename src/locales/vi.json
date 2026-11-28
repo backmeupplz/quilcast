@@ -936,6 +936,8 @@
   "chillin": "đang chill",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz không cho tài khoản này vào Phòng âm thanh.",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz không mở tin nhắn của bạn.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "Tin nhắn là direct cast của farcaster.xyz, không nằm trên chính mạng Farcaster. farcaster.xyz không biết các tài khoản Hypersnap mới như tài khoản này, nên tin nhắn không dùng được cho nó.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz không mở được tin nhắn cho tài khoản này. Có thể nó không biết tài khoản này, hoặc đang gặp sự cố.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz chỉ giao tiếp với trang của chính nó, nên tin nhắn đi qua máy chủ của Quilcast; máy chủ không lưu lại. Giống như trên farcaster.xyz, tin nhắn không được mã hóa đầu cuối.",
   "farcaster.xyz said no ({status}).": "farcaster.xyz đã từ chối ({status}).",
   "farcaster.xyz said {status}": "farcaster.xyz trả lời {status}",

@@ -936,6 +936,8 @@
   "chillin": "느긋하게 쉬는 중",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz에서 이 계정의 스페이스 입장을 허용하지 않았어요.",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz에서 메시지를 열지 못했어요.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "메시지는 farcaster.xyz의 다이렉트 캐스트로, Farcaster 네트워크 자체에는 없어요. farcaster.xyz는 이 계정 같은 새 Hypersnap 계정을 알지 못해서, 이 계정에서는 메시지를 쓸 수 없어요.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz가 이 계정의 메시지를 열지 못했어요. 이 계정을 모르거나 지금 문제가 있는 것일 수 있어요.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz는 자기 사이트와만 통신하기 때문에 메시지는 Quilcast 서버를 거쳐 가지만, 서버에 저장되지는 않아요. farcaster.xyz에서와 마찬가지로 종단간 암호화는 되지 않아요.",
   "farcaster.xyz said no ({status}).": "farcaster.xyz에서 거부했어요({status}).",
   "farcaster.xyz said {status}": "farcaster.xyz 응답: {status}",

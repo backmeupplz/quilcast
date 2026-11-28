@@ -5,7 +5,7 @@ import { account, findUsers, myUser, safeUrl, settings, type User } from './api.
 import { GifPicker } from './gifs.tsx'
 import { autoDelete, compact, details, load, loadChat, lookup, mute, read, sameDay, send, store, subscribe, unread, type Box, type Convo, type Msg, type Person } from './dms.ts'
 import { lang, t, tn } from './i18n.ts'
-import { isImg, sized, stickerPack } from './shared.ts'
+import { isImg, nativeFid, sized, stickerPack } from './shared.ts'
 import { ago, Avatar, handle, Header, Icon, Img, Menu, nameOf, P, RichText, shell, Sticker, Tabs, toast, UserRow, userPath, w } from './ui.tsx'
 
 const person = (p?: Person): User => ({ fid: p?.fid || 0, username: p?.username, display_name: p?.displayName, pfp_url: p?.pfp?.url })
@@ -62,6 +62,7 @@ function useStore() {
 /** The inbox, or one conversation when `id` is given. */
 export function Messages({ id }: { id?: string }) {
   if (!account?.done) return <><Header title={t('Messages')} /><div class="note">{t('Sign in to read your messages.')}</div></>
+  if (nativeFid(account.fid)) return <><Header title={t('Messages')} /><div class="note">{t("Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.")}</div></>
   if (!account.dm) return <Connect />
   // Quorum mode: Quorum's two panes, the conversations beside the open one (one at a time on narrow screens)
   if (settings.quorum) {
@@ -168,7 +169,7 @@ function Pick({ q }: { q: string }) {
   const [found, setFound] = useState<User[] | null>(null)
   useEffect(() => {
     let live = true
-    const t = setTimeout(() => findUsers(q).then((r) => live && setFound(r.filter((u) => u.fid !== account!.fid).slice(0, 20)), () => live && setFound([])), 250)
+    const t = setTimeout(() => findUsers(q).then((r) => live && setFound(r.filter((u) => u.fid !== account!.fid && !nativeFid(u.fid)).slice(0, 20)), () => live && setFound([])), 250)
     return () => ((live = false), clearTimeout(t))
   }, [q])
   if (!found) return <div class="spinner" />

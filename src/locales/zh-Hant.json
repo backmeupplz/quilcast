@@ -525,6 +525,8 @@
   "apple banana cherry …": "apple banana cherry …",
   "chillin": "耍廢中",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz 沒有開啟你的訊息。",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "訊息是 farcaster.xyz 的私訊（direct casts），並不在 Farcaster 網路上。farcaster.xyz 不認識像這樣的新 Hypersnap 帳號，所以這個帳號無法使用訊息。",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz 無法為這個帳號開啟訊息。它可能不認識這個帳號，也可能暫時出了問題。",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz 只跟自家網站溝通，所以訊息會經過 Quilcast 的伺服器轉送，但不會被保存。和在 farcaster.xyz 上一樣，訊息沒有端對端加密。",
   "farcaster.xyz said {status}": "farcaster.xyz 回應：{status}",
   "follower|followers": "位粉絲",

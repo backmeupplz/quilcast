@@ -584,7 +584,10 @@ Chain ID: 1
 Nonce: ${result.nonce}
 Issued At: ${new Date().toISOString()}`
   const signature = '0x' + hex(await (await custodyOf(a)).message(new TextEncoder().encode(message), { local: true }))
-  const t = await dm('token', { method: 'POST', body: { message, signature } })
+  // farcaster.xyz answers an account it doesn't know (one Hypersnap registered, say) with a bare 500, as it does its own failures
+  const t = await dm('token', { method: 'POST', body: { message, signature } }).catch((e) => {
+    throw e.status === 500 ? new Error("farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.") : e
+  })
   if (!t.result?.token) throw new Error("farcaster.xyz didn't open your messages.")
   setAccount({ ...account!, dm: t.result.token })
 }

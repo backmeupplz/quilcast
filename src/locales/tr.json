@@ -936,6 +936,8 @@
   "chillin": "kafa dinliyorum",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz bu hesabı Sohbet Odalarına almadı.",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz mesajlarını açmadı.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "Mesajlar, farcaster.xyz'nin direkt cast'leridir ve Farcaster ağının kendisinde yer almaz. farcaster.xyz bunun gibi yeni Hypersnap hesaplarını tanımıyor, bu yüzden bu hesapta mesajlar kullanılamıyor.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz bu hesabın mesajlarını açamadı. Hesabı tanımıyor olabilir ya da şu anda bir sorun yaşıyor olabilir.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz yalnızca kendi sitesiyle konuşur, bu yüzden mesajlar yolda Quilcast'in sunucusundan geçer; sunucu onları saklamaz. farcaster.xyz'de olduğu gibi uçtan uca şifreli değildir.",
   "farcaster.xyz said no ({status}).": "farcaster.xyz izin vermedi ({status}).",
   "farcaster.xyz said {status}": "farcaster.xyz yanıtı: {status}",

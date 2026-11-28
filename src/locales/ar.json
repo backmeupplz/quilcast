@@ -936,6 +936,8 @@
   "chillin": "مسترخٍ",
   "farcaster.xyz didn't let this account into Spaces.": "لم يسمح farcaster.xyz لهذا الحساب بدخول المساحات.",
   "farcaster.xyz didn't open your messages.": "لم يفتح farcaster.xyz رسائلك.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "الرسائل هي الرسائل المباشرة (direct casts) في farcaster.xyz، وهي ليست على شبكة Farcaster نفسها. لا يعرف farcaster.xyz حسابات Hypersnap الجديدة مثل هذا الحساب، لذا الرسائل غير متاحة له.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "تعذّر على farcaster.xyz فتح الرسائل لهذا الحساب. ربما لا يعرف الحساب، أو ربما يواجه مشكلة الآن.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "لا يتواصل farcaster.xyz إلا مع موقعه، لذا تمر الرسائل عبر خادم Quilcast في طريقها؛ ولا يحتفظ بها. وكما في farcaster.xyz، فهي ليست مشفّرة تشفيرًا تامًا بين الطرفين.",
   "farcaster.xyz said no ({status}).": "رفض farcaster.xyz ({status}).",
   "farcaster.xyz said {status}": "ردّ farcaster.xyz بـ {status}",

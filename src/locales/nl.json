@@ -936,6 +936,8 @@
   "chillin": "aan het chillen",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz liet dit account niet toe in Spaces.",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz heeft je berichten niet geopend.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "Berichten zijn de direct casts van farcaster.xyz, die niet op het Farcaster-netwerk zelf staan. farcaster.xyz kent nieuwe Hypersnap-accounts zoals dit niet, dus berichten zijn er niet voor beschikbaar.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz kon de berichten voor dit account niet openen. Misschien kent het dit account niet, of heeft het even problemen.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz praat alleen met de eigen site, dus berichten gaan onderweg via de server van Quilcast; die bewaart ze niet. Net als op farcaster.xyz zijn ze niet end-to-end versleuteld.",
   "farcaster.xyz said no ({status}).": "farcaster.xyz weigerde ({status}).",
   "farcaster.xyz said {status}": "farcaster.xyz antwoordde {status}",

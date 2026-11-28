@@ -936,6 +936,8 @@
   "chillin": "चिल कर रहा हूँ",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz ने इस अकाउंट को स्पेस में आने नहीं दिया।",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz ने आपके मैसेज नहीं खोले।",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "मैसेज farcaster.xyz की डायरेक्ट कास्ट हैं, जो खुद Farcaster नेटवर्क पर नहीं होतीं। farcaster.xyz इस जैसे नए Hypersnap खातों को नहीं जानता, इसलिए इनके लिए मैसेज उपलब्ध नहीं हैं।",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz इस खाते के मैसेज नहीं खोल सका। हो सकता है वह इस खाते को न जानता हो, या अभी उसमें कोई दिक्कत हो।",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz सिर्फ़ अपनी साइट से ही बात करता है, इसलिए मैसेज रास्ते में Quilcast के सर्वर से होकर जाते हैं; सर्वर उन्हें सेव नहीं करता। farcaster.xyz की तरह ही, ये एंड-टू-एंड एन्क्रिप्टेड नहीं हैं।",
   "farcaster.xyz said no ({status}).": "farcaster.xyz ने मना कर दिया ({status})।",
   "farcaster.xyz said {status}": "farcaster.xyz का जवाब: {status}",

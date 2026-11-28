@@ -936,6 +936,8 @@
   "chillin": "lagi santai",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz tidak mengizinkan akun ini masuk ke Ruang Audio.",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz tidak membuka pesanmu.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "Pesan adalah direct cast dari farcaster.xyz, yang tidak berada di jaringan Farcaster itu sendiri. farcaster.xyz tidak mengenal akun Hypersnap baru seperti ini, jadi pesan tidak tersedia untuknya.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz tidak bisa membuka pesan untuk akun ini. Mungkin ia tidak mengenal akun ini, atau sedang ada gangguan.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz hanya mau berkomunikasi dengan situsnya sendiri, jadi pesan melewati server Quilcast di tengah jalan; server tidak menyimpannya. Sama seperti di farcaster.xyz, pesan tidak dienkripsi end-to-end.",
   "farcaster.xyz said no ({status}).": "farcaster.xyz menolak ({status}).",
   "farcaster.xyz said {status}": "farcaster.xyz menjawab {status}",

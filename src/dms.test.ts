@@ -60,3 +60,17 @@ test('our own message coming back over the websocket replaces the one still send
   handle({ messageType: 'refresh-direct-cast-conversation', payload: { conversationId: 'c', message: m('srv', 4, 'hi', 7) } })
   assert.deepEqual(store.chats.get('c')!.msgs.map((x) => x.messageId), ['a', 'srv'])
 })
+
+test('accounts Hypersnap registers (from 2^32) are told apart, and a refused call keeps its status', async () => {
+  const { nativeFid } = await import('./shared.ts')
+  assert.deepEqual([0, undefined, 3, 2 ** 32 - 1, 2 ** 32, 4294967366].map(nativeFid), [false, false, false, false, true, true])
+  const { dm } = await import('./dms.ts')
+  const real = globalThis.fetch
+  // what farcaster.xyz answers a token request for an FID it doesn't know
+  globalThis.fetch = async () => new Response(JSON.stringify({ errors: [{ message: 'Internal server error' }] }), { status: 500 })
+  try {
+    await assert.rejects(dm('token', { method: 'POST', body: {} }), { status: 500, message: 'Internal server error' })
+  } finally {
+    globalThis.fetch = real
+  }
+})

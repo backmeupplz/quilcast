@@ -1,5 +1,8 @@
 // Pure helpers that the app and the server (which imports this file as TypeScript) both use.
 
+/** An FID Hypersnap registered itself (from 2^32, since its fork): farcaster.xyz doesn't know it. */
+export const nativeFid = (fid?: number) => !!fid && fid >= 2 ** 32
+
 export const isImg = (u: string) => /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u) || /imagedelivery\.net|i\.imgur\.com/.test(u)
 /** The pack a sticker's address names (server/stickers.mjs), or null for any other picture. A sticker is always at
  *  quilcast.com, as other Farcaster clients show it from there. */

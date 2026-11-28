@@ -936,6 +936,8 @@
   "chillin": "ชิลๆ",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz ไม่อนุญาตให้บัญชีนี้เข้าสเปซ",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz ไม่ได้เปิดข้อความของคุณ",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "ข้อความคือไดเรกต์แคสต์ของ farcaster.xyz ซึ่งไม่ได้อยู่บนเครือข่าย Farcaster เอง farcaster.xyz ไม่รู้จักบัญชี Hypersnap ใหม่อย่างบัญชีนี้ จึงใช้ข้อความกับบัญชีนี้ไม่ได้",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz เปิดข้อความของบัญชีนี้ไม่ได้ อาจเป็นเพราะไม่รู้จักบัญชีนี้ หรือกำลังมีปัญหาอยู่ตอนนี้",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz สื่อสารกับเว็บไซต์ของตัวเองเท่านั้น ข้อความจึงต้องผ่านเซิร์ฟเวอร์ของ Quilcast ระหว่างทาง แต่เซิร์ฟเวอร์ไม่เก็บไว้ และเหมือนกับบน farcaster.xyz ข้อความไม่ได้เข้ารหัสแบบต้นทางถึงปลายทาง",
   "farcaster.xyz said no ({status}).": "farcaster.xyz ปฏิเสธ ({status})",
   "farcaster.xyz said {status}": "farcaster.xyz ตอบกลับ {status}",

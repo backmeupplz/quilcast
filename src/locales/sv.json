@@ -936,6 +936,8 @@
   "chillin": "chillar",
   "farcaster.xyz didn't let this account into Spaces.": "farcaster.xyz släppte inte in det här kontot i ljudrum.",
   "farcaster.xyz didn't open your messages.": "farcaster.xyz öppnade inte dina meddelanden.",
+  "Messages are farcaster.xyz's direct casts, which aren't on the Farcaster network itself. farcaster.xyz doesn't know new Hypersnap accounts like this one, so messages aren't available for it.": "Meddelanden är direct casts från farcaster.xyz, som inte finns i själva Farcaster-nätverket. farcaster.xyz känner inte till nya Hypersnap-konton som det här, så meddelanden är inte tillgängliga för det.",
+  "farcaster.xyz couldn't open messages for this account. It may not know the account, or it may be having trouble right now.": "farcaster.xyz kunde inte öppna meddelanden för det här kontot. Det kanske inte känner till kontot, eller så har det problem just nu.",
   "farcaster.xyz only talks to its own site, so messages pass through Quilcast's server on the way; it doesn't keep them. As on farcaster.xyz, they aren't end-to-end encrypted.": "farcaster.xyz pratar bara med sin egen webbplats, så meddelandena passerar Quilcasts server på vägen. Den sparar dem inte. Precis som på farcaster.xyz är de inte end-to-end-krypterade.",
   "farcaster.xyz said no ({status}).": "farcaster.xyz sa nej ({status}).",
   "farcaster.xyz said {status}": "farcaster.xyz svarade {status}",

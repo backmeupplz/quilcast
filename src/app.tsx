@@ -6,7 +6,7 @@ import { account, accounts, amFollowing, isMe, askUser, byName, findUsers, follo
 import { Composer } from './compose.tsx'
 import { kv, vaultOpened } from './keys.ts'
 import { OGRE_FID, ogreTap } from './ogre.ts'
-import { castText, imagesIn, n, newOnTop, unmarkdown, peekOf, quotedOf, quotesOf as quotedHashes, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
+import { castText, imagesIn, n, nativeFid, newOnTop, unmarkdown, peekOf, quotedOf, quotesOf as quotedHashes, oncePerFeed, shownFor, sized, type Look, type Theme } from './shared.ts'
 import { ago, AppIcon, Avatar, dropAppAction, syncAppActions, cards, sparkle, isPinned, pinned, sameApp, togglePin, CastCard, DesignCard, designOf, dressed, theme, ThemeCard, ThemeLayers, themeChanged, wear, worn, fetchCast, warm, seed, handle, Header, Icon, Img, launchApp, launchUrl, LinkSheet, loadListed, type Listed, Logo, Menu, nameOf, P, quotedLine, ReportSheet, requireAccount, TipSheet, TrainSheet, RichText, shell, SilenceItems, spans, Tabs, toast, untilText, langName, VidPeek, urlsOf, UserRow, userPath, Viewer, w, askPush, appPushOn, Seg, useOn, useRerenderOn } from './ui.tsx'
 import removedList from './removed.json' with { type: 'json' }
 import type { AppMeta } from './miniapp.tsx'
@@ -1301,7 +1301,7 @@ function Profile({ id }: { id: string }) {
                     {/* a 1:1 conversation's id is both FIDs, sorted (as strings, like farcaster.xyz does) */}
                     {cardButton(u.fid)}
                     {searchButton}
-                    {account?.done && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
+                    {account?.done && !nativeFid(account.fid) && !nativeFid(u.fid) && <a class="btn ghost small" href={`/messages/${[account.fid, u.fid].sort().join('-')}`}>{t('Message')}</a>}
                     <button class={`btn small${following ? ' ghost' : ''}`} onClick={toggle} disabled={following === null && !!account?.done} aria-pressed={!!following} title={account?.done ? undefined : t('On this device only')}>{following ? t('Following') : t('Follow')}</button>
                     {moreMenu(<>
                       <button role="menuitem" onClick={() => (setMenu(false), go(browsePath(u)))}>{t('Browse as @{name}', { name: handle(u) })}</button>

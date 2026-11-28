@@ -22,7 +22,7 @@ export async function dm<T = any>(op: string, o: { query?: Record<string, string
   const r = await fetch(`/api/dm/${op}?${qs}`, { method: o.method || 'GET', headers, body: o.body ? JSON.stringify(o.body) : undefined })
   const j = await r.json().catch(() => ({}))
   if (r.status === 401 && account?.dm) setAccount({ ...account, dm: undefined })
-  if (!r.ok) throw new Error(j.errors?.[0]?.message || j.error || t('farcaster.xyz said {status}', { status: r.status }))
+  if (!r.ok) throw Object.assign(new Error(j.errors?.[0]?.message || j.error || t('farcaster.xyz said {status}', { status: r.status })), { status: r.status })
   return j
 }
 
