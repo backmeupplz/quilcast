@@ -14,7 +14,7 @@ COPY --from=ffmpeg /ffmpeg /usr/local/bin/
 
 # Quilcast WASM (wasm/, served at wasm.quilcast.com): Rust compiled to WebAssembly, nothing else (wasm/build.sh). Its own
 # stage, so the image only rebuilds it when wasm/ changes
-FROM rust:1.100-slim@sha256:3b199fd6db7d709274df56565b8f4003f9e30d7bfcff9d53148c86053b7855e2 AS wasm
+FROM rust:1.100-slim@sha256:24516ae4487ab804e3db145c93f7240e58e225587ab9b7c62ea31a218727bf67 AS wasm
 WORKDIR /w
 RUN rustup target add wasm32-unknown-unknown
 COPY wasm/Cargo.toml wasm/Cargo.lock wasm/build.sh wasm/
