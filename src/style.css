@@ -188,7 +188,7 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .handle, .dot, time { color: var(--muted); }
 .cast header .handle { overflow: hidden; text-overflow: ellipsis; flex-shrink: 3; min-width: 0; }
 .chan { margin-inline-start: auto; padding-inline-start: 8px; color: var(--muted); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.spam-tag { flex: none; padding: 0 6px; border-radius: calc(99px * var(--rs, 1)); background: color-mix(in srgb, var(--like) 14%, transparent); color: color-mix(in srgb, var(--like) 85%, light-dark(#000, #fff)); font-size: 12px; font-weight: 650; line-height: 1.5; }
+.spam-tag { flex: none; white-space: nowrap; padding: 0 6px; border-radius: calc(99px * var(--rs, 1)); background: color-mix(in srgb, var(--like) 14%, transparent); color: color-mix(in srgb, var(--like) 85%, light-dark(#000, #fff)); font-size: 12px; font-weight: 650; line-height: 1.5; }
 .cast.focus .who .spam-tag { align-self: flex-start; }
 .replying { font-size: 14px; color: var(--muted); margin-top: 1px; }
 .text { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -438,6 +438,8 @@ h1, h2 { margin: 0; letter-spacing: -0.01em; }
 .note-icon.fo { color: var(--accent); }
 .note-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
 .note-avatars { display: flex; gap: 4px; }
+.spam-face { display: flex; }
+.spam-face > .avatar { box-shadow: 0 0 0 2px var(--like); }
 .note-cast { color: var(--muted); -webkit-line-clamp: 2; }
 
 /* profile & lists */

@@ -795,8 +795,12 @@ function NoteRow({ g }: { g: Group }) {
       <span class={`note-icon ${cls}`}><Icon d={icon} fill={g.type === 'likes'} size={20} /></span>
       <span class="note-body">
         {/* the row opens the cast; each face opens that person's profile instead */}
-        <span class="note-avatars">{g.users.slice(0, 7).map((u) => <Avatar u={u} size={30} link={false} onClick={(e) => (e.preventDefault(), e.stopPropagation(), go(userPath(u)))} />)}</span>
-        <span><With s={line} k="name"><b>{nameOf(first)}</b></With> <span class="muted">· {ago(g.timestamp)}</span></span>
+        <span class="note-avatars">{g.users.slice(0, 7).map((u) => {
+          const face = <Avatar u={u} size={30} link={false} onClick={(e) => (e.preventDefault(), e.stopPropagation(), go(userPath(u)))} />
+          // a spam account's face gets a ring, and the person named gets the tag their casts and profile have
+          return spamAccountOf(u.fid) != null ? <span class="spam-face" title={t('Spam account {n}%', { n: spamAccountOf(u.fid)! })}>{face}</span> : face
+        })}</span>
+        <span><With s={line} k="name"><b>{nameOf(first)}</b>{spamAccountOf(first.fid) != null && <> <span class="spam-tag" title={t('How likely spam.quilcast.com thinks this is a spam account')}>{t('Spam account {n}%', { n: spamAccountOf(first.fid)! })}</span></>}</With> <span class="muted">· {ago(g.timestamp)}</span></span>
         {g.cast && <NotePeek c={g.cast} />}
       </span>
     </a>
@@ -884,7 +888,8 @@ function Notifications() {
       {/* fresh: opening the page marks everything as seen, so it shows what's new, Back or not */}
       {tab === 'apps' ? <AppNotes key={round} /> : <Pager<Note> fresh k={`${tab}:${round}`} empty={t('Nothing yet. When people reply, like or follow you, it shows up here.')}
         id={(n) => `${n.type}:${n.cast?.hash}:${n.user.fid}:${n.timestamp}`}
-        row={(ns) => group(ns.filter((n) => !silenced(n.user.fid) && !(n.cast && !ACT(n.type) && hides(n.cast)))).map((g) => <NoteRow key={g.key} g={g} />)}
+        // Spam accounts → Hide drops their likes, recasts and follows too, as push alerts do; a reply's cast goes by hides()
+        row={(ns) => group(ns.filter((n) => !silenced(n.user.fid) && !(ACT(n.type) ? settings.spamAccounts === 'hide' && spamAccountOf(n.user.fid) != null : n.cast && hides(n.cast)))).map((g) => <NoteRow key={g.key} g={g} />)}
         load={async (cursor) => {
           // quotes, replies deeper in our threads and recasts come with Hypersnap PR #42's flag
           const r = await get('/v2/farcaster/notifications', { fid: account!.fid, limit: 50, cursor, include_quotes_and_deep_replies: 'true' }, true)
@@ -898,6 +903,8 @@ function Notifications() {
           const shown = items.flatMap((n) => (n.cast && !ACT(n.type) ? [n.cast] : []))
           await Promise.all([
             hydrateParents(items.flatMap((n) => (n.cast ? [n.cast] : []))),
+            // the people who liked, recast or followed: a like's cast is our own, so hydrateParents scores only us
+            checkAccounts(items.flatMap((n) => (ACT(n.type) ? [n.user.fid] : []))),
             // the casts they quote, which muted words look at too (hides); fetchCast never rejects
             ...(mutes.words.length ? shown.flatMap((c) => quotedHashes(c, account!.fid)).map(fetchCast) : []),
             shown.length &&
